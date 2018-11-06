@@ -27,6 +27,7 @@ import scala.collection.mutable.HashMap
 import org.apache.spark._
 import org.apache.spark.executor.TaskMetrics
 import org.apache.spark.internal.Logging
+import org.apache.spark.internal.config.Status._
 import org.apache.spark.scheduler._
 import org.apache.spark.status.api.v1
 import org.apache.spark.storage._
@@ -45,8 +46,6 @@ private[spark] class AppStatusListener(
     conf: SparkConf,
     live: Boolean,
     lastUpdateTime: Option[Long] = None) extends SparkListener with Logging {
-
-  import config._
 
   private var sparkVersion = SPARK_VERSION
   private var appInfo: v1.ApplicationInfo = null
