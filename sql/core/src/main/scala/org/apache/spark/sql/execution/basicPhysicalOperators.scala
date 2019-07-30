@@ -75,9 +75,46 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
     }
   }
 
-  override def outputOrdering: Seq[SortOrder] = child.outputOrdering
+  override def outputOrdering: Seq[SortOrder] = {
+    val exprMap = newExprToOldExpr
+    val sortOrders = child.outputOrdering.collect {
+      case SortOrder(child, d, n, s) =>
+        val newExpr = if (exprMap.contains(child)) {
+          exprMap(child).toAttribute
+        } else {
+          child
+        }
+        SortOrder(newExpr, d, n, s)
+    }
 
-  override def outputPartitioning: Partitioning = child.outputPartitioning
+    sortOrders
+  }
+
+  override def outputPartitioning: Partitioning = {
+    val exprMap = newExprToOldExpr
+    child.outputPartitioning match {
+      case HashPartitioning(expressions, numPartitions) =>
+        val newExpr = expressions.map {
+          expr =>
+            if (exprMap.contains(expr)) {
+              exprMap(expr).toAttribute
+            } else {
+              expr
+            }
+        }
+        HashPartitioning(newExpr, numPartitions)
+      case other =>
+        other
+    }
+  }
+
+  private def newExprToOldExpr: Map[Expression, Alias] = {
+    val map = projectList.collect {
+      case a@Alias(expr, _) =>
+        (expr, a)
+    }.toMap
+    map
+  }
 }
 
 
