@@ -123,6 +123,14 @@ private[spark] class CoarseGrainedExecutorBackend(
           executor.stop()
         }
       }.start()
+
+    case UpdateDelegationTokens(tokenBytes) =>
+      logInfo(s"Received tokens of ${tokenBytes.length} bytes")
+      if (SparkEnv.get.executorId != SparkContext.DRIVER_IDENTIFIER) {
+        SparkHadoopUtil.get.addDelegationTokens(tokenBytes, env.conf)
+      } else {
+        logInfo("Skip update tokens with driver.")
+      }
   }
 
   override def onDisconnected(remoteAddress: RpcAddress): Unit = {
@@ -161,11 +169,7 @@ private[spark] class CoarseGrainedExecutorBackend(
     }
 
     if (notifyDriver && driver.nonEmpty) {
-      driver.get.ask[Boolean](
-        RemoveExecutor(executorId, new ExecutorLossReason(reason))
-      ).onFailure { case e =>
-        logWarning(s"Unable to notify the driver due to " + e.getMessage, e)
-      }(ThreadUtils.sameThread)
+      driver.get.send(RemoveExecutor(executorId, new ExecutorLossReason(reason)))
     }
 
     System.exit(code)
@@ -184,7 +188,6 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       userClassPath: Seq[URL]) {
 
     Utils.initDaemon(log)
-
     SparkHadoopUtil.get.runAsSparkUser { () =>
       // Debug code
       Utils.checkHost(hostname)
@@ -213,10 +216,9 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
           driverConf.set(key, value)
         }
       }
-      if (driverConf.contains("spark.yarn.credentials.file")) {
-        logInfo("Will periodically update credentials from: " +
-          driverConf.get("spark.yarn.credentials.file"))
-        SparkHadoopUtil.get.startCredentialUpdater(driverConf)
+
+      cfg.hadoopDelegationCreds.foreach { tokens =>
+        SparkHadoopUtil.get.addDelegationTokens(tokens, driverConf)
       }
 
       val env = SparkEnv.createExecutorEnv(
@@ -228,7 +230,6 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
         env.rpcEnv.setupEndpoint("WorkerWatcher", new WorkerWatcher(env.rpcEnv, url))
       }
       env.rpcEnv.awaitTermination()
-      SparkHadoopUtil.get.stopCredentialUpdater()
     }
   }
 

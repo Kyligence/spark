@@ -121,9 +121,17 @@ private[deploy] class Master(
   }
 
   // Alternative application submission gateway that is stable across Spark versions
-  private val restServerEnabled = conf.getBoolean("spark.master.rest.enabled", true)
+  private val restServerEnabled = conf.getBoolean("spark.master.rest.enabled", false)
   private var restServer: Option[StandaloneRestServer] = None
   private var restServerBoundPort: Option[Int] = None
+
+  {
+    val authKey = SecurityManager.SPARK_AUTH_SECRET_CONF
+    require(conf.getOption(authKey).isEmpty || !restServerEnabled,
+      s"The RestSubmissionServer does not support authentication via ${authKey}.  Either turn " +
+        "off the RestSubmissionServer with spark.master.rest.enabled=false, or do not use " +
+        "authentication.")
+  }
 
   override def onStart(): Unit = {
     logInfo("Starting Spark master at " + masterUrl)
@@ -581,7 +589,13 @@ private[deploy] class Master(
    * The number of cores assigned to each executor is configurable. When this is explicitly set,
    * multiple executors from the same application may be launched on the same worker if the worker
    * has enough cores and memory. Otherwise, each executor grabs all the cores available on the
-   * worker by default, in which case only one executor may be launched on each worker.
+   * worker by default, in which case only one executor per application may be launched on each
+   * worker during one single schedule iteration.
+   * Note that when `spark.executor.cores` is not set, we may still launch multiple executors from
+   * the same application on the same worker. Consider appA and appB both have one executor running
+   * on worker1, and appA.coresLeft > 0, then appB is finished and release all its cores on worker1,
+   * thus for the next schedule iteration, appA launches a new executor that grabs all the free
+   * cores on worker1, therefore we get multiple executors from appA running on worker1.
    *
    * It is important to allocate coresPerExecutor on each worker at a time (instead of 1 core
    * at a time). Consider the following example: cluster has 4 workers with 16 cores each.

@@ -22,17 +22,17 @@ import scala.collection.JavaConverters._
 import org.apache.hadoop.fs.Path
 
 import org.apache.spark.annotation.Since
-import org.apache.spark.ml.{PredictionModel, Predictor, PredictorParams}
 import org.apache.spark.ml.ann.{FeedForwardTopology, FeedForwardTrainer}
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.OneHotEncoderModel
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.param._
 import org.apache.spark.ml.param.shared._
 import org.apache.spark.ml.util._
-import org.apache.spark.sql.Dataset
+import org.apache.spark.ml.util.Instrumentation.instrumented
+import org.apache.spark.sql.{Dataset, Row}
 
 /** Params for Multilayer Perceptron. */
-private[classification] trait MultilayerPerceptronParams extends PredictorParams
+private[classification] trait MultilayerPerceptronParams extends ProbabilisticClassifierParams
   with HasSeed with HasMaxIter with HasTol with HasStepSize with HasSolver {
 
   import MultilayerPerceptronClassifier._
@@ -103,36 +103,6 @@ private[classification] trait MultilayerPerceptronParams extends PredictorParams
     solver -> LBFGS, stepSize -> 0.03)
 }
 
-/** Label to vector converter. */
-private object LabelConverter {
-  // TODO: Use OneHotEncoder instead
-  /**
-   * Encodes a label as a vector.
-   * Returns a vector of given length with zeroes at all positions
-   * and value 1.0 at the position that corresponds to the label.
-   *
-   * @param labeledPoint labeled point
-   * @param labelCount total number of labels
-   * @return pair of features and vector encoding of a label
-   */
-  def encodeLabeledPoint(labeledPoint: LabeledPoint, labelCount: Int): (Vector, Vector) = {
-    val output = Array.fill(labelCount)(0.0)
-    output(labeledPoint.label.toInt) = 1.0
-    (labeledPoint.features, Vectors.dense(output))
-  }
-
-  /**
-   * Converts a vector to a label.
-   * Returns the position of the maximal element of a vector.
-   *
-   * @param output label encoded with a vector
-   * @return label
-   */
-  def decodeLabel(output: Vector): Double = {
-    output.argmax.toDouble
-  }
-}
-
 /**
  * Classifier trainer based on the Multilayer Perceptron.
  * Each layer has sigmoid activation function, output layer has softmax.
@@ -143,7 +113,8 @@ private object LabelConverter {
 @Since("1.5.0")
 class MultilayerPerceptronClassifier @Since("1.5.0") (
     @Since("1.5.0") override val uid: String)
-  extends Predictor[Vector, MultilayerPerceptronClassifier, MultilayerPerceptronClassificationModel]
+  extends ProbabilisticClassifier[Vector, MultilayerPerceptronClassifier,
+    MultilayerPerceptronClassificationModel]
   with MultilayerPerceptronParams with DefaultParamsWritable {
 
   @Since("1.5.0")
@@ -230,9 +201,11 @@ class MultilayerPerceptronClassifier @Since("1.5.0") (
    * @param dataset Training dataset
    * @return Fitted model
    */
-  override protected def train(dataset: Dataset[_]): MultilayerPerceptronClassificationModel = {
-    val instr = Instrumentation.create(this, dataset)
-    instr.logParams(labelCol, featuresCol, predictionCol, layers, maxIter, tol,
+  override protected def train(
+      dataset: Dataset[_]): MultilayerPerceptronClassificationModel = instrumented { instr =>
+    instr.logPipelineStage(this)
+    instr.logDataset(dataset)
+    instr.logParams(this, labelCol, featuresCol, predictionCol, layers, maxIter, tol,
       blockSize, solver, stepSize, seed)
 
     val myLayers = $(layers)
@@ -240,8 +213,18 @@ class MultilayerPerceptronClassifier @Since("1.5.0") (
     instr.logNumClasses(labels)
     instr.logNumFeatures(myLayers.head)
 
-    val lpData = extractLabeledPoints(dataset)
-    val data = lpData.map(lp => LabelConverter.encodeLabeledPoint(lp, labels))
+    // One-hot encoding for labels using OneHotEncoderModel.
+    // As we already know the length of encoding, we skip fitting and directly create
+    // the model.
+    val encodedLabelCol = "_encoded" + $(labelCol)
+    val encodeModel = new OneHotEncoderModel(uid, Array(labels))
+      .setInputCols(Array($(labelCol)))
+      .setOutputCols(Array(encodedLabelCol))
+      .setDropLast(false)
+    val encodedDataset = encodeModel.transform(dataset)
+    val data = encodedDataset.select($(featuresCol), encodedLabelCol).rdd.map {
+      case Row(features: Vector, encodedLabel: Vector) => (features, encodedLabel)
+    }
     val topology = FeedForwardTopology.multiLayerPerceptron(myLayers, softmaxOnTop = true)
     val trainer = new FeedForwardTrainer(topology, myLayers(0), myLayers.last)
     if (isDefined(initialWeights)) {
@@ -264,10 +247,7 @@ class MultilayerPerceptronClassifier @Since("1.5.0") (
     }
     trainer.setStackSize($(blockSize))
     val mlpModel = trainer.train(data)
-    val model = new MultilayerPerceptronClassificationModel(uid, myLayers, mlpModel.weights)
-
-    instr.logSuccess(model)
-    model
+    new MultilayerPerceptronClassificationModel(uid, myLayers, mlpModel.weights)
   }
 }
 
@@ -301,13 +281,13 @@ class MultilayerPerceptronClassificationModel private[ml] (
     @Since("1.5.0") override val uid: String,
     @Since("1.5.0") val layers: Array[Int],
     @Since("2.0.0") val weights: Vector)
-  extends PredictionModel[Vector, MultilayerPerceptronClassificationModel]
+  extends ProbabilisticClassificationModel[Vector, MultilayerPerceptronClassificationModel]
   with Serializable with MLWritable {
 
   @Since("1.6.0")
   override val numFeatures: Int = layers.head
 
-  private val mlpModel = FeedForwardTopology
+  private[ml] val mlpModel = FeedForwardTopology
     .multiLayerPerceptron(layers, softmaxOnTop = true)
     .model(weights)
 
@@ -322,8 +302,8 @@ class MultilayerPerceptronClassificationModel private[ml] (
    * Predict label for the given features.
    * This internal method is used to implement `transform()` and output [[predictionCol]].
    */
-  override protected def predict(features: Vector): Double = {
-    LabelConverter.decodeLabel(mlpModel.predict(features))
+  override def predict(features: Vector): Double = {
+    mlpModel.predict(features).argmax.toDouble
   }
 
   @Since("1.5.0")
@@ -335,6 +315,14 @@ class MultilayerPerceptronClassificationModel private[ml] (
   @Since("2.0.0")
   override def write: MLWriter =
     new MultilayerPerceptronClassificationModel.MultilayerPerceptronClassificationModelWriter(this)
+
+  override protected def raw2probabilityInPlace(rawPrediction: Vector): Vector = {
+    mlpModel.raw2ProbabilityInPlace(rawPrediction)
+  }
+
+  override protected def predictRaw(features: Vector): Vector = mlpModel.predictRaw(features)
+
+  override def numClasses: Int = layers.last
 }
 
 @Since("2.0.0")
@@ -380,7 +368,7 @@ object MultilayerPerceptronClassificationModel
       val weights = data.getAs[Vector](1)
       val model = new MultilayerPerceptronClassificationModel(metadata.uid, layers, weights)
 
-      DefaultParamsReader.getAndSetParams(model, metadata)
+      metadata.getAndSetParams(model)
       model
     }
   }

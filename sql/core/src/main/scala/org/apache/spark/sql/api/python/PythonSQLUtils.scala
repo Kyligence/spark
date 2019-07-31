@@ -17,9 +17,17 @@
 
 package org.apache.spark.sql.api.python
 
+import java.io.InputStream
+import java.nio.channels.Channels
+
+import org.apache.spark.api.java.JavaRDD
+import org.apache.spark.api.python.PythonRDDServer
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.catalyst.analysis.FunctionRegistry
 import org.apache.spark.sql.catalyst.expressions.ExpressionInfo
 import org.apache.spark.sql.catalyst.parser.CatalystSqlParser
+import org.apache.spark.sql.execution.arrow.ArrowConverters
 import org.apache.spark.sql.types.DataType
 
 private[sql] object PythonSQLUtils {
@@ -29,4 +37,38 @@ private[sql] object PythonSQLUtils {
   def listBuiltinFunctionInfos(): Array[ExpressionInfo] = {
     FunctionRegistry.functionSet.flatMap(f => FunctionRegistry.builtin.lookupFunction(f)).toArray
   }
+
+  /**
+   * Python callable function to read a file in Arrow stream format and create a [[RDD]]
+   * using each serialized ArrowRecordBatch as a partition.
+   */
+  def readArrowStreamFromFile(sqlContext: SQLContext, filename: String): JavaRDD[Array[Byte]] = {
+    ArrowConverters.readArrowStreamFromFile(sqlContext, filename)
+  }
+
+  /**
+   * Python callable function to read a file in Arrow stream format and create a [[DataFrame]]
+   * from an RDD.
+   */
+  def toDataFrame(
+      arrowBatchRDD: JavaRDD[Array[Byte]],
+      schemaString: String,
+      sqlContext: SQLContext): DataFrame = {
+    ArrowConverters.toDataFrame(arrowBatchRDD, schemaString, sqlContext)
+  }
+}
+
+/**
+ * Helper for making a dataframe from arrow data from data sent from python over a socket.  This is
+ * used when encryption is enabled, and we don't want to write data to a file.
+ */
+private[sql] class ArrowRDDServer(sqlContext: SQLContext) extends PythonRDDServer {
+
+  override protected def streamToRDD(input: InputStream): RDD[Array[Byte]] = {
+    // Create array to consume iterator so that we can safely close the inputStream
+    val batches = ArrowConverters.getBatchesFromStream(Channels.newChannel(input)).toArray
+    // Parallelize the record batches to create an RDD
+    JavaRDD.fromRDD(sqlContext.sparkContext.parallelize(batches, batches.length))
+  }
+
 }

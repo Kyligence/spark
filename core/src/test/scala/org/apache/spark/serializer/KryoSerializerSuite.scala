@@ -18,6 +18,7 @@
 package org.apache.spark.serializer
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, FileInputStream, FileOutputStream}
+import java.nio.ByteBuffer
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -199,7 +200,7 @@ class KryoSerializerSuite extends SparkFunSuite with SharedSparkContext {
     def check[T: ClassTag](t: T) {
       assert(ser.deserialize[T](ser.serialize(t)) === t)
       // Check that very long ranges don't get written one element at a time
-      assert(ser.serialize(t).limit < 100)
+      assert(ser.serialize(t).limit() < 100)
     }
     check(1 to 1000000)
     check(1 to 1000000 by 2)
@@ -411,6 +412,26 @@ class KryoSerializerSuite extends SparkFunSuite with SharedSparkContext {
     assert(!ser2.getAutoReset)
   }
 
+  test("SPARK-25176 ClassCastException when writing a Map after previously " +
+    "reading a Map with different generic type") {
+    // This test uses the example in https://github.com/EsotericSoftware/kryo/issues/384
+    import java.util._
+    val ser = new KryoSerializer(new SparkConf).newInstance().asInstanceOf[KryoSerializerInstance]
+
+    class MapHolder {
+      private val mapOne = new HashMap[Int, String]
+      private val mapTwo = this.mapOne
+    }
+
+    val serializedMapHolder = ser.serialize(new MapHolder)
+    ser.deserialize[MapHolder](serializedMapHolder)
+
+    val stringMap = new HashMap[Int, List[String]]
+    stringMap.put(1, new ArrayList[String])
+    val serializedMap = ser.serialize[Map[Int, List[String]]](stringMap)
+    ser.deserialize[HashMap[Int, List[String]]](serializedMap)
+  }
+
   private def testSerializerInstanceReuse(autoReset: Boolean, referenceTracking: Boolean): Unit = {
     val conf = new SparkConf(loadDefaults = false)
       .set("spark.kryo.referenceTracking", referenceTracking.toString)
@@ -476,6 +497,17 @@ class KryoSerializerAutoResetDisabledSuite extends SparkFunSuite with SharedSpar
     assert(deserializationStream.readValue[Any]() === world)
     deserializationStream.close()
     assert(serInstance.deserialize[Any](helloHello) === ((hello, hello)))
+  }
+
+  test("SPARK-25786: ByteBuffer.array -- UnsupportedOperationException") {
+    val serInstance = new KryoSerializer(conf).newInstance().asInstanceOf[KryoSerializerInstance]
+    val obj = "UnsupportedOperationException"
+    val serObj = serInstance.serialize(obj)
+    val byteBuffer = ByteBuffer.allocateDirect(serObj.array().length)
+    byteBuffer.put(serObj.array())
+    byteBuffer.flip()
+    assert(serInstance.deserialize[Any](serObj) === (obj))
+    assert(serInstance.deserialize[Any](byteBuffer) === (obj))
   }
 }
 

@@ -40,6 +40,7 @@ public class TransportConf {
   private final String SPARK_NETWORK_IO_MAXRETRIES_KEY;
   private final String SPARK_NETWORK_IO_RETRYWAIT_KEY;
   private final String SPARK_NETWORK_IO_LAZYFD_KEY;
+  private final String SPARK_NETWORK_VERBOSE_METRICS;
 
   private final ConfigProvider conf;
 
@@ -61,10 +62,15 @@ public class TransportConf {
     SPARK_NETWORK_IO_MAXRETRIES_KEY = getConfKey("io.maxRetries");
     SPARK_NETWORK_IO_RETRYWAIT_KEY = getConfKey("io.retryWait");
     SPARK_NETWORK_IO_LAZYFD_KEY = getConfKey("io.lazyFD");
+    SPARK_NETWORK_VERBOSE_METRICS = getConfKey("io.enableVerboseMetrics");
   }
 
   public int getInt(String name, int defaultValue) {
     return conf.getInt(name, defaultValue);
+  }
+
+  public String get(String name, String defaultValue) {
+    return conf.get(name, defaultValue);
   }
 
   private String getConfKey(String suffix) {
@@ -159,6 +165,14 @@ public class TransportConf {
   }
 
   /**
+   * Whether to track Netty memory detailed metrics. If true, the detailed metrics of Netty
+   * PoolByteBufAllocator will be gotten, otherwise only general memory usage will be tracked.
+   */
+  public boolean verboseMetrics() {
+    return conf.getBoolean(SPARK_NETWORK_VERBOSE_METRICS, false);
+  }
+
+  /**
    * Maximum number of retries when binding to a port before giving up.
    */
   public int portMaxRetries() {
@@ -195,7 +209,7 @@ public class TransportConf {
    * (128 bits by default), which is not generally the case with user passwords.
    */
   public int keyFactoryIterations() {
-    return conf.getInt("spark.networy.crypto.keyFactoryIterations", 1024);
+    return conf.getInt("spark.network.crypto.keyFactoryIterations", 1024);
   }
 
   /**

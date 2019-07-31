@@ -110,7 +110,7 @@ def determine_modules_to_test(changed_modules):
     ['graphx', 'examples']
     >>> x = [x.name for x in determine_modules_to_test([modules.sql])]
     >>> x # doctest: +NORMALIZE_WHITESPACE
-    ['sql', 'hive', 'mllib', 'sql-kafka-0-10', 'examples', 'hive-thriftserver',
+    ['sql', 'avro', 'hive', 'mllib', 'sql-kafka-0-10', 'examples', 'hive-thriftserver',
      'pyspark-sql', 'repl', 'sparkr', 'pyspark-mllib', 'pyspark-ml']
     """
     modules_to_test = set()
@@ -169,7 +169,7 @@ def determine_java_version(java_exe):
     # find raw version string, eg 'java version "1.8.0_25"'
     raw_version_str = next(x for x in raw_output_lines if " version " in x)
 
-    match = re.search('(\d+)\.(\d+)\.(\d+)', raw_version_str)
+    match = re.search(r'(\d+)\.(\d+)\.(\d+)', raw_version_str)
 
     major = int(match.group(1))
     minor = int(match.group(2))
@@ -204,7 +204,7 @@ def run_scala_style_checks():
 
 def run_java_style_checks():
     set_title_and_block("Running Java style checks", "BLOCK_JAVA_STYLE")
-    run_cmd([os.path.join(SPARK_HOME, "dev", "lint-java")])
+    run_cmd([os.path.join(SPARK_HOME, "dev", "sbt-checkstyle")])
 
 
 def run_python_style_checks():
@@ -249,15 +249,6 @@ def get_zinc_port():
     return random.randrange(3030, 4030)
 
 
-def kill_zinc_on_port(zinc_port):
-    """
-    Kill the Zinc process running on the given port, if one exists.
-    """
-    cmd = ("/usr/sbin/lsof -P |grep %s | grep LISTEN "
-           "| awk '{ print $2; }' | xargs kill") % zinc_port
-    subprocess.check_call(cmd, shell=True)
-
-
 def exec_maven(mvn_args=()):
     """Will call Maven in the current directory with the list of mvn_args passed
     in and returns the subprocess for any further processing"""
@@ -267,7 +258,6 @@ def exec_maven(mvn_args=()):
     zinc_flag = "-DzincPort=%s" % zinc_port
     flags = [os.path.join(SPARK_HOME, "build", "mvn"), "--force", zinc_flag]
     run_cmd(flags + mvn_args)
-    kill_zinc_on_port(zinc_port)
 
 
 def exec_sbt(sbt_args=()):
@@ -276,9 +266,9 @@ def exec_sbt(sbt_args=()):
 
     sbt_cmd = [os.path.join(SPARK_HOME, "build", "sbt")] + sbt_args
 
-    sbt_output_filter = re.compile("^.*[info].*Resolving" + "|" +
-                                   "^.*[warn].*Merging" + "|" +
-                                   "^.*[info].*Including")
+    sbt_output_filter = re.compile(b"^.*[info].*Resolving" + b"|" +
+                                   b"^.*[warn].*Merging" + b"|" +
+                                   b"^.*[info].*Including")
 
     # NOTE: echo "q" is needed because sbt on encountering a build file
     # with failure (either resolution or compilation) prompts the user for
@@ -289,7 +279,7 @@ def exec_sbt(sbt_args=()):
                                 stdin=echo_proc.stdout,
                                 stdout=subprocess.PIPE)
     echo_proc.wait()
-    for line in iter(sbt_proc.stdout.readline, ''):
+    for line in iter(sbt_proc.stdout.readline, b''):
         if not sbt_output_filter.match(line):
             print(line, end='')
     retcode = sbt_proc.wait()
@@ -357,7 +347,7 @@ def build_spark_unidoc_sbt(hadoop_version):
     exec_sbt(profiles_and_goals)
 
 
-def build_spark_assembly_sbt(hadoop_version):
+def build_spark_assembly_sbt(hadoop_version, checkstyle=False):
     # Enable all of the profiles for the build:
     build_profiles = get_hadoop_profiles(hadoop_version) + modules.root.build_profile_flags
     sbt_goals = ["assembly/package"]
@@ -365,6 +355,9 @@ def build_spark_assembly_sbt(hadoop_version):
     print("[info] Building Spark assembly (w/Hive 1.2.1) using SBT with these arguments: ",
           " ".join(profiles_and_goals))
     exec_sbt(profiles_and_goals)
+
+    if checkstyle:
+        run_java_style_checks()
 
     # Note that we skip Unidoc build only if Hadoop 2.6 is explicitly set in this SBT build.
     # Due to a different dependency resolution in SBT & Unidoc by an unknown reason, the
@@ -570,15 +563,22 @@ def main():
                                 or f.endswith("scalastyle-config.xml")
                                 for f in changed_files):
         run_scala_style_checks()
+    should_run_java_style_checks = False
     if not changed_files or any(f.endswith(".java")
                                 or f.endswith("checkstyle.xml")
                                 or f.endswith("checkstyle-suppressions.xml")
                                 for f in changed_files):
-        # run_java_style_checks()
-        pass
-    if not changed_files or any(f.endswith(".py") for f in changed_files):
+        # Run SBT Checkstyle after the build to prevent a side-effect to the build.
+        should_run_java_style_checks = True
+    if not changed_files or any(f.endswith("lint-python")
+                                or f.endswith("tox.ini")
+                                or f.endswith(".py")
+                                for f in changed_files):
         run_python_style_checks()
-    if not changed_files or any(f.endswith(".R") for f in changed_files):
+    if not changed_files or any(f.endswith(".R")
+                                or f.endswith("lint-r")
+                                or f.endswith(".lintr")
+                                for f in changed_files):
         run_sparkr_style_checks()
 
     # determine if docs were changed and if we're inside the amplab environment
@@ -598,7 +598,7 @@ def main():
         detect_binary_inop_with_mima(hadoop_version)
         # Since we did not build assembly/package before running dev/mima, we need to
         # do it here because the tests still rely on it; see SPARK-13294 for details.
-        build_spark_assembly_sbt(hadoop_version)
+        build_spark_assembly_sbt(hadoop_version, should_run_java_style_checks)
 
     # run the test suites
     run_scala_tests(build_tool, hadoop_version, test_modules, excluded_tags)
@@ -615,7 +615,7 @@ def _test():
     import doctest
     failure_count = doctest.testmod()[0]
     if failure_count:
-        exit(-1)
+        sys.exit(-1)
 
 if __name__ == "__main__":
     _test()

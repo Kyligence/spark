@@ -30,6 +30,7 @@ import org.apache.spark.sql.catalyst.util._
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.util.{KnownSizeEstimation, SizeEstimator}
 
 class FileIndexSuite extends SharedSQLContext {
@@ -49,6 +50,21 @@ class FileIndexSuite extends SharedSQLContext {
     }
   }
 
+  test("SPARK-26188: don't infer data types of partition columns if user specifies schema") {
+    withTempDir { dir =>
+      val partitionDirectory = new File(dir, s"a=4d")
+      partitionDirectory.mkdir()
+      val file = new File(partitionDirectory, "text.txt")
+      stringToFile(file, "text")
+      val path = new Path(dir.getCanonicalPath)
+      val schema = StructType(Seq(StructField("a", StringType, false)))
+      val fileIndex = new InMemoryFileIndex(spark, Seq(path), Map.empty, Some(schema))
+      val partitionValues = fileIndex.partitionSpec().partitions.map(_.values)
+      assert(partitionValues.length == 1 && partitionValues(0).numFields == 1 &&
+        partitionValues(0).getString(0) == "4d")
+    }
+  }
+
   test("InMemoryFileIndex: input paths are converted to qualified paths") {
     withTempDir { dir =>
       val file = new File(dir, "text.txt")
@@ -59,7 +75,7 @@ class FileIndexSuite extends SharedSQLContext {
       require(!unqualifiedDirPath.toString.contains("file:"))
       require(!unqualifiedFilePath.toString.contains("file:"))
 
-      val fs = unqualifiedDirPath.getFileSystem(sparkContext.hadoopConfiguration)
+      val fs = unqualifiedDirPath.getFileSystem(spark.sessionState.newHadoopConf())
       val qualifiedFilePath = fs.makeQualified(new Path(file.getCanonicalPath))
       require(qualifiedFilePath.toString.startsWith("file:"))
 

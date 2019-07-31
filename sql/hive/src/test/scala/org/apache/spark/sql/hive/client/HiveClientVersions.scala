@@ -18,9 +18,10 @@
 package org.apache.spark.sql.hive.client
 
 import scala.collection.immutable.IndexedSeq
-
 import org.apache.spark.SparkFunSuite
-
+import org.scalatest.Ignore
+@Ignore
 private[client] trait HiveClientVersions {
-  protected val versions = IndexedSeq("0.12", "0.13", "0.14", "1.0", "1.1", "1.2", "2.0", "2.1")
+  protected val versions =
+    IndexedSeq("0.12", "0.13", "0.14", "1.0", "1.1", "1.2", "2.0", "2.1", "2.2", "2.3")
 }

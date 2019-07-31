@@ -308,7 +308,6 @@ object FunctionRegistry {
     expression[BitLength]("bit_length"),
     expression[Length]("char_length"),
     expression[Length]("character_length"),
-    expression[Concat]("concat"),
     expression[ConcatWs]("concat_ws"),
     expression[Decode]("decode"),
     expression[Elt]("elt"),
@@ -336,7 +335,6 @@ object FunctionRegistry {
     expression[RegExpReplace]("regexp_replace"),
     expression[StringRepeat]("repeat"),
     expression[StringReplace]("replace"),
-    expression[StringReverse]("reverse"),
     expression[RLike]("rlike"),
     expression[StringRPad]("rpad"),
     expression[StringTrimRight]("rtrim"),
@@ -392,8 +390,10 @@ object FunctionRegistry {
     expression[ToUnixTimestamp]("to_unix_timestamp"),
     expression[ToUTCTimestamp]("to_utc_timestamp"),
     expression[TruncDate]("trunc"),
+    expression[TruncTimestamp]("date_trunc"),
     expression[UnixTimestamp]("unix_timestamp"),
     expression[DayOfWeek]("dayofweek"),
+    expression[WeekDay]("weekday"),
     expression[WeekOfYear]("weekofyear"),
     expression[Year]("year"),
     expression[TimeWindow]("window"),
@@ -401,12 +401,42 @@ object FunctionRegistry {
     // collection functions
     expression[CreateArray]("array"),
     expression[ArrayContains]("array_contains"),
+    expression[ArraysOverlap]("arrays_overlap"),
+    expression[ArrayIntersect]("array_intersect"),
+    expression[ArrayJoin]("array_join"),
+    expression[ArrayPosition]("array_position"),
+    expression[ArraySort]("array_sort"),
+    expression[ArrayExcept]("array_except"),
+    expression[ArrayUnion]("array_union"),
     expression[CreateMap]("map"),
     expression[CreateNamedStruct]("named_struct"),
+    expression[ElementAt]("element_at"),
+    expression[MapFromArrays]("map_from_arrays"),
     expression[MapKeys]("map_keys"),
     expression[MapValues]("map_values"),
+    expression[MapFromEntries]("map_from_entries"),
+    expression[MapConcat]("map_concat"),
     expression[Size]("size"),
+    expression[Slice]("slice"),
+    expression[Size]("cardinality"),
+    expression[ArraysZip]("arrays_zip"),
     expression[SortArray]("sort_array"),
+    expression[Shuffle]("shuffle"),
+    expression[ArrayMin]("array_min"),
+    expression[ArrayMax]("array_max"),
+    expression[Reverse]("reverse"),
+    expression[Concat]("concat"),
+    expression[Flatten]("flatten"),
+    expression[Sequence]("sequence"),
+    expression[ArrayRepeat]("array_repeat"),
+    expression[ArrayRemove]("array_remove"),
+    expression[ArrayDistinct]("array_distinct"),
+    expression[ArrayTransform]("transform"),
+    expression[ArrayFilter]("filter"),
+    expression[ArrayExists]("exists"),
+    expression[ArrayAggregate]("aggregate"),
+    expression[ZipWith]("zip_with"),
+
     CreateStruct.registryEntry,
 
     // misc functions
@@ -468,6 +498,7 @@ object FunctionRegistry {
     // json
     expression[StructsToJson]("to_json"),
     expression[JsonToStructs]("from_json"),
+    expression[SchemaOfJson]("schema_of_json"),
 
     // cast
     expression[Cast]("cast"),
@@ -525,7 +556,17 @@ object FunctionRegistry {
         // Otherwise, find a constructor method that matches the number of arguments, and use that.
         val params = Seq.fill(expressions.size)(classOf[Expression])
         val f = constructors.find(_.getParameterTypes.toSeq == params).getOrElse {
-          throw new AnalysisException(s"Invalid number of arguments for function $name")
+          val validParametersCount = constructors
+            .filter(_.getParameterTypes.forall(_ == classOf[Expression]))
+            .map(_.getParameterCount).distinct.sorted
+          val expectedNumberOfParameters = if (validParametersCount.length == 1) {
+            validParametersCount.head.toString
+          } else {
+            validParametersCount.init.mkString("one of ", ", ", " and ") +
+              validParametersCount.last
+          }
+          throw new AnalysisException(s"Invalid number of arguments for function $name. " +
+            s"Expected: $expectedNumberOfParameters; Found: ${params.length}")
         }
         Try(f.newInstance(expressions : _*).asInstanceOf[Expression]) match {
           case Success(e) => e

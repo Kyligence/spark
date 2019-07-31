@@ -1,19 +1,19 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.apache.spark.sql.execution.command
 
@@ -21,12 +21,13 @@ import java.net.URI
 
 import scala.util.control.NonFatal
 
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.fs.{FileSystem, Path, PathFilter}
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.catalog.{CatalogStatistics, CatalogTable}
+import org.apache.spark.sql.catalyst.catalog.{CatalogStatistics, CatalogTable, CatalogTablePartition}
+import org.apache.spark.sql.execution.datasources.{DataSourceUtils, InMemoryFileIndex}
 import org.apache.spark.sql.internal.SessionState
 
 
@@ -36,9 +37,9 @@ object CommandUtils extends Logging {
   def updateTableStats(sparkSession: SparkSession, table: CatalogTable): Unit = {
     if (table.stats.nonEmpty) {
       val catalog = sparkSession.sessionState.catalog
-      if (sparkSession.sessionState.conf.autoUpdateSize) {
+      if (sparkSession.sessionState.conf.autoSizeUpdateEnabled) {
         val newTable = catalog.getTableMetadata(table.identifier)
-        val newSize = CommandUtils.calculateTotalSize(sparkSession.sessionState, newTable)
+        val newSize = CommandUtils.calculateTotalSize(sparkSession, newTable)
         val newStats = CatalogStatistics(sizeInBytes = newSize)
         catalog.alterTableStats(table.identifier, Some(newStats))
       } else {
@@ -47,15 +48,29 @@ object CommandUtils extends Logging {
     }
   }
 
-  def calculateTotalSize(sessionState: SessionState, catalogTable: CatalogTable): BigInt = {
+  def calculateTotalSize(spark: SparkSession, catalogTable: CatalogTable): BigInt = {
+    val sessionState = spark.sessionState
     if (catalogTable.partitionColumnNames.isEmpty) {
       calculateLocationSize(sessionState, catalogTable.identifier, catalogTable.storage.locationUri)
     } else {
       // Calculate table size as a sum of the visible partitions. See SPARK-21079
       val partitions = sessionState.catalog.listPartitions(catalogTable.identifier)
-      partitions.map { p =>
-        calculateLocationSize(sessionState, catalogTable.identifier, p.storage.locationUri)
-      }.sum
+      if (spark.sessionState.conf.parallelFileListingInStatsComputation) {
+        val paths = partitions.map(x => new Path(x.storage.locationUri.get))
+        val stagingDir = sessionState.conf.getConfString("hive.exec.stagingdir", ".hive-staging")
+        val pathFilter = new PathFilter with Serializable {
+          override def accept(path: Path): Boolean = {
+            DataSourceUtils.isDataPath(path) && !path.getName.startsWith(stagingDir)
+          }
+        }
+        val fileStatusSeq = InMemoryFileIndex.bulkListLeafFiles(
+          paths, sessionState.newHadoopConf(), pathFilter, spark)
+        fileStatusSeq.flatMap(_._2.map(_.getLen)).sum
+      } else {
+        partitions.map { p =>
+          calculateLocationSize(sessionState, catalogTable.identifier, p.storage.locationUri)
+        }.sum
+      }
     }
   }
 
@@ -78,7 +93,8 @@ object CommandUtils extends Logging {
       val size = if (fileStatus.isDirectory) {
         fs.listStatus(path)
           .map { status =>
-            if (!status.getPath.getName.startsWith(stagingDir)) {
+            if (!status.getPath.getName.startsWith(stagingDir) &&
+              DataSourceUtils.isDataPath(path)) {
               getPathSize(fs, status.getPath)
             } else {
               0L
@@ -112,4 +128,29 @@ object CommandUtils extends Logging {
     size
   }
 
+  def compareAndGetNewStats(
+      oldStats: Option[CatalogStatistics],
+      newTotalSize: BigInt,
+      newRowCount: Option[BigInt]): Option[CatalogStatistics] = {
+    val oldTotalSize = oldStats.map(_.sizeInBytes).getOrElse(BigInt(-1))
+    val oldRowCount = oldStats.flatMap(_.rowCount).getOrElse(BigInt(-1))
+    var newStats: Option[CatalogStatistics] = None
+    if (newTotalSize >= 0 && newTotalSize != oldTotalSize) {
+      newStats = Some(CatalogStatistics(sizeInBytes = newTotalSize))
+    }
+    // We only set rowCount when noscan is false, because otherwise:
+    // 1. when total size is not changed, we don't need to alter the table;
+    // 2. when total size is changed, `oldRowCount` becomes invalid.
+    // This is to make sure that we only record the right statistics.
+    if (newRowCount.isDefined) {
+      if (newRowCount.get >= 0 && newRowCount.get != oldRowCount) {
+        newStats = if (newStats.isDefined) {
+          newStats.map(_.copy(rowCount = newRowCount))
+        } else {
+          Some(CatalogStatistics(sizeInBytes = oldTotalSize, rowCount = newRowCount))
+        }
+      }
+    }
+    newStats
+  }
 }

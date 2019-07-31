@@ -25,6 +25,7 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import com.google.common.collect.MapMaker
+import org.apache.hadoop.security.UserGroupInformation
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
@@ -141,6 +142,17 @@ object SparkEnv extends Logging {
   private[spark] val driverSystemName = "sparkDriver"
   private[spark] val executorSystemName = "sparkExecutor"
 
+  var cachedUGI: UserGroupInformation = _
+
+  def setUGI(ugi: UserGroupInformation): Unit = {
+    cachedUGI = ugi
+    logInfo(s"Set UGI $ugi")
+  }
+
+  def getUGI(): UserGroupInformation = {
+    cachedUGI
+  }
+
   def set(e: SparkEnv) {
     env = e
   }
@@ -234,6 +246,10 @@ object SparkEnv extends Logging {
     }
 
     val securityManager = new SecurityManager(conf, ioEncryptionKey)
+    if (isDriver) {
+      securityManager.initializeAuth()
+    }
+
     ioEncryptionKey.foreach { _ =>
       if (!securityManager.isEncryptionEnabled()) {
         logWarning("I/O encryption enabled without RPC encryption: keys will be visible on the " +

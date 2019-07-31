@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.execution.datasources.csv
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
@@ -67,12 +68,8 @@ object CSVUtils {
     }
   }
 
-  /**
-   * Drop header line so that only data can remain.
-   * This is similar with `filterHeaderLine` above and currently being used in CSV reading path.
-   */
-  def dropHeaderLine(iter: Iterator[String], options: CSVOptions): Iterator[String] = {
-    val nonEmptyLines = if (options.isCommentSet) {
+  def skipComments(iter: Iterator[String], options: CSVOptions): Iterator[String] = {
+    if (options.isCommentSet) {
       val commentPrefix = options.comment.toString
       iter.dropWhile { line =>
         line.trim.isEmpty || line.trim.startsWith(commentPrefix)
@@ -80,11 +77,19 @@ object CSVUtils {
     } else {
       iter.dropWhile(_.trim.isEmpty)
     }
-
-    if (nonEmptyLines.hasNext) nonEmptyLines.drop(1)
-    iter
   }
 
+  /**
+   * Extracts header and moves iterator forward so that only data remains in it
+   */
+  def extractHeader(iter: Iterator[String], options: CSVOptions): Option[String] = {
+    val nonEmptyLines = skipComments(iter, options)
+    if (nonEmptyLines.hasNext) {
+      Some(nonEmptyLines.next())
+    } else {
+      None
+    }
+  }
   /**
    * Helper method that converts string representation of a character to actual character.
    * It handles some Java escaped strings and throws exception if given string is longer than one
@@ -92,43 +97,51 @@ object CSVUtils {
    */
   @throws[IllegalArgumentException]
   def toChar(str: String): Char = {
-    if (str.charAt(0) == '\\') {
-      str.charAt(1)
-      match {
-        case 't' => '\t'
-        case 'r' => '\r'
-        case 'b' => '\b'
-        case 'f' => '\f'
-        case '\"' => '\"' // In case user changes quote char and uses \" as delimiter in options
-        case '\'' => '\''
-        case 'u' if str == """\u0000""" => '\u0000'
-        case _ =>
-          throw new IllegalArgumentException(s"Unsupported special character for delimiter: $str")
-      }
-    } else if (str.length == 1) {
-      str.charAt(0)
-    } else {
-      throw new IllegalArgumentException(s"Delimiter cannot be more than one character: $str")
+    (str: Seq[Char]) match {
+      case Seq() => throw new IllegalArgumentException("Delimiter cannot be empty string")
+      case Seq('\\') => throw new IllegalArgumentException("Single backslash is prohibited." +
+        " It has special meaning as beginning of an escape sequence." +
+        " To get the backslash character, pass a string with two backslashes as the delimiter.")
+      case Seq(c) => c
+      case Seq('\\', 't') => '\t'
+      case Seq('\\', 'r') => '\r'
+      case Seq('\\', 'b') => '\b'
+      case Seq('\\', 'f') => '\f'
+      // In case user changes quote char and uses \" as delimiter in options
+      case Seq('\\', '\"') => '\"'
+      case Seq('\\', '\'') => '\''
+      case Seq('\\', '\\') => '\\'
+      case _ if str == """\u0000""" => '\u0000'
+      case Seq('\\', _) =>
+        throw new IllegalArgumentException(s"Unsupported special character for delimiter: $str")
+      case _ =>
+        throw new IllegalArgumentException(s"Delimiter cannot be more than one character: $str")
     }
   }
 
   /**
-   * Verify if the schema is supported in CSV datasource.
+   * Sample CSV dataset as configured by `samplingRatio`.
    */
-  def verifySchema(schema: StructType): Unit = {
-    def verifyType(dataType: DataType): Unit = dataType match {
-      case ByteType | ShortType | IntegerType | LongType | FloatType |
-           DoubleType | BooleanType | _: DecimalType | TimestampType |
-           DateType | StringType =>
-
-      case udt: UserDefinedType[_] => verifyType(udt.sqlType)
-
-      case _ =>
-        throw new UnsupportedOperationException(
-          s"CSV data source does not support ${dataType.simpleString} data type.")
+  def sample(csv: Dataset[String], options: CSVOptions): Dataset[String] = {
+    require(options.samplingRatio > 0,
+      s"samplingRatio (${options.samplingRatio}) should be greater than 0")
+    if (options.samplingRatio > 0.99) {
+      csv
+    } else {
+      csv.sample(withReplacement = false, options.samplingRatio, 1)
     }
-
-    schema.foreach(field => verifyType(field.dataType))
   }
 
+  /**
+   * Sample CSV RDD as configured by `samplingRatio`.
+   */
+  def sample(csv: RDD[Array[String]], options: CSVOptions): RDD[Array[String]] = {
+    require(options.samplingRatio > 0,
+      s"samplingRatio (${options.samplingRatio}) should be greater than 0")
+    if (options.samplingRatio > 0.99) {
+      csv
+    } else {
+      csv.sample(withReplacement = false, options.samplingRatio, 1)
+    }
+  }
 }

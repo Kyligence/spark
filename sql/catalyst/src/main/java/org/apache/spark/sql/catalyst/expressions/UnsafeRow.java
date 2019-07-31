@@ -61,16 +61,14 @@ import static org.apache.spark.unsafe.Platform.BYTE_ARRAY_OFFSET;
  */
 public final class UnsafeRow extends InternalRow implements Externalizable, KryoSerializable {
 
+  public static final int WORD_SIZE = 8;
+
   //////////////////////////////////////////////////////////////////////////////
   // Static methods
   //////////////////////////////////////////////////////////////////////////////
 
   public static int calculateBitSetWidthInBytes(int numFields) {
     return ((numFields + 63)/ 64) * 8;
-  }
-
-  public static int calculateFixedPortionByteSize(int numFields) {
-    return 8 * numFields + calculateBitSetWidthInBytes(numFields);
   }
 
   /**
@@ -226,9 +224,6 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Kryo
   public void setDouble(int ordinal, double value) {
     assertIndexIsValid(ordinal);
     setNotNullAt(ordinal);
-    if (Double.isNaN(value)) {
-      value = Double.NaN;
-    }
     Platform.putDouble(baseObject, getFieldOffset(ordinal), value);
   }
 
@@ -257,9 +252,6 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Kryo
   public void setFloat(int ordinal, float value) {
     assertIndexIsValid(ordinal);
     setNotNullAt(ordinal);
-    if (Float.isNaN(value)) {
-      value = Float.NaN;
-    }
     Platform.putFloat(baseObject, getFieldOffset(ordinal), value);
   }
 

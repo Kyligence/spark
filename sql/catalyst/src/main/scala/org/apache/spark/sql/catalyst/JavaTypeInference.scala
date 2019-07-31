@@ -118,6 +118,9 @@ object JavaTypeInference {
         val (valueDataType, nullable) = inferDataType(valueType, seenTypeSet)
         (MapType(keyDataType, valueDataType, nullable), true)
 
+      case other if other.isEnum =>
+        (StringType, true)
+
       case other =>
         if (seenTypeSet.contains(other)) {
           throw new UnsupportedOperationException(
@@ -140,6 +143,7 @@ object JavaTypeInference {
   def getJavaBeanReadableProperties(beanClass: Class[_]): Array[PropertyDescriptor] = {
     val beanInfo = Introspector.getBeanInfo(beanClass)
     beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
+      .filterNot(_.getName == "declaringClass")
       .filter(_.getReadMethod != null)
   }
 
@@ -267,10 +271,9 @@ object JavaTypeInference {
 
       case c if listType.isAssignableFrom(typeToken) =>
         val et = elementType(typeToken)
-        MapObjects(
+        UnresolvedMapObjects(
           p => deserializerFor(et, Some(p)),
           getPath,
-          inferDataType(et)._1,
           customCollectionCls = Some(c))
 
       case _ if mapType.isAssignableFrom(typeToken) =>
@@ -301,6 +304,14 @@ object JavaTypeInference {
           ObjectType(classOf[JMap[_, _]]),
           "toJavaMap",
           keyData :: valueData :: Nil,
+          returnNullable = false)
+
+      case other if other.isEnum =>
+        StaticInvoke(
+          other,
+          ObjectType(other),
+          "valueOf",
+          Invoke(getPath, "toString", ObjectType(classOf[String]), returnNullable = false) :: Nil,
           returnNullable = false)
 
       case other =>
@@ -428,6 +439,14 @@ object JavaTypeInference {
             serializerFor(_, valueType),
             valueNullable = true
           )
+
+        case other if other.isEnum =>
+          StaticInvoke(
+            classOf[UTF8String],
+            StringType,
+            "fromString",
+            Invoke(inputObject, "name", ObjectType(classOf[String]), returnNullable = false) :: Nil,
+            returnNullable = false)
 
         case other =>
           val properties = getJavaBeanReadableAndWritableProperties(other)

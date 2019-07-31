@@ -17,7 +17,8 @@
 
 package org.apache.spark
 
-import java.util.concurrent.Semaphore
+import java.util.concurrent.{ConcurrentHashMap, Executors, Semaphore}
+import java.util.concurrent.atomic.AtomicLong
 import javax.annotation.concurrent.GuardedBy
 
 import scala.collection.mutable
@@ -31,7 +32,7 @@ import org.scalatest.exceptions.TestFailedException
 import org.apache.spark.AccumulatorParam.StringAccumulatorParam
 import org.apache.spark.scheduler._
 import org.apache.spark.serializer.JavaSerializer
-import org.apache.spark.util.{AccumulatorContext, AccumulatorMetadata, AccumulatorV2, LongAccumulator}
+import org.apache.spark.util.{AccumulatorContext, AccumulatorMetadata, AccumulatorV2, DoubleAccumulator, LongAccumulator}
 
 
 class AccumulatorSuite extends SparkFunSuite with Matchers with LocalSparkContext {
@@ -209,10 +210,8 @@ class AccumulatorSuite extends SparkFunSuite with Matchers with LocalSparkContex
     System.gc()
     assert(ref.get.isEmpty)
 
-    // Getting a garbage collected accum should throw error
-    intercept[IllegalStateException] {
-      AccumulatorContext.get(accId)
-    }
+    // Getting a garbage collected accum should return None.
+    assert(AccumulatorContext.get(accId).isEmpty)
 
     // Getting a normal accumulator. Note: this has to be separate because referencing an
     // accumulator above in an `assert` would keep it from being garbage collected.
@@ -237,6 +236,7 @@ class AccumulatorSuite extends SparkFunSuite with Matchers with LocalSparkContex
     acc.merge("kindness")
     assert(acc.value === "kindness")
   }
+
 }
 
 private[spark] object AccumulatorSuite {
