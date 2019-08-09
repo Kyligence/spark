@@ -66,7 +66,11 @@ case class HashAggregateExec(
 
   override def output: Seq[Attribute] = resultExpressions.map(_.toAttribute)
 
-  override def outputPartitioning: Partitioning = child.outputPartitioning
+  override def outputPartitioning: Partitioning = {
+    val partitioning: Partitioning = replaceWithNewExpr(child, resultExpressions)
+    logInfo(s"partitioning in HashAggregateExec:$partitioning.")
+    partitioning
+  }
 
   override def producedAttributes: AttributeSet =
     AttributeSet(aggregateAttributes) ++

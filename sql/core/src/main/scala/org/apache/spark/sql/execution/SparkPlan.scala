@@ -421,6 +421,26 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
     }
     newOrdering(order, Seq.empty)
   }
+
+  protected def replaceWithNewExpr(child: SparkPlan,
+                                   exprs: Seq[NamedExpression]): Partitioning = {
+    val newToOld = newExprToOldExpr(exprs)
+    val partitioning = child.outputPartitioning match {
+      case HashPartitioning(expressions, numPartitions) =>
+        val newExpr = expressions.map(expr => newToOld.getOrElse(expr, expr))
+        HashPartitioning(newExpr, numPartitions)
+      case other =>
+        other
+    }
+    partitioning
+  }
+
+  protected def newExprToOldExpr(expr: Seq[NamedExpression]): Map[Expression, Expression] = {
+    expr.collect {
+      case a@Alias(expr, _) =>
+        (expr, a.toAttribute)
+    }.toMap
+  }
 }
 
 object SparkPlan {
