@@ -72,8 +72,18 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
             logical.Project(projectList, logical.Sort(order, true, child))) =>
           execution.TakeOrderedAndProjectExec(
             limit, order, projectList, planLater(child)) :: Nil
+        case logical.LimitRange(IntegerLiteral(start), IntegerLiteral(end),
+            logical.Project(projectList, logical.Sort(order, true, child))) =>
+          execution.TakeOrderedRangeAndProjectExec(start, end, order,
+            projectList, planLater(child)) :: Nil
+        case logical.LimitRange(IntegerLiteral(start), IntegerLiteral(end),
+            logical.Sort(order, true, child)) =>
+          execution.TakeOrderedRangeAndProjectExec(start, end, order,
+            child.output, planLater(child)) :: Nil
         case logical.Limit(IntegerLiteral(limit), child) =>
           execution.CollectLimitExec(limit, planLater(child)) :: Nil
+        case logical.LimitRange(IntegerLiteral(start), IntegerLiteral(limit), child) =>
+          execution.CollectLimitRangeExec(start, limit, planLater(child)) :: Nil
         case other => planLater(other) :: Nil
       }
       case logical.Limit(IntegerLiteral(limit), logical.Sort(order, true, child)) =>
@@ -82,6 +92,14 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
           IntegerLiteral(limit), logical.Project(projectList, logical.Sort(order, true, child))) =>
         execution.TakeOrderedAndProjectExec(
           limit, order, projectList, planLater(child)) :: Nil
+      case logical.LimitRange(IntegerLiteral(start), IntegerLiteral(end),
+          logical.Project(projectList, logical.Sort(order, true, child))) =>
+        execution.TakeOrderedRangeAndProjectExec(start, end, order,
+          projectList, planLater(child)) :: Nil
+      case logical.LimitRange(IntegerLiteral(start), IntegerLiteral(end),
+          logical.Sort(order, true, child)) =>
+        execution.TakeOrderedRangeAndProjectExec(start, end, order,
+          child.output, planLater(child)) :: Nil
       case _ => Nil
     }
   }
@@ -417,6 +435,9 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         execution.LocalLimitExec(limit, planLater(child)) :: Nil
       case logical.GlobalLimit(IntegerLiteral(limit), child) =>
         execution.GlobalLimitExec(limit, planLater(child)) :: Nil
+      case logical.LimitRange(IntegerLiteral(start),
+      IntegerLiteral(limit), child) =>
+        execution.RangeLimitExec(start, limit, planLater(child)) :: Nil
       case logical.Union(unionChildren) =>
         execution.UnionExec(unionChildren.map(planLater)) :: Nil
       case g @ logical.Generate(generator, join, outer, _, _, child) =>
