@@ -235,6 +235,18 @@ object SQLConf {
     .intConf
     .createWithDefault(4)
 
+  val LIMIT_FETCHER_FACTOR = buildConf("spark.sql.limit.fetchFactor")
+    .internal()
+    .doc("If source row count are few, we can fetch all result.")
+    .doubleConf
+    .createWithDefault(0.01)
+
+  val LIMIT_MAX_FETCHER_ROWS = buildConf("spark.sql.limit.maxFetchRows")
+    .internal()
+    .doc("All result rows should less than this")
+    .longConf
+    .createWithDefault(2000000)
+
   val ADVANCED_PARTITION_PREDICATE_PUSHDOWN =
     buildConf("spark.sql.hive.advancedPartitionPredicatePushdown.enabled")
       .internal()
@@ -1768,6 +1780,10 @@ class SQLConf extends Serializable with Logging {
   def autoBroadcastJoinThreshold: Long = getConf(AUTO_BROADCASTJOIN_THRESHOLD)
 
   def limitScaleUpFactor: Int = getConf(LIMIT_SCALE_UP_FACTOR)
+
+  def limitFetchFactor: Double = getConf(LIMIT_FETCHER_FACTOR)
+
+  def maxFetchRows: Long = getConf(LIMIT_MAX_FETCHER_ROWS)
 
   def advancedPartitionPredicatePushdownEnabled: Boolean =
     getConf(ADVANCED_PARTITION_PREDICATE_PUSHDOWN)

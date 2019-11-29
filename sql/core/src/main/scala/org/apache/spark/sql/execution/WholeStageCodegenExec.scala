@@ -125,8 +125,8 @@ trait CodegenSupport extends SparkPlan {
         ctx.currentVars = colVars
         val ev = GenerateUnsafeProjection.createCode(ctx, colExprs, false)
         val code = code"""
-          |$evaluateInputs
-          |${ev.code}
+                         |$evaluateInputs
+                         |${ev.code}
          """.stripMargin
         ExprCode(code, FalseLiteral, ev.value)
       } else {
@@ -181,7 +181,7 @@ trait CodegenSupport extends SparkPlan {
     val requireAllOutput = output.forall(parent.usedInputs.contains(_))
     val paramLength = CodeGenerator.calculateParamLength(output) + (if (row != null) 1 else 0)
     val consumeFunc = if (confEnabled && requireAllOutput
-        && CodeGenerator.isValidParamLength(paramLength)) {
+      && CodeGenerator.isValidParamLength(paramLength)) {
       constructDoConsumeFunction(ctx, inputVars, row)
     } else {
       parent.doConsume(ctx, inputVars, rowVar)
@@ -198,9 +198,9 @@ trait CodegenSupport extends SparkPlan {
    * parent's `doConsume` codes of a `CodegenSupport` operator into a function to call.
    */
   private def constructDoConsumeFunction(
-      ctx: CodegenContext,
-      inputVars: Seq[ExprCode],
-      row: String): String = {
+    ctx: CodegenContext,
+    inputVars: Seq[ExprCode],
+    row: String): String = {
     val (args, params, inputVarsInFunc) = constructConsumeParameters(ctx, output, inputVars, row)
     val rowVar = prepareRowVar(ctx, row, inputVarsInFunc)
 
@@ -225,10 +225,10 @@ trait CodegenSupport extends SparkPlan {
    * And also returns the list of `ExprCode` for the parameters.
    */
   private def constructConsumeParameters(
-      ctx: CodegenContext,
-      attributes: Seq[Attribute],
-      variables: Seq[ExprCode],
-      row: String): (Seq[String], Seq[String], Seq[ExprCode]) = {
+    ctx: CodegenContext,
+    attributes: Seq[Attribute],
+    variables: Seq[ExprCode],
+    row: String): (Seq[String], Seq[String], Seq[ExprCode]) = {
     val arguments = mutable.ArrayBuffer[String]()
     val parameters = mutable.ArrayBuffer[String]()
     val paramVars = mutable.ArrayBuffer[ExprCode]()
@@ -274,9 +274,9 @@ trait CodegenSupport extends SparkPlan {
    * of evaluated variables, to prevent them to be evaluated twice.
    */
   protected def evaluateRequiredVariables(
-      attributes: Seq[Attribute],
-      variables: Seq[ExprCode],
-      required: AttributeSet): String = {
+    attributes: Seq[Attribute],
+    variables: Seq[ExprCode],
+    required: AttributeSet): String = {
     val evaluateVars = new StringBuilder
     variables.zipWithIndex.foreach { case (ev, i) =>
       if (ev.code.nonEmpty && required.contains(attributes(i))) {
@@ -393,12 +393,12 @@ case class InputAdapter(child: SparkPlan) extends UnaryExecNode with CodegenSupp
   }
 
   override def generateTreeString(
-      depth: Int,
-      lastChildren: Seq[Boolean],
-      builder: StringBuilder,
-      verbose: Boolean,
-      prefix: String = "",
-      addSuffix: Boolean = false): StringBuilder = {
+    depth: Int,
+    lastChildren: Seq[Boolean],
+    builder: StringBuilder,
+    verbose: Boolean,
+    prefix: String = "",
+    addSuffix: Boolean = false): StringBuilder = {
     child.generateTreeString(depth, lastChildren, builder, verbose, "")
   }
 
@@ -502,7 +502,7 @@ object WholeStageCodegenId {
  * used to generated code for [[BoundReference]].
  */
 case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
-    extends UnaryExecNode with CodegenSupport {
+  extends UnaryExecNode with CodegenSupport {
 
   override def output: Seq[Attribute] = child.output
 
@@ -545,9 +545,9 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
       }
 
       ${ctx.registerComment(
-        s"""Codegend pipeline for stage (id=$codegenStageId)
-           |${this.treeString.trim}""".stripMargin,
-         "wsc_codegenPipeline")}
+      s"""Codegend pipeline for stage (id=$codegenStageId)
+         |${this.treeString.trim}""".stripMargin,
+      "wsc_codegenPipeline")}
       ${ctx.registerComment(s"codegenStageId=$codegenStageId", "wsc_codegenStageId", true)}
       final class $className extends ${classOf[BufferedRowIterator].getName} {
 
@@ -663,18 +663,18 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
       ""
     }
     s"""
-      |${row.code}
-      |append(${row.value}$doCopy);
+       |${row.code}
+       |append(${row.value}$doCopy);
      """.stripMargin.trim
   }
 
   override def generateTreeString(
-      depth: Int,
-      lastChildren: Seq[Boolean],
-      builder: StringBuilder,
-      verbose: Boolean,
-      prefix: String = "",
-      addSuffix: Boolean = false): StringBuilder = {
+    depth: Int,
+    lastChildren: Seq[Boolean],
+    builder: StringBuilder,
+    verbose: Boolean,
+    prefix: String = "",
+    addSuffix: Boolean = false): StringBuilder = {
     child.generateTreeString(depth, lastChildren, builder, verbose, s"*($codegenStageId) ")
   }
 

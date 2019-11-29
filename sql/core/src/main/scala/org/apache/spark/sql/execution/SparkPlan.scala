@@ -340,6 +340,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
 
     val buf = new ArrayBuffer[InternalRow]
     val totalParts = childRDD.partitions.length
+
     var partsScanned = 0
     while (buf.size < n && partsScanned < totalParts) {
       // The number of partitions to try in this iteration. It is ok for this number to be
@@ -360,7 +361,18 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
         }
       }
 
-      val p = partsScanned.until(math.min(partsScanned + numPartsToTry, totalParts).toInt)
+      val p = sparkContext.getLocalProperty("source_scan_rows") match {
+        case x if x != null && x.toLong > 0 =>
+          val estimateRows = x. toLong * sqlContext.conf.limitFetchFactor
+          if (estimateRows < n && estimateRows < sqlContext.conf.maxFetchRows) {
+            logInfo(s"Estimate Rows is $estimateRows, Scan all partition.")
+            partsScanned.until(totalParts.toInt)
+          } else {
+            partsScanned.until(math.min(partsScanned + numPartsToTry, totalParts).toInt)
+          }
+        case _ =>
+         partsScanned.until(math.min(partsScanned + numPartsToTry, totalParts).toInt)
+        }
       val sc = sqlContext.sparkContext
       val res = sc.runJob(childRDD,
         (it: Iterator[Array[Byte]]) => if (it.hasNext) it.next() else Array.empty[Byte], p)
@@ -369,7 +381,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
 
       partsScanned += p.size
     }
-
+    logInfo(s"Result size is ${buf.size}")
     if (buf.size > n) {
       buf.take(n).toArray
     } else {
