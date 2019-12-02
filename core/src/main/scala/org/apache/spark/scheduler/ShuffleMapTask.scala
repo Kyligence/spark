@@ -53,7 +53,7 @@ import org.apache.spark.shuffle.ShuffleWriter
 private[spark] class ShuffleMapTask(
     stageId: Int,
     stageAttemptId: Int,
-    val taskBinary: Broadcast[Array[Byte]],
+    taskBinary: Broadcast[Array[Byte]],
     partition: Partition,
     @transient private var locs: Seq[TaskLocation],
     localProperties: Properties,

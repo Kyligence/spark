@@ -585,8 +585,6 @@ class DAGScheduler(
       // Return immediately if the job is running 0 tasks
       return new JobWaiter[U](this, jobId, 0, resultHandler)
     }
-    val executionId = sc.getLocalProperty("spark.sql.execution.id")
-    logInfo(s"submit job : $jobId, executionId is $executionId")
 
     assert(partitions.size > 0)
     val func2 = func.asInstanceOf[(TaskContext, Iterator[_]) => _]
@@ -945,7 +943,6 @@ class DAGScheduler(
   /** Called when stage's parents are available and we can now do its task. */
   private def submitMissingTasks(stage: Stage, jobId: Int) {
     logDebug("submitMissingTasks(" + stage + ")")
-    logInfo(s"submit stage ${stage.id} with jobId: $jobId")
 
     // First figure out the indexes of partition ids to compute.
     val partitionsToCompute: Seq[Int] = stage.findMissingPartitions()

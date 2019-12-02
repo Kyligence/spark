@@ -520,13 +520,6 @@ private[spark] class TaskSetManager(
     if (isZombie && runningTasks == 0) {
       sched.taskSetFinished(this)
       if (tasksSuccessful == numTasks) {
-        val broadcastId = taskSet.tasks.head match {
-          case resultTask: ResultTask[Any, Any] =>
-            resultTask.taskBinary.id
-          case shuffleMapTask: ShuffleMapTask =>
-            shuffleMapTask.taskBinary.id
-        }
-        SparkEnv.get.broadcastManager.unbroadcast(broadcastId, true, false)
         blacklistTracker.foreach(_.updateBlacklistForSuccessfulTaskSet(
           taskSet.stageId,
           taskSet.stageAttemptId,
