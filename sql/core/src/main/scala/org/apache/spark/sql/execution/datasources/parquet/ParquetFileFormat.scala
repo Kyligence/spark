@@ -65,7 +65,7 @@ class ParquetFileFormat
   // here.
   private val parquetLogRedirector = ParquetLogRedirector.INSTANCE
 
-  private val metric = new ParquetMetric
+  private val metric = new ParquetMetricAccumulator
 
   override def shortName(): String = "parquet"
 
@@ -329,8 +329,8 @@ class ParquetFileFormat
 
     val broadcastedHadoopConf =
       sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
-    if (!metric.isRegistered()) {
-      metric.register(sparkSession.sparkContext)
+    if (!metric.isRegistered) {
+      metric.register(sparkSession.sparkContext, Some("ParquetMetric"), true)
     }
     // TODO: if you move this into the closure it reverts to the default values.
     // If true, enable using the custom RecordReader for parquet. This only works for
@@ -458,35 +458,7 @@ class ParquetFileFormat
             .map(d => appendPartitionColumns(joinedRow(d, file.partitionValues)))
         }
       }
-      val metrics = ParquetMetrics.get()
-      metric._pageReadHeaderTime.setValue(metrics.getPageReadHeaderTime)
-      metric._pageReadHeaderCnt.setValue(metrics.getPageReadHeaderCnt)
-
-      metric._footerReadTime.setValue(metrics.getFooterReadTime)
-      metric._footerReadCnt.setValue(metrics.getFooterReadCnt)
-
-      metric._groupReadTime.setValue(metrics.getGroupReadTime)
-      metric._groupReadCnt.setValue(metrics.getGroupReadCnt)
-
-      metric._pageReadTime.setValue(metrics.getPageReadTime)
-      metric._pageReadCnt.setValue(metrics.getPageReadCnt)
-
-      metric._filteredGroupReadTime.setValue(metrics.getFilteredGroupReadTime)
-      metric._filteredGroupReadCnt.setValue(metrics.getFilteredGroupReadTime)
-
-      metric._pageReadDecompressTime.setValue(metrics.getPageReadDecompressTime)
-      metric._pageReadUncompressBytes.setValue(metrics.getPageReadUncompressBytes)
-      metric._pageReadDecompressBytes.setValue(metrics.getPageReadDecompressBytes)
-
-      metric._totalPages.setValue(metrics.getTotalPages)
-
-      metric._colPageIndexReadTime.setValue(metrics.getColPageIndexReadTime)
-      metric._colPageIndexReadCnt.setValue(metrics.getColPageIndexReadCnt)
-
-      metric._offsetPageIndexReadTime.setValue(metrics.getOffsetPageIndexReadTime)
-      metric._offsetPageIndexReadCnt.setValue(metrics.getOffsetPageIndexReadCnt)
-
-      metric._totalTime.setValue(metrics.getTotalTime)
+      metric.setValue(ParquetMetrics.get().summary())
       iter
     }
   }
