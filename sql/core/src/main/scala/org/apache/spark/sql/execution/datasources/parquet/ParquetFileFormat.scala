@@ -31,6 +31,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
 import org.apache.parquet.filter2.compat.FilterCompat
 import org.apache.parquet.filter2.predicate.FilterApi
+import org.apache.parquet.format.ParquetMetrics
 import org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS
 import org.apache.parquet.hadoop._
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel
@@ -63,6 +64,8 @@ class ParquetFileFormat
   // is constructed or deserialized. Do not heed the Scala compiler's warning about an unused field
   // here.
   private val parquetLogRedirector = ParquetLogRedirector.INSTANCE
+
+  private val metric = new ParquetMetric
 
   override def shortName(): String = "parquet"
 
@@ -326,7 +329,9 @@ class ParquetFileFormat
 
     val broadcastedHadoopConf =
       sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
-
+    if (!metric.isRegistered()) {
+      metric.register(sparkSession.sparkContext)
+    }
     // TODO: if you move this into the closure it reverts to the default values.
     // If true, enable using the custom RecordReader for parquet. This only works for
     // a subset of the types (no complex types).
@@ -409,7 +414,7 @@ class ParquetFileFormat
         ParquetInputFormat.setFilterPredicate(hadoopAttemptContext.getConfiguration, pushed.get)
       }
       val taskContext = Option(TaskContext.get())
-      if (enableVectorizedReader) {
+      val iter = if (enableVectorizedReader) {
         val vectorizedReader = new VectorizedParquetRecordReader(
           convertTz.orNull, enableOffHeapColumnVector && taskContext.isDefined, capacity)
         val iter = new RecordReaderIterator(vectorizedReader)
@@ -453,6 +458,36 @@ class ParquetFileFormat
             .map(d => appendPartitionColumns(joinedRow(d, file.partitionValues)))
         }
       }
+      val metrics = ParquetMetrics.get()
+      metric._pageReadHeaderTime.setValue(metrics.getPageReadHeaderTime)
+      metric._pageReadHeaderCnt.setValue(metrics.getPageReadHeaderCnt)
+
+      metric._footerReadTime.setValue(metrics.getFooterReadTime)
+      metric._footerReadCnt.setValue(metrics.getFooterReadCnt)
+
+      metric._groupReadTime.setValue(metrics.getGroupReadTime)
+      metric._groupReadCnt.setValue(metrics.getGroupReadCnt)
+
+      metric._pageReadTime.setValue(metrics.getPageReadTime)
+      metric._pageReadCnt.setValue(metrics.getPageReadCnt)
+
+      metric._filteredGroupReadTime.setValue(metrics.getFilteredGroupReadTime)
+      metric._filteredGroupReadCnt.setValue(metrics.getFilteredGroupReadTime)
+
+      metric._pageReadDecompressTime.setValue(metrics.getPageReadDecompressTime)
+      metric._pageReadUncompressBytes.setValue(metrics.getPageReadUncompressBytes)
+      metric._pageReadDecompressBytes.setValue(metrics.getPageReadDecompressBytes)
+
+      metric._totalPages.setValue(metrics.getTotalPages)
+
+      metric._colPageIndexReadTime.setValue(metrics.getColPageIndexReadTime)
+      metric._colPageIndexReadCnt.setValue(metrics.getColPageIndexReadCnt)
+
+      metric._offsetPageIndexReadTime.setValue(metrics.getOffsetPageIndexReadTime)
+      metric._offsetPageIndexReadCnt.setValue(metrics.getOffsetPageIndexReadCnt)
+
+      metric._totalTime.setValue(metrics.getTotalTime)
+      iter
     }
   }
 
