@@ -72,6 +72,10 @@ case class TextScan(
       readPartitionSchema, textOptions)
   }
 
+  override def withFilters(
+      partitionFilters: Seq[Expression], dataFilters: Seq[Expression]): FileScan =
+    this.copy(partitionFilters = partitionFilters, dataFilters = dataFilters)
+
   override def equals(obj: Any): Boolean = obj match {
     case t: TextScan => super.equals(t) && options == t.options
 

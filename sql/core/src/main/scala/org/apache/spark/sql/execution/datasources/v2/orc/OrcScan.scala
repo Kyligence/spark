@@ -94,6 +94,9 @@ case class OrcScan(
       ", PushedGroupBy: " + pushedGroupByStr
   }
 
+  override def withFilters(
+      partitionFilters: Seq[Expression], dataFilters: Seq[Expression]): FileScan =
+    this.copy(partitionFilters = partitionFilters, dataFilters = dataFilters)
   override def getMetaData(): Map[String, String] = {
     super.getMetaData() ++ Map("PushedFilters" -> seqToString(pushedFilters)) ++
       Map("PushedAggregation" -> pushedAggregationsStr) ++
