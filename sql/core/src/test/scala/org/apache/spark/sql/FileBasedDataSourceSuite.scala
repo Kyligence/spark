@@ -832,6 +832,41 @@ class FileBasedDataSourceSuite extends QueryTest
     }
   }
 
+  test("File table location should include both values of option `path` and `paths`") {
+    withSQLConf(SQLConf.USE_V1_SOURCE_LIST.key -> "") {
+      allFileBasedDataSources.foreach { format =>
+        withTempPath { dir =>
+          Seq(("a", 1, 2), ("b", 1, 2), ("c", 2, 1))
+            .toDF("value", "p1", "p2")
+            .write
+            .format(format)
+            .partitionBy("p1", "p2")
+            .option("header", true)
+            .save(dir.getCanonicalPath)
+          val df = spark
+            .read
+            .format(format)
+            .option("header", true)
+            .load(dir.getCanonicalPath)
+            .where("value = 'a'")
+
+          val filterCondition = df.queryExecution.optimizedPlan.collectFirst {
+            case f: Filter => f.condition
+          }
+          assert(filterCondition.isDefined)
+
+          val fileScan = df.queryExecution.executedPlan collectFirst {
+            case BatchScanExec(_, f: FileScan, _) => f
+          }
+          assert(fileScan.nonEmpty)
+          assert(fileScan.get.partitionFilters.isEmpty)
+          assert(fileScan.get.dataFilters.nonEmpty)
+          checkAnswer(df, Row("a", 1, 2))
+        }
+      }
+    }
+  }
+
   test("SPARK-31116: Select nested schema with case insensitive mode") {
     // This test case failed at only Parquet. ORC is added for test coverage parity.
     Seq("orc", "parquet").foreach { format =>
