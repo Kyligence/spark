@@ -84,6 +84,10 @@ case class CSVScan(
       dataSchema, readDataSchema, readPartitionSchema, parsedOptions, pushedFilters)
   }
 
+  override def withFilters(
+      partitionFilters: Seq[Expression], dataFilters: Seq[Expression]): FileScan =
+    this.copy(partitionFilters = partitionFilters, dataFilters = dataFilters)
+
   override def equals(obj: Any): Boolean = obj match {
     case c: CSVScan => super.equals(c) && dataSchema == c.dataSchema && options == c.options &&
       equivalentFilters(pushedFilters, c.pushedFilters)
