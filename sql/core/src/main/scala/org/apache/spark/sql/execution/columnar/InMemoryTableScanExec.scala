@@ -23,12 +23,12 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
-import org.apache.spark.sql.catalyst.plans.physical.Partitioning
+import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partitioning}
 import org.apache.spark.sql.execution.{ColumnarBatchScan, LeafExecNode, SparkPlan, WholeStageCodegenExec}
+import org.apache.spark.sql.execution.statsEstimation.Statistics
 import org.apache.spark.sql.execution.vectorized._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.vectorized.{ColumnarBatch, ColumnVector}
-
 
 case class InMemoryTableScanExec(
     attributes: Seq[Attribute],
@@ -180,8 +180,8 @@ case class InMemoryTableScanExec(
     relation.cachedPlan.outputOrdering.map(updateAttribute(_).asInstanceOf[SortOrder])
 
   // Keeps relation's partition statistics because we don't serialize relation.
-  private val stats = relation.partitionStatistics
-  private def statsFor(a: Attribute) = stats.forAttribute(a)
+  private val partitionStats = relation.partitionStatistics
+  private def statsFor(a: Attribute) = partitionStats.forAttribute(a)
 
   // Currently, only use statistics from atomic types except binary type only.
   private object ExtractableLiteral {
@@ -248,7 +248,7 @@ case class InMemoryTableScanExec(
         filter.map(
           BindReferences.bindReference(
             _,
-            stats.schema,
+            partitionStats.schema,
             allowFailures = true))
 
       boundFilter.foreach(_ =>
@@ -271,7 +271,7 @@ case class InMemoryTableScanExec(
   private def filteredCachedBatches(): RDD[CachedBatch] = {
     // Using these variables here to avoid serialization of entire objects (if referenced directly)
     // within the map Partitions closure.
-    val schema = stats.schema
+    val schema = partitionStats.schema
     val schemaIndex = schema.zipWithIndex
     val buffers = relation.cacheBuilder.cachedColumnBuffers
 
@@ -309,5 +309,10 @@ case class InMemoryTableScanExec(
     } else {
       inputRDD
     }
+  }
+
+  override def computeStats(): Statistics = {
+    val stats = relation.computeStats()
+    Statistics(stats.sizeInBytes)
   }
 }
