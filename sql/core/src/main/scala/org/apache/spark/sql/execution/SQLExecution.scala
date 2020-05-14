@@ -20,7 +20,7 @@ package org.apache.spark.sql.execution
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-import org.apache.spark.SparkEnv
+import org.apache.spark.{SparkContext, SparkEnv}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.execution.ui.{PostQueryExecutionForKylin, SparkListenerSQLExecutionEnd, SparkListenerSQLExecutionStart}
@@ -137,6 +137,24 @@ object SQLExecution extends Logging{
       for ((key, value) <- originalLocalProps) {
         sc.setLocalProperty(key, value)
       }
+    }
+  }
+
+
+  def withExecutionIdAndJobDesc[T](
+      sc: SparkContext,
+      executionId: String,
+      jobDesc: String)(body: => T): T = {
+    val oldExecutionId = sc.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
+    val oldJobDesc = sc.getLocalProperty(SparkContext.SPARK_JOB_DESCRIPTION)
+
+    try {
+      sc.setLocalProperty(SQLExecution.EXECUTION_ID_KEY, executionId)
+      sc.setLocalProperty(SparkContext.SPARK_JOB_DESCRIPTION, jobDesc)
+      body
+    } finally {
+      sc.setLocalProperty(SQLExecution.EXECUTION_ID_KEY, oldExecutionId)
+      sc.setLocalProperty(SparkContext.SPARK_JOB_DESCRIPTION, oldJobDesc)
     }
   }
 }

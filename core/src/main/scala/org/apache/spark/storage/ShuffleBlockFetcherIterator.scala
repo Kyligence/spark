@@ -46,13 +46,11 @@ import org.apache.spark.util.io.ChunkedByteBufferOutputStream
  *
  * @param context [[TaskContext]], used for metrics update
  * @param shuffleClient [[ShuffleClient]] for fetching remote blocks
- * @param blockManager [[BlockManager]] for reading local blocks
+ * @param blockManager    [[BlockManager]] for reading local blocks
  * @param blocksByAddress list of blocks to fetch grouped by the [[BlockManagerId]].
  *                        For each block we also require the size (in bytes as a long field) in
- *                        order to throttle the memory usage. Note that zero-sized blocks are
- *                        already excluded, which happened in
- *                        [[MapOutputTracker.convertMapStatuses]].
- * @param streamWrapper A function to wrap the returned input stream.
+ *                        order to throttle the memory usage.
+ * @param streamWrapper   A function to wrap the returned input stream.
  * @param maxBytesInFlight max size (in bytes) of remote blocks to fetch at any given point.
  * @param maxReqsInFlight max number of remote requests to fetch blocks at any given point.
  * @param maxBlocksInFlightPerAddress max number of shuffle blocks being fetched at any given point
@@ -65,7 +63,7 @@ final class ShuffleBlockFetcherIterator(
     context: TaskContext,
     shuffleClient: ShuffleClient,
     blockManager: BlockManager,
-    blocksByAddress: Iterator[(BlockManagerId, Seq[(BlockId, Long)])],
+    blocksByAddress: Seq[(BlockManagerId, Seq[(BlockId, Long)])],
     streamWrapper: (BlockId, InputStream) => InputStream,
     maxBytesInFlight: Long,
     maxReqsInFlight: Int,
@@ -550,8 +548,9 @@ final class ShuffleBlockFetcherIterator(
 
   private def throwFetchFailedException(blockId: BlockId, address: BlockManagerId, e: Throwable) = {
     blockId match {
-      case ShuffleBlockId(shufId, mapId, reduceId) =>
-        throw new FetchFailedException(address, shufId.toInt, mapId.toInt, reduceId, e)
+      case blockId: ShuffleBlockIdBase =>
+        throw new FetchFailedException(
+          address, blockId.shuffleId, blockId.mapId, blockId.reduceId, e)
       case _ =>
         throw new SparkException(
           "Failed to get block " + blockId + ", which is not a shuffle block", e)

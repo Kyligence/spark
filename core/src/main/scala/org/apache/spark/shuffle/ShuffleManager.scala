@@ -41,7 +41,8 @@ private[spark] trait ShuffleManager {
   def getWriter[K, V](handle: ShuffleHandle, mapId: Int, context: TaskContext): ShuffleWriter[K, V]
 
   /**
-   * Get a reader for a range of reduce partitions (startPartition to endPartition-1, inclusive).
+   * Get a reader for a range of reduce partitions (startPartition to endPartition-1, inclusive) to
+   * read from map output (startMapId to endMapId - 1, inclusive).
    * Called on executors by reduce tasks.
    */
   def getReader[K, C](
@@ -49,6 +50,19 @@ private[spark] trait ShuffleManager {
       startPartition: Int,
       endPartition: Int,
       context: TaskContext): ShuffleReader[K, C]
+
+  /**
+   * Get a reader for a range of reduce partitions (startPartition to endPartition-1, inclusive) to
+   * read from map output (startMapId to endMapId - 1, inclusive).
+   * Called on executors by reduce tasks.
+   */
+  def getReader[K, C](
+     handle: ShuffleHandle,
+     startPartition: Int,
+     endPartition: Int,
+     context: TaskContext,
+     startMapId: Int,
+     endMapId: Int): ShuffleReader[K, C]
 
   /**
    * Remove a shuffle's metadata from the ShuffleManager.
