@@ -27,6 +27,10 @@ private[spark] object config {
     .booleanConf
     .createWithDefault(true)
 
+  val TASK_SKEW_DETECT_ENABLED = ConfigBuilder("spark.task.skew.detect.enable")
+    .booleanConf
+    .createWithDefault(true)
+
   val LIVE_ENTITY_UPDATE_PERIOD = ConfigBuilder("spark.ui.liveUpdate.period")
     .timeConf(TimeUnit.NANOSECONDS)
     .createWithDefaultString("100ms")
