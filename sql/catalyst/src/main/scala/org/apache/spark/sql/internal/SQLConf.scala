@@ -150,6 +150,16 @@ object SQLConf {
     }
   }
 
+  val ANSI_ENABLED = buildConf("spark.sql.ansi.enabled")
+    .doc("When true, Spark SQL uses an ANSI compliant dialect instead of being Hive compliant. " +
+      "For example, Spark will throw an exception at runtime instead of returning null results " +
+      "when the inputs to a SQL operator/function are invalid." +
+      "For full details of this dialect, you can find them in the section \"ANSI Compliance\" of " +
+      "Spark's documentation. Some ANSI dialect features may be not from the ANSI SQL " +
+      "standard directly, but their behaviors align with ANSI SQL's style")
+    .booleanConf
+    .createWithDefault(false)
+
   val OPTIMIZER_EXCLUDED_RULES = buildConf("spark.sql.optimizer.excludedRules")
     .doc("Configures a list of rules to be disabled in the optimizer, in which the rules are " +
       "specified by their rule names and separated by comma. It is not guaranteed that all the " +
@@ -1616,6 +1626,8 @@ class SQLConf extends Serializable with Logging {
   @transient protected val reader = new ConfigReader(settings)
 
   /** ************************ Spark SQL Params/Hints ******************* */
+
+  def ansiEnabled: Boolean = getConf(ANSI_ENABLED)
 
   def optimizerExcludedRules: Option[String] = getConf(OPTIMIZER_EXCLUDED_RULES)
 

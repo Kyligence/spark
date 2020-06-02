@@ -22,6 +22,7 @@ import java.math.{BigInteger, MathContext, RoundingMode}
 
 import org.apache.spark.annotation.InterfaceStability
 import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.catalyst.errors.QueryExecutionErrors
 
 /**
  * A mutable implementation of BigDecimal that can hold a Long if values are small enough.
@@ -242,9 +243,18 @@ final class Decimal extends Ordered[Decimal] with Serializable {
   private[sql] def toPrecision(
       precision: Int,
       scale: Int,
-      roundMode: BigDecimal.RoundingMode.Value = ROUND_HALF_UP): Decimal = {
+      roundMode: BigDecimal.RoundingMode.Value = ROUND_HALF_UP,
+      nullOnOverflow: Boolean = true): Decimal = {
     val copy = clone()
-    if (copy.changePrecision(precision, scale, roundMode)) copy else null
+    if (copy.changePrecision(precision, scale, roundMode)) {
+      copy
+    } else {
+      if (nullOnOverflow) {
+        null
+      } else {
+        throw QueryExecutionErrors.cannotChangeDecimalPrecisionError(this, precision, scale)
+      }
+    }
   }
 
   /**
