@@ -125,37 +125,40 @@ class SQLAppStatusListener(
       updateStageMetrics(stageId, attemptId, taskId, accumUpdates, false)
     }
 
-    // collect stageId
-    val stageIds = event.accumUpdates.map(_._2).toSet
     if(skewDetectEnabled) {
-      val executorId = event.execId
-      import InternalAccumulator._
-      stageIds.foreach(stageId => {
-        Option(stageMetrics.get(stageId)).foreach(metrics => {
-          val taskMetrics = metrics.taskMetrics
-          if(taskMetrics == null || taskMetrics.isEmpty) {
-            return
-          }
-          val shuffleReadRecords = taskMetrics.values().asScala
-            .filter(_.names.contains(shuffleRead.RECORDS_READ))
-            .flatMap{ m =>
-              m.names.zipWithIndex
-                .filter(_._1.equals(shuffleRead.RECORDS_READ))
-                .map{ case (_, idx) => m.values(idx).toDouble}
-            }.toArray
-          if(shuffleReadRecords.isEmpty) {
-            return
-          }
-          val skewness = SQLAppStatistic.skewness(shuffleReadRecords)
-          val kurtosis = SQLAppStatistic.kurtosis(shuffleReadRecords)
-          if(skewness > SQLAppStatistic.STANDARD_GAMMA
-            && kurtosis > SQLAppStatistic.STANDARD_GAMMA) {
-            logWarning(s"stage task skewing detected by ${shuffleRead.RECORDS_READ}, " +
-              s"stageId: $stageId, executorId: $executorId, " +
-              s"shuffleReadRecords: ${shuffleReadRecords.map(_.toLong).sorted}")
-          }
+      try {
+        val execId = event.execId
+        val stageIds = event.accumUpdates.map(_._2).toSet
+        import InternalAccumulator._
+        stageIds.foreach(stageId => {
+          Option(stageMetrics.get(stageId)).foreach(metrics => {
+            val taskMetrics = metrics.taskMetrics
+            if (taskMetrics == null || taskMetrics.isEmpty) {
+              return
+            }
+            val shuffleReadRecords = taskMetrics.values().asScala
+              .filter(_.names.contains(shuffleRead.RECORDS_READ))
+              .flatMap { m =>
+                m.names.zipWithIndex
+                  .filter(_._1.equals(shuffleRead.RECORDS_READ))
+                  .map { case (_, idx) => m.values(idx).toDouble }
+              }.toArray
+            if (shuffleReadRecords.isEmpty) {
+              return
+            }
+            val skewness = SQLAppStatistic.skewness(shuffleReadRecords)
+            val kurtosis = SQLAppStatistic.kurtosis(shuffleReadRecords)
+            if (skewness > SQLAppStatistic.STANDARD_SKEWNESS
+              && kurtosis > SQLAppStatistic.STANDARD_KURTOSIS) {
+              logWarning(s"stage task skewing detected by ${shuffleRead.RECORDS_READ}, " +
+                s"stageId: $stageId, execId: $execId, " +
+                s"shuffleReadRecords: ${shuffleReadRecords.map(_.toLong).sorted}")
+            }
+          })
         })
-      })
+      } catch {
+        case e: Exception => logWarning(s"stage task skewness detecting failed", e)
+      }
     }
   }
 

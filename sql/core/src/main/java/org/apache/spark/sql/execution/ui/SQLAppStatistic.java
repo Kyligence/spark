@@ -22,7 +22,8 @@ package org.apache.spark.sql.execution.ui;
  */
 public class SQLAppStatistic {
 
-  static final double STANDARD_GAMMA = 1d;
+  static final double STANDARD_SKEWNESS = 1.0d;
+  static final double STANDARD_KURTOSIS = 1.0d;
 
   // mean of data.
   static double mean(double arr[], int n) {
@@ -77,12 +78,12 @@ public class SQLAppStatistic {
     return (sum / (n * Math.pow(sigma, 4))) - 3;
   }
 
-  // Driver function
   public static void main(String[] args) {
 
-    double arr[] = {60, 80, 130, 110, 70, 1011, 20, 77, 98, 330, 220, 177, 323, 200, 100};
+    double arr[] = {60, 80, 130, 110, 70, 2020, 20, 77, 98, 330, 220, 177, 323, 200, 100};
 
     // skewness Function call
     System.out.println(skewness(arr) + " " + kurtosis(arr));
+    // 3.2733488310507317 9.189926557641753
   }
 }
