@@ -221,7 +221,8 @@ private[spark] class TaskSchedulerImpl(
         val jobId = taskSet.priority
         val stageId = taskSet.stageId
         val stageAttemptId = taskSet.stageAttemptId
-        val executionId = taskSet.properties.getProperty("spark.sql.execution.id")
+        val executionId = Option(taskSet.properties)
+          .map(_.getProperty("spark.sql.execution.id"))
         logInfo(s"On tasks submitting stageId: $stageId, " +
           s"stageAttemptId: $stageAttemptId, executionId: $executionId, jobId: $jobId")
       }
