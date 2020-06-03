@@ -22,11 +22,14 @@ package org.apache.spark.sql.execution.ui;
  */
 public class SQLAppStatistic {
 
-  static final double STANDARD_SKEWNESS = 1.0d;
-  static final double STANDARD_KURTOSIS = 1.0d;
+  public static final double STANDARD_SKEWNESS = 1.0d;
+  public static final double STANDARD_KURTOSIS = 1.0d;
+
+  private SQLAppStatistic() {
+  }
 
   // mean of data.
-  static double mean(double arr[], int n) {
+  static double mean(double[] arr, int n) {
 
     double sum = 0;
 
@@ -38,7 +41,7 @@ public class SQLAppStatistic {
   }
 
   // deviation of data.
-  static double standardDeviation(double arr[],
+  static double standardDeviation(double[] arr,
                                   int n) {
     double sum = 0;
     double miu = mean(arr, n);
@@ -51,12 +54,12 @@ public class SQLAppStatistic {
     return Math.sqrt(sum / n);
   }
 
-  static double skewness(double arr[]) {
+  public static double skewness(double[] arr) {
     int n = arr.length;
     double sum = 0;
     double miu = mean(arr, n);
-    for (int i = 0; i < n; i++) {
-      double delta = arr[i] - miu;
+    for (double x : arr) {
+      double delta = x - miu;
       sum += Math.pow(delta, 3);
     }
 
@@ -64,26 +67,17 @@ public class SQLAppStatistic {
     return sum / (n * Math.pow(sigma, 3));
   }
 
-  static double kurtosis(double arr[]) {
+  public static double kurtosis(double[] arr) {
     int n = arr.length;
     double sum = 0;
     double miu = mean(arr, n);
 
-    for (int i = 0; i < n; i++) {
-      double delta = arr[i] - miu;
+    for (double x : arr) {
+      double delta = x - miu;
       sum += Math.pow(delta, 4);
     }
 
     double sigma = standardDeviation(arr, n);
     return (sum / (n * Math.pow(sigma, 4))) - 3;
-  }
-
-  public static void main(String[] args) {
-
-    double arr[] = {60, 80, 130, 110, 70, 2020, 20, 77, 98, 330, 220, 177, 323, 200, 100};
-
-    // skewness Function call
-    System.out.println(skewness(arr) + " " + kurtosis(arr));
-    // 3.2733488310507317 9.189926557641753
   }
 }

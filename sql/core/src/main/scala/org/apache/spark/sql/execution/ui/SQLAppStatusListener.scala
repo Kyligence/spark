@@ -37,7 +37,7 @@ class SQLAppStatusListener(
     live: Boolean) extends SparkListener with Logging {
 
   // Task skewness detection on executor metrics update
-  private val skewDetectEnabled = conf.get(TASK_SKEW_DETECT_ENABLED)
+  private lazy val skewDetectEnabled = conf.get(TASK_SKEW_DETECT_ENABLED)
 
   // How often to flush intermediate state of a live execution to the store. When replaying logs,
   // never flush (only do the very last write).

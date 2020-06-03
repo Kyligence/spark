@@ -33,6 +33,7 @@ import org.apache.spark.internal.config
 import org.apache.spark.rpc.RpcEndpoint
 import org.apache.spark.scheduler.SchedulingMode.SchedulingMode
 import org.apache.spark.scheduler.TaskLocality.TaskLocality
+import org.apache.spark.status.config.TASK_SKEW_DETECT_ENABLED
 import org.apache.spark.storage.BlockManagerId
 import org.apache.spark.util.{AccumulatorV2, SystemClock, ThreadUtils, Utils}
 
@@ -148,6 +149,8 @@ private[spark] class TaskSchedulerImpl(
 
   private[scheduler] var barrierCoordinator: RpcEndpoint = null
 
+  private lazy val skewDetectEnabled = conf.get(TASK_SKEW_DETECT_ENABLED)
+
   private def maybeInitBarrierCoordinator(): Unit = {
     if (barrierCoordinator == null) {
       barrierCoordinator = new BarrierCoordinator(barrierSyncTimeout, sc.listenerBus,
@@ -213,6 +216,15 @@ private[spark] class TaskSchedulerImpl(
           s" ${stageTaskSets.toSeq.map{_._2.taskSet.id}.mkString(",")}")
       }
       schedulableBuilder.addTaskSetManager(manager, manager.taskSet.properties)
+
+      if(skewDetectEnabled) {
+        val jobId = taskSet.priority
+        val stageId = taskSet.stageId
+        val stageAttemptId = taskSet.stageAttemptId
+        val executionId = taskSet.properties.getProperty("spark.sql.execution.id")
+        logInfo(s"On tasks submitting stageId: $stageId, " +
+          s"stageAttemptId: $stageAttemptId, executionId: $executionId, jobId: $jobId")
+      }
 
       if (!isLocal && !hasReceivedTask) {
         starvationTimer.scheduleAtFixedRate(new TimerTask() {

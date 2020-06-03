@@ -27,7 +27,7 @@ private[spark] object config {
     .booleanConf
     .createWithDefault(true)
 
-  val TASK_SKEW_DETECT_ENABLED = ConfigBuilder("spark.task.skew.detect.enable")
+  val TASK_SKEW_DETECT_ENABLED = ConfigBuilder("spark.task.skew.detect.enabled")
     .booleanConf
     .createWithDefault(true)
 
