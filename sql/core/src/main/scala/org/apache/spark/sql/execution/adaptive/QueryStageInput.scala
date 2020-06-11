@@ -18,14 +18,16 @@
 package org.apache.spark.sql.execution.adaptive
 
 import scala.collection.mutable
-
+import org.apache.spark.TaskContext
 import org.apache.spark.broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeMap, Expression, SortOrder}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeMap, Expression, SortOrder, UnsafeProjection}
 import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partitioning, UnknownPartitioning}
 import org.apache.spark.sql.execution._
+import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.statsEstimation.Statistics
+import org.apache.spark.util.TaskCompletionListener
 
 /**
  * QueryStageInput is the leaf node of a QueryStage and is used to hide its child stage. It gets
@@ -44,9 +46,10 @@ abstract class QueryStageInput extends LeafExecNode {
   // to update the attribute ids in outputPartitioning and outputOrdering.
   private lazy val updateAttr: Expression => Expression = {
     val originalAttrToNewAttr = AttributeMap(childStage.output.zip(output))
-    e => e.transform {
-      case attr: Attribute => originalAttrToNewAttr.getOrElse(attr, attr)
-    }
+    e =>
+      e.transform {
+        case attr: Attribute => originalAttrToNewAttr.getOrElse(attr, attr)
+      }
   }
 
   override def outputPartitioning: Partitioning = childStage.outputPartitioning match {
@@ -63,12 +66,12 @@ abstract class QueryStageInput extends LeafExecNode {
   }
 
   override def generateTreeString(
-      depth: Int,
-      lastChildren: Seq[Boolean],
-      builder: StringBuilder,
-      verbose: Boolean,
-      prefix: String = "",
-      addSuffix: Boolean = false): StringBuilder = {
+                                   depth: Int,
+                                   lastChildren: Seq[Boolean],
+                                   builder: StringBuilder,
+                                   verbose: Boolean,
+                                   prefix: String = "",
+                                   addSuffix: Boolean = false): StringBuilder = {
     childStage.generateTreeString(depth, lastChildren, builder, verbose, "*")
   }
 }
@@ -80,24 +83,46 @@ abstract class QueryStageInput extends LeafExecNode {
  * partitionStartIndices.
  */
 case class ShuffleQueryStageInput(
-    childStage: ShuffleQueryStage,
-    override val output: Seq[Attribute],
-    var isLocalShuffle: Boolean = false,
-    var skewedPartitions: Option[mutable.HashSet[Int]] = None,
-    var partitionStartIndices: Option[Array[Int]] = None,
-    var partitionEndIndices: Option[Array[Int]] = None)
+                                   childStage: ShuffleQueryStage,
+                                   override val output: Seq[Attribute],
+                                   var isLocalShuffle: Boolean = false,
+                                   var skewedPartitions: Option[mutable.HashSet[Int]] = None,
+                                   var partitionStartIndices: Option[Array[Int]] = None,
+                                   var partitionEndIndices: Option[Array[Int]] = None)
   extends QueryStageInput {
 
   override def outputPartitioning: Partitioning = partitionStartIndices.map {
     indices => UnknownPartitioning(indices.length)
   }.getOrElse(super.outputPartitioning)
 
+  override lazy val metrics = Map(
+    "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
+    "readBytes" -> SQLMetrics.createMetric(sparkContext, "number of read bytes")
+  )
+
   override def doExecute(): RDD[InternalRow] = {
     val childRDD = childStage.execute().asInstanceOf[ShuffledRowRDD]
-    if (isLocalShuffle) {
+    val shuffleRDD: RDD[InternalRow] = if (isLocalShuffle) {
       new LocalShuffledRowRDD(childRDD.dependency, partitionStartIndices, partitionEndIndices)
     } else {
       new ShuffledRowRDD(childRDD.dependency, partitionStartIndices, partitionEndIndices)
+    }
+
+    val numOutputRows = longMetric("numOutputRows")
+    // Avoid to serialize MetastoreRelation because schema is lazy. (see SPARK-15649)
+    val outputSchema = schema
+    shuffleRDD.mapPartitionsWithIndexInternal { (index, iter) =>
+      TaskContext.get().addTaskCompletionListener(new TaskCompletionListener {
+        override def onTaskCompletion(context: TaskContext): Unit = {
+          longMetric("readBytes").add(context.taskMetrics().inputMetrics.bytesRead)
+        }
+      })
+      val proj = UnsafeProjection.create(outputSchema)
+      proj.initialize(index)
+      iter.map { r =>
+        numOutputRows += 1
+        proj(r)
+      }
     }
   }
 
@@ -112,27 +137,49 @@ case class ShuffleQueryStageInput(
  * splits and it only reads one of the splits ranging from startMapId to endMapId (exclusive).
  */
 case class SkewedShuffleQueryStageInput(
-    childStage: ShuffleQueryStage,
-    override val output: Seq[Attribute],
-    partitionId: Int,
-    startMapId: Int,
-    endMapId: Int)
+                                         childStage: ShuffleQueryStage,
+                                         override val output: Seq[Attribute],
+                                         partitionId: Int,
+                                         startMapId: Int,
+                                         endMapId: Int)
   extends QueryStageInput {
 
+  override lazy val metrics = Map(
+    "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
+    "readBytes" -> SQLMetrics.createMetric(sparkContext, "number of read bytes")
+  )
+
   override def doExecute(): RDD[InternalRow] = {
-    val childRDD = childStage.execute ().asInstanceOf[ShuffledRowRDD]
-    new AdaptiveShuffledRowRDD(
+    val childRDD = childStage.execute().asInstanceOf[ShuffledRowRDD]
+    val shuffleRDD: RDD[InternalRow] = new AdaptiveShuffledRowRDD(
       childRDD.dependency,
       partitionId,
       Some(Array(startMapId)),
       Some(Array(endMapId)))
+
+    val numOutputRows = longMetric("numOutputRows")
+    // Avoid to serialize MetastoreRelation because schema is lazy. (see SPARK-15649)
+    val outputSchema = schema
+    shuffleRDD.mapPartitionsWithIndexInternal { (index, iter) =>
+      TaskContext.get().addTaskCompletionListener(new TaskCompletionListener {
+        override def onTaskCompletion(context: TaskContext): Unit = {
+          longMetric("readBytes").add(context.taskMetrics().inputMetrics.bytesRead)
+        }
+      })
+      val proj = UnsafeProjection.create(outputSchema)
+      proj.initialize(index)
+      iter.map { r =>
+        numOutputRows += 1
+        proj(r)
+      }
+    }
   }
 }
 
 /** A QueryStageInput whose child stage is a BroadcastQueryStage. */
 case class BroadcastQueryStageInput(
-    childStage: BroadcastQueryStage,
-    override val output: Seq[Attribute])
+                                     childStage: BroadcastQueryStage,
+                                     override val output: Seq[Attribute])
   extends QueryStageInput {
 
   override def doExecuteBroadcast[T](): broadcast.Broadcast[T] = {
