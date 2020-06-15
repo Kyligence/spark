@@ -115,17 +115,22 @@ abstract class QueryStage extends UnaryExecNode {
     }
     val childMapOutputStatistics = queryStageInputs.map(_.childStage.mapOutputStatistics)
       .filter(_ != null).toArray
-    // Right now, Adaptive execution only support HashPartitionings.
-    val supportAdaptive = queryStageInputs.forall{
-        _.outputPartitioning match {
-          case hash: HashPartitioning => true
-          case collection: PartitioningCollection =>
-            collection.partitionings.forall(_.isInstanceOf[HashPartitioning])
-          case _ => false
-        }
+    // Right now, Adaptive execution only support HashPartitionings and the same number of
+    // Check partitionings
+    val partitioningsCheck = queryStageInputs.forall {
+      _.outputPartitioning match {
+        case hash: HashPartitioning => true
+        case collection: PartitioningCollection =>
+          collection.partitionings.forall(_.isInstanceOf[HashPartitioning])
+        case _ => false
+      }
     }
 
-    if (childMapOutputStatistics.length > 0 && supportAdaptive) {
+    // Check pre-shuffle partitions num
+    val numPreShufflePartitionsCheck =
+      childMapOutputStatistics.map(stats => stats.bytesByPartitionId.length).distinct.length == 1
+
+    if (childMapOutputStatistics.length > 0 && partitioningsCheck && numPreShufflePartitionsCheck) {
       val exchangeCoordinator = new ExchangeCoordinator(
         conf.targetPostShuffleInputSize,
         conf.adaptiveTargetPostShuffleRowCount,
