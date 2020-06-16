@@ -27,10 +27,10 @@ import org.apache.spark.deploy.worker.{DriverRunner, ExecutorRunner}
 import org.apache.spark.rpc.{RpcAddress, RpcEndpointRef}
 import org.apache.spark.util.Utils
 
-private[deploy] sealed trait DeployMessage extends Serializable
+sealed trait DeployMessage extends Serializable
 
 /** Contains messages sent between Scheduler endpoint nodes. */
-private[deploy] object DeployMessages {
+object DeployMessages {
 
   // Worker to Master
 
@@ -229,5 +229,7 @@ private[deploy] object DeployMessages {
   // Liveness checks in various places
 
   case object SendHeartbeat
+
+  case class KillApplication(appId: String)
 
 }

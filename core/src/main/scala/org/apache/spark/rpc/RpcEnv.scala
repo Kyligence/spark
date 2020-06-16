@@ -31,7 +31,15 @@ import org.apache.spark.util.RpcUtils
  * A RpcEnv implementation must have a [[RpcEnvFactory]] implementation with an empty constructor
  * so that it can be created via Reflection.
  */
-private[spark] object RpcEnv {
+object RpcEnv {
+
+  def create(
+      name: String,
+      host: String,
+      port: Int,
+      conf: SparkConf): RpcEnv = {
+    create(name, host, host, port, conf, new SecurityManager(conf), 0, clientMode = true)
+  }
 
   def create(
       name: String,
