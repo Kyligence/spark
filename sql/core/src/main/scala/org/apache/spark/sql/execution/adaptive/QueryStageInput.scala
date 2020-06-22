@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.adaptive
 
 import scala.collection.mutable
+
 import org.apache.spark.TaskContext
 import org.apache.spark.broadcast
 import org.apache.spark.rdd.RDD
