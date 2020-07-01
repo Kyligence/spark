@@ -1650,6 +1650,14 @@ object SQLConf {
         "WHERE, which does not follow SQL standard.")
       .booleanConf
       .createWithDefault(false)
+
+  val MAX_COLLECT_SIZE = buildConf("spark.sql.driver.maxCollectSize")
+    .doc("If specified then its value will be used for limiting the total size of " +
+      "uncompressed results of all partitions for each Spark action (e.g. collect). " +
+      "This is similar to spark.driver.maxResultSize but it enforces the limit on the " +
+      "uncompressed result. Specifying this can help protect the driver from out-of-memory errors.")
+    .bytesConf(ByteUnit.BYTE)
+    .createOptional
 }
 
 /**
@@ -2090,6 +2098,8 @@ class SQLConf extends Serializable with Logging {
     getConf(SQLConf.LEGACY_REPLACE_DATABRICKS_SPARK_AVRO_ENABLED)
 
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
+
+  def maxCollectSize: Option[Long] = getConf(SQLConf.MAX_COLLECT_SIZE)
 
   /** ********************** SQLConf functionality methods ************ */
 

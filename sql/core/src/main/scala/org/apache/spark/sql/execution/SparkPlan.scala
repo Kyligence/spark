@@ -249,24 +249,9 @@ abstract class SparkPlan
    * compressed.
    */
   private def getByteArrayRdd(n: Int = -1): RDD[(Long, Array[Byte])] = {
+    val maxCollectSize = sqlContext.conf.maxCollectSize
     execute().mapPartitionsInternal { iter =>
-      var count = 0
-      val buffer = new Array[Byte](4 << 10)  // 4K
-      val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
-      val bos = new ByteArrayOutputStream()
-      val out = new DataOutputStream(codec.compressedOutputStream(bos))
-      // `iter.hasNext` may produce one row and buffer it, we should only call it when the limit is
-      // not hit.
-      while ((n < 0 || count < n) && iter.hasNext) {
-        val row = iter.next().asInstanceOf[UnsafeRow]
-        out.writeInt(row.getSizeInBytes)
-        row.writeToStream(out, buffer)
-        count += 1
-      }
-      out.writeInt(-1)
-      out.flush()
-      out.close()
-      Iterator((count, bos.toByteArray))
+      new SizeLimitingByteArrayUnsafeRowsConverter(maxCollectSize).encodeUnsafeRows(n, iter)
     }
   }
 
@@ -301,8 +286,9 @@ abstract class SparkPlan
     val byteArrayRdd = getByteArrayRdd()
 
     val results = ArrayBuffer[InternalRow]()
+    val decoder = new SizeLimitingByteArrayUnsafeRowsConverter(sqlContext.conf.maxCollectSize)
     byteArrayRdd.collect().foreach { countAndBytes =>
-      decodeUnsafeRows(countAndBytes._2).foreach(results.+=)
+      decoder.decodeUnsafeRows(schema.length, countAndBytes._2).foreach(results.+=)
     }
     results.toArray
   }
@@ -310,7 +296,9 @@ abstract class SparkPlan
   private[spark] def executeCollectIterator(): (Long, Iterator[InternalRow]) = {
     val countsAndBytes = getByteArrayRdd().collect()
     val total = countsAndBytes.map(_._1).sum
-    val rows = countsAndBytes.iterator.flatMap(countAndBytes => decodeUnsafeRows(countAndBytes._2))
+    val decoder = new SizeLimitingByteArrayUnsafeRowsConverter(sqlContext.conf.maxCollectSize)
+    val rows = countsAndBytes.iterator
+      .flatMap(countAndBytes => decoder.decodeUnsafeRows(schema.length, countAndBytes._2))
     (total, rows)
   }
 
@@ -320,7 +308,9 @@ abstract class SparkPlan
    * @note Triggers multiple jobs (one for each partition).
    */
   def executeToIterator(): Iterator[InternalRow] = {
-    getByteArrayRdd().map(_._2).toLocalIterator.flatMap(decodeUnsafeRows)
+    val decoder = new SizeLimitingByteArrayUnsafeRowsConverter(sqlContext.conf.maxCollectSize)
+    getByteArrayRdd().map(_._2).toLocalIterator
+      .flatMap(iter => decoder.decodeUnsafeRows(schema.length, iter))
   }
 
   /**
@@ -347,6 +337,7 @@ abstract class SparkPlan
     val totalParts = childRDD.partitions.length
 
     var partsScanned = 0
+    val decoder = new SizeLimitingByteArrayUnsafeRowsConverter(sqlContext.conf.maxCollectSize)
     while (buf.size < n && partsScanned < totalParts) {
       // The number of partitions to try in this iteration. It is ok for this number to be
       // greater than totalParts because we actually cap it at totalParts in runJob.
@@ -381,9 +372,7 @@ abstract class SparkPlan
       val sc = sqlContext.sparkContext
       val res = sc.runJob(childRDD,
         (it: Iterator[Array[Byte]]) => if (it.hasNext) it.next() else Array.empty[Byte], p)
-
-      buf ++= res.flatMap(decodeUnsafeRows)
-
+      buf ++= res.flatMap(decoder.decodeUnsafeRows(schema.length, _))
       partsScanned += p.size
     }
     logInfo(s"Result size is ${buf.size}")
