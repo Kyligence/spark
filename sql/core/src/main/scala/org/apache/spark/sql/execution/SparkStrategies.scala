@@ -360,7 +360,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
 
         val stateVersion = conf.getConf(SQLConf.STREAMING_AGGREGATION_STATE_FORMAT_VERSION)
 
-        aggregate.AggUtils.planStreamingAggregation(
+        org.apache.spark.sql.execution.aggregate.AggUtils.planStreamingAggregation(
           namedGroupingExpressions,
           aggregateExpressions.map(expr => expr.asInstanceOf[AggregateExpression]),
           rewrittenResultExpressions,
@@ -445,13 +445,13 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
 
         val aggregateOperator =
           if (functionsWithDistinct.isEmpty) {
-            aggregate.AggUtils.planAggregateWithoutDistinct(
+            org.apache.spark.sql.execution.aggregate.AggUtils.planAggregateWithoutDistinct(
               groupingExpressions,
               aggregateExpressions,
               resultExpressions,
               planLater(child))
           } else {
-            aggregate.AggUtils.planAggregateWithOneDistinct(
+            org.apache.spark.sql.execution.aggregate.AggUtils.planAggregateWithOneDistinct(
               groupingExpressions,
               functionsWithDistinct,
               functionsWithoutDistinct,
