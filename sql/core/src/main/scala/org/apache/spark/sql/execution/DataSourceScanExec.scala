@@ -34,6 +34,7 @@ import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partition
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.execution.datasources.parquet.{ParquetFileFormat => ParquetSource}
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
+import org.apache.spark.sql.execution.statsEstimation.Statistics
 import org.apache.spark.sql.sources.{BaseRelation, Filter}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.{TaskCompletionListener, Utils}
@@ -73,6 +74,10 @@ trait DataSourceScanExec extends LeafExecNode with CodegenSupport {
    */
   private def redact(text: String): String = {
     Utils.redact(sqlContext.sessionState.conf.stringRedactionPattern, text)
+  }
+
+  override def computeStats(): Statistics = {
+    Statistics(sizeInBytes = relation.sizeInBytes)
   }
 }
 

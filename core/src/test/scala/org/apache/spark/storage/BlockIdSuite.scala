@@ -150,6 +150,20 @@ class BlockIdSuite extends SparkFunSuite {
     assertSame(id, BlockId(id.toString))
   }
 
+  test("continuous shuffle block") {
+    val id = ContinuousShuffleBlockId(1, 2, 3, 4)
+    assertSame(id, ContinuousShuffleBlockId(1, 2, 3, 4))
+    assertDifferent(id, ContinuousShuffleBlockId(3, 2, 3, 4))
+    assert(id.name === "shuffle_1_2_3_4")
+    assert(id.asRDDId === None)
+    assert(id.shuffleId === 1)
+    assert(id.mapId === 2)
+    assert(id.reduceId === 3)
+    assert(id.numBlocks === 4)
+    assert(id.isShuffle)
+    assertSame(id, BlockId(id.toString))
+  }
+
   test("test") {
     val id = TestBlockId("abc")
     assertSame(id, TestBlockId("abc"))
