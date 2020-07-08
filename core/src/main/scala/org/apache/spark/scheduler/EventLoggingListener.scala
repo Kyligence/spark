@@ -162,7 +162,7 @@ private[spark] class EventLoggingListener(
   def rollEventLogFile(logRollUp: SparkListenerLogRollUp): Unit ={
     closeWriter()
     if (logRollUp != null && logRollUp.checkTime != null) {
-      SparkHadoopUtil.createFile(fileSystem, new Path(new Path(logBaseDir), logRollUp.checkTime), sparkConf.get(EVENT_LOG_ALLOW_EC))
+      SparkHadoopUtil.createFile(fileSystem, new Path(new Path(logBaseDir), logRollUp.checkTime), sparkConf.get(EVENT_LOG_ALLOW_EC)).close()
     }
     rollIndex += 1
     val now = System.currentTimeMillis()
