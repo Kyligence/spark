@@ -157,6 +157,11 @@ public class SparkFirehoseListener implements SparkListenerInterface {
   }
 
   @Override
+  public void onSparkListenerLogRollUp(SparkListenerLogRollUp logRollUp) {
+    onEvent(logRollUp);
+  }
+
+  @Override
   public void onOtherEvent(SparkListenerEvent event) {
     onEvent(event);
   }

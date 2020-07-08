@@ -199,6 +199,8 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
     config.set("spark.sql.parquet.int96AsTimestamp", "false");
 
     this.file = new Path(path);
+    // read retry before getFileStatus
+    this.file.getFileSystem(config).open(this.file).close();
     long length = this.file.getFileSystem(config).getFileStatus(this.file).getLen();
     ParquetMetadata footer = readFooter(config, file, range(0, length));
 

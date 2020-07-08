@@ -105,7 +105,7 @@ object JsonConstants {
   val appInfoJsonStr =
     """
       |{"id":"id","starttime":3,"name":"name",
-      |"cores":0,"user":"%s",
+      |"cores":0,"request_cores":4,"user":"%s",
       |"memoryperslave":1234,"submitdate":"%s",
       |"state":"WAITING","duration":%d}
     """.format(System.getProperty("user.name", "<unknown>"),

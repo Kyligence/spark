@@ -239,7 +239,13 @@ class SQLAppStatusListener(
         return
       }
 
-      val updates = accumUpdates
+      val updates = if (skewDetectEnabled) {
+        import InternalAccumulator._
+        accumUpdates.filter { acc =>
+          acc.update.isDefined && (metrics.accumulatorIds.contains(acc.id) ||
+            shuffleRead.RECORDS_READ.equals(acc.name.orNull))
+        }.sortBy(_.id)
+      } else accumUpdates
         .filter { acc => acc.update.isDefined && metrics.accumulatorIds.contains(acc.id) }
         .sortBy(_.id)
 
@@ -252,7 +258,7 @@ class SQLAppStatusListener(
       val values = new Array[Long](updates.size)
       updates.zipWithIndex.foreach { case (acc, idx) =>
         ids(idx) = acc.id
-        names(idx) = acc.name.get
+        names(idx) = acc.name.orNull
         // In a live application, accumulators have Long values, but when reading from event
         // logs, they have String values. For now, assume all accumulators are Long and covert
         // accordingly.
@@ -269,25 +275,25 @@ class SQLAppStatusListener(
     }
   }
 
+  private def toStoredNodes(nodes: Seq[SparkPlanGraphNode]): Seq[SparkPlanGraphNodeWrapper] = {
+    nodes.map {
+      case cluster: SparkPlanGraphCluster =>
+        val storedCluster = new SparkPlanGraphClusterWrapper(
+          cluster.id,
+          cluster.name,
+          cluster.desc,
+          toStoredNodes(cluster.nodes),
+          cluster.metrics)
+        new SparkPlanGraphNodeWrapper(null, storedCluster)
+
+      case node =>
+        new SparkPlanGraphNodeWrapper(node, null)
+    }
+  }
+
   private def onExecutionStart(event: SparkListenerSQLExecutionStart): Unit = {
     val SparkListenerSQLExecutionStart(executionId, description, details,
-      physicalPlanDescription, sparkPlanInfo, time) = event
-
-    def toStoredNodes(nodes: Seq[SparkPlanGraphNode]): Seq[SparkPlanGraphNodeWrapper] = {
-      nodes.map {
-        case cluster: SparkPlanGraphCluster =>
-          val storedCluster = new SparkPlanGraphClusterWrapper(
-            cluster.id,
-            cluster.name,
-            cluster.desc,
-            toStoredNodes(cluster.nodes),
-            cluster.metrics)
-          new SparkPlanGraphNodeWrapper(null, storedCluster)
-
-        case node =>
-          new SparkPlanGraphNodeWrapper(node, null)
-      }
-    }
+    physicalPlanDescription, sparkPlanInfo, time) = event
 
     val planGraph = SparkPlanGraph(sparkPlanInfo)
     val sqlPlanMetrics = planGraph.allNodes.flatMap { node =>
@@ -313,6 +319,27 @@ class SQLAppStatusListener(
         s"description: $description, details: $details," +
         s"physicalPlanDescription: $physicalPlanDescription")
     }
+  }
+
+  private def onAdaptiveExecutionUpdate(event: SparkListenerSQLAdaptiveExecutionUpdate): Unit = {
+    val SparkListenerSQLAdaptiveExecutionUpdate(executionId,
+    physicalPlanDescription, sparkPlanInfo) = event
+
+    val planGraph = SparkPlanGraph(sparkPlanInfo)
+    val sqlPlanMetrics = planGraph.allNodes.flatMap { node =>
+      node.metrics.map { metric => (metric.accumulatorId, metric) }
+    }.toMap.values.toList
+
+    val graphToStore = new SparkPlanGraphWrapper(
+      executionId,
+      toStoredNodes(planGraph.nodes),
+      planGraph.edges)
+    kvstore.write(graphToStore)
+
+    val exec = getOrCreateExecution(executionId)
+    exec.physicalPlanDescription = physicalPlanDescription
+    exec.metrics = sqlPlanMetrics
+    update(exec)
   }
 
   private def onExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
@@ -343,6 +370,7 @@ class SQLAppStatusListener(
 
   override def onOtherEvent(event: SparkListenerEvent): Unit = event match {
     case e: SparkListenerSQLExecutionStart => onExecutionStart(e)
+    case e: SparkListenerSQLAdaptiveExecutionUpdate => onAdaptiveExecutionUpdate(e)
     case e: SparkListenerSQLExecutionEnd => onExecutionEnd(e)
     case e: SparkListenerDriverAccumUpdates => onDriverAccumUpdates(e)
     case _ => // Ignore
