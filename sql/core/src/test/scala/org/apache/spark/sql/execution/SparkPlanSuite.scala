@@ -17,8 +17,9 @@
 
 package org.apache.spark.sql.execution
 
-import org.apache.spark.SparkEnv
+import org.apache.spark.{SparkEnv, SparkException}
 import org.apache.spark.sql.QueryTest
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
 
 class SparkPlanSuite extends QueryTest with SharedSQLContext {
@@ -58,4 +59,16 @@ class SparkPlanSuite extends QueryTest with SharedSQLContext {
       assert(SparkPlanInfo.fromSparkPlan(f.queryExecution.sparkPlan).metadata.nonEmpty)
     }
   }
+
+  test("SPARK-28613 should fail if uncompressed result is too big and limiting is enabled") {
+    // When config option is not set the result succeeds
+    val plan = spark.range(10000).queryExecution.executedPlan
+    assert(plan.executeCollect().length == 10000)
+    // When setting a low limit it fails
+    withSQLConf(SQLConf.MAX_COLLECT_SIZE.key -> "1KB") {
+      val plan = spark.range(10000).queryExecution.executedPlan
+      assertThrows[SparkException] { plan.executeCollect() }
+    }
+  }
+
 }

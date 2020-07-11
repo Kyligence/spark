@@ -77,6 +77,8 @@ private[spark] trait SparkListenerBus
         listener.onBlockUpdated(blockUpdated)
       case speculativeTaskSubmitted: SparkListenerSpeculativeTaskSubmitted =>
         listener.onSpeculativeTaskSubmitted(speculativeTaskSubmitted)
+      case logRollUp: SparkListenerLogRollUp =>
+        listener.onSparkListenerLogRollUp(logRollUp)
       case _ => listener.onOtherEvent(event)
     }
   }

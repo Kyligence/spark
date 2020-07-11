@@ -23,19 +23,20 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 import org.apache.commons.compress.utils.CountingOutputStream
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FSDataOutputStream, FileSystem, Path}
 import org.apache.hadoop.fs.permission.FsPermission
-import org.json4s.JsonAST.JValue
-import org.json4s.jackson.JsonMethods._
-import org.apache.spark.{SPARK_VERSION, SparkConf}
+import org.apache.hadoop.fs.{FSDataOutputStream, FileSystem, Path}
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
 import org.apache.spark.io.CompressionCodec
 import org.apache.spark.util.{JsonProtocol, Utils}
+import org.apache.spark.{SPARK_VERSION, SparkConf}
+import org.json4s.JsonAST.JValue
+import org.json4s.jackson.JsonMethods._
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * A SparkListener that logs events to persistent storage.
@@ -96,7 +97,7 @@ private[spark] class EventLoggingListener(
   private[scheduler] var logPath = getLogPath(logBaseDir, appId, appAttemptId, compressionCodecName)
 
   // For roll event log
-  private[scheduler] var rollDirPath = new Path(new Path(logBaseDir),ROLL_LOG_DIR_NAME_PREFIX+nameForAppAndAttempt(appId,appAttemptId))
+  private[scheduler] var rollDirPath = new Path(new Path(logBaseDir), nameForEventLogDir(appId, appAttemptId))
   private var currentRollLogFilePath: Path = _
   private var countingRollOutputStream: Option[CountingOutputStream] = None
 
@@ -117,7 +118,7 @@ private[spark] class EventLoggingListener(
         fileSystem.delete(rollDirPath, true)
       }
       fileSystem.mkdirs(rollDirPath, LOG_FILE_PERMISSIONS)
-      rollEventLogFile()
+      rollEventLogFile(null)
     }
 
   }
@@ -158,8 +159,11 @@ private[spark] class EventLoggingListener(
     }
   }
 
-  def rollEventLogFile(): Unit ={
+  def rollEventLogFile(logRollUp: SparkListenerLogRollUp): Unit ={
     closeWriter()
+    if (logRollUp != null && logRollUp.checkTime != null) {
+      SparkHadoopUtil.createFile(fileSystem, new Path(new Path(logBaseDir), logRollUp.checkTime), sparkConf.get(EVENT_LOG_ALLOW_EC))
+    }
     rollIndex += 1
     val now = System.currentTimeMillis()
     val base = s"${ROLL_LOG_FILE_NAME_PREFIX}${rollIndex}_" + nameForAppAndAttempt(appId, appAttemptId) +
@@ -174,6 +178,10 @@ private[spark] class EventLoggingListener(
       new PrintWriter(
         new OutputStreamWriter(countingRollOutputStream.get, StandardCharsets.UTF_8))
     }
+  }
+
+  def nameForEventLogDir(appId: String, appAttemptId: Option[String]): String = {
+    ROLL_LOG_DIR_NAME_PREFIX + nameForAppAndAttempt(appId, appAttemptId) + "#" + System.currentTimeMillis()
   }
 
   def nameForAppAndAttempt(appId: String, appAttemptId: Option[String]): String = {
@@ -200,7 +208,7 @@ private[spark] class EventLoggingListener(
       writer.foreach { w =>
         val currentLen = countingRollOutputStream.get.getBytesWritten
         if (currentLen  > eventRollFileMaxLength) {
-          rollEventLogFile()
+          rollEventLogFile(null)
         }
       }
     }
@@ -300,6 +308,11 @@ private[spark] class EventLoggingListener(
 
   // No-op because logging every update would be overkill
   override def onExecutorMetricsUpdate(event: SparkListenerExecutorMetricsUpdate): Unit = { }
+
+
+  override def onSparkListenerLogRollUp(logRollUp: SparkListenerLogRollUp): Unit = {
+    rollEventLogFile(logRollUp)
+  }
 
   override def onOtherEvent(event: SparkListenerEvent): Unit = {
     if (event.logEvent) {

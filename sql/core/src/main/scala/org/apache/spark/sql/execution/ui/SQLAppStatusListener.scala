@@ -239,7 +239,13 @@ class SQLAppStatusListener(
         return
       }
 
-      val updates = accumUpdates
+      val updates = if (skewDetectEnabled) {
+        import InternalAccumulator._
+        accumUpdates.filter { acc =>
+          acc.update.isDefined && (metrics.accumulatorIds.contains(acc.id) ||
+            shuffleRead.RECORDS_READ.equals(acc.name.orNull))
+        }.sortBy(_.id)
+      } else accumUpdates
         .filter { acc => acc.update.isDefined && metrics.accumulatorIds.contains(acc.id) }
         .sortBy(_.id)
 
@@ -252,7 +258,7 @@ class SQLAppStatusListener(
       val values = new Array[Long](updates.size)
       updates.zipWithIndex.foreach { case (acc, idx) =>
         ids(idx) = acc.id
-        names(idx) = acc.name.get
+        names(idx) = acc.name.orNull
         // In a live application, accumulators have Long values, but when reading from event
         // logs, they have String values. For now, assume all accumulators are Long and covert
         // accordingly.

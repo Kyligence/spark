@@ -186,6 +186,12 @@ case class SparkListenerApplicationEnd(time: Long) extends SparkListenerEvent
 case class SparkListenerLogStart(sparkVersion: String) extends SparkListenerEvent
 
 /**
+* Roll up eventLog for s3.
+*/
+@DeveloperApi
+case class SparkListenerLogRollUp(checkTime: String) extends SparkListenerEvent
+
+/**
  * Interface for listening to events from the Spark scheduler. Most applications should probably
  * extend SparkListener or SparkFirehoseListener directly, rather than implementing this class.
  *
@@ -315,6 +321,11 @@ private[spark] trait SparkListenerInterface {
    */
   def onSpeculativeTaskSubmitted(speculativeTask: SparkListenerSpeculativeTaskSubmitted): Unit
 
+/**
+* Called when need rolling up eventLog
+*/
+  def onSparkListenerLogRollUp(logRollUp: SparkListenerLogRollUp): Unit
+
   /**
    * Called when other events like SQL-specific events are posted.
    */
@@ -387,6 +398,9 @@ abstract class SparkListener extends SparkListenerInterface {
 
   override def onSpeculativeTaskSubmitted(
       speculativeTask: SparkListenerSpeculativeTaskSubmitted): Unit = { }
+
+  override def onSparkListenerLogRollUp(
+     logRollUp: SparkListenerLogRollUp): Unit = {}
 
   override def onOtherEvent(event: SparkListenerEvent): Unit = { }
 }
