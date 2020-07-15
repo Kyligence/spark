@@ -452,6 +452,11 @@ object DataSourceStrategy {
       case expressions.EqualNullSafe(Literal(v, t), a: Attribute) =>
         Some(sources.EqualNullSafe(a.name, convertToScala(v, t)))
 
+      case expressions.EqualNullSafe(expressions.Cast(a: Attribute, _, _), Literal(v, t)) =>
+        Some(sources.EqualNullSafe(a.name, convertToScala(v, t)))
+      case expressions.EqualNullSafe(Literal(v, t), expressions.Cast(a: Attribute, _, _)) =>
+        Some(sources.EqualNullSafe(a.name, convertToScala(v, t)))
+
       case expressions.GreaterThan(a: Attribute, Literal(v, t)) =>
         Some(sources.GreaterThan(a.name, convertToScala(v, t)))
       case expressions.GreaterThan(Literal(v, t), a: Attribute) =>
@@ -500,6 +505,10 @@ object DataSourceStrategy {
         val toScala = CatalystTypeConverters.createToScalaConverter(a.dataType)
         Some(sources.In(a.name, set.toArray.map(toScala)))
 
+      case expressions.InSet(expressions.Cast(a: Attribute, _, _), set) =>
+        val toScala = CatalystTypeConverters.createToScalaConverter(a.dataType)
+        Some(sources.In(a.name, set.toArray.map(toScala)))
+
       // Because we only convert In to InSet in Optimizer when there are more than certain
       // items. So it is possible we still get an In expression here that needs to be pushed
       // down.
@@ -508,9 +517,20 @@ object DataSourceStrategy {
         val toScala = CatalystTypeConverters.createToScalaConverter(a.dataType)
         Some(sources.In(a.name, hSet.toArray.map(toScala)))
 
+      case expressions.In(expressions.Cast(a: Attribute, _, _), list)
+        if !list.exists(!_.isInstanceOf[Literal]) =>
+        val hSet = list.map(e => e.eval(EmptyRow))
+        val toScala = CatalystTypeConverters.createToScalaConverter(a.dataType)
+        Some(sources.In(a.name, hSet.toArray.map(toScala)))
+
       case expressions.IsNull(a: Attribute) =>
         Some(sources.IsNull(a.name))
       case expressions.IsNotNull(a: Attribute) =>
+        Some(sources.IsNotNull(a.name))
+
+      case expressions.IsNull(expressions.Cast(a: Attribute, _, _)) =>
+        Some(sources.IsNull(a.name))
+      case expressions.IsNotNull(expressions.Cast(a: Attribute, _, _)) =>
         Some(sources.IsNotNull(a.name))
 
       case expressions.And(left, right) =>
