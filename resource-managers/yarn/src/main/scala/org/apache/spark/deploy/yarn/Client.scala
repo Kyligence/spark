@@ -152,8 +152,13 @@ private[spark] class Client(
       yarnClient.init(yarnConf)
       yarnClient.start()
 
-      logInfo("Requesting a new application from cluster with %d NodeManagers"
-        .format(yarnClient.getYarnClusterMetrics.getNumNodeManagers))
+      try {
+        logInfo("Requesting a new application from cluster with %d NodeManagers"
+          .format(yarnClient.getYarnClusterMetrics.getNumNodeManagers))
+      } catch {
+        case th: Throwable =>
+          logWarning("Get cluster metrics error", th)
+      }
 
       // Get a new application from our RM
       val newApp = yarnClient.createApplication()
