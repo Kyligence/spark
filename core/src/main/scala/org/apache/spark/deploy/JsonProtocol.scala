@@ -69,7 +69,9 @@ private[deploy] object JsonProtocol {
    *         `starttime` time in milliseconds that the application starts
    *         `name` the description of the application
    *         `cores` total cores granted to the application
+   *         `request_cores` max cores required to the application
    *         `user` name of the user who submitted the application
+   *         `coreperslave` mininal core required to each executor
    *         `memoryperslave` minimal memory in MB required to each executor
    *         `submitdate` time in Date that the application is submitted
    *         `state` state of the application, see [[ApplicationState]]
@@ -82,6 +84,7 @@ private[deploy] object JsonProtocol {
     ("cores" -> obj.coresGranted) ~
     ("request_cores" -> obj.desc.maxCores.getOrElse(0)) ~
     ("user" -> obj.desc.user) ~
+    ("coreperslave" -> obj.desc.coresPerExecutor) ~
     ("memoryperslave" -> obj.desc.memoryPerExecutorMB) ~
     ("submitdate" -> obj.submitDate.toString) ~
     ("state" -> obj.state.toString) ~
