@@ -46,14 +46,12 @@ private[spark] trait ExecutorAllocationClient {
       localityAwareTasks: Int,
       hostToLocalTaskCount: Map[String, Int]): Boolean
 
-  private[spark] def requestRefreshTotalExecutors(
-                                                   numExecutors: Int,
-                                                   localityAwareTasks: Int,
-                                                   hostToLocalTaskCount: Map[String, Int],
-                                                   forceKillOldExecutors: Boolean,
-                                                   newMemoryPerExecutorMB: Option[Int],
-                                                   newCoresPerExecutor: Option[Int]): Boolean = {
-    requestTotalExecutors(numExecutors, localityAwareTasks, hostToLocalTaskCount)
+  private[spark] def requestTotalExecutors(
+                                            numExecutors: Int,
+                                            forceKillOldExecutors: Boolean,
+                                            newMemoryPerExecutorMB: Option[Int],
+                                            newCoresPerExecutor: Option[Int]): Boolean = {
+    requestTotalExecutors(numExecutors, 0, Map.empty)
   }
 
   /**

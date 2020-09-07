@@ -1644,18 +1644,15 @@ class SparkContext(config: SparkConf) extends Logging {
   }
 
   @DeveloperApi
-  def requestRefreshTotalExecutors(
+  def requestTotalExecutors(
                          numExecutors: Int,
-                         localityAwareTasks: Int,
-                         hostToLocalTaskCount: scala.collection.immutable.Map[String, Int],
                          forceKillOldExecutors: Boolean,
                          newMemoryPerExecutorMB: Option[Int],
                          newCoresPerExecutor: Option[Int]
                                   ): Boolean = {
     schedulerBackend match {
       case b: ExecutorAllocationClient =>
-        b.requestRefreshTotalExecutors(numExecutors, localityAwareTasks,
-          hostToLocalTaskCount, forceKillOldExecutors,
+        b.requestTotalExecutors(numExecutors, forceKillOldExecutors,
           newMemoryPerExecutorMB, newCoresPerExecutor)
       case _ =>
         logWarning("Requesting executors is not supported by current scheduler.")

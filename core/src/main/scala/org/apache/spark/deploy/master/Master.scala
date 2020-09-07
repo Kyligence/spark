@@ -503,7 +503,7 @@ private[deploy] class Master(
     case RequestExecutors(appId, requestedTotal) =>
       context.reply(handleRequestExecutors(appId, requestedTotal))
 
-    case RefreshApplicationAndExecutors(appId, requestedTotal, forceKillOldExecutors,
+    case RequestExecutorsRenew(appId, requestedTotal, forceKillOldExecutors,
     newMemoryPerExecutorMB, newCoresPerExecutor) =>
       context.reply(handleRefreshApplicationAndExecutors(appId, requestedTotal,
         forceKillOldExecutors, newMemoryPerExecutorMB, newCoresPerExecutor))

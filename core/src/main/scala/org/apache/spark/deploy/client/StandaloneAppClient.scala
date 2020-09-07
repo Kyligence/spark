@@ -304,13 +304,13 @@ private[spark] class StandaloneAppClient(
     }
   }
 
-  def requestRefreshTotalExecutors(requestedTotal: Int,
+  def requestTotalExecutors(requestedTotal: Int,
                                    forceKillOldExecutors: Boolean,
                                    newMemoryPerExecutorMB: Option[Int],
                                    newCoresPerExecutor: Option[Int]): Future[Boolean] = {
     if (endpoint.get != null && appId.get != null) {
       endpoint.get.ask[Boolean](
-        RefreshApplicationAndExecutors(appId.get,
+        RequestExecutorsRenew(appId.get,
           requestedTotal, forceKillOldExecutors,
           newMemoryPerExecutorMB, newCoresPerExecutor))
     } else {

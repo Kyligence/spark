@@ -198,14 +198,14 @@ private[spark] class StandaloneSchedulerBackend(
     }
   }
 
-  protected override def doRequestRefreshTotalExecutors
+  protected override def doRequestTotalExecutors
   (requestedTotal: Int,
    forceKillOldExecutors: Boolean,
    newMemoryPerExecutorMB: Option[Int],
    newCoresPerExecutor: Option[Int]):
   Future[Boolean] = {
     Option(client) match {
-      case Some(c) => c.requestRefreshTotalExecutors(
+      case Some(c) => c.requestTotalExecutors(
         requestedTotal, forceKillOldExecutors,
         newMemoryPerExecutorMB, newCoresPerExecutor)
       case None =>

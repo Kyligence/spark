@@ -588,10 +588,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     defaultAskTimeout.awaitResult(response)
   }
 
-  final override def requestRefreshTotalExecutors(
-                                            numExecutors: Int,
-                                            localityAwareTasks: Int,
-                                            hostToLocalTaskCount: Map[String, Int],
+  final override def requestTotalExecutors(numExecutors: Int,
                                             forceKillOldExecutors: Boolean,
                                             newMemoryPerExecutorMB: Option[Int],
                                             newCoresPerExecutor: Option[Int]): Boolean = {
@@ -600,16 +597,17 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         "Attempted to request a negative number of executor(s) " +
           s"$numExecutors from the cluster manager. Please specify a positive number!")
     }
+    logInfo(s"request to total executor and renew $numExecutors , " +
+      s"forceKillOldExecutors:$forceKillOldExecutors , " +
+      s"newMemoryPerExecutorMB:$newMemoryPerExecutorMB ," +
+      s"newCoresPerExecutor:$newCoresPerExecutor")
 
     val response = synchronized {
       this.requestedTotalExecutors = numExecutors
-      this.localityAwareTasks = localityAwareTasks
-      this.hostToLocalTaskCount = hostToLocalTaskCount
-
       numPendingExecutors =
         math.max(numExecutors - numExistingExecutors + executorsPendingToRemove.size, 0)
 
-      doRequestRefreshTotalExecutors(numExecutors,
+      doRequestTotalExecutors(numExecutors,
         forceKillOldExecutors, newMemoryPerExecutorMB, newCoresPerExecutor)
     }
 
@@ -631,7 +629,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   protected def doRequestTotalExecutors(requestedTotal: Int): Future[Boolean] =
     Future.successful(false)
 
-  protected def doRequestRefreshTotalExecutors(requestedTotal: Int,
+  protected def doRequestTotalExecutors(requestedTotal: Int,
                                         forceKillOldExecutors: Boolean,
   newMemoryPerExecutorMB: Option[Int],
   newCoresPerExecutor: Option[Int]): Future[Boolean] =

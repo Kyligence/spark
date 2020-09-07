@@ -142,7 +142,7 @@ object DeployMessages {
 
   case class RequestExecutors(appId: String, requestedTotal: Int)
 
-  case class RefreshApplicationAndExecutors(appId: String, requestedTotal: Int
+  case class RequestExecutorsRenew(appId: String, requestedTotal: Int
                                             , forceKillOldExecutors: Boolean
                                             , newMemoryPerExecutorMB: Option[Int]
                                             , newCoresPerExecutor: Option[Int])
