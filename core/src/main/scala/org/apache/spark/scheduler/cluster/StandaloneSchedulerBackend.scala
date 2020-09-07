@@ -198,6 +198,21 @@ private[spark] class StandaloneSchedulerBackend(
     }
   }
 
+  protected override def doRequestRefreshTotalExecutors
+  (requestedTotal: Int,
+   forceKillOldExecutors: Boolean,
+   newMemoryPerExecutorMB: Option[Int],
+   newCoresPerExecutor: Option[Int]):
+  Future[Boolean] = {
+    Option(client) match {
+      case Some(c) => c.requestRefreshTotalExecutors(
+        requestedTotal, forceKillOldExecutors,
+        newMemoryPerExecutorMB, newCoresPerExecutor)
+      case None =>
+        logWarning("Attempted to request executors before driver fully initialized.")
+        Future.successful(false)
+    }
+  }
   /**
    * Kill the given list of executors through the Master.
    * @return whether the kill request is acknowledged.

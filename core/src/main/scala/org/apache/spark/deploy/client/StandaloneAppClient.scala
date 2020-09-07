@@ -304,6 +304,21 @@ private[spark] class StandaloneAppClient(
     }
   }
 
+  def requestRefreshTotalExecutors(requestedTotal: Int,
+                                   forceKillOldExecutors: Boolean,
+                                   newMemoryPerExecutorMB: Option[Int],
+                                   newCoresPerExecutor: Option[Int]): Future[Boolean] = {
+    if (endpoint.get != null && appId.get != null) {
+      endpoint.get.ask[Boolean](
+        RefreshApplicationAndExecutors(appId.get,
+          requestedTotal, forceKillOldExecutors,
+          newMemoryPerExecutorMB, newCoresPerExecutor))
+    } else {
+      logWarning("Attempted to request and refresh executors before driver fully initialized.")
+      Future.successful(false)
+    }
+  }
+
   /**
    * Kill the given list of executors through the Master.
    * @return whether the kill request is acknowledged.

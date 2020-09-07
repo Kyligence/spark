@@ -46,6 +46,16 @@ private[spark] trait ExecutorAllocationClient {
       localityAwareTasks: Int,
       hostToLocalTaskCount: Map[String, Int]): Boolean
 
+  private[spark] def requestRefreshTotalExecutors(
+                                                   numExecutors: Int,
+                                                   localityAwareTasks: Int,
+                                                   hostToLocalTaskCount: Map[String, Int],
+                                                   forceKillOldExecutors: Boolean,
+                                                   newMemoryPerExecutorMB: Option[Int],
+                                                   newCoresPerExecutor: Option[Int]): Boolean = {
+    requestTotalExecutors(numExecutors, localityAwareTasks, hostToLocalTaskCount)
+  }
+
   /**
    * Request an additional number of executors from the cluster manager.
    * @return whether the request is acknowledged by the cluster manager.

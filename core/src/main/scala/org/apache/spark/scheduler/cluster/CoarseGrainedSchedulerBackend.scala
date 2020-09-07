@@ -588,6 +588,34 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     defaultAskTimeout.awaitResult(response)
   }
 
+  final override def requestRefreshTotalExecutors(
+                                            numExecutors: Int,
+                                            localityAwareTasks: Int,
+                                            hostToLocalTaskCount: Map[String, Int],
+                                            forceKillOldExecutors: Boolean,
+                                            newMemoryPerExecutorMB: Option[Int],
+                                            newCoresPerExecutor: Option[Int]): Boolean = {
+    if (numExecutors < 0) {
+      throw new IllegalArgumentException(
+        "Attempted to request a negative number of executor(s) " +
+          s"$numExecutors from the cluster manager. Please specify a positive number!")
+    }
+
+    val response = synchronized {
+      this.requestedTotalExecutors = numExecutors
+      this.localityAwareTasks = localityAwareTasks
+      this.hostToLocalTaskCount = hostToLocalTaskCount
+
+      numPendingExecutors =
+        math.max(numExecutors - numExistingExecutors + executorsPendingToRemove.size, 0)
+
+      doRequestRefreshTotalExecutors(numExecutors,
+        forceKillOldExecutors, newMemoryPerExecutorMB, newCoresPerExecutor)
+    }
+
+    defaultAskTimeout.awaitResult(response)
+  }
+
   /**
    * Request executors from the cluster manager by specifying the total number desired,
    * including existing pending and running executors.
@@ -603,6 +631,11 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   protected def doRequestTotalExecutors(requestedTotal: Int): Future[Boolean] =
     Future.successful(false)
 
+  protected def doRequestRefreshTotalExecutors(requestedTotal: Int,
+                                        forceKillOldExecutors: Boolean,
+  newMemoryPerExecutorMB: Option[Int],
+  newCoresPerExecutor: Option[Int]): Future[Boolean] =
+    Future.successful(false)
   /**
    * Request that the cluster manager kill the specified executors.
    *

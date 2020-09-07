@@ -142,6 +142,11 @@ object DeployMessages {
 
   case class RequestExecutors(appId: String, requestedTotal: Int)
 
+  case class RefreshApplicationAndExecutors(appId: String, requestedTotal: Int
+                                            , forceKillOldExecutors: Boolean
+                                            , newMemoryPerExecutorMB: Option[Int]
+                                            , newCoresPerExecutor: Option[Int])
+
   case class KillExecutors(appId: String, executorIds: Seq[String])
 
   // Master to AppClient

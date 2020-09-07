@@ -503,6 +503,11 @@ private[deploy] class Master(
     case RequestExecutors(appId, requestedTotal) =>
       context.reply(handleRequestExecutors(appId, requestedTotal))
 
+    case RefreshApplicationAndExecutors(appId, requestedTotal, forceKillOldExecutors,
+    newMemoryPerExecutorMB, newCoresPerExecutor) =>
+      context.reply(handleRefreshApplicationAndExecutors(appId, requestedTotal,
+        forceKillOldExecutors, newMemoryPerExecutorMB, newCoresPerExecutor))
+
     case KillExecutors(appId, executorIds) =>
       val formattedExecutorIds = formatExecutorIds(executorIds)
       context.reply(handleKillExecutors(appId, formattedExecutorIds))
@@ -919,6 +924,47 @@ private[deploy] class Master(
         logWarning(s"Unknown application $appId requested $requestedTotal total executors.")
         false
     }
+  }
+
+  private def handleRefreshApplicationAndExecutors(appId: String, requestedTotal: Int
+                                                   , forceKillOldExecutors: Boolean
+                                                   , newMemoryPerExecutorMB: Option[Int]
+                                                   , newCoresPerExecutor: Option[Int]): Boolean = {
+    idToApp.get(appId) match {
+      case Some(appInfo) =>
+        logInfo(s"Application $appId requested to set total executors to $requestedTotal.")
+        val appDesc = appInfo.desc
+        appDesc.memoryPerExecutorMB = newMemoryPerExecutorMB.getOrElse(appDesc.memoryPerExecutorMB)
+        if (newCoresPerExecutor != null) {
+          appDesc.coresPerExecutor = newCoresPerExecutor
+        }
+        appInfo.executorLimit = requestedTotal
+
+        handleKillOldExecutors(appInfo, forceKillOldExecutors)
+        schedule()
+        true
+      case None =>
+        logWarning(s"Unknown application $appId requested $requestedTotal total executors.")
+        false
+    }
+  }
+
+  private def handleKillOldExecutors(appInfo: ApplicationInfo,
+                                     forceKillOldExecutors: Boolean): Boolean = {
+    for (appId <- appInfo.executors.keys) {
+      appInfo.executors.get(appId) match {
+        case Some(executorDesc) =>
+          if (forceKillOldExecutors || ExecutorState.isFinished(executorDesc.state)) {
+            killExecutor(executorDesc)
+            logInfo("remote kill executor " + executorDesc.fullId +
+              " on worker " + executorDesc.worker.id)
+          }
+          return true
+        case None =>
+          return false
+      }
+    }
+    true
   }
 
   /**
