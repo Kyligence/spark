@@ -207,6 +207,13 @@ private[spark] class StandaloneAppClient(
             logWarning("Attempted to request executors before registering with Master.")
             context.reply(false)
         }
+      case r: RequestExecutorsRenew =>
+        master match {
+          case Some(m) => askAndReplyAsync(m, context, r)
+          case None =>
+            logWarning("Attempted to request and renew executors.")
+            context.reply(false)
+        }
 
       case k: KillExecutors =>
         master match {
