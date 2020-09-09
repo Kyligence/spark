@@ -932,13 +932,23 @@ private[deploy] class Master(
                                                    , newCoresPerExecutor: Option[Int]): Boolean = {
     idToApp.get(appId) match {
       case Some(appInfo) =>
-        logInfo(s"Application $appId requested to set total executors to $requestedTotal.")
         val appDesc = appInfo.desc
-        appDesc.memoryPerExecutorMB = newMemoryPerExecutorMB.getOrElse(appDesc.memoryPerExecutorMB)
+        logInfo(s"Application $appId before requested and " +
+          s"renew to set total executors to $requestedTotal." +
+          s"newMemoryPerExecutorMB to $appDesc.memoryPerExecutorMB. " +
+          s"newCoresPerExecutor to $appDesc.coresPerExecutor.")
+        newMemoryPerExecutorMB match {
+          case Some(i) => appDesc.memoryPerExecutorMB = i
+        }
+
         if (newCoresPerExecutor != null) {
           appDesc.coresPerExecutor = newCoresPerExecutor
         }
         appInfo.executorLimit = requestedTotal
+
+        logInfo(s"Application $appId after requested and renew to set " +
+          s"newMemoryPerExecutorMB to $appDesc.memoryPerExecutorMB. " +
+          s"newCoresPerExecutor to $appDesc.coresPerExecutor.")
 
         handleKillOldExecutors(appInfo, forceKillOldExecutors)
         schedule()

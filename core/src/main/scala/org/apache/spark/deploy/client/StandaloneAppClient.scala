@@ -208,6 +208,7 @@ private[spark] class StandaloneAppClient(
             context.reply(false)
         }
       case r: RequestExecutorsRenew =>
+        logWarning("send RequestExecutorsRenew rpc ")
         master match {
           case Some(m) => askAndReplyAsync(m, context, r)
           case None =>
