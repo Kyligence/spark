@@ -926,6 +926,12 @@ private[deploy] class Master(
     }
   }
 
+  private def printExecutorStatus(appInfo: ApplicationInfo): Unit = {
+    logInfo(s"${appInfo.id} current executor:" +
+      appInfo.executors.values.map(executor => s"(${executor.id},${executor.state})")
+        .toList.mkString(" "))
+  }
+
   private def handleRefreshApplicationAndExecutors(appId: String, requestedTotal: Int
                                                    , forceKillOldExecutors: Boolean
                                                    , newMemoryPerExecutorMB: Option[Int]
@@ -934,9 +940,11 @@ private[deploy] class Master(
       case Some(appInfo) =>
         val appDesc = appInfo.desc
         logInfo(s"Application $appId before requested and " +
-          s"renew to set total executors to $requestedTotal." +
-          s"newMemoryPerExecutorMB to $appDesc.memoryPerExecutorMB. " +
-          s"newCoresPerExecutor to $appDesc.coresPerExecutor.")
+          s"renew to set total executors to $requestedTotal, " +
+          s"newMemoryPerExecutorMB to ${appDesc.memoryPerExecutorMB}, " +
+          s"newCoresPerExecutor to ${appDesc.coresPerExecutor}, ")
+        printExecutorStatus(appInfo)
+
         newMemoryPerExecutorMB match {
           case Some(i) => appDesc.memoryPerExecutorMB = i
         }
@@ -946,12 +954,13 @@ private[deploy] class Master(
         }
         appInfo.executorLimit = requestedTotal
 
-        logInfo(s"Application $appId after requested and renew to set " +
-          s"newMemoryPerExecutorMB to $appDesc.memoryPerExecutorMB. " +
-          s"newCoresPerExecutor to $appDesc.coresPerExecutor.")
-
         handleKillOldExecutors(appInfo, forceKillOldExecutors)
         schedule()
+
+        logInfo(s"Application $appId after requested and renew to set " +
+          s"newMemoryPerExecutorMB to ${appDesc.memoryPerExecutorMB}, " +
+          s"newCoresPerExecutor to ${appDesc.coresPerExecutor}, ")
+        printExecutorStatus(appInfo)
         true
       case None =>
         logWarning(s"Unknown application $appId requested $requestedTotal total executors.")
@@ -961,17 +970,17 @@ private[deploy] class Master(
 
   private def handleKillOldExecutors(appInfo: ApplicationInfo,
                                      forceKillOldExecutors: Boolean): Boolean = {
-    for (appId <- appInfo.executors.keys) {
-      appInfo.executors.get(appId) match {
+    for (execId <- appInfo.executors.keys) {
+      appInfo.executors.get(execId) match {
         case Some(executorDesc) =>
           if (forceKillOldExecutors || ExecutorState.isFinished(executorDesc.state)) {
+            appInfo.removeExecutor(executorDesc)
             killExecutor(executorDesc)
             logInfo("remote kill executor " + executorDesc.fullId +
               " on worker " + executorDesc.worker.id)
           }
-          return true
         case None =>
-          return false
+          logWarning("executor not found when kill")
       }
     }
     true
