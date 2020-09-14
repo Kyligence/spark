@@ -31,7 +31,7 @@ private[spark] case class ApplicationDescription(
     var coresPerExecutor: Option[Int] = None,
     // number of executors this application wants to start with,
     // only used if dynamic allocation is enabled
-    var initialExecutorLimit: Option[Int] = None,
+    initialExecutorLimit: Option[Int] = None,
     user: String = System.getProperty("user.name", "<unknown>")) {
 
   override def toString: String = "ApplicationDescription(" + name + ")"
