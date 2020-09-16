@@ -55,6 +55,8 @@ private[deploy] class HadoopFSDelegationTokenProvider
         tokenRenewalInterval = getTokenRenewalInterval(hadoopConf, sparkConf, fileSystems)
       }
 
+      logInfo(s"Token renew interval is :$tokenRenewalInterval")
+
       // Get the time of next renewal.
       val nextRenewalDate = tokenRenewalInterval.flatMap { interval =>
         val nextRenewalDates = fetchCreds.getAllTokens.asScala
@@ -123,13 +125,17 @@ private[deploy] class HadoopFSDelegationTokenProvider
     val renewIntervals = creds.getAllTokens.asScala.filter {
       _.decodeIdentifier().isInstanceOf[AbstractDelegationTokenIdentifier]
     }.flatMap { token =>
-      Try {
+      var interval = 18 * 3600L
+      try {
         val newExpiration = token.renew(hadoopConf)
         val identifier = token.decodeIdentifier().asInstanceOf[AbstractDelegationTokenIdentifier]
-        val interval = newExpiration - identifier.getIssueDate
+        interval = newExpiration - identifier.getIssueDate
         logInfo(s"Renewal interval is $interval for token ${token.getKind.toString}")
-        interval
-      }.toOption
+      } catch {
+        case throwable: Throwable =>
+          logInfo("Error for init Token", throwable)
+      }
+      List(interval)
     }
     if (renewIntervals.isEmpty) None else Some(renewIntervals.min)
   }
