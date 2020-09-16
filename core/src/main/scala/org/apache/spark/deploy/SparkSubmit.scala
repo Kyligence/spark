@@ -253,6 +253,10 @@ private[spark] class SparkSubmit extends Logging {
         assert(args.maybeRemote.isEmpty || sparkConf.contains("spark.local.connect"))
         v match {
           case "yarn" => YARN
+          case "yarn-client" | "yarn-cluster" =>
+            logWarning(s"Master ${args.master} is deprecated since 2.0." +
+              " Please use master \"yarn\" with specified deploy mode instead.")
+            YARN
           case m if m.startsWith("spark") => STANDALONE
           case m if m.startsWith("mesos") => MESOS
           case m if m.startsWith("k8s") => KUBERNETES
