@@ -368,7 +368,7 @@ class ParquetFileFormat
         val sharedConf = broadcastedHadoopConf.value.value
 
         logInfo(s"READ_RETRY before footerFileMetaData $filePath")
-        filePath.getFileSystem(sharedConf).open(filePath).close()
+        SpecificParquetRecordReaderBase.tryOpenCloseForS3(sharedConf, filePath)
         lazy val footerFileMetaData =
           ParquetFileReader.readFooter(sharedConf, filePath, SKIP_ROW_GROUPS).getFileMetaData
         // Try to push down filters when filter push-down is enabled.
@@ -426,7 +426,7 @@ class ParquetFileFormat
           if (returningBatch) {
             vectorizedReader.enableReturningBatches()
           }
-
+          logInfo(s"VectorizedParquetRecordReader after open $filePath" )
           // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
           iter.asInstanceOf[Iterator[InternalRow]]
         } else {

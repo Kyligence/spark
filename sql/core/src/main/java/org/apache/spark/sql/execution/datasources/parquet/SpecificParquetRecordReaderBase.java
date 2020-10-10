@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.hadoop.fs.FileSystem;
 import scala.Option;
 
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
@@ -199,8 +200,7 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
     config.set("spark.sql.parquet.int96AsTimestamp", "false");
 
     this.file = new Path(path);
-    // read retry before getFileStatus
-    this.file.getFileSystem(config).open(this.file).close();
+    tryOpenCloseForS3(config, this.file);
     long length = this.file.getFileSystem(config).getFileStatus(this.file).getLen();
     ParquetMetadata footer = readFooter(config, file, range(0, length));
 
@@ -329,6 +329,14 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
     } catch (InstantiationException | IllegalAccessException |
              NoSuchMethodException | InvocationTargetException e) {
       throw new BadConfigurationException("could not instantiate read support class", e);
+    }
+  }
+
+  public static void tryOpenCloseForS3(Configuration config, Path p) throws IOException {
+    FileSystem  fs = p.getFileSystem(config);
+    if (fs.getScheme().startsWith("s3")) { //s3, s3a, s3n
+      // read retry before getFileStatus
+      fs.open(p).close();
     }
   }
 }
