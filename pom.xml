@@ -130,7 +130,7 @@
     <!-- Version used for internal directory structure -->
     <hive.version.short>1.2.1</hive.version.short>
     <derby.version>10.12.1.1</derby.version>
-    <parquet.version>1.12.0-kylin-r5</parquet.version>
+    <parquet.version>1.12.0-kylin-r6</parquet.version>
     <fastutil.version>7.0.13</fastutil.version>
     <orc.version>1.5.2</orc.version>
     <orc.classifier>nohive</orc.classifier>
