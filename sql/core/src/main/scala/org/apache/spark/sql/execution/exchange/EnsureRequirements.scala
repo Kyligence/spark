@@ -36,7 +36,12 @@ import org.apache.spark.sql.internal.SQLConf
  * the input partition ordering requirements are met.
  */
 case class EnsureRequirements(conf: SQLConf) extends Rule[SparkPlan] {
-  private def defaultNumPreShufflePartitions: Int = conf.numShufflePartitions
+  private def defaultNumPreShufflePartitions: Int =
+    if (conf.adaptiveExecutionEnabled) {
+      conf.maxNumPostShufflePartitions
+    } else {
+      conf.numShufflePartitions
+    }
 
   private def ensureDistributionAndOrdering(operator: SparkPlan): SparkPlan = {
     val requiredChildDistributions: Seq[Distribution] = operator.requiredChildDistribution
