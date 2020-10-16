@@ -412,6 +412,7 @@ class PlannerSuite extends SharedSQLContext {
     val inputPlan = ShuffleExchangeExec(
       partitioning,
       DummySparkPlan(outputPartitioning = partitioning),
+      None,
       None)
     val outputPlan = EnsureRequirements(spark.sessionState.conf).apply(inputPlan)
     assertDistributionRequirementsAreSatisfied(outputPlan)
@@ -428,6 +429,7 @@ class PlannerSuite extends SharedSQLContext {
     val inputPlan = ShuffleExchangeExec(
       partitioning,
       DummySparkPlan(outputPartitioning = partitioning),
+      None,
       None)
     val outputPlan = EnsureRequirements(spark.sessionState.conf).apply(inputPlan)
     assertDistributionRequirementsAreSatisfied(outputPlan)

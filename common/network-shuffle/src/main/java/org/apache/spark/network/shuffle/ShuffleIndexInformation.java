@@ -59,9 +59,9 @@ public class ShuffleIndexInformation {
   /**
    * Get index offset for a particular reducer.
    */
-  public ShuffleIndexRecord getIndex(int reduceId, int numBlocks) {
+  public ShuffleIndexRecord getIndex(int reduceId) {
     long offset = offsets.get(reduceId);
-    long nextOffset = offsets.get(reduceId + numBlocks);
+    long nextOffset = offsets.get(reduceId + 1);
     return new ShuffleIndexRecord(offset, nextOffset - offset);
   }
 }
