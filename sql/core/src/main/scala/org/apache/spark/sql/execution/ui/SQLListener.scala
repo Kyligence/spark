@@ -39,13 +39,6 @@ case class SparkListenerSQLExecutionStart(
   extends SparkListenerEvent
 
 @DeveloperApi
-case class SparkListenerSQLAdaptiveExecutionUpdate(
-    executionId: Long,
-    physicalPlanDescription: String,
-    sparkPlanInfo: SparkPlanInfo)
-  extends SparkListenerEvent
-
-@DeveloperApi
 case class PostQueryExecutionForKylin(
     localProperties: Properties,
     executionId: Long,

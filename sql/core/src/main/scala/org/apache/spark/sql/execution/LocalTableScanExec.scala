@@ -21,7 +21,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, UnsafeProjection}
 import org.apache.spark.sql.execution.metric.SQLMetrics
-import org.apache.spark.sql.execution.statsEstimation.Statistics
 
 
 /**
@@ -76,11 +75,5 @@ case class LocalTableScanExec(
     val taken = unsafeRows.take(limit)
     longMetric("numOutputRows").add(taken.size)
     taken
-  }
-
-  override def computeStats(): Statistics = {
-    val rowSize = 8 + output.map(_.dataType.defaultSize).sum
-    val rowCount = rows.size
-    Statistics(rowSize * rowCount)
   }
 }
