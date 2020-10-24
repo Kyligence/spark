@@ -37,6 +37,12 @@ import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.apache.spark.sql.vectorized.ColumnarBatch;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.TimeZone;
 
 /**
  * A specialized RecordReader that reads into InternalRows or ColumnarBatches directly using the
@@ -265,7 +271,13 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     }
     columnarBatch.setNumRows(0);
     if (rowsReturned >= totalRowCount) return false;
-    checkEndOfRowGroup();
+    if (reader.useColumnIndexFilter()) {
+      if (checkEndOfRowGroupV2()) {
+        return false;
+      }
+    } else {
+      checkEndOfRowGroup();
+    }
 
     int num = (int) Math.min((long) capacity, totalCountLoadedSoFar - rowsReturned);
     for (int i = 0; i < columnReaders.length; ++i) {
@@ -325,4 +337,23 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     }
     totalCountLoadedSoFar += pages.getRowCount();
   }
+
+  private boolean checkEndOfRowGroupV2() throws IOException {
+    if (rowsReturned != totalCountLoadedSoFar) return false;
+    PageReadStore pages = reader.readNextFilteredRowGroup();
+    if (pages == null) {
+      return true;
+    }
+    List<ColumnDescriptor> columns = requestedSchema.getColumns();
+    List<Type> types = requestedSchema.asGroupType().getFields();
+    columnReaders = new VectorizedColumnReader[columns.size()];
+    for (int i = 0; i < columns.size(); ++i) {
+      if (missingColumns[i]) continue;
+      columnReaders[i] = new VectorizedColumnReader(columns.get(i), types.get(i).getOriginalType(),
+              pages.getPageReader(columns.get(i)), convertTz, datetimeRebaseMode);
+    }
+    totalCountLoadedSoFar += pages.getRowCount();
+    return false;
+  }
+
 }
