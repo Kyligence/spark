@@ -217,6 +217,15 @@ object SQLConf {
     .booleanConf
     .createWithDefault(true)
 
+  val SHUFFLE_RADIX_SORT_ENABLED = buildConf("spark.sql.sort.enableShuffleRadixSort")
+    .internal()
+    .doc("When true, enable use of radix sort when shuffle exchange. " +
+      "Radix sort is much faster but " +
+      "requires additional memory to be reserved up-front. The memory overhead may be " +
+      "significant when sorting very small rows (up to 50% more in this case).")
+    .booleanConf
+    .createWithDefault(false)
+
   val AUTO_BROADCASTJOIN_THRESHOLD = buildConf("spark.sql.autoBroadcastJoinThreshold")
     .doc("Configures the maximum size in bytes for a table that will be broadcast to all worker " +
       "nodes when performing a join.  By setting this value to -1 broadcasting can be disabled. " +
@@ -1799,6 +1808,8 @@ class SQLConf extends Serializable with Logging {
   def preferSortMergeJoin: Boolean = getConf(PREFER_SORTMERGEJOIN)
 
   def enableRadixSort: Boolean = getConf(RADIX_SORT_ENABLED)
+
+  def enableShuffleRadixSort: Boolean = getConf(SHUFFLE_RADIX_SORT_ENABLED)
 
   def isParquetSchemaMergingEnabled: Boolean = getConf(PARQUET_SCHEMA_MERGING_ENABLED)
 
