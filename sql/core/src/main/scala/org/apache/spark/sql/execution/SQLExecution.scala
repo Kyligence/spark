@@ -24,7 +24,7 @@ import org.apache.spark.{ErrorMessageFormat, JobArtifactSet, SparkContext, Spark
 import org.apache.spark.internal.config.{SPARK_DRIVER_PREFIX, SPARK_EXECUTOR_PREFIX}
 import org.apache.spark.internal.config.Tests.IS_TESTING
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.execution.ui.{SparkListenerSQLExecutionEnd, SparkListenerSQLExecutionStart}
+import org.apache.spark.sql.execution.ui.{PostQueryExecutionForKylin, SparkListenerSQLExecutionEnd, SparkListenerSQLExecutionStart}
 import org.apache.spark.sql.internal.StaticSQLConf.SQL_EVENT_TRUNCATE_LENGTH
 import org.apache.spark.util.Utils
 
@@ -122,6 +122,12 @@ object SQLExecution {
             modifiedConfigs = redactedConfigs,
             jobTags = sc.getJobTags()
           ))
+
+          sc.listenerBus.post(PostQueryExecutionForKylin(
+            sc.getLocalProperties,
+            executionId,
+            queryExecution))
+
           body
         } catch {
           case e: Throwable =>
