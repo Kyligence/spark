@@ -224,7 +224,8 @@ trait FileSourceScanLike extends DataSourceScanExec {
   lazy val driverMetrics = Map(
     "numFiles" -> SQLMetrics.createMetric(sparkContext, "number of files read"),
     "metadataTime" -> SQLMetrics.createTimingMetric(sparkContext, "metadata time"),
-    "filesSize" -> SQLMetrics.createSizeMetric(sparkContext, "size of files read")
+    "filesSize" -> SQLMetrics.createSizeMetric(sparkContext, "size of files read"),
+    "readBytes" -> SQLMetrics.createMetric(sparkContext, "number of read bytes")
   ) ++ {
     if (relation.partitionSchema.nonEmpty) {
       Map(
@@ -467,6 +468,7 @@ trait FileSourceScanLike extends DataSourceScanExec {
     if (!static || !partitionFilters.exists(isDynamicPruningFilter)) {
       driverMetrics("numFiles").set(filesNum)
       driverMetrics("filesSize").set(filesSize)
+      driverMetrics("readBytes").set(filesSize)
     } else {
       driverMetrics("staticFilesNum").set(filesNum)
       driverMetrics("staticFilesSize").set(filesSize)

@@ -29,6 +29,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils.Object
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils
 import org.apache.hadoop.mapred.InputFormat
 
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
@@ -42,7 +43,7 @@ import org.apache.spark.sql.hive._
 import org.apache.spark.sql.hive.client.HiveClientImpl
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{BooleanType, DataType}
-import org.apache.spark.util.Utils
+import org.apache.spark.util.{TaskCompletionListener, Utils}
 
 /**
  * The Hive table scan operator.  Column and partition pruning are both handled.
@@ -67,7 +68,9 @@ case class HiveTableScanExec(
   override def nodeName: String = s"Scan hive ${relation.tableMeta.qualifiedName}"
 
   override lazy val metrics = Map(
-    "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"))
+    "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
+    "readBytes" -> SQLMetrics.createMetric(sparkContext, "number of read bytes")
+  )
 
   override def producedAttributes: AttributeSet = outputSet ++
     AttributeSet(partitionPruningPred.flatMap(_.references))
@@ -217,6 +220,11 @@ case class HiveTableScanExec(
     // Avoid to serialize MetastoreRelation because schema is lazy. (see SPARK-15649)
     val outputSchema = schema
     rdd.mapPartitionsWithIndexInternal { (index, iter) =>
+      TaskContext.get().addTaskCompletionListener(new TaskCompletionListener {
+        override def onTaskCompletion(context: TaskContext): Unit = {
+          longMetric("readBytes").add(context.taskMetrics().inputMetrics.bytesRead)
+        }
+      })
       val proj = UnsafeProjection.create(outputSchema)
       proj.initialize(index)
       iter.map { r =>
