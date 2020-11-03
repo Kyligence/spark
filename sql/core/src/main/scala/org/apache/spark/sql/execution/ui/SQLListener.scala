@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.`type`.TypeFactory
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.util.Converter
+
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.scheduler._
 import org.apache.spark.sql.execution.{QueryExecution, SparkPlanInfo}
@@ -48,7 +49,9 @@ case class SparkListenerSQLExecutionStart(
     details: String,
     physicalPlanDescription: String,
     sparkPlanInfo: SparkPlanInfo,
-    time: Long)
+    time: Long,
+    nExecutionId: String = "",
+    queryExecution: QueryExecution = null)
   extends SparkListenerEvent
 
 @DeveloperApi

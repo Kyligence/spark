@@ -31,6 +31,8 @@ object SQLExecution {
 
   val EXECUTION_ID_KEY = "spark.sql.execution.id"
 
+  val N_EXECUTION_ID_KEY = "kylin.query.execution.id"
+
   private val _nextExecutionId = new AtomicLong(0)
 
   private def nextExecutionId: Long = _nextExecutionId.getAndIncrement
@@ -99,7 +101,9 @@ object SQLExecution {
             // `queryExecution.executedPlan` triggers query planning. If it fails, the exception
             // will be caught and reported in the `SparkListenerSQLExecutionEnd`
             sparkPlanInfo = SparkPlanInfo.fromSparkPlan(queryExecution.executedPlan),
-            time = System.currentTimeMillis()))
+            time = System.currentTimeMillis(),
+            sc.getLocalProperty(N_EXECUTION_ID_KEY),
+            queryExecution))
 
           sc.listenerBus.post(PostQueryExecutionForKylin(
             sc.getLocalProperties,
