@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.spark</groupId>
     <artifactId>spark-parent_2.12</artifactId>
-    <version>kyspark-3.1.x-4.x-r01</version>
+    <version>3.0.1-4.x-r01</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
