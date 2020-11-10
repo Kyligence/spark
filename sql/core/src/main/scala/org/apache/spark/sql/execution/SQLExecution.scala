@@ -101,9 +101,7 @@ object SQLExecution {
             // `queryExecution.executedPlan` triggers query planning. If it fails, the exception
             // will be caught and reported in the `SparkListenerSQLExecutionEnd`
             sparkPlanInfo = SparkPlanInfo.fromSparkPlan(queryExecution.executedPlan),
-            time = System.currentTimeMillis(),
-            sc.getLocalProperty(N_EXECUTION_ID_KEY),
-            queryExecution))
+            time = System.currentTimeMillis()))
 
           sc.listenerBus.post(PostQueryExecutionForKylin(
             sc.getLocalProperties,
