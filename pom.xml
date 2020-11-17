@@ -135,7 +135,7 @@
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
     <kafka.version>2.6.0</kafka.version>
     <derby.version>10.12.1.1</derby.version>
-    <parquet.version>1.10.1</parquet.version>
+    <parquet.version>1.12.0-kylin-r5</parquet.version>
     <orc.version>1.5.12</orc.version>
     <jetty.version>9.4.28.v20200408</jetty.version>
     <javaxservlet.version>3.1.0</javaxservlet.version>
