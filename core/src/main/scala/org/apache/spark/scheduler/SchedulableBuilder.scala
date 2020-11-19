@@ -203,3 +203,14 @@ private[spark] class FairSchedulableBuilder(val rootPool: Pool, conf: SparkConf)
     logInfo("Added task set " + manager.name + " tasks to pool " + poolName)
   }
 }
+
+private[spark] class SJFSchedulableBuilder(val rootPool: Pool)
+  extends SchedulableBuilder with Logging {
+  override def buildPools(): Unit = {
+
+  }
+
+  override def addTaskSetManager(manager: Schedulable, properties: Properties): Unit = {
+    rootPool.addSchedulable(manager)
+  }
+}
