@@ -2245,7 +2245,9 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with SQLConfHelper with Logg
       case ("date", Nil) => DateType
       case ("timestamp", Nil) => TimestampType
       case ("string", Nil) => StringType
+      case ("char", Nil) => StringType
       case ("character" | "char", length :: Nil) => CharType(length.getText.toInt)
+      case ("varchar", Nil) => StringType
       case ("varchar", length :: Nil) => VarcharType(length.getText.toInt)
       case ("binary", Nil) => BinaryType
       case ("decimal" | "dec" | "numeric", Nil) => DecimalType.USER_DEFAULT
