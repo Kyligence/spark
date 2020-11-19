@@ -74,6 +74,7 @@ class DataTypeAstBuilder extends SqlBaseParserBaseVisitor[AnyRef] {
       case (STRING, Nil) => StringType
       case (CHARACTER | CHAR, length :: Nil) => CharType(length.getText.toInt)
       case (VARCHAR, length :: Nil) => VarcharType(length.getText.toInt)
+      case (CHAR | VARCHAR, Nil) => StringType
       case (BINARY, Nil) => BinaryType
       case (DECIMAL | DEC | NUMERIC, Nil) => DecimalType.USER_DEFAULT
       case (DECIMAL | DEC | NUMERIC, precision :: Nil) =>
@@ -82,7 +83,7 @@ class DataTypeAstBuilder extends SqlBaseParserBaseVisitor[AnyRef] {
         DecimalType(precision.getText.toInt, scale.getText.toInt)
       case (VOID, Nil) => NullType
       case (INTERVAL, Nil) => CalendarIntervalType
-      case (CHARACTER | CHAR | VARCHAR, Nil) =>
+      case (CHARACTER, Nil) =>
         throw QueryParsingErrors.charTypeMissingLengthError(ctx.`type`.getText, ctx)
       case (ARRAY | STRUCT | MAP, Nil) =>
         throw QueryParsingErrors.nestedTypeMissingElementTypeError(ctx.`type`.getText, ctx)
