@@ -537,6 +537,17 @@ private[spark] class ApplicationMaster(
   }
 
   private def runExecutorLauncher(): Unit = {
+    val classLoader = Thread.currentThread.getContextClassLoader
+    val configs = Array("core-site.xml", "hdfs-site.xml",
+      "hive-site.xml", "mapred-site.xml", "yarn-site.xml")
+    configs.foreach{ fileName =>
+      val url = classLoader.getResource(fileName)
+      if (url != null) {
+        val path = url.getPath
+        logInfo(path + " is used as " + fileName)
+      } else logInfo(fileName + " does not exist in the resources")
+    }
+
     val hostname = Utils.localHostNameForURI()
     val amCores = sparkConf.get(AM_CORES)
     val rpcEnv = RpcEnv.create("sparkYarnAM", hostname, hostname, -1, sparkConf, securityMgr,
