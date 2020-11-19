@@ -102,6 +102,7 @@ object PropagateEmptyRelation extends Rule[LogicalPlan] with PredicateHelper wit
       case _: Sort => empty(p)
       case _: GlobalLimit if !p.isStreaming => empty(p)
       case _: LocalLimit if !p.isStreaming => empty(p)
+      case _: Offset if !p.isStreaming => empty(p)
       case _: Repartition => empty(p)
       case _: RepartitionByExpression => empty(p)
       // An aggregate with non-empty group expression will return one output row per group when the
