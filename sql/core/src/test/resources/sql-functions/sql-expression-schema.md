@@ -294,6 +294,7 @@
 | org.apache.spark.sql.catalyst.expressions.Upper | upper | SELECT upper('SparkSql') | struct<upper(SparkSql):string> |
 | org.apache.spark.sql.catalyst.expressions.Uuid | uuid | SELECT uuid() | struct<uuid():string> |
 | org.apache.spark.sql.catalyst.expressions.WeekDay | weekday | SELECT weekday('2009-07-30') | struct<weekday(CAST(2009-07-30 AS DATE)):int> |
+| org.apache.spark.sql.catalyst.expressions.Week | week | SELECT week('2008-02-20') | struct<weekofyear(CAST(2008-02-20 AS DATE)):int> |
 | org.apache.spark.sql.catalyst.expressions.WeekOfYear | weekofyear | SELECT weekofyear('2008-02-20') | struct<weekofyear(CAST(2008-02-20 AS DATE)):int> |
 | org.apache.spark.sql.catalyst.expressions.WidthBucket | width_bucket | SELECT width_bucket(5.3, 0.2, 10.6, 5) | struct<width_bucket(CAST(5.3 AS DOUBLE), CAST(0.2 AS DOUBLE), CAST(10.6 AS DOUBLE), CAST(5 AS BIGINT)):bigint> |
 | org.apache.spark.sql.catalyst.expressions.XxHash64 | xxhash64 | SELECT xxhash64('Spark', array(123), 2) | struct<xxhash64(Spark, array(123), 2):bigint> |
