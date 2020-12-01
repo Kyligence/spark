@@ -519,6 +519,13 @@ private[spark] class TaskSetManager(
   private def maybeFinishTaskSet(): Unit = {
     if (isZombie && runningTasks == 0) {
       sched.taskSetFinished(this)
+      val broadcastId = taskSet.tasks.head match {
+        case resultTask: ResultTask[Any, Any] =>
+          resultTask.taskBinary.id
+        case shuffleMapTask: ShuffleMapTask =>
+          shuffleMapTask.taskBinary.id
+      }
+      SparkEnv.get.broadcastManager.unbroadcast(broadcastId, true, false)
       if (tasksSuccessful == numTasks) {
         healthTracker.foreach(_.updateExcludedForSuccessfulTaskSet(
           taskSet.stageId,

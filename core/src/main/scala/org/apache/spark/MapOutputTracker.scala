@@ -913,7 +913,7 @@ private[spark] object MapOutputTracker extends Logging {
     if (arr.length >= minBroadcastSize) {
       // Use broadcast instead.
       // Important arr(0) is the tag == DIRECT, ignore that while deserializing !
-      val bcast = broadcastManager.newBroadcast(arr, isLocal)
+      val bcast = broadcastManager.newBroadcast(arr, isLocal, null)
       // toByteArray creates copy, so we can reuse out
       out.reset()
       out.write(BROADCAST)
