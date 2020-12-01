@@ -55,7 +55,7 @@ import org.apache.spark.rdd.RDD
 private[spark] class ResultTask[T, U](
     stageId: Int,
     stageAttemptId: Int,
-    taskBinary: Broadcast[Array[Byte]],
+    val taskBinary: Broadcast[Array[Byte]],
     partition: Partition,
     numPartitions: Int,
     locs: Seq[TaskLocation],
