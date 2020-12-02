@@ -36,6 +36,8 @@ private[spark] class BroadcastManager(
     securityManager: SecurityManager)
   extends Logging {
 
+  val cleanQueryBroadcast = conf.getBoolean("spark.broadcast.autoClean.enabled", false)
+
   private var initialized = false
   private var broadcastFactory: BroadcastFactory = null
   var cachedBroadcast = new ConcurrentHashMap[String, ListBuffer[Long]]()
@@ -77,7 +79,7 @@ private[spark] class BroadcastManager(
 
   def newBroadcast[T: ClassTag](value_ : T, isLocal: Boolean, executionId: String): Broadcast[T] = {
     val bid = nextBroadcastId.getAndIncrement()
-    if (executionId != null) {
+    if (executionId != null && cleanQueryBroadcast) {
       if (cachedBroadcast.containsKey(executionId)) {
         cachedBroadcast.get(executionId) += bid
       } else {
