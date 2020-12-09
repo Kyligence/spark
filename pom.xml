@@ -2923,5 +2923,26 @@
     <profile>
       <id>sparkr</id>
     </profile>
+    <profile>
+      <id>adl-support</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-azure-datalake</artifactId>
+          <version>2.7.1-4.x-kylin-r1</version>
+        </dependency>
+        <dependency>
+          <groupId>com.microsoft.azure</groupId>
+          <artifactId>azure-data-lake-store-sdk</artifactId>
+          <version>2.3.6</version>
+          <exclusions>
+            <exclusion>
+              <groupId>org.wildfly.openssl</groupId>
+              <artifactId>wildfly-openssl</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+      </dependencies>
+    </profile>
   </profiles>
 </project>
