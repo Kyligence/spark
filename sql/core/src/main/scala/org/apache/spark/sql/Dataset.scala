@@ -53,7 +53,7 @@ import org.apache.spark.sql.execution.python.EvaluatePython
 import org.apache.spark.sql.execution.stat.StatFunctions
 import org.apache.spark.sql.streaming.DataStreamWriter
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.util.SchemaUtils
+import org.apache.spark.sql.util.{CollectExecutionMemoryUsage, SchemaUtils}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.unsafe.array.ByteArrayMethods
 import org.apache.spark.unsafe.types.CalendarInterval
@@ -3384,10 +3384,26 @@ class Dataset[T] private[sql](
     // This projection writes output to a `InternalRow`, which means applying this projection is not
     // thread-safe. Here we create the projection inside this method to make `Dataset` thread-safe.
     val objProj = GenerateSafeProjection.generate(deserializer :: Nil)
-    plan.executeCollect().map { row =>
-      // The row returned by SafeProjection is `SpecificInternalRow`, which ignore the data type
-      // parameter of its `get` method, so it's safe to use null here.
-      objProj(row).get(0, null).asInstanceOf[T]
+    if (sqlContext.conf.maxMemUsageDuringCollect.isDefined) {
+      // init with new CollectExecutionMemoryUsage every time
+      CollectExecutionMemoryUsage.init(sqlContext.conf.maxMemUsageDuringCollect.get)
+      val rawRows = plan.executeCollect()
+      CollectExecutionMemoryUsage.current.addSizeOfArray(rawRows)
+      var checkedFirst = false
+      rawRows.map { row =>
+        val obj = objProj(row).get(0, null).asInstanceOf[T]
+        if (!checkedFirst) {
+          CollectExecutionMemoryUsage.current.addSizeOfArraySizeEstimatedByFistElement(obj)
+          checkedFirst = true
+        }
+        obj
+      }
+    } else {
+      plan.executeCollect().map { row =>
+        // The row returned by SafeProjection is `SpecificInternalRow`, which ignore the data type
+        // parameter of its `get` method, so it's safe to use null here.
+        objProj(row).get(0, null).asInstanceOf[T]
+      }
     }
   }
 

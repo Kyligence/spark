@@ -1586,6 +1586,11 @@ object SQLConf {
     .bytesConf(ByteUnit.BYTE)
     .createOptional
 
+  val MAX_MEM_USAGE_DURING_COLLECT = buildConf("spark.sql.driver.maxMemoryUsageDuringCollect")
+    .doc("Specify the maximum memory usage allowed during collect action.")
+    .bytesConf(ByteUnit.BYTE)
+    .createOptional
+
   val DEFAULT_DATABASE_NAME =
     buildConf("spark.sql.default.database")
     .stringConf
@@ -2008,6 +2013,9 @@ class SQLConf extends Serializable with Logging {
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
 
   def maxCollectSize: Option[Long] = getConf(SQLConf.MAX_COLLECT_SIZE)
+    .orElse(maxMemUsageDuringCollect)
+
+  def maxMemUsageDuringCollect : Option[Long] = getConf(SQLConf.MAX_MEM_USAGE_DURING_COLLECT)
 
   def defaultDataBase: String = getConf(SQLConf.DEFAULT_DATABASE_NAME)
 
