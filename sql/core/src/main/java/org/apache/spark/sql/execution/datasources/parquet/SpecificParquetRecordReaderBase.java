@@ -64,6 +64,7 @@ import org.apache.spark.TaskContext;
 import org.apache.spark.TaskContext$;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.StructType$;
+import org.apache.spark.sql.util.S3FileUtils;
 import org.apache.spark.util.AccumulatorV2;
 
 /**
@@ -199,6 +200,7 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
     config.set("spark.sql.parquet.int96AsTimestamp", "false");
 
     this.file = new Path(path);
+    S3FileUtils.tryOpenClose(config, this.file);
     long length = this.file.getFileSystem(config).getFileStatus(this.file).getLen();
     ParquetMetadata footer = readFooter(config, file, range(0, length));
 
