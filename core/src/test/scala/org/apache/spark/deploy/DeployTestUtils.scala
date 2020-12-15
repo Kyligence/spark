@@ -32,7 +32,7 @@ private[deploy] object DeployTestUtils {
 
   def createAppDesc(customResources: Map[String, Int] = Map.empty): ApplicationDescription = {
     val cmd = new Command("mainClass", List("arg1", "arg2"), Map(), Seq(), Seq(), Seq())
-    val rp = createDefaultResourceProfile(1234, customResources)
+    val rp = createDefaultResourceProfile(1234, customResources, Some(1))
     new ApplicationDescription("name", Some(4), cmd, "appUiUrl", rp)
   }
 
