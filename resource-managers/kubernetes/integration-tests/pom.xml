@@ -19,9 +19,9 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache.spark</groupId>
-    <artifactId>spark-parent_2.12</artifactId>
-    <version>3.0.0-kylin-r3</version>
-    <relativePath>../../../pom.xml</relativePath>
+  <artifactId>spark-parent_2.12</artifactId>
+  <version>3.0.0-kylin-r4</version>
+<relativePath>../../../pom.xml</relativePath>
   </parent>
 
   <artifactId>spark-kubernetes-integration-tests_2.12</artifactId>
