@@ -32,12 +32,12 @@ import org.apache.hadoop.hive.serde2.avro.AvroSerdeUtils.AvroTableProperties
 import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspectorConverters, StructObjectInspector}
 import org.apache.hadoop.hive.serde2.objectinspector.primitive._
 import org.apache.hadoop.io.Writable
-import org.apache.hadoop.mapred.{FileInputFormat, InputFormat => oldInputClass, JobConf}
+import org.apache.hadoop.mapred.{FileInputFormat, FileSplit, InputFormat => oldInputClass, JobConf, TextInputFormat}
 import org.apache.hadoop.mapreduce.{InputFormat => newInputClass}
 
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
-import org.apache.spark.rdd.{EmptyRDD, HadoopRDD, NewHadoopRDD, RDD, UnionRDD}
+import org.apache.spark.rdd.{EmptyRDD, HadoopPartition, HadoopRDD, NewHadoopRDD, RDD, UnionRDD}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.{InternalRow, SQLConfHelper}
 import org.apache.spark.sql.catalyst.analysis.CastSupport
@@ -89,6 +89,9 @@ class HadoopTableReader(
   private val _broadcastedHadoopConf =
     sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
 
+  private val skipHeaderLineCount = tableDesc.getProperties
+    .getProperty("skip.header.line.count", "0").toInt
+
   override def conf: SQLConf = sparkSession.sessionState.conf
 
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
@@ -122,6 +125,8 @@ class HadoopTableReader(
 
     val tablePath = hiveTable.getPath
     val inputPathStr = applyFilterIfNeeded(tablePath, filterOpt)
+    val isTextInputFormatTable = classOf[TextInputFormat]
+      .isAssignableFrom(hiveTable.getInputFormatClass)
 
     // logDebug("Table input: %s".format(tablePath))
     val hadoopRDD = createHadoopRDD(localTableDesc, inputPathStr)
@@ -129,11 +134,14 @@ class HadoopTableReader(
     val attrsWithIndex = attributes.zipWithIndex
     val mutableRow = new SpecificInternalRow(attributes.map(_.dataType))
 
-    val deserializedHadoopRDD = hadoopRDD.mapPartitions { iter =>
+    val deserializedHadoopRDD = hadoopRDD.mapPartitionsWithIndex { (index, iter) =>
       val hconf = broadcastedHadoopConf.value.value
       val deserializer = deserializerClass.getConstructor().newInstance()
       DeserializerLock.synchronized {
         deserializer.initialize(hconf, localTableDesc.getProperties)
+      }
+      if (isTextInputFormatTable) {
+        skipHeaderLines(iter, hadoopRDD, index)
       }
       HadoopTableReader.fillObject(iter, deserializer, attrsWithIndex, mutableRow, deserializer)
     }
@@ -203,6 +211,8 @@ class HadoopTableReader(
       val partDesc = Utilities.getPartitionDescFromTableDesc(tableDesc, partition, true)
       val partPath = partition.getDataLocation
       val inputPathStr = applyFilterIfNeeded(partPath, filterOpt)
+      val isTextInputFormatTable = classOf[TextInputFormat]
+        .isAssignableFrom(partDesc.getInputFileFormatClass)
       // Get partition field info
       val partSpec = partDesc.getPartSpec
       val partProps = partDesc.getProperties
@@ -244,8 +254,8 @@ class HadoopTableReader(
 
       // Create local references so that the outer object isn't serialized.
       val localTableDesc = tableDesc
-
-      createHadoopRDD(partDesc, inputPathStr).mapPartitions { iter =>
+      val rdd = createHadoopRDD(localTableDesc, inputPathStr)
+      rdd.mapPartitionsWithIndex { (index, iter) =>
         val hconf = broadcastedHiveConf.value.value
         val deserializer = localDeserializer.getConstructor().newInstance()
         // SPARK-13709: For SerDes like AvroSerDe, some essential information (e.g. Avro schema
@@ -271,6 +281,10 @@ class HadoopTableReader(
           tableSerDe.initialize(hconf, tableProperties)
         }
 
+        if (isTextInputFormatTable) {
+          skipHeaderLines(iter, rdd, index)
+        }
+
         // fill the non partition key attributes
         HadoopTableReader.fillObject(iter, deserializer, nonPartitionKeyAttrs,
           mutableRow, tableSerDe)
@@ -282,6 +296,21 @@ class HadoopTableReader(
       new EmptyRDD[InternalRow](sparkSession.sparkContext)
     } else {
       new UnionRDD(hivePartitionRDDs(0).context, hivePartitionRDDs)
+    }
+  }
+
+  private def skipHeaderLines(iter: Iterator[Writable], rdd: RDD[Writable], index: Int): Unit = {
+    if (skipHeaderLineCount > 0) {
+      rdd.partitions(index) match {
+        case partition: HadoopPartition =>
+          if (partition.inputSplit.t.asInstanceOf[FileSplit].getStart == 0) {
+            var i = 0
+            while (i < skipHeaderLineCount && iter.hasNext) {
+              i += 1
+              iter.next()
+            }
+          }
+      }
     }
   }
 
