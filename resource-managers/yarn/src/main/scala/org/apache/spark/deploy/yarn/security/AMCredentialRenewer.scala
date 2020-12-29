@@ -56,6 +56,9 @@ private[yarn] class AMCredentialRenewer(
 
   private val principal = sparkConf.get(PRINCIPAL).get
   private val keytab = sparkConf.get(KEYTAB).get
+  private val krb5Conf = sparkConf.get(KRB5_CONF).get
+  private val jaasConf = sparkConf.get(JAAS_CONF).get
+  private val zkPrincipal = sparkConf.get(ZK_PRINCIPAL).get
   private val credentialManager = new YARNHadoopDelegationTokenManager(sparkConf, hadoopConf)
 
   private val renewalExecutor: ScheduledExecutorService =
@@ -168,7 +171,22 @@ private[yarn] class AMCredentialRenewer(
   }
 
   private def doLogin(): UserGroupInformation = {
-    logInfo(s"Attempting to login to KDC using principal: $principal")
+    logInfo(s"Attempting to login to KDC using principal: $principal, keytab: $keytab")
+    if (krb5Conf != null) {
+      logInfo(s"Set system property java.security.krb5.conf $krb5Conf")
+      System.setProperty("java.security.krb5.conf", krb5Conf)
+    }
+
+    if (jaasConf != null) {
+      logInfo(s"Set system property java.security.auth.login.config $jaasConf")
+      System.setProperty("java.security.auth.login.config", jaasConf)
+    }
+
+    if (zkPrincipal != null) {
+      logInfo(s"Set system property zookeeper.server.principal $zkPrincipal")
+      System.setProperty("zookeeper.server.principal", zkPrincipal)
+    }
+    // login
     val ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keytab)
     logInfo("Successfully logged into KDC.")
     ugi

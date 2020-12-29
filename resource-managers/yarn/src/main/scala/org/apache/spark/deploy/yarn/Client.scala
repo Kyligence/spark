@@ -102,6 +102,9 @@ private[spark] class Client(
 
   private val principal = sparkConf.get(PRINCIPAL).orNull
   private val keytab = sparkConf.get(KEYTAB).orNull
+  private val krb5Conf = sparkConf.get(KRB5_CONF).orNull
+  private val jaasConf = sparkConf.get(JAAS_CONF).orNull
+  private val zkPrincipal = sparkConf.get(ZK_PRINCIPAL).orNull
   private val loginFromKeytab = principal != null
   private val amKeytabFileName: String = {
     require((principal == null) == (keytab == null),
@@ -111,6 +114,28 @@ private[spark] class Client(
       // Generate a file name that can be used for the keytab file, that does not conflict
       // with any user file.
       new File(keytab).getName() + "-" + UUID.randomUUID().toString
+    } else {
+      null
+    }
+  }
+
+  private val amKrb5ConfFileName: String = {
+    if (loginFromKeytab && krb5Conf != null) {
+      logInfo(s"Kerberos krb5 conf: $krb5Conf")
+      // Generate a file name that can be used for the krb5 conf file, that does not conflict
+      // with any user file.
+      new File(krb5Conf).getName() + "-" + UUID.randomUUID().toString
+    } else {
+      null
+    }
+  }
+
+  private val amJaasConfFileName: String = {
+    if (loginFromKeytab && jaasConf != null) {
+      logInfo(s"Kerberos jaas conf: $jaasConf")
+      // Generate a file name that can be used for the jaas conf file, that does not conflict
+      // with any user file.
+      new File(jaasConf).getName() + "-" + UUID.randomUUID().toString
     } else {
       null
     }
@@ -220,6 +245,19 @@ private[spark] class Client(
     }
 
     if (isClusterMode && principal != null && keytab != null) {
+
+      if (krb5Conf != null) {
+        System.setProperty("java.security.krb5.conf", krb5Conf)
+      }
+
+      if (jaasConf != null) {
+        System.setProperty("java.security.auth.login.config", jaasConf)
+      }
+
+      if (zkPrincipal != null) {
+        System.setProperty("zookeeper.server.principal", zkPrincipal)
+      }
+
       val newUgi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keytab)
       newUgi.doAs(new PrivilegedExceptionAction[Unit] {
         override def run(): Unit = {
@@ -494,12 +532,28 @@ private[spark] class Client(
     // If we passed in a keytab, make sure we copy the keytab to the staging directory on
     // HDFS, and setup the relevant environment vars, so the AM can login again.
     if (loginFromKeytab) {
-      logInfo("To enable the AM to login from keytab, credentials are being copied over to the AM" +
+      logInfo("To enable the AM to login from keytab," + //
+        " credentials and conf are being copied over to the AM" + //
         " via the YARN Secure Distributed Cache.")
-      val (_, localizedPath) = distribute(keytab,
+      val (_, localizedKeytab) = distribute(keytab,
         destName = Some(amKeytabFileName),
         appMasterOnly = true)
-      require(localizedPath != null, "Keytab file already distributed.")
+      require(localizedKeytab != null, "Keytab file already distributed.")
+
+      if (krb5Conf != null) {
+        val (_, localizedKrb5Conf) = distribute(krb5Conf,
+          destName = Some(amKrb5ConfFileName),
+          appMasterOnly = true)
+        require(localizedKrb5Conf != null, "Krb5 conf file already distributed.")
+      }
+
+      if (jaasConf != null) {
+        val (_, localizedJaasConf) = distribute(jaasConf,
+          destName = Some(amJaasConfFileName),
+          appMasterOnly = true)
+        require(localizedJaasConf != null, "Jaas conf file already distributed.")
+      }
+
     }
 
     /**
@@ -774,6 +828,8 @@ private[spark] class Client(
       // Override spark.yarn.key to point to the location in distributed cache which will be used
       // by AM.
       Option(amKeytabFileName).foreach { k => props.setProperty(KEYTAB.key, k) }
+      Option(amKrb5ConfFileName).foreach { k => props.setProperty(KRB5_CONF.key, k) }
+      Option(amJaasConfFileName).foreach { k => props.setProperty(JAAS_CONF.key, k) }
       confStream.putNextEntry(new ZipEntry(SPARK_CONF_FILE))
       val writer = new OutputStreamWriter(confStream, StandardCharsets.UTF_8)
       props.store(writer, "Spark configuration.")

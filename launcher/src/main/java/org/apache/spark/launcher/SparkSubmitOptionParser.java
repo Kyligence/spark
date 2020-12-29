@@ -75,6 +75,9 @@ class SparkSubmitOptionParser {
   protected final String NUM_EXECUTORS = "--num-executors";
   protected final String PRINCIPAL = "--principal";
   protected final String QUEUE = "--queue";
+  protected final String KRB5_CONF = "--krb5-conf";
+  protected final String JAAS_CONF = "--jaas-conf";
+  protected final String ZK_PRINCIPAL = "--zookeeper-principal";
 
   /**
    * This is the canonical list of spark-submit options. Each entry in the array contains the
@@ -101,6 +104,9 @@ class SparkSubmitOptionParser {
     { FILES },
     { JARS },
     { KEYTAB },
+    { KRB5_CONF },
+    { JAAS_CONF },
+    { ZK_PRINCIPAL },
     { KILL_SUBMISSION },
     { MASTER },
     { NAME },

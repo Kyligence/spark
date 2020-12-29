@@ -75,6 +75,10 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   var proxyUser: String = null
   var principal: String = null
   var keytab: String = null
+  var krb5Conf: String = null
+  var jaasConf: String = null
+  var zkPrincipal: String = null
+
   private var dynamicAllocationEnabled: Boolean = false
 
   // Standalone cluster mode only
@@ -201,6 +205,10 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
     queue = Option(queue).orElse(sparkProperties.get("spark.yarn.queue")).orNull
     keytab = Option(keytab).orElse(sparkProperties.get("spark.yarn.keytab")).orNull
     principal = Option(principal).orElse(sparkProperties.get("spark.yarn.principal")).orNull
+    krb5Conf = Option(krb5Conf).orElse(sparkProperties.get("spark.yarn.krb5.conf")).orNull
+    jaasConf = Option(jaasConf).orElse(sparkProperties.get("spark.yarn.jaas.conf")).orNull
+    zkPrincipal = Option(zkPrincipal) //
+      .orElse(sparkProperties.get("spark.yarn.zookeeper.principal")).orNull
     dynamicAllocationEnabled =
       sparkProperties.get("spark.dynamicAllocation.enabled").exists("true".equalsIgnoreCase)
 
@@ -456,6 +464,15 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
 
       case KEYTAB =>
         keytab = value
+
+      case KRB5_CONF =>
+        krb5Conf = value
+
+      case JAAS_CONF =>
+        jaasConf = value
+
+      case ZK_PRINCIPAL =>
+        zkPrincipal = value
 
       case HELP =>
         printUsageAndExit(0)

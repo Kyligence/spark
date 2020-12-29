@@ -174,6 +174,18 @@ package object config {
     .doc("Name of the Kerberos principal.")
     .stringConf.createOptional
 
+  private[spark] val ZK_PRINCIPAL = ConfigBuilder("spark.yarn.zookeeper.principal")
+    .doc("Name of the zookeeper principal.")
+    .stringConf.createOptional
+
+  private[spark] val KRB5_CONF = ConfigBuilder("spark.yarn.krb5.conf")
+    .doc("Location of the Kerberos krb5 conf.")
+    .stringConf.createOptional
+
+  private[spark] val JAAS_CONF = ConfigBuilder("spark.yarn.jaas.conf")
+    .doc("Location of the Kerberos jaas conf.")
+    .stringConf.createOptional
+
   private[spark] val EXECUTOR_INSTANCES = ConfigBuilder("spark.executor.instances")
     .intConf
     .createOptional

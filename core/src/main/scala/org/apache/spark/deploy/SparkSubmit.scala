@@ -345,6 +345,29 @@ private[spark] class SparkSubmit extends Logging {
           // properties and then loaded by SparkConf
           sparkConf.set(KEYTAB, args.keytab)
           sparkConf.set(PRINCIPAL, args.principal)
+
+          if (args.krb5Conf != null) {
+            require(new File(args.krb5Conf).exists(), //
+              s"Krb5 conf file: ${args.krb5Conf} does not exist")
+            sparkConf.set(KRB5_CONF, args.krb5Conf)
+            logInfo(s"Set system property java.security.krb5.conf ${args.krb5Conf}")
+            System.setProperty("java.security.krb5.conf", args.krb5Conf)
+          }
+
+          if (args.jaasConf != null) {
+            require(new File(args.jaasConf).exists(), //
+              s"Jaas conf file: ${args.jaasConf} does not exist")
+            sparkConf.set(JAAS_CONF, args.jaasConf)
+            logInfo(s"Set system property java.security.auth.login.config ${args.jaasConf}")
+            System.setProperty("java.security.auth.login.config", args.jaasConf)
+          }
+
+          if (args.zkPrincipal != null) {
+            sparkConf.set(ZK_PRINCIPAL, args.zkPrincipal)
+            logInfo(s"Set system property zookeeper.server.principal ${args.zkPrincipal}")
+            System.setProperty("zookeeper.server.principal", args.zkPrincipal)
+          }
+
           UserGroupInformation.loginUserFromKeytab(args.principal, args.keytab)
         }
       }
@@ -539,6 +562,10 @@ private[spark] class SparkSubmit extends Logging {
       OptionAssigner(args.archives, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.archives"),
       OptionAssigner(args.principal, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.principal"),
       OptionAssigner(args.keytab, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.keytab"),
+      OptionAssigner(args.krb5Conf, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.krb5.conf"),
+      OptionAssigner(args.jaasConf, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.jaas.conf"),
+      OptionAssigner(args.zkPrincipal, YARN, ALL_DEPLOY_MODES, //
+        confKey = "spark.yarn.zookeeper.principal"),
 
       // Other options
       OptionAssigner(args.executorCores, STANDALONE | YARN | KUBERNETES, ALL_DEPLOY_MODES,
