@@ -56,9 +56,9 @@ private[yarn] class AMCredentialRenewer(
 
   private val principal = sparkConf.get(PRINCIPAL).get
   private val keytab = sparkConf.get(KEYTAB).get
-  private val krb5Conf = sparkConf.get(KRB5_CONF).get
-  private val jaasConf = sparkConf.get(JAAS_CONF).get
-  private val zkPrincipal = sparkConf.get(ZK_PRINCIPAL).get
+  private val krb5Conf = sparkConf.get(KRB5_CONF).orNull
+  private val jaasConf = sparkConf.get(JAAS_CONF).orNull
+  private val zkPrincipal = sparkConf.get(ZK_PRINCIPAL).orNull
   private val credentialManager = new YARNHadoopDelegationTokenManager(sparkConf, hadoopConf)
 
   private val renewalExecutor: ScheduledExecutorService =
