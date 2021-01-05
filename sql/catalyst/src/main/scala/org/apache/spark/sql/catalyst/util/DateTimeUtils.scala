@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.util
 import java.sql.{Date, Timestamp}
 import java.time._
 import java.time.temporal.{ChronoField, ChronoUnit, IsoFields, Temporal}
-import java.util.Locale
+import java.util.{Locale}
 import java.util.concurrent.TimeUnit._
 import javax.xml.bind.DatatypeConverter
 
@@ -45,6 +45,8 @@ object DateTimeUtils extends SparkDateTimeUtils {
   // See http://stackoverflow.com/questions/466321/convert-unix-timestamp-to-julian
   // It's 2440587.5, rounding up to be compatible with Hive.
   final val JULIAN_DAY_OF_EPOCH = 2440588
+
+  type SQLTimestamp = Long
 
   val TIMEZONE_OPTION = "timeZone"
 
@@ -748,8 +750,8 @@ object DateTimeUtils extends SparkDateTimeUtils {
    * Returns the ceil date time from original date time and trunc level.
    * Trunc level should be generated using `parseTruncLevel()`, should be between 1 and 8
    */
-  def ceilTimestamp(t: Long, level: Int, timeZone: TimeZone): Long = {
-    val floorValue = truncTimestamp(t, level, getZoneId(timeZone.getID))
+  def ceilTimestamp(t: SQLTimestamp, level: Int, zoneId: ZoneId): SQLTimestamp = {
+    val floorValue = truncTimestamp(t, level, zoneId)
     if (floorValue == t) {
       floorValue
     } else {
@@ -767,7 +769,7 @@ object DateTimeUtils extends SparkDateTimeUtils {
           // caller make sure that this should never be reached
           sys.error(s"Invalid trunc level: $level")
       }
-      truncTimestamp(floorValue + increment, level, getZoneId(timeZone.getID))
+      truncTimestamp(floorValue + increment, level, zoneId)
     }
   }
 }
