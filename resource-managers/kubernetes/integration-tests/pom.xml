@@ -20,7 +20,7 @@
   <parent>
     <groupId>org.apache.spark</groupId>
     <artifactId>spark-parent_2.12</artifactId>
-    <version>3.3.1</version>
+    <version>3.1.x-kylin-4.x-r1</version>
     <relativePath>../../../pom.xml</relativePath>
   </parent>
 
@@ -46,7 +46,6 @@
     <spark.kubernetes.test.dockerFile>Dockerfile.java17</spark.kubernetes.test.dockerFile>
 
     <test.exclude.tags></test.exclude.tags>
-    <test.default.exclude.tags>org.apache.spark.deploy.k8s.integrationtest.YuniKornTag</test.default.exclude.tags>
     <test.include.tags></test.include.tags>
     <volcano.exclude>**/*Volcano*.scala</volcano.exclude>
   </properties>
@@ -138,7 +137,7 @@
                 <argument>${spark.kubernetes.test.dockerFile}</argument>
 
                 <argument>--test-exclude-tags</argument>
-                <argument>"${test.exclude.tags},${test.default.exclude.tags}"</argument>
+                <argument>"${test.exclude.tags}"</argument>
               </arguments>
             </configuration>
           </execution>
@@ -180,7 +179,7 @@
             <spark.kubernetes.test.pythonImage>${spark.kubernetes.test.pythonImage}</spark.kubernetes.test.pythonImage>
             <spark.kubernetes.test.rImage>${spark.kubernetes.test.rImage}</spark.kubernetes.test.rImage>
           </systemProperties>
-          <tagsToExclude>${test.exclude.tags},${test.default.exclude.tags}</tagsToExclude>
+          <tagsToExclude>${test.exclude.tags}</tagsToExclude>
           <tagsToInclude>${test.include.tags}</tagsToInclude>
         </configuration>
         <executions>
