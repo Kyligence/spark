@@ -307,7 +307,7 @@ case class EnsureRequirements(conf: SQLConf) extends Rule[SparkPlan] {
 
   def apply(plan: SparkPlan): SparkPlan = plan.transformUp {
     // TODO: remove this after we create a physical operator for `RepartitionByExpression`.
-    case operator @ ShuffleExchangeExec(upper: HashPartitioning, child, _, _) =>
+    case operator @ ShuffleExchangeExec(upper: HashPartitioning, child, _, Some(false)) =>
       child.outputPartitioning match {
         case lower: HashPartitioning if upper.semanticEquals(lower) => child
         case _ => operator
