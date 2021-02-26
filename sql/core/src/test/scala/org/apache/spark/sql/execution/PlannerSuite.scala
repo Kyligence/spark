@@ -430,7 +430,7 @@ class PlannerSuite extends SharedSQLContext {
       partitioning,
       DummySparkPlan(outputPartitioning = partitioning),
       None,
-      None)
+      Some(false))
     val outputPlan = EnsureRequirements(spark.sessionState.conf).apply(inputPlan)
     assertDistributionRequirementsAreSatisfied(outputPlan)
     if (outputPlan.collect { case e: ShuffleExchangeExec => true }.size == 1) {
