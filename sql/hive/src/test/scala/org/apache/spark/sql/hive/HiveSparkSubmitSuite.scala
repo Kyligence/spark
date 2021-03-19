@@ -341,7 +341,10 @@ class HiveSparkSubmitSuite
 
   test("SPARK-34772: RebaseDateTime loadRebaseRecords should use Spark classloader " +
     "instead of context") {
+<<<<<<< HEAD
     assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
+=======
+>>>>>>> 58509565f8 ([SPARK-34772][SQL] RebaseDateTime loadRebaseRecords should use Spark classloader instead of context)
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
 
     // We need to specify the metastore database location in case of conflict with other hive
@@ -869,6 +872,21 @@ object SPARK_18989_DESC_TABLE {
       spark.sql("DESC base64_tbl")
     } finally {
       spark.sql("DROP TABLE IF EXISTS base64_tbl")
+    }
+  }
+}
+
+object SPARK_34772 {
+  def main(args: Array[String]): Unit = {
+    val spark = SparkSession.builder()
+      .config(UI_ENABLED.key, "false")
+      .enableHiveSupport()
+      .getOrCreate()
+    try {
+      spark.sql("CREATE TABLE t (c int) PARTITIONED BY (p date)")
+      spark.sql("SELECT * FROM t WHERE p='2021-01-01'").collect()
+    } finally {
+      spark.sql("DROP TABLE IF EXISTS t")
     }
   }
 }
