@@ -37,7 +37,7 @@ import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.hive.test.{HiveTestJars, TestHiveContext}
-import org.apache.spark.sql.internal.SQLConf.SHUFFLE_PARTITIONS
+import org.apache.spark.sql.internal.SQLConf.{LEGACY_TIME_PARSER_POLICY, SHUFFLE_PARTITIONS}
 import org.apache.spark.sql.internal.StaticSQLConf.WAREHOUSE_PATH
 import org.apache.spark.sql.types.{DecimalType, StructType}
 import org.apache.spark.tags.{ExtendedHiveTest, SlowHiveTest}
@@ -154,7 +154,7 @@ class HiveSparkSubmitSuite
     // For more detail, see sql/hive/src/test/resources/regression-test-SPARK-8489/*scala.
     // TODO: revisit for Scala 2.13 support
     val version = Properties.versionNumberString match {
-      case v if v.startsWith("2.12") || v.startsWith("2.13") => v.substring(0, 4)
+      case v if v.startsWith("2.12") => v.substring(0, 4)
       case x => throw new Exception(s"Unsupported Scala Version: $x")
     }
     val jarDir = getTestResourcePath("regression-test-SPARK-8489")
@@ -433,11 +433,10 @@ object SetWarehouseLocationTest extends Logging {
 
     }
 
-    val qualifiedWHPath = FileUtils.makeQualified(
-      new Path(expectedWarehouseLocation), sparkSession.sparkContext.hadoopConfiguration).toString
-    if (sparkSession.conf.get(WAREHOUSE_PATH.key) != qualifiedWHPath) {
+    if (sparkSession.conf.get(WAREHOUSE_PATH.key) != expectedWarehouseLocation) {
       throw new Exception(
-        s"${WAREHOUSE_PATH.key} is not set to the expected warehouse location $qualifiedWHPath.")
+        s"${WAREHOUSE_PATH.key} is not set to the expected warehouse location " +
+        s"$expectedWarehouseLocation.")
     }
 
     val catalog = sparkSession.sessionState.catalog
@@ -450,7 +449,7 @@ object SetWarehouseLocationTest extends Logging {
       val tableMetadata =
         catalog.getTableMetadata(TableIdentifier("testLocation", Some("default")))
       val expectedLocation =
-        CatalogUtils.stringToURI(s"$qualifiedWHPath/testlocation")
+        CatalogUtils.stringToURI(s"file:${expectedWarehouseLocation.toString}/testlocation")
       val actualLocation = tableMetadata.location
       if (actualLocation != expectedLocation) {
         throw new Exception(
@@ -466,7 +465,7 @@ object SetWarehouseLocationTest extends Logging {
       val tableMetadata =
         catalog.getTableMetadata(TableIdentifier("testLocation", Some("testLocationDB")))
       val expectedLocation = CatalogUtils.stringToURI(
-        s"$qualifiedWHPath/testlocationdb.db/testlocation")
+        s"file:${expectedWarehouseLocation.toString}/testlocationdb.db/testlocation")
       val actualLocation = tableMetadata.location
       if (actualLocation != expectedLocation) {
         throw new Exception(
@@ -737,7 +736,7 @@ object SPARK_9757 extends QueryTest {
         val df =
           hiveContext
             .range(10)
-            .select(call_udf("struct", ($"id" + 0.2) cast DecimalType(10, 3)) as "dec_struct")
+            .select(callUDF("struct", ($"id" + 0.2) cast DecimalType(10, 3)) as "dec_struct")
         df.write.option("path", dir.getCanonicalPath).mode("overwrite").saveAsTable("t")
         checkAnswer(hiveContext.table("t"), df)
       }
@@ -795,6 +794,8 @@ object SPARK_14244 extends QueryTest {
 
     val hiveContext = new TestHiveContext(sparkContext)
     spark = hiveContext.sparkSession
+
+    import hiveContext.implicits._
 
     try {
       val window = Window.orderBy("id")
@@ -868,21 +869,6 @@ object SPARK_18989_DESC_TABLE {
       spark.sql("DESC base64_tbl")
     } finally {
       spark.sql("DROP TABLE IF EXISTS base64_tbl")
-    }
-  }
-}
-
-object SPARK_34772 {
-  def main(args: Array[String]): Unit = {
-    val spark = SparkSession.builder()
-      .config(UI_ENABLED.key, "false")
-      .enableHiveSupport()
-      .getOrCreate()
-    try {
-      spark.sql("CREATE TABLE t (c int) PARTITIONED BY (p date)")
-      spark.sql("SELECT * FROM t WHERE p='2021-01-01'").collect()
-    } finally {
-      spark.sql("DROP TABLE IF EXISTS t")
     }
   }
 }
