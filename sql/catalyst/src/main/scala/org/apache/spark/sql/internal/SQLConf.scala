@@ -19,16 +19,19 @@ package org.apache.spark.sql.internal
 
 import java.util.{Locale, NoSuchElementException, Properties, TimeZone}
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
 
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.{SparkContext, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
 import org.apache.spark.network.util.ByteUnit
 import org.apache.spark.sql.catalyst.analysis.Resolver
+import org.apache.spark.util.Utils
 import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +65,73 @@ object SQLConf {
       staticConfKeys.add(entry.key)
       SQLConf.register(entry)
     }
+  }
+
+  /**
+   * Default config. Only used when there is no active SparkSession for the thread.
+   * See [[get]] for more information.
+   */
+  private lazy val fallbackConf = new ThreadLocal[SQLConf] {
+    override def initialValue: SQLConf = new SQLConf
+  }
+
+  /** See [[get]] for more information. */
+  def getFallbackConf: SQLConf = fallbackConf.get()
+
+  private lazy val existingConf = new ThreadLocal[SQLConf] {
+    override def initialValue: SQLConf = null
+  }
+
+  def withExistingConf[T](conf: SQLConf)(f: => T): T = {
+    val old = existingConf.get()
+    existingConf.set(conf)
+    try {
+      f
+    } finally {
+      if (old != null) {
+        existingConf.set(old)
+      } else {
+        existingConf.remove()
+      }
+    }
+  }
+
+  /**
+   * Defines a getter that returns the SQLConf within scope.
+   * See [[get]] for more information.
+   */
+  private val confGetter = new AtomicReference[() => SQLConf](() => fallbackConf.get())
+
+  /**
+   * Sets the active config object within the current scope.
+   * See [[get]] for more information.
+   */
+  def setSQLConfGetter(getter: () => SQLConf): Unit = {
+    confGetter.set(getter)
+  }
+
+  /**
+   * Returns the active config object within the current scope. If there is an active SparkSession,
+   * the proper SQLConf associated with the thread's active session is used. If it's called from
+   * tasks in the executor side, a SQLConf will be created from job local properties, which are set
+   * and propagated from the driver side, unless a `SQLConf` has been set in the scope by
+   * `withExistingConf` as done for propagating SQLConf for operations performed on RDDs created
+   * from DataFrames.
+   *
+   * different with spark-master
+   */
+  def get: SQLConf = {
+    var conf = existingConf.get()
+    if (conf == null && TaskContext.get != null) {
+      conf = new ReadOnlySQLConf(TaskContext.get)
+    }
+    if (conf == null && SparkContext.getActive.get != null) {
+      conf = new ReadOnlySQLConf(SparkContext.getActive.get)
+    }
+    if (conf == null) {
+      conf = confGetter.get()()
+    }
+    conf
   }
 
   val OPTIMIZER_MAX_ITERATIONS = buildConf("spark.sql.optimizer.maxIterations")
@@ -819,6 +889,16 @@ object SQLConf {
       .intConf
       .createWithDefault(UnsafeExternalSorter.DEFAULT_NUM_ELEMENTS_FOR_SPILL_THRESHOLD.toInt)
 
+  val DECIMAL_OPERATIONS_ALLOW_PREC_LOSS =
+    buildConf("spark.sql.decimalOperations.allowPrecisionLoss")
+      .internal()
+      .doc("When true (default), establishing the result type of an arithmetic operation " +
+        "happens according to Hive behavior and SQL ANSI 2011 specification, i.e. rounding the " +
+        "decimal part of the result if an exact representation is not possible. Otherwise, NULL " +
+        "is returned in those cases, as previously.")
+      .booleanConf
+      .createWithDefault(false)
+
   object Deprecated {
     val MAPRED_REDUCE_TASKS = "mapred.reduce.tasks"
   }
@@ -844,7 +924,7 @@ class SQLConf extends Serializable with Logging {
   @transient protected[spark] val settings = java.util.Collections.synchronizedMap(
     new java.util.HashMap[String, String]())
 
-  @transient private val reader = new ConfigReader(settings)
+  @transient protected val reader = new ConfigReader(settings)
 
   /** ************************ Spark SQL Params/Hints ******************* */
 
@@ -1083,6 +1163,8 @@ class SQLConf extends Serializable with Logging {
 
   def starSchemaFTRatio: Double = getConf(STARSCHEMA_FACT_TABLE_RATIO)
 
+  def decimalOperationsAllowPrecisionLoss: Boolean = getConf(DECIMAL_OPERATIONS_ALLOW_PREC_LOSS)
+
   /** ********************** SQLConf functionality methods ************ */
 
   /** Set Spark SQL configuration properties. */
@@ -1200,7 +1282,7 @@ class SQLConf extends Serializable with Logging {
     settings.containsKey(key)
   }
 
-  private def setConfWithCheck(key: String, value: String): Unit = {
+  protected def setConfWithCheck(key: String, value: String): Unit = {
     settings.put(key, value)
   }
 

@@ -211,4 +211,6 @@ abstract class TaskContext extends Serializable {
    */
   private[spark] def setFetchFailed(fetchFailed: FetchFailedException): Unit
 
+  /** Gets local properties set upstream in the driver. */
+  private[spark] def getLocalProperties: Properties
 }
