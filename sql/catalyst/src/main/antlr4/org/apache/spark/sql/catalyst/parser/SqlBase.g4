@@ -573,6 +573,7 @@ predicate
     | NOT? kind=RLIKE pattern=valueExpression
     | NOT? kind=LIKE pattern=valueExpression (ESCAPE escapeChar=STRING)?
     | IS NOT? kind=NULL
+    | IS NOT? kind=(TRUE | FALSE)
     | IS NOT? kind=DISTINCT FROM right=valueExpression
     ;
 
