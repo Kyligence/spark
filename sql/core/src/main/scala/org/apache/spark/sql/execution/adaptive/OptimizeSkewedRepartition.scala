@@ -20,7 +20,7 @@ import scala.collection.mutable
 
 import org.apache.commons.io.FileUtils
 
-import org.apache.spark.sql.execution.{CoalescedPartitionSpec, ShufflePartitionSpec, SortExec, SparkPlan}
+import org.apache.spark.sql.execution.{CoalescedPartitionSpec, ShufflePartitionSpec, SparkPlan}
 import org.apache.spark.sql.execution.adaptive.OptimizeSkewedJoin.{createSkewPartitionSpecs, getSizeInfo, isSkewed, medianSize, targetSize}
 import org.apache.spark.sql.execution.exchange.{ENSURE_REQUIREMENTS, EnsureRequirements, REPARTITION_WITH_NUM, ShuffleExchangeExec, ShuffleOrigin}
 import org.apache.spark.sql.internal.SQLConf
@@ -76,7 +76,7 @@ object OptimizeSkewedRepartition extends CustomShuffleReaderRule {
   }
 
   def optimizeSkewRepartition(plan: SparkPlan): SparkPlan = plan.transformUp {
-    case s@SortExec(_, _, ShuffleStage(stageInfo: ShuffleStageInfo), _) =>
+    case s@ShuffleStage(stageInfo: ShuffleStageInfo) =>
       val numPartitions = stageInfo.partitionsWithSizes.length
       // We use the median size of the original shuffle partitions to detect skewed partitions.
       val medSize = medianSize(stageInfo.mapStats)
@@ -124,7 +124,7 @@ object OptimizeSkewedRepartition extends CustomShuffleReaderRule {
       logDebug(s"number of skewed partitions: num $numSkewed")
       if (numSkewed > 0) {
         val newPlan = CustomShuffleReaderExec(stageInfo.shuffleStage, partitions.toSeq)
-        s.copy(child = newPlan)
+        newPlan
       } else {
         s
       }

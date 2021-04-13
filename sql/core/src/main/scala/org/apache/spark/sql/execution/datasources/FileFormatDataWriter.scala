@@ -28,6 +28,7 @@ import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
 import org.apache.spark.sql.catalyst.catalog.ExternalCatalogUtils
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.connector.write.{DataWriter, WriterCommitMessage}
+import org.apache.spark.sql.execution.datasources.FileFormatWriter.SpecPartitionInfo
 import org.apache.spark.sql.types.StringType
 import org.apache.spark.util.SerializableConfiguration
 
@@ -121,7 +122,8 @@ class SingleDirectoryDataWriter(
       f"-c$fileCounter%03d" + ext)
 
 
-    if (description.skewRepartitionEnabled && description.specPartitionId._1.headOption != None) {
+    if (description.specPartitionId.skewRepEnabled
+      && description.specPartitionId.left.headOption != None) {
       currentPath = wrapWritePath(currentPath)
     }
 
@@ -136,10 +138,10 @@ class SingleDirectoryDataWriter(
   private def wrapWritePath(path: String): String = {
     val f = new Path(path)
     val partitionId = f.getName.split("-", 3)(1)
-    val specId = f"${description.specPartitionId._1.get}%05d"
+    val specId = f"${description.specPartitionId.left.get}%05d"
     val part = "part-"
     path.replace(part + partitionId,
-      part + specId + "-" + description.specPartitionId._2.get)
+      part + specId + "-" + description.specPartitionId.right.get)
   }
 
   override def write(record: InternalRow): Unit = {
@@ -305,8 +307,7 @@ class WriteJobDescription(
     val maxRecordsPerFile: Long,
     val timeZoneId: String,
     val statsTrackers: Seq[WriteJobStatsTracker],
-    var skewRepartitionEnabled: Boolean,
-    var specPartitionId: (Option[Int], Option[Int]))
+    var specPartitionId: SpecPartitionInfo)
   extends Serializable {
 
   assert(AttributeSet(allColumns) == AttributeSet(partitionColumns ++ dataColumns),
