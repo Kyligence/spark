@@ -3767,6 +3767,11 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val DEFAULT_DATABASE_NAME =
+    buildConf("spark.sql.default.database")
+      .stringConf
+      .createWithDefault(null)
+
   val LEGACY_ALLOW_NULL_COMPARISON_RESULT_IN_ARRAY_SORT =
     buildConf("spark.sql.legacy.allowNullComparisonResultInArraySort")
       .internal()
@@ -4520,6 +4525,8 @@ class SQLConf extends Serializable with Logging {
     StaticSQLConf.DISABLED_JDBC_CONN_PROVIDER_LIST)
 
   def charVarcharAsString: Boolean = getConf(SQLConf.LEGACY_CHAR_VARCHAR_AS_STRING)
+
+  def defaultDataBase: String = getConf(SQLConf.DEFAULT_DATABASE_NAME)
 
   def cliPrintHeader: Boolean = getConf(SQLConf.CLI_PRINT_HEADER)
 
