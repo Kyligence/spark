@@ -676,48 +676,53 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
     }
   }
 
+  test("SPARK-35679: instantToMicros should be able to return microseconds of Long.MinValue") {
+    assert(instantToMicros(microsToInstant(Long.MaxValue)) === Long.MaxValue)
+    assert(instantToMicros(microsToInstant(Long.MinValue)) === Long.MinValue)
+  }
+
   test("ceilTimestamp") {
-      def testCeil(
-                    level: Int,
-                    expected: String,
-                    inputTS: SQLTimestamp,
-                    zoneId: ZoneId = ZoneId.systemDefault()): Unit = {
-          val ceilTS =
-              DateTimeUtils.ceilTimestamp(inputTS, level, zoneId)
-          val expectedTS =
-              DateTimeUtils.stringToTimestamp(UTF8String.fromString(expected), zoneId)
-          assert(ceilTS === expectedTS.get)
-        }
-
-        val defaultInputTS =
-          DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-05T09:32:05.359"),
-              ZoneId.systemDefault())
-      val defaultInputTS1 =
-          DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-31T20:32:05.359"),
-              ZoneId.systemDefault())
-      val defaultInputTS2 =
-          DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-04-01T02:32:05.359"),
-              ZoneId.systemDefault())
-      val defaultInputTS3 =
-          DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-30T02:32:05.359"),
-              ZoneId.systemDefault())
-      val defaultInputTS4 =
-          DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-29T02:32:05.359"),
-              ZoneId.systemDefault())
-
-        testCeil(DateTimeUtils.TRUNC_TO_YEAR, "2016-01-01T00:00:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_MONTH, "2015-04-01T00:00:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_DAY, "2015-03-06T00:00:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_HOUR, "2015-03-05T10:00:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_MINUTE, "2015-03-05T09:33:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_SECOND, "2015-03-05T09:32:06", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-03-09T00:00:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-04-06T00:00:00", defaultInputTS1.get)
-      testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-04-06T00:00:00", defaultInputTS2.get)
-      testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-04-06T00:00:00", defaultInputTS3.get)
-      testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-03-30T00:00:00", defaultInputTS4.get)
-      testCeil(DateTimeUtils.TRUNC_TO_QUARTER, "2015-04-01T00:00:00", defaultInputTS.get)
-      testCeil(DateTimeUtils.TRUNC_TO_QUARTER, "2015-04-01T00:00:00", defaultInputTS1.get)
-      testCeil(DateTimeUtils.TRUNC_TO_QUARTER, "2015-07-01T00:00:00", defaultInputTS2.get)
+    def testCeil(
+                  level: Int,
+                  expected: String,
+                  inputTS: SQLTimestamp,
+                  zoneId: ZoneId = ZoneId.systemDefault()): Unit = {
+      val ceilTS =
+        DateTimeUtils.ceilTimestamp(inputTS, level, zoneId)
+      val expectedTS =
+        DateTimeUtils.stringToTimestamp(UTF8String.fromString(expected), zoneId)
+      assert(ceilTS === expectedTS.get)
     }
+
+    val defaultInputTS =
+      DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-05T09:32:05.359"),
+        ZoneId.systemDefault())
+    val defaultInputTS1 =
+      DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-31T20:32:05.359"),
+        ZoneId.systemDefault())
+    val defaultInputTS2 =
+      DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-04-01T02:32:05.359"),
+        ZoneId.systemDefault())
+    val defaultInputTS3 =
+      DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-30T02:32:05.359"),
+        ZoneId.systemDefault())
+    val defaultInputTS4 =
+      DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-29T02:32:05.359"),
+        ZoneId.systemDefault())
+
+    testCeil(DateTimeUtils.TRUNC_TO_YEAR, "2016-01-01T00:00:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_MONTH, "2015-04-01T00:00:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_DAY, "2015-03-06T00:00:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_HOUR, "2015-03-05T10:00:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_MINUTE, "2015-03-05T09:33:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_SECOND, "2015-03-05T09:32:06", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-03-09T00:00:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-04-06T00:00:00", defaultInputTS1.get)
+    testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-04-06T00:00:00", defaultInputTS2.get)
+    testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-04-06T00:00:00", defaultInputTS3.get)
+    testCeil(DateTimeUtils.TRUNC_TO_WEEK, "2015-03-30T00:00:00", defaultInputTS4.get)
+    testCeil(DateTimeUtils.TRUNC_TO_QUARTER, "2015-04-01T00:00:00", defaultInputTS.get)
+    testCeil(DateTimeUtils.TRUNC_TO_QUARTER, "2015-04-01T00:00:00", defaultInputTS1.get)
+    testCeil(DateTimeUtils.TRUNC_TO_QUARTER, "2015-07-01T00:00:00", defaultInputTS2.get)
+  }
 }
