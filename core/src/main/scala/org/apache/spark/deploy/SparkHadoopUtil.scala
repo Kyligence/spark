@@ -36,7 +36,7 @@ import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.security.token.{Token, TokenIdentifier}
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdentifier
 
-import org.apache.spark.{SparkConf, SparkEnv, SparkException}
+import org.apache.spark.{SparkConf, SparkContext, SparkEnv, SparkException}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
@@ -148,13 +148,19 @@ class SparkHadoopUtil extends Logging {
   private[spark] def addDelegationTokens(tokens: Array[Byte], sparkConf: SparkConf) {
     UserGroupInformation.setConfiguration(newConfiguration(sparkConf))
     val creds = deserialize(tokens)
-    logInfo("Updating delegation tokens for current user.")
-    logInfo(s"Adding/updating delegation tokens ${dumpTokens(creds)}")
-    addCurrentUserCredentials(creds)
-    val user = UserGroupInformation.getCurrentUser
-    logInfo(s"Spark user hashcode : ${user.hashCode()}")
-    user.getTokens
-      .asScala.map(tokenToString).foreach(token => logInfo(token))
+    logInfo(s"SparkEnv executorId ${SparkEnv.get.executorId}")
+    if (SparkEnv.get.executorId != SparkContext.DRIVER_IDENTIFIER) {
+      logInfo("Updating delegation tokens for current user.")
+      logInfo(s"Adding/updating delegation tokens ${dumpTokens(creds)}")
+      addCurrentUserCredentials(creds)
+      val user = UserGroupInformation.getCurrentUser
+      logInfo(s"Spark user hashcode : ${user.hashCode()}")
+      user.getTokens
+        .asScala.map(tokenToString).foreach(token => logInfo(token))
+    } else {
+      logInfo("Skip update tokens with driver.")
+    }
+
   }
 
   /**

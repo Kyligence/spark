@@ -126,6 +126,7 @@ private[spark] class CoarseGrainedExecutorBackend(
 
     case UpdateDelegationTokens(tokenBytes) =>
       logInfo(s"Received tokens of ${tokenBytes.length} bytes")
+      logInfo(s"UpdateDelegationToken for ${SparkEnv.get.executorId}")
       if (SparkEnv.get.executorId != SparkContext.DRIVER_IDENTIFIER) {
         SparkHadoopUtil.get.addDelegationTokens(tokenBytes, env.conf)
       } else {
