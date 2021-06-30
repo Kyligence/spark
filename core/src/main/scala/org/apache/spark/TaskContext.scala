@@ -138,6 +138,14 @@ abstract class TaskContext extends Serializable {
     })
   }
 
+  def addTaskCompletionListenerToHead(listener: TaskCompletionListener): TaskContext
+
+  def addTaskCompletionListenerToHead[U](f: (TaskContext) => U): TaskContext = {
+    addTaskCompletionListenerToHead(new TaskCompletionListener {
+      override def onTaskCompletion(context: TaskContext): Unit = f(context)
+    })
+  }
+
   /**
    * Adds a listener to be executed on task failure (which includes completion listener failure, if
    * the task body did not already fail). Adding a listener to an already failed task will result in
