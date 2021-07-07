@@ -46,27 +46,27 @@ object Cast {
 
     case (NullType, _) => true
 
-    case (_, StringType | CharType(_) | VarcharType(_)) => true
+    case (_, StringType) => true
 
-    case (StringType | CharType(_) | VarcharType(_), BinaryType) => true
+    case (StringType, BinaryType) => true
     case (_: IntegralType, BinaryType) => true
 
-    case (StringType | CharType(_) | VarcharType(_), BooleanType) => true
+    case (StringType, BooleanType) => true
     case (DateType, BooleanType) => true
     case (TimestampType, BooleanType) => true
     case (_: NumericType, BooleanType) => true
 
-    case (StringType | CharType(_) | VarcharType(_), TimestampType) => true
+    case (StringType, TimestampType) => true
     case (BooleanType, TimestampType) => true
     case (DateType, TimestampType) => true
     case (_: NumericType, TimestampType) => true
 
-    case (StringType | CharType(_) | VarcharType(_), DateType) => true
+    case (StringType, DateType) => true
     case (TimestampType, DateType) => true
 
-    case (StringType | CharType(_) | VarcharType(_), CalendarIntervalType) => true
+    case (StringType, CalendarIntervalType) => true
 
-    case (StringType | CharType(_) | VarcharType(_), _: NumericType) => true
+    case (StringType, _: NumericType) => true
     case (BooleanType, _: NumericType) => true
     case (DateType, _: NumericType) => true
     case (TimestampType, _: NumericType) => true
