@@ -338,6 +338,7 @@ private[spark] class AppStatusListener(
       cluster.name,
       cluster.childNodes,
       cluster.childClusters.map(newRDDOperationCluster))
+    System.out.println("xxx")
   }
 
   override def onJobEnd(event: SparkListenerJobEnd): Unit = {
