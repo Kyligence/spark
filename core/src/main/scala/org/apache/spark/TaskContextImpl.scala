@@ -177,4 +177,5 @@ private[spark] class TaskContextImpl(
 
   private[spark] def fetchFailed: Option[FetchFailedException] = _fetchFailedException
 
+  private[spark] override def getLocalProperties(): Properties = localProperties
 }
