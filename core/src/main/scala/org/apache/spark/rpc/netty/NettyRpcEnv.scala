@@ -68,7 +68,7 @@ private[netty] class NettyRpcEnv(
     }
   }
 
-  private val clientFactory = transportContext.createClientFactory(createClientBootstraps())
+  private var clientFactory = transportContext.createClientFactory(createClientBootstraps())
 
   /**
    * A separate client factory for file downloads. This avoids using the same RPC handler as
@@ -304,9 +304,11 @@ private[netty] class NettyRpcEnv(
     }
     if (server != null) {
       server.close()
+      server = null
     }
     if (clientFactory != null) {
       clientFactory.close()
+      clientFactory = null
     }
     if (clientConnectionExecutor != null) {
       clientConnectionExecutor.shutdownNow()

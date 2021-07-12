@@ -423,6 +423,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     } catch {
       case e: Exception =>
         throw new SparkException("Error stopping standalone scheduler's driver endpoint", e)
+    } finally {
+      executorDataMap.clear()
     }
   }
 

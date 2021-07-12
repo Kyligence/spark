@@ -178,9 +178,11 @@ private[spark] class NettyBlockTransferService(
   override def close(): Unit = {
     if (server != null) {
       server.close()
+      server = null
     }
     if (clientFactory != null) {
       clientFactory.close()
+      clientFactory = null
     }
   }
 }
