@@ -167,7 +167,7 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
   }
 
   private def assertDecimalSumOverflow(
-      df: DataFrame, ansiEnabled: Boolean, expectedAnswer: Row): Unit = {
+                                        df: DataFrame, ansiEnabled: Boolean, expectedAnswer: Row): Unit = {
     if (!ansiEnabled) {
       checkAnswer(df, expectedAnswer)
     } else {
@@ -1028,14 +1028,14 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
     val longString = Array.fill(21)("1").mkString
     val df = sparkContext.parallelize(Seq("1", longString)).toDF()
     val expectedAnswerForFalse = "-RECORD 0----------------------\n" +
-                                 " value | 1                     \n" +
-                                 "-RECORD 1----------------------\n" +
-                                 " value | 111111111111111111111 \n"
+      " value | 1                     \n" +
+      "-RECORD 1----------------------\n" +
+      " value | 111111111111111111111 \n"
     assert(df.showString(10, truncate = 0, vertical = true) === expectedAnswerForFalse)
     val expectedAnswerForTrue = "-RECORD 0---------------------\n" +
-                                " value | 1                    \n" +
-                                "-RECORD 1---------------------\n" +
-                                " value | 11111111111111111... \n"
+      " value | 1                    \n" +
+      "-RECORD 1---------------------\n" +
+      " value | 11111111111111111... \n"
     assert(df.showString(10, truncate = 20, vertical = true) === expectedAnswerForTrue)
   }
 
@@ -1064,14 +1064,14 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
     val longString = Array.fill(21)("1").mkString
     val df = sparkContext.parallelize(Seq("1", longString)).toDF()
     val expectedAnswerForFalse = "-RECORD 0----\n" +
-                                 " value | 1   \n" +
-                                 "-RECORD 1----\n" +
-                                 " value | 111 \n"
+      " value | 1   \n" +
+      "-RECORD 1----\n" +
+      " value | 111 \n"
     assert(df.showString(10, truncate = 3, vertical = true) === expectedAnswerForFalse)
     val expectedAnswerForTrue = "-RECORD 0------------------\n" +
-                                " value | 1                 \n" +
-                                "-RECORD 1------------------\n" +
-                                " value | 11111111111111... \n"
+      " value | 1                 \n" +
+      "-RECORD 1------------------\n" +
+      " value | 11111111111111... \n"
     assert(df.showString(10, truncate = 17, vertical = true) === expectedAnswerForTrue)
   }
 
@@ -1138,11 +1138,11 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
       (Array(2, 3, 4), Array(2, 3, 4))
     ).toDF()
     val expectedAnswer = "-RECORD 0--------\n" +
-                         " _1  | [1, 2, 3] \n" +
-                         " _2  | [1, 2, 3] \n" +
-                         "-RECORD 1--------\n" +
-                         " _1  | [2, 3, 4] \n" +
-                         " _2  | [2, 3, 4] \n"
+      " _1  | [1, 2, 3] \n" +
+      " _2  | [1, 2, 3] \n" +
+      "-RECORD 1--------\n" +
+      " _1  | [2, 3, 4] \n" +
+      " _2  | [2, 3, 4] \n"
     assert(df.showString(10, vertical = true) === expectedAnswer)
   }
 
@@ -1167,11 +1167,11 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
       ("34".getBytes(StandardCharsets.UTF_8), "12346".getBytes(StandardCharsets.UTF_8))
     ).toDF()
     val expectedAnswer = "-RECORD 0---------------\n" +
-                         " _1  | [31 32]          \n" +
-                         " _2  | [41 42 43 2E]    \n" +
-                         "-RECORD 1---------------\n" +
-                         " _1  | [33 34]          \n" +
-                         " _2  | [31 32 33 34 36] \n"
+      " _1  | [31 32]          \n" +
+      " _2  | [41 42 43 2E]    \n" +
+      "-RECORD 1---------------\n" +
+      " _1  | [33 34]          \n" +
+      " _2  | [31 32 33 34 36] \n"
     assert(df.showString(10, vertical = true) === expectedAnswer)
   }
 
@@ -1196,11 +1196,11 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
       (2, 2)
     ).toDF()
     val expectedAnswer = "-RECORD 0--\n" +
-                         " _1  | 1   \n" +
-                         " _2  | 1   \n" +
-                         "-RECORD 1--\n" +
-                         " _1  | 2   \n" +
-                         " _2  | 2   \n"
+      " _1  | 1   \n" +
+      " _2  | 1   \n" +
+      "-RECORD 1--\n" +
+      " _1  | 2   \n" +
+      " _2  | 2   \n"
     assert(df.showString(10, vertical = true) === expectedAnswer)
   }
 
@@ -1217,9 +1217,9 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
 
   test("SPARK-7319 showString, vertical = true") {
     val expectedAnswer = "-RECORD 0----\n" +
-                         " key   | 1   \n" +
-                         " value | 1   \n" +
-                         "only showing top 1 row\n"
+      " key   | 1   \n" +
+      " value | 1   \n" +
+      "only showing top 1 row\n"
     assert(testData.select($"*").showString(1, vertical = true) === expectedAnswer)
   }
 
@@ -1293,15 +1293,15 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
     val ts = Timestamp.valueOf("2016-12-01 00:00:00")
     val df = Seq((d, ts)).toDF("d", "ts")
     val expectedAnswer = "-RECORD 0------------------\n" +
-                         " d   | 2016-12-01          \n" +
-                         " ts  | 2016-12-01 00:00:00 \n"
+      " d   | 2016-12-01          \n" +
+      " ts  | 2016-12-01 00:00:00 \n"
     assert(df.showString(1, truncate = 0, vertical = true) === expectedAnswer)
 
     withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> "UTC") {
 
       val expectedAnswer = "-RECORD 0------------------\n" +
-                           " d   | 2016-12-01          \n" +
-                           " ts  | 2016-12-01 08:00:00 \n"
+        " d   | 2016-12-01          \n" +
+        " ts  | 2016-12-01 08:00:00 \n"
       assert(df.showString(1, truncate = 0, vertical = true) === expectedAnswer)
     }
   }
@@ -1356,10 +1356,10 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
   test("SPARK-7324 dropDuplicates") {
     val testData = sparkContext.parallelize(
       (2, 1, 2) :: (1, 1, 1) ::
-      (1, 2, 1) :: (2, 1, 2) ::
-      (2, 2, 2) :: (2, 2, 1) ::
-      (2, 1, 1) :: (1, 1, 2) ::
-      (1, 2, 2) :: (1, 2, 1) :: Nil).toDF("key", "value1", "value2")
+        (1, 2, 1) :: (2, 1, 2) ::
+        (2, 2, 2) :: (2, 2, 1) ::
+        (2, 1, 1) :: (1, 1, 2) ::
+        (1, 2, 2) :: (1, 2, 1) :: Nil).toDF("key", "value1", "value2")
 
     checkAnswer(
       testData.dropDuplicates(),
@@ -1803,27 +1803,25 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
   }
 
   test("reuse exchange") {
-    withSQLConf(SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "2") {
+    withSQLConf("spark.sql.autoBroadcastJoinThreshold" -> "2") {
       val df = spark.range(100).toDF()
       val join = df.join(df, "id")
       val plan = join.queryExecution.executedPlan
       checkAnswer(join, df)
       assert(
-        collect(join.queryExecution.executedPlan) {
-          case e: ShuffleExchangeExec => true }.size === 1)
+        join.queryExecution.executedPlan.collect { case e: ShuffleExchangeExec => true }.size === 1)
       assert(
-        collect(join.queryExecution.executedPlan) { case e: ReusedExchangeExec => true }.size === 1)
+        join.queryExecution.executedPlan.collect { case e: ReusedExchangeExec => true }.size === 1)
       val broadcasted = broadcast(join)
       val join2 = join.join(broadcasted, "id").join(broadcasted, "id")
       checkAnswer(join2, df)
       assert(
-        collect(join2.queryExecution.executedPlan) {
-          case e: ShuffleExchangeExec => true }.size == 1)
+        join2.queryExecution.executedPlan.collect { case e: ShuffleExchangeExec => true }.size == 1)
       assert(
-        collect(join2.queryExecution.executedPlan) {
-          case e: BroadcastExchangeExec => true }.size === 1)
+        join2.queryExecution.executedPlan
+          .collect { case e: BroadcastExchangeExec => true }.size === 1)
       assert(
-        collect(join2.queryExecution.executedPlan) { case e: ReusedExchangeExec => true }.size == 4)
+        join2.queryExecution.executedPlan.collect { case e: ReusedExchangeExec => true }.size == 4)
     }
   }
 
@@ -1895,7 +1893,7 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
 
     }
 
-   }
+  }
 
   test("SPARK-13774: Check error message for not existent globbed paths") {
     // Non-existent initial path component:
@@ -1968,9 +1966,9 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
   }
 
   private def verifyNullabilityInFilterExec(
-      df: DataFrame,
-      expr: String,
-      expectedNonNullableColumns: Seq[String]): Unit = {
+                                             df: DataFrame,
+                                             expr: String,
+                                             expectedNonNullableColumns: Seq[String]): Unit = {
     val dfWithFilter = df.where(s"isnotnull($expr)").selectExpr(expr)
     dfWithFilter.queryExecution.executedPlan.collect {
       // When the child expression in isnotnull is null-intolerant (i.e. any null input will
@@ -2207,7 +2205,7 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
   }
 
   test("SPARK-24781: Using a reference not in aggregation in Filter/Sort") {
-     withSQLConf(SQLConf.DATAFRAME_RETAIN_GROUP_COLUMNS.key -> "false") {
+    withSQLConf(SQLConf.DATAFRAME_RETAIN_GROUP_COLUMNS.key -> "false") {
       val df = Seq(("test1", 0), ("test2", 1)).toDF("name", "id")
 
       val aggPlusSort1 = df.groupBy(df("name")).agg(count(df("name"))).orderBy(df("name"))
@@ -2239,7 +2237,7 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
 
       val df = spark.read.json(path.getCanonicalPath)
       assert(df.columns === Array("i", "p"))
-      spark.sparkContext.listenerBus.waitUntilEmpty()
+      spark.sparkContext.listenerBus.waitUntilEmpty(10000)
       assert(numJobs.get() == 1L)
     }
   }
@@ -2346,62 +2344,6 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
     assert(idTuples.length == idTuples.toSet.size)
   }
 
-  test("groupBy.as") {
-    val df1 = Seq((1, 2, 3), (2, 3, 4)).toDF("a", "b", "c")
-      .repartition($"a", $"b").sortWithinPartitions("a", "b")
-    val df2 = Seq((1, 2, 4), (2, 3, 5)).toDF("a", "b", "c")
-      .repartition($"a", $"b").sortWithinPartitions("a", "b")
-
-    implicit val valueEncoder = RowEncoder(df1.schema)
-
-    val df3 = df1.groupBy("a", "b").as[GroupByKey, Row]
-      .cogroup(df2.groupBy("a", "b").as[GroupByKey, Row]) { case (_, data1, data2) =>
-        data1.zip(data2).map { p =>
-          p._1.getInt(2) + p._2.getInt(2)
-        }
-      }.toDF
-
-    checkAnswer(df3.sort("value"), Row(7) :: Row(9) :: Nil)
-
-    // Assert that no extra shuffle introduced by cogroup.
-    val exchanges = collect(df3.queryExecution.executedPlan) {
-      case h: ShuffleExchangeExec => h
-    }
-    assert(exchanges.size == 2)
-  }
-
-  test("groupBy.as: custom grouping expressions") {
-    val df1 = Seq((1, 2, 3), (2, 3, 4)).toDF("a1", "b", "c")
-      .repartition($"a1", $"b").sortWithinPartitions("a1", "b")
-    val df2 = Seq((1, 2, 4), (2, 3, 5)).toDF("a1", "b", "c")
-      .repartition($"a1", $"b").sortWithinPartitions("a1", "b")
-
-    implicit val valueEncoder = RowEncoder(df1.schema)
-
-    val groupedDataset1 = df1.groupBy(($"a1" + 1).as("a"), $"b").as[GroupByKey, Row]
-    val groupedDataset2 = df2.groupBy(($"a1" + 1).as("a"), $"b").as[GroupByKey, Row]
-
-    val df3 = groupedDataset1
-      .cogroup(groupedDataset2) { case (_, data1, data2) =>
-        data1.zip(data2).map { p =>
-          p._1.getInt(2) + p._2.getInt(2)
-        }
-      }.toDF
-
-    checkAnswer(df3.sort("value"), Row(7) :: Row(9) :: Nil)
-  }
-
-  test("groupBy.as: throw AnalysisException for unresolved grouping expr") {
-    val df = Seq((1, 2, 3), (2, 3, 4)).toDF("a", "b", "c")
-
-    implicit val valueEncoder = RowEncoder(df.schema)
-
-    val err = intercept[AnalysisException] {
-      df.groupBy($"d", $"b").as[GroupByKey, Row]
-    }
-    assert(err.getMessage.contains("cannot resolve '`d`'"))
-  }
-
   test("emptyDataFrame should be foldable") {
     val emptyDf = spark.emptyDataFrame.withColumn("id", lit(1L))
     val joined = spark.range(10).join(emptyDf, "id")
@@ -2419,85 +2361,6 @@ class DataFrameSuite extends QueryTest with SharedSparkSession {
       sql("WITH t AS (SELECT 1 FROM nonexist.t) SELECT * FROM t")
     }
     assert(e.getMessage.contains("Table or view not found:"))
-  }
-
-  test("CalendarInterval reflection support") {
-    val df = Seq((1, new CalendarInterval(1, 2, 3))).toDF("a", "b")
-    checkAnswer(df.selectExpr("b"), Row(new CalendarInterval(1, 2, 3)))
-  }
-
-  test("SPARK-31552: array encoder with different types") {
-    // primitives
-    val booleans = Array(true, false)
-    checkAnswer(Seq(booleans).toDF(), Row(booleans))
-
-    val bytes = Array(1.toByte, 2.toByte)
-    checkAnswer(Seq(bytes).toDF(), Row(bytes))
-    val shorts = Array(1.toShort, 2.toShort)
-    checkAnswer(Seq(shorts).toDF(), Row(shorts))
-    val ints = Array(1, 2)
-    checkAnswer(Seq(ints).toDF(), Row(ints))
-    val longs = Array(1L, 2L)
-    checkAnswer(Seq(longs).toDF(), Row(longs))
-
-    val floats = Array(1.0F, 2.0F)
-    checkAnswer(Seq(floats).toDF(), Row(floats))
-    val doubles = Array(1.0D, 2.0D)
-    checkAnswer(Seq(doubles).toDF(), Row(doubles))
-
-    val strings = Array("2020-04-24", "2020-04-25")
-    checkAnswer(Seq(strings).toDF(), Row(strings))
-
-    // tuples
-    val decOne = Decimal(1, 38, 18)
-    val decTwo = Decimal(2, 38, 18)
-    val tuple1 = (1, 2.2, "3.33", decOne, Date.valueOf("2012-11-22"))
-    val tuple2 = (2, 3.3, "4.44", decTwo, Date.valueOf("2022-11-22"))
-    checkAnswer(Seq(Array(tuple1, tuple2)).toDF(), Seq(Seq(tuple1, tuple2)).toDF())
-
-    // case classes
-    val gbks = Array(GroupByKey(1, 2), GroupByKey(4, 5))
-    checkAnswer(Seq(gbks).toDF(), Row(Array(Row(1, 2), Row(4, 5))))
-
-    // We can move this implicit def to [[SQLImplicits]] when we eventually make fully
-    // support for array encoder like Seq and Set
-    // For now cases below, decimal/datetime/interval/binary/nested types, etc,
-    // are not supported by array
-    implicit def newArrayEncoder[T <: Array[_] : TypeTag]: Encoder[T] = ExpressionEncoder()
-
-    // decimals
-    val decSpark = Array(decOne, decTwo)
-    val decScala = decSpark.map(_.toBigDecimal)
-    val decJava = decSpark.map(_.toJavaBigDecimal)
-    checkAnswer(Seq(decSpark).toDF(), Row(decJava))
-    checkAnswer(Seq(decScala).toDF(), Row(decJava))
-    checkAnswer(Seq(decJava).toDF(), Row(decJava))
-
-    // datetimes and intervals
-    val dates = strings.map(Date.valueOf)
-    checkAnswer(Seq(dates).toDF(), Row(dates))
-    val localDates = dates.map(d => DateTimeUtils.daysToLocalDate(DateTimeUtils.fromJavaDate(d)))
-    checkAnswer(Seq(localDates).toDF(), Row(dates))
-
-    val timestamps =
-      Array(Timestamp.valueOf("2020-04-24 12:34:56"), Timestamp.valueOf("2020-04-24 11:22:33"))
-    checkAnswer(Seq(timestamps).toDF(), Row(timestamps))
-    val instants =
-      timestamps.map(t => DateTimeUtils.microsToInstant(DateTimeUtils.fromJavaTimestamp(t)))
-    checkAnswer(Seq(instants).toDF(), Row(timestamps))
-
-    val intervals = Array(new CalendarInterval(1, 2, 3), new CalendarInterval(4, 5, 6))
-    checkAnswer(Seq(intervals).toDF(), Row(intervals))
-
-    // binary
-    val bins = Array(Array(1.toByte), Array(2.toByte), Array(3.toByte), Array(4.toByte))
-    checkAnswer(Seq(bins).toDF(), Row(bins))
-
-    // nested
-    val nestedIntArray = Array(Array(1), Array(2))
-    checkAnswer(Seq(nestedIntArray).toDF(), Row(nestedIntArray.map(wrapIntArray)))
-    val nestedDecArray = Array(decSpark)
-    checkAnswer(Seq(nestedDecArray).toDF(), Row(Array(wrapRefArray(decJava))))
   }
 
   test("SPARK-31750: eliminate UpCast if child's dataType is DecimalType") {

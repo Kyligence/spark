@@ -21,6 +21,7 @@ import org.apache.spark.sql.catalyst.analysis.{DecimalPrecision, TypeCheckResult
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.TypeUtils
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 
 abstract class AverageLike(child: Expression) extends DeclarativeAggregate {
@@ -57,8 +58,11 @@ abstract class AverageLike(child: Expression) extends DeclarativeAggregate {
 
   // If all input are nulls, count will be 0 and we will get null after the division.
   override lazy val evaluateExpression = child.dataType match {
-    case _: DecimalType =>
-      DecimalPrecision.decimalAndDecimal(sum / count.cast(DecimalType.LongDecimal)).cast(resultType)
+    case d: DecimalType =>
+      DecimalPrecision.decimalAndDecimal()(
+        Divide(
+          CheckOverflowInSum(sum, d, !SQLConf.get.ansiEnabled),
+          count.cast(DecimalType.LongDecimal))).cast(resultType)
     case _ =>
       sum.cast(resultType) / count.cast(resultType)
   }
