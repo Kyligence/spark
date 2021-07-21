@@ -243,8 +243,8 @@ final class Decimal extends Ordered[Decimal] with Serializable {
   private[sql] def toPrecision(
       precision: Int,
       scale: Int,
-      roundMode: BigDecimal.RoundingMode.Value = ROUND_HALF_UP,
-      nullOnOverflow: Boolean = true): Decimal = {
+      roundMode: BigDecimal.RoundingMode.Value,
+      nullOnOverflow: Boolean): Decimal = {
     val copy = clone()
     if (copy.changePrecision(precision, scale, roundMode)) {
       copy
@@ -255,6 +255,13 @@ final class Decimal extends Ordered[Decimal] with Serializable {
         throw QueryExecutionErrors.cannotChangeDecimalPrecisionError(this, precision, scale)
       }
     }
+  }
+
+  private[sql] def toPrecision(
+      precision: Int,
+      scale: Int,
+      roundMode: BigDecimal.RoundingMode.Value = ROUND_HALF_UP): Decimal = {
+    toPrecision(precision, scale, roundMode, true)
   }
 
   /**
