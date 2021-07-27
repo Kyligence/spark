@@ -2826,6 +2826,27 @@ class Dataset[T] private[sql](
   }
 
   /**
+  * collect all partitions to local with one job,
+  * do decoding and deserialization, and return an iterator of rows
+  * @return tuple of (row iterator, total count of rows)
+  */
+  def toIterator(): (java.util.Iterator[T], Int) = {
+    withAction("toIterator", queryExecution) { plan =>
+      val objProj = GenerateSafeProjection.generate(deserializer :: Nil)
+      val results = plan.executeCollect()
+
+      (
+        results.toIterator.map { row =>
+          // The row returned by SafeProjection is `SpecificInternalRow`, which ignore the data type
+          // parameter of its `get` method, so it's safe to use null here.
+          objProj(row).get(0, null).asInstanceOf[T]
+        }.asJava,
+        results.length
+      )
+    }
+  }
+
+  /**
    * Returns the number of rows in the Dataset.
    * @group action
    * @since 1.6.0
