@@ -1605,6 +1605,11 @@ object SQLConf {
     buildConf("spark.sql.default.database")
     .stringConf
     .createWithDefault(null)
+
+  val VIEW_TRUNCATE_ENABLE =
+    buildConf("spark.sql.view-truncate-enable")
+      .booleanConf
+      .createWithDefault(false)
 }
 
 /**
@@ -2023,6 +2028,8 @@ class SQLConf extends Serializable with Logging {
     getConf(SQLConf.LEGACY_REPLACE_DATABRICKS_SPARK_AVRO_ENABLED)
 
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
+
+  def isViewTruncateEnable: Boolean = getConf(SQLConf.VIEW_TRUNCATE_ENABLE)
 
   def maxCollectSize: Option[Long] = getConf(SQLConf.MAX_COLLECT_SIZE)
     .orElse(maxMemUsageDuringCollect)
