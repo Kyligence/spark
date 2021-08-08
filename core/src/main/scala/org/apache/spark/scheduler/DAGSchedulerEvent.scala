@@ -31,6 +31,12 @@ import org.apache.spark.util.{AccumulatorV2, CallSite}
  */
 private[scheduler] sealed trait DAGSchedulerEvent
 
+/**
+ * submit waiting child stages
+ * @param stage
+ */
+case class SubmitWaitingChildStages (stage: Stage) extends DAGSchedulerEvent
+
 /** A result-yielding job was submitted on a target RDD */
 private[scheduler] case class JobSubmitted(
     jobId: Int,
