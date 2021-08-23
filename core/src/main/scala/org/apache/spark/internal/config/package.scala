@@ -2021,4 +2021,11 @@ package object config {
       .version("3.1.0")
       .doubleConf
       .createWithDefault(5)
+
+  private[spark] val SCHEDULER_ASYNC_SUBMIT_TASKS =
+    ConfigBuilder("spark.scheduler.submitTasks.asyncEnabled")
+      .doc("If set to true, Spark will boradcast taskBinary and submitTasks to task Scheudler" +
+        "in another thread. So that dagScheudler will not be blocked. KYLIN customized config")
+      .booleanConf
+      .createWithDefault(false)
 }
