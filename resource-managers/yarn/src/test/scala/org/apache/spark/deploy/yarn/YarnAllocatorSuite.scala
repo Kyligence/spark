@@ -18,15 +18,14 @@
 package org.apache.spark.deploy.yarn
 
 import scala.collection.JavaConverters._
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.apache.hadoop.yarn.conf.YarnConfiguration
+import org.apache.spark.deploy.SparkHadoopUtil
 import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfterEach, Matchers}
-
 import org.apache.spark.{SecurityManager, SparkConf, SparkFunSuite}
 import org.apache.spark.deploy.yarn.YarnAllocator._
 import org.apache.spark.deploy.yarn.YarnSparkHadoopUtil._
@@ -35,9 +34,9 @@ import org.apache.spark.rpc.RpcEndpointRef
 import org.apache.spark.scheduler.SplitInfo
 import org.apache.spark.util.ManualClock
 
-class MockResolver extends SparkRackResolver {
+class MockResolver extends SparkRackResolver(SparkHadoopUtil.get.conf) {
 
-  override def resolve(conf: Configuration, hostName: String): String = {
+  override def resolve(hostName: String): String = {
     if (hostName == "host3") "/rack2" else "/rack1"
   }
 
