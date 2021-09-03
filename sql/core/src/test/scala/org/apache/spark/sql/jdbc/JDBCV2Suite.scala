@@ -911,4 +911,22 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
       Row("david", 10000.00, 10000.000000, 1),
       Row("jen", 12000.00, 12000.000000, 1)))
   }
+
+  test("scan with aggregate push-down: aggregate with partially pushed down filters" +
+    "will NOT push down") {
+    val df = spark.table("h2.test.employee")
+    val name = udf { (x: String) => x.matches("cat|dav|amy") }
+    val sub = udf { (x: String) => x.substring(0, 3) }
+    val query = df.select($"SALARY", $"BONUS", sub($"NAME").as("shortName"))
+      .filter("SALARY > 100")
+      .filter(name($"shortName"))
+      .agg(sum($"SALARY").as("sum_salary"))
+    query.queryExecution.optimizedPlan.collect {
+      case _: DataSourceV2ScanRelation =>
+        val expected_plan_fragment =
+          "PushedAggregates: []"
+        checkKeywordsExistsInExplain(query, expected_plan_fragment)
+    }
+    checkAnswer(query, Seq(Row(29000.0)))
+  }
 }
