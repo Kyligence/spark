@@ -2494,6 +2494,13 @@
         </exclusions>
       </dependency>
 
+      <dependency>
+        <groupId>org.apache.hive</groupId>
+        <artifactId>hive-contrib</artifactId>
+        <version>${hive.version}</version>
+        <scope>${hive.deps.scope}</scope>
+      </dependency>
+
       <!-- hive-llap-common is needed when registering UDFs in Hive 2.3.
          We add it here, otherwise -Phive-provided won't work. -->
       <dependency>
