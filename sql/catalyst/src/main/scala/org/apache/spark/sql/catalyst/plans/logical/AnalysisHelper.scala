@@ -52,13 +52,27 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
       children.foreach(_.setAnalyzed())
     }
   }
-
   /**
    * Returns true if this node and its children have already been gone through analysis and
    * verification.  Note that this is only an optimization used to avoid analyzing trees that
    * have already been analyzed, and can be reset by transformations.
    */
   def analyzed: Boolean = _analyzed
+
+
+  private var _hasView: Boolean = false
+
+  /**
+   * set true if node or its childred have view operator
+   */
+  private[sql] def setHasView(): Unit = {
+    _hasView = true
+  }
+
+  /**
+   * Returns true if this node or its children have View operator
+   */
+  def hasView: Boolean = _hasView
 
   /**
    * Returns a copy of this node where `rule` has been recursively applied to the tree. When
