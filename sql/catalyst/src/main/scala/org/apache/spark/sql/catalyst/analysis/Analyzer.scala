@@ -1182,7 +1182,11 @@ class Analyzer(override val catalogManager: CatalogManager)
                   catalog.name +: ident.asMultipartIdentifier,
                   UnresolvedCatalogRelation(v1Table.v1Table, options, isStreaming = true))
               } else {
-                v1SessionCatalog.getRelation(v1Table.v1Table, options)
+                val subqueryAlias = v1SessionCatalog.getRelation(v1Table.v1Table, options)
+                if (v1Table.v1Table.tableType == CatalogTableType.VIEW) {
+                  subqueryAlias.setHasView()
+                }
+                subqueryAlias
               }
             case table =>
               if (isStreaming) {
@@ -1208,7 +1212,7 @@ class Analyzer(override val catalogManager: CatalogManager)
               newRelation.copyTagsFrom(multi)
               newRelation
           }).orElse {
-            loaded.foreach(AnalysisContext.get.relationCache.update(key, _))
+            loaded.filterNot(_.hasView).foreach(AnalysisContext.get.relationCache.update(key, _))
             loaded
           }
         case _ => None

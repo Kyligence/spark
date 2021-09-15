@@ -60,6 +60,20 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    */
   def analyzed: Boolean = _analyzed
 
+  private var _hasView: Boolean = false
+
+  /**
+   * set true if node or its childred have view operator
+   */
+  private[sql] def setHasView(): Unit = {
+    _hasView = true
+  }
+
+  /**
+   * Returns true if this node or its children have View operator
+   */
+  def hasView: Boolean = _hasView
+
   /**
    * Returns a copy of this node where `rule` has been recursively applied to the tree. When
    * `rule` does not apply to a given node, it is left unchanged. This function is similar to
