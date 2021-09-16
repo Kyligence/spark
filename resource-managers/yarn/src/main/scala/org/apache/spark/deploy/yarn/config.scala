@@ -345,4 +345,10 @@ package object config {
       .booleanConf
       .createWithDefault(false)
 
+  // Avoid YarnAllocator#allocateResources after Spark Context stopped
+  private[spark] val YARN_ADAPTIVE_EXECUTOR_LAUNCH_ENABLED =
+    ConfigBuilder("spark.yarn.adaptive.executor.launch.enabled")
+      .booleanConf
+      .createWithDefault(false)
+
 }
