@@ -1180,7 +1180,7 @@ object SQLConf {
       "This is similar to spark.driver.maxResultSize but it enforces the limit on the " +
       "uncompressed result. Specifying this can help protect the driver from out-of-memory errors.")
     .bytesConf(ByteUnit.BYTE)
-    .createWithDefaultString("1024m")
+    .createOptional
 
   val CODEGEN_FACTORY_MODE = buildConf("spark.sql.codegen.factoryMode")
     .doc("This config determines the fallback behavior of several codegen generators " +
