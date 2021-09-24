@@ -34,7 +34,7 @@ import org.apache.spark.scheduler.cluster._
 import org.apache.spark.status.api.v1
 import org.apache.spark.storage._
 import org.apache.spark.util.Utils
-import org.apache.spark.util.kvstore._
+import org.apache.spark.util.kvstore.{InMemoryStore, KVStore}
 
 class AppStatusListenerSuite extends SparkFunSuite with BeforeAndAfter {
 
@@ -47,10 +47,12 @@ class AppStatusListenerSuite extends SparkFunSuite with BeforeAndAfter {
   private var store: ElementTrackingStore = _
   private var taskIdTracker = -1L
 
+  protected def createKVStore: KVStore = KVUtils.open(testDir, getClass().getName())
+
   before {
     time = 0L
     testDir = Utils.createTempDir()
-    store = new ElementTrackingStore(KVUtils.open(testDir, getClass().getName()), conf)
+    store = new ElementTrackingStore(createKVStore, conf)
     taskIdTracker = -1L
   }
 
@@ -1373,4 +1375,8 @@ class AppStatusListenerSuite extends SparkFunSuite with BeforeAndAfter {
 
   }
 
+}
+
+class AppStatusListenerWithInMemoryStoreSuite extends AppStatusListenerSuite {
+  override def createKVStore: KVStore = new InMemoryStore()
 }

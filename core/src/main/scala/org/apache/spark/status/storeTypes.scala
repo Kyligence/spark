@@ -93,7 +93,7 @@ private[spark] class StageDataWrapper(
   private def active: Boolean = info.status == StageStatus.ACTIVE
 
   @JsonIgnore @KVIndex("completionTime")
-  private def completionTime: Long = info.completionTime.map(_.getTime).getOrElse(-1L)
+  def completionTime: Long = info.completionTime.map(_.getTime).getOrElse(-1L)
 }
 
 /**

@@ -193,6 +193,8 @@ private[spark] class ElementTrackingStore(store: KVStore, conf: SparkConf) exten
     }
   }
 
+  def usingInMemoryStore: Boolean = store.isInstanceOf[InMemoryStore]
+
   private case class Trigger[T](
       threshold: Long,
       action: Long => Unit)
