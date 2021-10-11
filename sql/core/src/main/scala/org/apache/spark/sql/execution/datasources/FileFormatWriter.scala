@@ -239,7 +239,7 @@ object FileFormatWriter extends Logging {
     }
   }
 
-  case class SpecPartitionInfo(skewRepEnabled: Boolean, left: Option[Int], right: Option[String])
+  case class SpecPartitionInfo(skewRepEnabled: Boolean, left: Option[Long], right: Option[String])
 
   private def initSpecPartitions(skewRepEnabled: Boolean,
                                  rdd: RDD[InternalRow]): Array[SpecPartitionInfo] = {
@@ -257,7 +257,7 @@ object FileFormatWriter extends Logging {
                 Option(prps.reducerIndex), Option(splitSpecId))
             case cps @ (_: CoalescedPartitionSpec) =>
               val splitSpecId = cps.startReducerIndex.toString
-              SpecPartitionInfo(skewRepEnabled = true, Option(splitSpecId.toInt),
+              SpecPartitionInfo(skewRepEnabled = true, Option(splitSpecId.toLong),
                 Option(splitSpecId))
             case _ => SpecPartitionInfo(skewRepEnabled = true, None, None)
           }
