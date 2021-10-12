@@ -31,6 +31,7 @@ import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.util.{DateFormatter, DateTimeUtils, TimestampFormatter}
 import org.apache.spark.sql.connector.catalog.TableChange
 import org.apache.spark.sql.connector.catalog.TableChange._
+import org.apache.spark.sql.connector.catalog.index.TableIndex
 import org.apache.spark.sql.connector.expressions.NamedReference
 import org.apache.spark.sql.connector.expressions.aggregate.{AggregateFunc, Avg, Count, CountStar, Max, Min, Sum}
 import org.apache.spark.sql.errors.QueryCompilationErrors
@@ -327,7 +328,7 @@ abstract class JdbcDialect extends Serializable with Logging{
   }
 
   /**
-   * Creates an index.
+   * Build a create index SQL statement.
    *
    * @param indexName         the name of the index to be created
    * @param indexType         the type of the index to be created
@@ -335,6 +336,7 @@ abstract class JdbcDialect extends Serializable with Logging{
    * @param columns           the columns on which index to be created
    * @param columnsProperties the properties of the columns on which index to be created
    * @param properties        the properties of the index to be created
+   * @return                  the SQL statement to use for creating the index.
    */
   def createIndex(
       indexName: String,
@@ -361,6 +363,27 @@ abstract class JdbcDialect extends Serializable with Logging{
       tableName: String,
       options: JDBCOptions): Boolean = {
     throw new UnsupportedOperationException("indexExists is not supported")
+  }
+
+  /**
+   * Build a drop index SQL statement.
+   *
+   * @param indexName the name of the index to be dropped.
+   * @param tableName the table name on which index to be dropped.
+  * @return the SQL statement to use for dropping the index.
+   */
+  def dropIndex(indexName: String, tableName: String): String = {
+    throw new UnsupportedOperationException("dropIndex is not supported")
+  }
+
+  /**
+   * Lists all the indexes in this table.
+   */
+  def listIndexes(
+      conn: Connection,
+      tableName: String,
+      options: JDBCOptions): Array[TableIndex] = {
+    throw new UnsupportedOperationException("listIndexes is not supported")
   }
 
   /**
