@@ -295,7 +295,8 @@ object DynamicFilterPruning extends Rule[LogicalPlan] with PredicateHelper {
                 newRight = insertPartitionPredicate(r, newRight, l, left, leftKeys, hasBenefit)
               // data pruning
               case Some(scan) if SQLConf.get.dynamicDataPruningEnabled &&
-                  !scan.isPartitionCol && canPruneRight(joinType) && hasDynamicPruningFilter(left) &&
+                  !scan.isPartitionCol && canPruneRight(joinType)
+                  && hasDynamicPruningFilter(left) &&
                 dataPruningHasBenefit(scan.logicalRelation, right, left) =>
                 newRight = insertDataPredicate(r, newRight, l, left, leftKeys)
               case _ =>
