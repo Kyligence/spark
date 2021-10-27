@@ -23,7 +23,7 @@ import scala.collection.mutable.ArrayBuffer
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.{expressions, InternalRow}
-import org.apache.spark.sql.catalyst.expressions.{CreateNamedStruct, Expression, ExprId, InSet, ListQuery, Literal, PlanExpression}
+import org.apache.spark.sql.catalyst.expressions.{CreateNamedStruct, DynamicPruningSubquery, Expression, ExprId, InSet, ListQuery, Literal, PlanExpression, Predicate}
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.internal.SQLConf
@@ -48,6 +48,7 @@ object ExecSubqueryExpression {
    */
   def hasSubquery(e: Expression): Boolean = {
     e.find {
+      case _: DynamicPruningSubquery => false
       case _: ExecSubqueryExpression => true
       case _ => false
     }.isDefined
@@ -147,6 +148,11 @@ case class InSubqueryExec(
     if (result == null) {
       result = resultBroadcast.value
     }
+  }
+
+  def predicate: Predicate = {
+    prepareResult()
+    inSet
   }
 
   override def eval(input: InternalRow): Any = {
