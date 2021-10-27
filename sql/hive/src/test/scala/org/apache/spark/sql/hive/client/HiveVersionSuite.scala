@@ -18,29 +18,39 @@
 package org.apache.spark.sql.hive.client
 
 import org.apache.hadoop.conf.Configuration
+import org.scalactic.source.Position
 import org.scalatest.Tag
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.hive.HiveUtils
 
 private[client] abstract class HiveVersionSuite(version: String) extends SparkFunSuite {
+  override protected val enableAutoThreadAudit = false
   protected var client: HiveClient = null
 
   protected def buildClient(hadoopConf: Configuration): HiveClient = {
     // Hive changed the default of datanucleus.schema.autoCreateAll from true to false and
     // hive.metastore.schema.verification from false to true since 2.0
     // For details, see the JIRA HIVE-6113 and HIVE-12463
-    if (version == "2.0" || version == "2.1") {
+    if (version == "2.0" || version == "2.1" || version == "2.2" || version == "2.3" ||
+        version == "3.0" || version == "3.1") {
       hadoopConf.set("datanucleus.schema.autoCreateAll", "true")
       hadoopConf.set("hive.metastore.schema.verification", "false")
     }
-    HiveClientBuilder
-      .buildClient(version, hadoopConf, HiveUtils.hiveClientConfigurations(hadoopConf))
+    // Since Hive 3.0, HIVE-19310 skipped `ensureDbInit` if `hive.in.test=false`.
+    if (version == "3.0" || version == "3.1") {
+      hadoopConf.set("hive.in.test", "true")
+    }
+    HiveClientBuilder.buildClient(
+      version,
+      hadoopConf,
+      HiveUtils.formatTimeVarsForHiveClient(hadoopConf))
   }
 
   override def suiteName: String = s"${super.suiteName}($version)"
 
-  override protected def test(testName: String, testTags: Tag*)(testFun: => Unit): Unit = {
+  override protected def test(testName: String, testTags: Tag*)(testFun: => Any)
+      (implicit pos: Position): Unit = {
     super.test(s"$version: $testName", testTags: _*)(testFun)
   }
 }

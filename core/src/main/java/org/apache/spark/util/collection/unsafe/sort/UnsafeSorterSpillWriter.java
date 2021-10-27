@@ -42,7 +42,10 @@ public final class UnsafeSorterSpillWriter {
 
   private final SparkConf conf = new SparkConf();
 
-  /** The buffer size to use when writing the sorted records to an on-disk file */
+  /**
+   * The buffer size to use when writing the sorted records to an on-disk file, and
+   * this space used by prefix + len + recordLength must be greater than 4 + 8 bytes.
+   */
   private final int diskWriteBufferSize =
     (int) (long) conf.get(package$.MODULE$.SHUFFLE_DISK_WRITE_BUFFER_SIZE());
 
@@ -79,7 +82,7 @@ public final class UnsafeSorterSpillWriter {
   }
 
   // Based on DataOutputStream.writeLong.
-  private void writeLongToBuffer(long v, int offset) throws IOException {
+  private void writeLongToBuffer(long v, int offset) {
     writeBuffer[offset + 0] = (byte)(v >>> 56);
     writeBuffer[offset + 1] = (byte)(v >>> 48);
     writeBuffer[offset + 2] = (byte)(v >>> 40);
@@ -91,7 +94,7 @@ public final class UnsafeSorterSpillWriter {
   }
 
   // Based on DataOutputStream.writeInt.
-  private void writeIntToBuffer(int v, int offset) throws IOException {
+  private void writeIntToBuffer(int v, int offset) {
     writeBuffer[offset + 0] = (byte)(v >>> 24);
     writeBuffer[offset + 1] = (byte)(v >>> 16);
     writeBuffer[offset + 2] = (byte)(v >>>  8);

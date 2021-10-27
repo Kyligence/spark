@@ -133,12 +133,13 @@ class LevelDBTypeInfo {
 
     // First create the parent indices, then the child indices.
     ti.indices().forEach(idx -> {
-      if (idx.parent().isEmpty()) {
+      // In LevelDB, there is no parent index for the NATURAL INDEX.
+      if (idx.parent().isEmpty() || idx.value().equals(KVIndex.NATURAL_INDEX_NAME)) {
         indices.put(idx.value(), new Index(idx, ti.getAccessor(idx.value()), null));
       }
     });
     ti.indices().forEach(idx -> {
-      if (!idx.parent().isEmpty()) {
+      if (!idx.parent().isEmpty() && !idx.value().equals(KVIndex.NATURAL_INDEX_NAME)) {
         indices.put(idx.value(), new Index(idx, ti.getAccessor(idx.value()),
           indices.get(idx.parent())));
       }
@@ -249,7 +250,7 @@ class LevelDBTypeInfo {
      * calculated only once, avoiding redundant work when multiple child indices of the
      * same parent index exist.
      */
-    byte[] childPrefix(Object value) throws Exception {
+    byte[] childPrefix(Object value) {
       Preconditions.checkState(parent == null, "Not a parent index.");
       return buildKey(name, toParentKey(value));
     }
@@ -295,7 +296,7 @@ class LevelDBTypeInfo {
     }
 
     /** The key for the end marker for entries with the given value. */
-    byte[] end(byte[] prefix, Object value) throws Exception {
+    byte[] end(byte[] prefix, Object value) {
       checkParent(prefix);
       return (parent != null) ? buildKey(false, prefix, name, toKey(value), END_MARKER)
         : buildKey(name, toKey(value), END_MARKER);
@@ -313,7 +314,7 @@ class LevelDBTypeInfo {
       return entityKey;
     }
 
-    private void updateCount(WriteBatch batch, byte[] key, long delta) throws Exception {
+    private void updateCount(WriteBatch batch, byte[] key, long delta) {
       long updated = getCount(key) + delta;
       if (updated > 0) {
         batch.put(key, db.serializer.serialize(updated));
@@ -431,7 +432,7 @@ class LevelDBTypeInfo {
       addOrRemove(batch, entity, null, null, naturalKey, prefix);
     }
 
-    long getCount(byte[] key) throws Exception {
+    long getCount(byte[] key) {
       byte[] data = db.db().get(key);
       return data != null ? db.serializer.deserializeLong(data) : 0;
     }
@@ -493,7 +494,7 @@ class LevelDBTypeInfo {
         byte[] key = new byte[bytes * 2 + 2];
         long longValue = ((Number) value).longValue();
         key[0] = prefix;
-        key[1] = longValue > 0 ? POSITIVE_MARKER : NEGATIVE_MARKER;
+        key[1] = longValue >= 0 ? POSITIVE_MARKER : NEGATIVE_MARKER;
 
         for (int i = 0; i < key.length - 2; i++) {
           int masked = (int) ((longValue >>> (4 * i)) & 0xF);

@@ -23,26 +23,36 @@ import java.nio.file.attribute.PosixFilePermission._
 import java.util.EnumSet
 
 import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.language.postfixOps
 
+import com.codahale.metrics.MetricSet
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.metrics2.impl.MetricsSystemImpl
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem
 import org.apache.hadoop.service.ServiceStateException
 import org.apache.hadoop.yarn.api.records.ApplicationId
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.server.api.{ApplicationInitializationContext, ApplicationTerminationContext}
-import org.scalatest.{BeforeAndAfterEach, Matchers}
+import org.mockito.Mockito.{mock, when}
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually._
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.matchers.should.Matchers._
 
 import org.apache.spark.SecurityManager
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.network.shuffle.ShuffleTestAccessor
+import org.apache.spark.internal.config._
+import org.apache.spark.network.shuffle.{ExternalBlockHandler, RemoteBlockPushResolver, ShuffleTestAccessor}
 import org.apache.spark.network.shuffle.protocol.ExecutorShuffleInfo
+import org.apache.spark.network.util.TransportConf
 import org.apache.spark.util.Utils
 
 class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAndAfterEach {
   private[yarn] var yarnConfig: YarnConfiguration = null
   private[yarn] val SORT_MANAGER = "org.apache.spark.shuffle.sort.SortShuffleManager"
+
+  private var recoveryLocalDir: File = _
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -50,10 +60,12 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     yarnConfig.set(YarnConfiguration.NM_AUX_SERVICES, "spark_shuffle")
     yarnConfig.set(YarnConfiguration.NM_AUX_SERVICE_FMT.format("spark_shuffle"),
       classOf[YarnShuffleService].getCanonicalName)
-    yarnConfig.setInt("spark.shuffle.service.port", 0)
+    yarnConfig.setInt(SHUFFLE_SERVICE_PORT.key, 0)
     yarnConfig.setBoolean(YarnShuffleService.STOP_ON_FAILURE_KEY, true)
     val localDir = Utils.createTempDir()
     yarnConfig.set(YarnConfiguration.NM_LOCAL_DIRS, localDir.getAbsolutePath)
+
+    recoveryLocalDir = Utils.createTempDir()
   }
 
   var s1: YarnShuffleService = null
@@ -81,6 +93,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
 
   test("executor state kept across NM restart") {
     s1 = new YarnShuffleService
+    s1.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     // set auth to true to test the secrets recovery
     yarnConfig.setBoolean(SecurityManager.SPARK_AUTH_CONF, true)
     s1.init(yarnConfig)
@@ -123,6 +136,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     // now we pretend the shuffle service goes down, and comes back up
     s1.stop()
     s2 = new YarnShuffleService
+    s2.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     s2.init(yarnConfig)
     s2.secretsFile should be (secretsFile)
     s2.registeredExecutorFile should be (execStateFile)
@@ -140,6 +154,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     // Act like the NM restarts one more time
     s2.stop()
     s3 = new YarnShuffleService
+    s3.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     s3.init(yarnConfig)
     s3.registeredExecutorFile should be (execStateFile)
     s3.secretsFile should be (secretsFile)
@@ -156,6 +171,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
 
   test("removed applications should not be in registered executor file") {
     s1 = new YarnShuffleService
+    s1.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     yarnConfig.setBoolean(SecurityManager.SPARK_AUTH_CONF, false)
     s1.init(yarnConfig)
     val secretsFile = s1.secretsFile
@@ -190,6 +206,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
 
   test("shuffle service should be robust to corrupt registered executor file") {
     s1 = new YarnShuffleService
+    s1.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     s1.init(yarnConfig)
     val app1Id = ApplicationId.newInstance(0, 1)
     val app1Data = makeAppInfo("user", app1Id)
@@ -215,6 +232,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     out.close()
 
     s2 = new YarnShuffleService
+    s2.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     s2.init(yarnConfig)
     s2.registeredExecutorFile should be (execStateFile)
 
@@ -232,8 +250,9 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     ShuffleTestAccessor.getExecutorInfo(app2Id, "exec-2", resolver2) should be (Some(shuffleInfo2))
     s2.stop()
 
-    // another stop & restart should be fine though (eg., we recover from previous corruption)
+    // another stop & restart should be fine though (e.g., we recover from previous corruption)
     s3 = new YarnShuffleService
+    s3.setRecoveryPath(new Path(recoveryLocalDir.toURI))
     s3.init(yarnConfig)
     s3.registeredExecutorFile should be (execStateFile)
     val handler3 = s3.blockHandler
@@ -254,14 +273,6 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     s1.init(yarnConfig)
     s1._recoveryPath should be (recoveryPath)
     s1.stop()
-
-    // Test recovery path is set inside the shuffle service, this will be happened when NM
-    // recovery is not enabled or there's no NM recovery (Hadoop 2.5-).
-    s2 = new YarnShuffleService
-    s2.init(yarnConfig)
-    s2._recoveryPath should be
-      (new Path(yarnConfig.getTrimmedStrings("yarn.nodemanager.local-dirs")(0)))
-    s2.stop()
   }
 
   test("moving recovery file from NM local dir to recovery path") {
@@ -271,6 +282,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     // Simulate s1 is running on old version of Hadoop in which recovery file is in the NM local
     // dir.
     s1 = new YarnShuffleService
+    s1.setRecoveryPath(new Path(yarnConfig.getTrimmedStrings(YarnConfiguration.NM_LOCAL_DIRS)(0)))
     // set auth to true to test the secrets recovery
     yarnConfig.setBoolean(SecurityManager.SPARK_AUTH_CONF, true)
     s1.init(yarnConfig)
@@ -308,7 +320,7 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
 
     // Simulate s2 is running on Hadoop 2.5+ with NM recovery is enabled.
     assert(execStateFile.exists())
-    val recoveryPath = new Path(Utils.createTempDir().toURI)
+    val recoveryPath = new Path(recoveryLocalDir.toURI)
     s2 = new YarnShuffleService
     s2.setRecoveryPath(recoveryPath)
     s2.init(yarnConfig)
@@ -322,10 +334,10 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
 
     recoveryPath.toString should be (new Path(execStateFile2.getParentFile.toURI).toString)
     recoveryPath.toString should be (new Path(secretsFile2.getParentFile.toURI).toString)
-    eventually(timeout(10 seconds), interval(5 millis)) {
+    eventually(timeout(10.seconds), interval(5.milliseconds)) {
       assert(!execStateFile.exists())
     }
-    eventually(timeout(10 seconds), interval(5 millis)) {
+    eventually(timeout(10.seconds), interval(5.milliseconds)) {
       assert(!secretsFile.exists())
     }
 
@@ -347,10 +359,10 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     // Set up a read-only local dir.
     val roDir = Utils.createTempDir()
     Files.setPosixFilePermissions(roDir.toPath(), EnumSet.of(OWNER_READ, OWNER_EXECUTE))
-    yarnConfig.set(YarnConfiguration.NM_LOCAL_DIRS, roDir.getAbsolutePath())
 
     // Try to start the shuffle service, it should fail.
     val service = new YarnShuffleService()
+    service.setRecoveryPath(new Path(roDir.toURI))
 
     try {
       val error = intercept[ServiceStateException] {
@@ -369,4 +381,59 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
     new ApplicationInitializationContext(user, appId, secret)
   }
 
+  test("recovery db should not be created if NM recovery is not enabled") {
+    s1 = new YarnShuffleService
+    s1.init(yarnConfig)
+    s1._recoveryPath should be (null)
+    s1.registeredExecutorFile should be (null)
+    s1.secretsFile should be (null)
+  }
+
+  test("SPARK-31646: metrics should be registered into Node Manager's metrics system") {
+    s1 = new YarnShuffleService
+    s1.init(yarnConfig)
+
+    val metricsSource = DefaultMetricsSystem.instance.asInstanceOf[MetricsSystemImpl]
+      .getSource("sparkShuffleService").asInstanceOf[YarnShuffleServiceMetrics]
+    val metricSetRef = classOf[YarnShuffleServiceMetrics].getDeclaredField("metricSet")
+    metricSetRef.setAccessible(true)
+    val metrics = metricSetRef.get(metricsSource).asInstanceOf[MetricSet].getMetrics
+
+    assert(metrics.keySet().asScala == Set(
+      "blockTransferRateBytes",
+      "numActiveConnections",
+      "numCaughtExceptions",
+      "numRegisteredConnections",
+      "openBlockRequestLatencyMillis",
+      "registeredExecutorsSize",
+      "registerExecutorRequestLatencyMillis",
+      "finalizeShuffleMergeLatencyMillis",
+      "shuffle-server.usedDirectMemory",
+      "shuffle-server.usedHeapMemory"
+    ))
+  }
+
+  test("create default merged shuffle file manager instance") {
+    val mockConf = mock(classOf[TransportConf])
+    when(mockConf.mergedShuffleFileManagerImpl).thenReturn(
+      "org.apache.spark.network.shuffle.ExternalBlockHandler$NoOpMergedShuffleFileManager")
+    val mergeMgr = YarnShuffleService.newMergedShuffleFileManagerInstance(mockConf)
+    assert(mergeMgr.isInstanceOf[ExternalBlockHandler.NoOpMergedShuffleFileManager])
+  }
+
+  test("create remote block push resolver instance") {
+    val mockConf = mock(classOf[TransportConf])
+    when(mockConf.mergedShuffleFileManagerImpl).thenReturn(
+      "org.apache.spark.network.shuffle.RemoteBlockPushResolver")
+    val mergeMgr = YarnShuffleService.newMergedShuffleFileManagerInstance(mockConf)
+    assert(mergeMgr.isInstanceOf[RemoteBlockPushResolver])
+  }
+
+  test("invalid class name of merge manager will use noop instance") {
+    val mockConf = mock(classOf[TransportConf])
+    when(mockConf.mergedShuffleFileManagerImpl).thenReturn(
+      "org.apache.spark.network.shuffle.NotExistent")
+    val mergeMgr = YarnShuffleService.newMergedShuffleFileManagerInstance(mockConf)
+    assert(mergeMgr.isInstanceOf[ExternalBlockHandler.NoOpMergedShuffleFileManager])
+  }
 }

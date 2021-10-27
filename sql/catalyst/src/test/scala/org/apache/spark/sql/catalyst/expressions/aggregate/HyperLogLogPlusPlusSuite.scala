@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.catalyst.expressions.aggregate
 
+import java.lang.{Double => JDouble}
 import java.util.Random
 
 import scala.collection.mutable
@@ -24,7 +25,7 @@ import scala.collection.mutable
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{BoundReference, SpecificInternalRow}
-import org.apache.spark.sql.types.{DataType, IntegerType}
+import org.apache.spark.sql.types.{DataType, DoubleType, IntegerType}
 
 class HyperLogLogPlusPlusSuite extends SparkFunSuite {
 
@@ -47,7 +48,7 @@ class HyperLogLogPlusPlusSuite extends SparkFunSuite {
   def evaluateEstimate(hll: HyperLogLogPlusPlus, buffer: InternalRow, cardinality: Int): Unit = {
     val estimate = hll.eval(buffer).asInstanceOf[Long].toDouble
     val error = math.abs((estimate / cardinality.toDouble) - 1.0d)
-    assert(error < hll.trueRsd * 3.0d, "Error should be within 3 std. errors.")
+    assert(error < hll.hllppHelper.trueRsd * 3.0d, "Error should be within 3 std. errors.")
   }
 
   test("test invalid parameter relativeSD") {
@@ -83,7 +84,7 @@ class HyperLogLogPlusPlusSuite extends SparkFunSuite {
         val estimate = hll.eval(buffer).asInstanceOf[Long].toDouble
         val cardinality = c(n)
         val error = math.abs((estimate / cardinality.toDouble) - 1.0d)
-        assert(error < hll.trueRsd * 3.0d, "Error should be within 3 std. errors.")
+        assert(error < hll.hllppHelper.trueRsd * 3.0d, "Error should be within 3 std. errors.")
     }
   }
 
@@ -152,5 +153,26 @@ class HyperLogLogPlusPlusSuite extends SparkFunSuite {
 
     // Check if the buffers are equal.
     assert(buffer2 == buffer1a, "Buffers should be equal")
+  }
+
+  test("SPARK-32110: add 0.0 and -0.0") {
+    val (hll, input, buffer) = createEstimator(0.05, DoubleType)
+    input.setDouble(0, 0.0)
+    hll.update(buffer, input)
+    input.setDouble(0, -0.0)
+    hll.update(buffer, input)
+    evaluateEstimate(hll, buffer, 1);
+  }
+
+  test("SPARK-32110: add NaN") {
+    val (hll, input, buffer) = createEstimator(0.05, DoubleType)
+    input.setDouble(0, Double.NaN)
+    hll.update(buffer, input)
+    val specialNaN = JDouble.longBitsToDouble(0x7ff1234512345678L)
+    assert(JDouble.isNaN(specialNaN))
+    assert(JDouble.doubleToRawLongBits(Double.NaN) != JDouble.doubleToRawLongBits(specialNaN))
+    input.setDouble(0, specialNaN)
+    hll.update(buffer, input)
+    evaluateEstimate(hll, buffer, 1);
   }
 }

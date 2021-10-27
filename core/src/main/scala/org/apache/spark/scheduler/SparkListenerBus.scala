@@ -57,10 +57,16 @@ private[spark] trait SparkListenerBus
         listener.onApplicationEnd(applicationEnd)
       case metricsUpdate: SparkListenerExecutorMetricsUpdate =>
         listener.onExecutorMetricsUpdate(metricsUpdate)
+      case stageExecutorMetrics: SparkListenerStageExecutorMetrics =>
+        listener.onStageExecutorMetrics(stageExecutorMetrics)
       case executorAdded: SparkListenerExecutorAdded =>
         listener.onExecutorAdded(executorAdded)
       case executorRemoved: SparkListenerExecutorRemoved =>
         listener.onExecutorRemoved(executorRemoved)
+      case executorBlacklistedForStage: SparkListenerExecutorBlacklistedForStage =>
+        listener.onExecutorBlacklistedForStage(executorBlacklistedForStage)
+      case nodeBlacklistedForStage: SparkListenerNodeBlacklistedForStage =>
+        listener.onNodeBlacklistedForStage(nodeBlacklistedForStage)
       case executorBlacklisted: SparkListenerExecutorBlacklisted =>
         listener.onExecutorBlacklisted(executorBlacklisted)
       case executorUnblacklisted: SparkListenerExecutorUnblacklisted =>
@@ -69,8 +75,30 @@ private[spark] trait SparkListenerBus
         listener.onNodeBlacklisted(nodeBlacklisted)
       case nodeUnblacklisted: SparkListenerNodeUnblacklisted =>
         listener.onNodeUnblacklisted(nodeUnblacklisted)
+      case executorExcludedForStage: SparkListenerExecutorExcludedForStage =>
+        listener.onExecutorExcludedForStage(executorExcludedForStage)
+      case nodeExcludedForStage: SparkListenerNodeExcludedForStage =>
+        listener.onNodeExcludedForStage(nodeExcludedForStage)
+      case executorExcluded: SparkListenerExecutorExcluded =>
+        listener.onExecutorExcluded(executorExcluded)
+      case executorUnexcluded: SparkListenerExecutorUnexcluded =>
+        listener.onExecutorUnexcluded(executorUnexcluded)
+      case nodeExcluded: SparkListenerNodeExcluded =>
+        listener.onNodeExcluded(nodeExcluded)
+      case nodeUnexcluded: SparkListenerNodeUnexcluded =>
+        listener.onNodeUnexcluded(nodeUnexcluded)
       case blockUpdated: SparkListenerBlockUpdated =>
         listener.onBlockUpdated(blockUpdated)
+      case speculativeTaskSubmitted: SparkListenerSpeculativeTaskSubmitted =>
+        listener.onSpeculativeTaskSubmitted(speculativeTaskSubmitted)
+      case unschedulableTaskSetAdded: SparkListenerUnschedulableTaskSetAdded =>
+        listener.onUnschedulableTaskSetAdded(unschedulableTaskSetAdded)
+      case unschedulableTaskSetRemoved: SparkListenerUnschedulableTaskSetRemoved =>
+        listener.onUnschedulableTaskSetRemoved(unschedulableTaskSetRemoved)
+      case resourceProfileAdded: SparkListenerResourceProfileAdded =>
+        listener.onResourceProfileAdded(resourceProfileAdded)
+      case logRollUp: SparkListenerLogRollUp =>
+        listener.onSparkListenerLogRollUp(logRollUp)
       case _ => listener.onOtherEvent(event)
     }
   }

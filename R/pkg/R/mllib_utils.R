@@ -18,7 +18,7 @@
 # mllib_utils.R: Utilities for MLlib integration
 
 # Integration with R's standard functions.
-# Most of MLlib's argorithms are provided in two flavours:
+# Most of MLlib's algorithms are provided in two flavours:
 # - a specialization of the default R methods (glm). These methods try to respect
 #   the inputs and the outputs of R's method to the largest extent, but some small differences
 #   may exist.
@@ -31,7 +31,6 @@
 #' MLlib model below.
 #' @rdname write.ml
 #' @name write.ml
-#' @export
 #' @seealso \link{spark.als}, \link{spark.bisectingKmeans}, \link{spark.decisionTree},
 #' @seealso \link{spark.gaussianMixture}, \link{spark.gbt},
 #' @seealso \link{spark.glm}, \link{glm}, \link{spark.isoreg},
@@ -48,7 +47,6 @@ NULL
 #' MLlib model below.
 #' @rdname predict
 #' @name predict
-#' @export
 #' @seealso \link{spark.als}, \link{spark.bisectingKmeans}, \link{spark.decisionTree},
 #' @seealso \link{spark.gaussianMixture}, \link{spark.gbt},
 #' @seealso \link{spark.glm}, \link{glm}, \link{spark.isoreg},
@@ -75,7 +73,6 @@ predict_internal <- function(object, newData) {
 #' @return A fitted MLlib model.
 #' @rdname read.ml
 #' @name read.ml
-#' @export
 #' @seealso \link{write.ml}
 #' @examples
 #' \dontrun{
@@ -126,6 +123,12 @@ read.ml <- function(path) {
     new("LinearSVCModel", jobj = jobj)
   } else if (isInstanceOf(jobj, "org.apache.spark.ml.r.FPGrowthWrapper")) {
     new("FPGrowthModel", jobj = jobj)
+  } else if (isInstanceOf(jobj, "org.apache.spark.ml.r.FMClassifierWrapper")) {
+    new("FMClassificationModel", jobj = jobj)
+  } else if (isInstanceOf(jobj, "org.apache.spark.ml.r.LinearRegressionWrapper")) {
+    new("LinearRegressionModel", jobj = jobj)
+  } else if (isInstanceOf(jobj, "org.apache.spark.ml.r.FMRegressorWrapper")) {
+    new("FMRegressionModel", jobj = jobj)
   } else {
     stop("Unsupported model: ", jobj)
   }

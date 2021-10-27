@@ -22,7 +22,6 @@ import breeze.linalg.{DenseVector => BDV}
 import breeze.optimize.DiffFunction
 
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.linalg.{BLAS, Vector, Vectors}
 import org.apache.spark.ml.optim.aggregator.DifferentiableLossAggregator
 import org.apache.spark.rdd.RDD
@@ -66,7 +65,7 @@ private[ml] class RDDLossFunction[
       BLAS.axpy(1.0, regGradient, gradient)
       regLoss
     }.getOrElse(0.0)
-    bcCoefficients.destroy(blocking = false)
+    bcCoefficients.destroy()
     (newAgg.loss + regLoss, gradient.asBreeze.toDenseVector)
   }
 }

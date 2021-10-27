@@ -20,17 +20,18 @@ package org.apache.spark.sql.hive.execution
 import java.io.File
 
 import com.google.common.io.Files
+import org.apache.hadoop.fs.{FileContext, FsConstants, Path}
 
-import org.apache.spark.sql.{AnalysisException, QueryTest, Row, SaveMode}
+import org.apache.spark.sql.{AnalysisException, QueryTest, Row}
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.catalyst.catalog.{CatalogStorageFormat, CatalogTable, CatalogTableType}
+import org.apache.spark.sql.execution.command.LoadDataCommand
 import org.apache.spark.sql.hive.test.TestHiveSingleton
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SQLTestUtils
 import org.apache.spark.sql.types.StructType
 
 class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleton {
-  import testImplicits._
 
   protected override def beforeAll(): Unit = {
     super.beforeAll()
@@ -55,27 +56,11 @@ class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
         |STORED AS PARQUET
         |TBLPROPERTIES('prop1Key'="prop1Val", '`prop2Key`'="prop2Val")
       """.stripMargin)
-    sql("CREATE TABLE parquet_tab3(col1 int, `col 2` int)")
     sql("CREATE TABLE parquet_tab4 (price int, qty int) partitioned by (year int, month int)")
     sql("INSERT INTO parquet_tab4 PARTITION(year = 2015, month = 1) SELECT 1, 1")
     sql("INSERT INTO parquet_tab4 PARTITION(year = 2015, month = 2) SELECT 2, 2")
     sql("INSERT INTO parquet_tab4 PARTITION(year = 2016, month = 2) SELECT 3, 3")
     sql("INSERT INTO parquet_tab4 PARTITION(year = 2016, month = 3) SELECT 3, 3")
-    sql(
-      """
-        |CREATE TABLE parquet_tab5 (price int, qty int)
-        |PARTITIONED BY (year int, month int, hour int, minute int, sec int, extra int)
-      """.stripMargin)
-    sql(
-      """
-        |INSERT INTO parquet_tab5
-        |PARTITION(year = 2016, month = 3, hour = 10, minute = 10, sec = 10, extra = 1) SELECT 3, 3
-      """.stripMargin)
-    sql(
-      """
-        |INSERT INTO parquet_tab5
-        |PARTITION(year = 2016, month = 4, hour = 10, minute = 10, sec = 10, extra = 1) SELECT 3, 3
-      """.stripMargin)
     sql("CREATE VIEW parquet_view1 as select * from parquet_tab4")
   }
 
@@ -83,34 +68,56 @@ class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
     try {
       sql("DROP TABLE IF EXISTS parquet_tab1")
       sql("DROP TABLE IF EXISTS parquet_tab2")
-      sql("DROP TABLE IF EXISTS parquet_tab3")
       sql("DROP VIEW IF EXISTS parquet_view1")
       sql("DROP TABLE IF EXISTS parquet_tab4")
-      sql("DROP TABLE IF EXISTS parquet_tab5")
     } finally {
       super.afterAll()
     }
   }
 
-  test("show tables") {
-    withTable("show1a", "show2b") {
-      sql("CREATE TABLE show1a(c1 int)")
-      sql("CREATE TABLE show2b(c2 int)")
+  test("show views") {
+    withView("show1a", "show2b", "global_temp.temp1", "temp2") {
+      sql("CREATE VIEW show1a AS SELECT 1 AS id")
+      sql("CREATE VIEW show2b AS SELECT 1 AS id")
+      sql("CREATE GLOBAL TEMP VIEW temp1 AS SELECT 1 AS id")
+      sql("CREATE TEMP VIEW temp2 AS SELECT 1 AS id")
       checkAnswer(
-        sql("SHOW TABLES IN default 'show1*'"),
+        sql("SHOW VIEWS"),
+        Row("default", "show1a", false) ::
+          Row("default", "show2b", false) ::
+          Row("default", "parquet_view1", false) ::
+          Row("", "temp2", true) :: Nil)
+      checkAnswer(
+        sql("SHOW VIEWS IN default"),
+        Row("default", "show1a", false) ::
+          Row("default", "show2b", false) ::
+          Row("default", "parquet_view1", false) ::
+          Row("", "temp2", true) :: Nil)
+      checkAnswer(
+        sql("SHOW VIEWS FROM default"),
+        Row("default", "show1a", false) ::
+          Row("default", "show2b", false) ::
+          Row("default", "parquet_view1", false) ::
+          Row("", "temp2", true) :: Nil)
+      checkAnswer(
+        sql("SHOW VIEWS FROM global_temp"),
+        Row("global_temp", "temp1", true) ::
+          Row("", "temp2", true) :: Nil)
+      checkAnswer(
+        sql("SHOW VIEWS 'show1*|show2*'"),
+        Row("default", "show1a", false) ::
+          Row("default", "show2b", false) :: Nil)
+      checkAnswer(
+        sql("SHOW VIEWS LIKE 'show1*|show2*'"),
+        Row("default", "show1a", false) ::
+          Row("default", "show2b", false) :: Nil)
+      checkAnswer(
+        sql("SHOW VIEWS IN default 'show1*'"),
         Row("default", "show1a", false) :: Nil)
       checkAnswer(
-        sql("SHOW TABLES IN default 'show1*|show2*'"),
+        sql("SHOW VIEWS IN default LIKE 'show1*|show2*'"),
         Row("default", "show1a", false) ::
           Row("default", "show2b", false) :: Nil)
-      checkAnswer(
-        sql("SHOW TABLES 'show1*|show2*'"),
-        Row("default", "show1a", false) ::
-          Row("default", "show2b", false) :: Nil)
-      assert(
-        sql("SHOW TABLES").count() >= 2)
-      assert(
-        sql("SHOW TABLES IN default").count() >= 2)
     }
   }
 
@@ -127,10 +134,10 @@ class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
   }
 
   test("show tblproperties for datasource table - errors") {
-    val message1 = intercept[NoSuchTableException] {
+    val message = intercept[AnalysisException] {
       sql("SHOW TBLPROPERTIES badtable")
     }.getMessage
-    assert(message1.contains("Table or view 'badtable' not found in database 'default'"))
+    assert(message.contains("Table or view not found for 'SHOW TBLPROPERTIES': badtable"))
 
     // When key is not found, a row containing the error is returned.
     checkAnswer(
@@ -142,19 +149,6 @@ class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
   test("show tblproperties for hive table") {
     checkAnswer(sql("SHOW TBLPROPERTIES parquet_tab2('prop1Key')"), Row("prop1Val"))
     checkAnswer(sql("SHOW TBLPROPERTIES parquet_tab2('`prop2Key`')"), Row("prop2Val"))
-  }
-
-  test("show tblproperties for spark temporary table - empty row") {
-    withTempView("parquet_temp") {
-      sql(
-        """
-         |CREATE TEMPORARY VIEW parquet_temp (c1 INT, c2 STRING)
-         |USING org.apache.spark.sql.parquet.DefaultSource
-        """.stripMargin)
-
-      // An empty sequence of row is returned for session temporary table.
-      checkAnswer(sql("SHOW TBLPROPERTIES parquet_temp"), Nil)
-    }
   }
 
   Seq(true, false).foreach { local =>
@@ -287,7 +281,29 @@ class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
       }
       checkAnswer(
         sql("SELECT employeeID, employeeName FROM part_table WHERE c = '2' AND d = '1'"),
-        sql("SELECT * FROM non_part_table").collect())
+        sql("SELECT * FROM non_part_table"))
+    }
+  }
+
+  test("SPARK-28084 case insensitive names of static partitioning in INSERT commands") {
+    withTable("part_table") {
+      withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
+        sql("CREATE TABLE part_table (price int, qty int) partitioned by (year int, month int)")
+        sql("INSERT INTO part_table PARTITION(YEar = 2015, month = 1) SELECT 1, 1")
+        checkAnswer(sql("SELECT * FROM part_table"), Row(1, 1, 2015, 1))
+      }
+    }
+  }
+
+  test("SPARK-28084 case insensitive names of dynamic partitioning in INSERT commands") {
+    withTable("part_table") {
+      withSQLConf(
+        SQLConf.CASE_SENSITIVE.key -> "false",
+        "hive.exec.dynamic.partition.mode" -> "nonstrict") {
+        sql("CREATE TABLE part_table (price int) partitioned by (year int)")
+        sql("INSERT INTO part_table PARTITION(YEar) SELECT 1, 2019")
+        checkAnswer(sql("SELECT * FROM part_table"), Row(1, 2019))
+      }
     }
   }
 
@@ -357,86 +373,11 @@ class HiveCommandSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
     }
   }
 
-
-  test("show partitions - show everything") {
-    checkAnswer(
-      sql("show partitions parquet_tab4"),
-      Row("year=2015/month=1") ::
-        Row("year=2015/month=2") ::
-        Row("year=2016/month=2") ::
-        Row("year=2016/month=3") :: Nil)
-
-    checkAnswer(
-      sql("show partitions default.parquet_tab4"),
-      Row("year=2015/month=1") ::
-        Row("year=2015/month=2") ::
-        Row("year=2016/month=2") ::
-        Row("year=2016/month=3") :: Nil)
+  test("SPARK-25918: LOAD DATA LOCAL INPATH should handle a relative path") {
+    val localFS = FileContext.getLocalFSFileContext()
+    val workingDir = localFS.getWorkingDirectory
+    val r = LoadDataCommand.makeQualified(
+      FsConstants.LOCAL_FS_URI, workingDir, new Path("kv1.txt"))
+    assert(r === new Path(s"$workingDir/kv1.txt"))
   }
-
-  test("show partitions - show everything more than 5 part keys") {
-    checkAnswer(
-      sql("show partitions parquet_tab5"),
-      Row("year=2016/month=3/hour=10/minute=10/sec=10/extra=1") ::
-        Row("year=2016/month=4/hour=10/minute=10/sec=10/extra=1") :: Nil)
-  }
-
-  test("show partitions - filter") {
-    checkAnswer(
-      sql("show partitions default.parquet_tab4 PARTITION(year=2015)"),
-      Row("year=2015/month=1") ::
-        Row("year=2015/month=2") :: Nil)
-
-    checkAnswer(
-      sql("show partitions default.parquet_tab4 PARTITION(year=2015, month=1)"),
-      Row("year=2015/month=1") :: Nil)
-
-    checkAnswer(
-      sql("show partitions default.parquet_tab4 PARTITION(month=2)"),
-      Row("year=2015/month=2") ::
-        Row("year=2016/month=2") :: Nil)
-  }
-
-  test("show partitions - empty row") {
-    withTempView("parquet_temp") {
-      sql(
-        """
-         |CREATE TEMPORARY VIEW parquet_temp (c1 INT, c2 STRING)
-         |USING org.apache.spark.sql.parquet.DefaultSource
-        """.stripMargin)
-      // An empty sequence of row is returned for session temporary table.
-      intercept[NoSuchTableException] {
-        sql("SHOW PARTITIONS parquet_temp")
-      }
-
-      val message1 = intercept[AnalysisException] {
-        sql("SHOW PARTITIONS parquet_tab3")
-      }.getMessage
-      assert(message1.contains("not allowed on a table that is not partitioned"))
-
-      val message2 = intercept[AnalysisException] {
-        sql("SHOW PARTITIONS parquet_tab4 PARTITION(abcd=2015, xyz=1)")
-      }.getMessage
-      assert(message2.contains("Non-partitioning column(s) [abcd, xyz] are specified"))
-
-      val message3 = intercept[AnalysisException] {
-        sql("SHOW PARTITIONS parquet_view1")
-      }.getMessage
-      assert(message3.contains("is not allowed on a view"))
-    }
-  }
-
-  test("show partitions - datasource") {
-    withTable("part_datasrc") {
-      val df = (1 to 3).map(i => (i, s"val_$i", i * 2)).toDF("a", "b", "c")
-      df.write
-        .partitionBy("a")
-        .format("parquet")
-        .mode(SaveMode.Overwrite)
-        .saveAsTable("part_datasrc")
-
-      assert(sql("SHOW PARTITIONS part_datasrc").count() == 3)
-    }
-  }
-
 }

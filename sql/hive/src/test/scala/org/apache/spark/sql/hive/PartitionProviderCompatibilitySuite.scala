@@ -37,11 +37,11 @@ class PartitionProviderCompatibilitySuite
     spark.range(5).selectExpr("id as fieldOne", "id as partCol").write
       .partitionBy("partCol")
       .mode("overwrite")
-      .parquet(dir.getAbsolutePath)
+      .save(dir.getAbsolutePath)
 
     spark.sql(s"""
       |create table $tableName (fieldOne long, partCol int)
-      |using parquet
+      |using ${spark.sessionState.conf.defaultDataSourceName}
       |options (path "${dir.toURI}")
       |partitioned by (partCol)""".stripMargin)
   }
@@ -53,7 +53,8 @@ class PartitionProviderCompatibilitySuite
       s"ALTER TABLE $tableName PARTITION (partCol=1) SET LOCATION '/foo'",
       s"ALTER TABLE $tableName DROP PARTITION (partCol=1)",
       s"DESCRIBE $tableName PARTITION (partCol=1)",
-      s"SHOW PARTITIONS $tableName")
+      s"SHOW PARTITIONS $tableName",
+      s"SHOW TABLE EXTENDED LIKE '$tableName' PARTITION (partCol=1)")
 
     withSQLConf(SQLConf.HIVE_MANAGE_FILESOURCE_PARTITIONS.key -> "true") {
       for (cmd <- unsupportedCommands) {
@@ -124,10 +125,15 @@ class PartitionProviderCompatibilitySuite
         }
         // disabled
         withSQLConf(SQLConf.HIVE_MANAGE_FILESOURCE_PARTITIONS.key -> "false") {
-          val e = intercept[AnalysisException] {
-            spark.sql(s"show partitions test")
+          Seq(
+            "SHOW PARTITIONS test",
+            "SHOW TABLE EXTENDED LIKE 'test' PARTITION (partCol=1)"
+          ).foreach { showPartitions =>
+            val e = intercept[AnalysisException] {
+              spark.sql(showPartitions)
+            }
+            assert(e.getMessage.contains("filesource partition management is disabled"))
           }
-          assert(e.getMessage.contains("filesource partition management is disabled"))
           spark.sql("refresh table test")
           assert(spark.sql("select * from test").count() == 5)
         }
@@ -358,7 +364,7 @@ class PartitionProviderCompatibilitySuite
     try {
       spark.sql(s"""
         |create table test (id long, P1 int, P2 int)
-        |using parquet
+        |using ${spark.sessionState.conf.defaultDataSourceName}
         |options (path "${base.toURI}")
         |partitioned by (P1, P2)""".stripMargin)
       spark.sql(s"alter table test add partition (P1=0, P2=0) location '${a.toURI}'")

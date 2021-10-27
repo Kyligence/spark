@@ -20,12 +20,12 @@ package org.apache.spark.sql.execution.aggregate
 import java.{util => ju}
 
 import org.apache.spark.{SparkEnv, TaskContext}
+import org.apache.spark.internal.config
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, UnsafeProjection, UnsafeRow}
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateFunction, TypedImperativeAggregate}
 import org.apache.spark.sql.execution.UnsafeKVExternalSorter
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
 
 /**
  * An aggregation map that supports using safe `SpecificInternalRow`s aggregation buffers, so that
@@ -73,9 +73,7 @@ class ObjectAggregationMap() {
       SparkEnv.get.blockManager,
       SparkEnv.get.serializerManager,
       TaskContext.get().taskMemoryManager().pageSizeBytes,
-      SparkEnv.get.conf.getLong(
-        "spark.shuffle.spill.numElementsForceSpillThreshold",
-        UnsafeExternalSorter.DEFAULT_NUM_ELEMENTS_FOR_SPILL_THRESHOLD),
+      SparkEnv.get.conf.get(config.SHUFFLE_SPILL_NUM_ELEMENTS_FORCE_SPILL_THRESHOLD),
       null
     )
 

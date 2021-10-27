@@ -17,18 +17,20 @@
 
 package org.apache.spark.sql.catalyst.analysis
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.catalyst.expressions.Attribute
+import org.apache.spark.sql.catalyst.expressions.{Attribute, CurrentDate, CurrentTimestamp, MonotonicallyIncreasingID, Now}
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.streaming.InternalOutputModes
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.streaming.OutputMode
 
 /**
  * Analyzes the presence of unsupported operations in a logical plan.
  */
-object UnsupportedOperationChecker {
+object UnsupportedOperationChecker extends Logging {
 
   def checkForBatch(plan: LogicalPlan): Unit = {
     plan.foreachUp {
@@ -39,8 +41,60 @@ object UnsupportedOperationChecker {
     }
   }
 
-  def checkForStreaming(plan: LogicalPlan, outputMode: OutputMode): Unit = {
+  /**
+   * Checks for possible correctness issue in chained stateful operators. The behavior is
+   * controlled by SQL config `spark.sql.streaming.statefulOperator.checkCorrectness.enabled`.
+   * Once it is enabled, an analysis exception will be thrown. Otherwise, Spark will just
+   * print a warning message.
+   */
+  def checkStreamingQueryGlobalWatermarkLimit(
+      plan: LogicalPlan,
+      outputMode: OutputMode): Unit = {
+    def isStatefulOperationPossiblyEmitLateRows(p: LogicalPlan): Boolean = p match {
+      case s: Aggregate
+        if s.isStreaming && outputMode == InternalOutputModes.Append => true
+      case Join(left, right, joinType, _, _)
+        if left.isStreaming && right.isStreaming && joinType != Inner => true
+      case f: FlatMapGroupsWithState
+        if f.isStreaming && f.outputMode == OutputMode.Append() => true
+      case _ => false
+    }
 
+    def isStatefulOperation(p: LogicalPlan): Boolean = p match {
+      case s: Aggregate if s.isStreaming => true
+      case _ @ Join(left, right, _, _, _) if left.isStreaming && right.isStreaming => true
+      case f: FlatMapGroupsWithState if f.isStreaming => true
+      case d: Deduplicate if d.isStreaming => true
+      case _ => false
+    }
+
+    val failWhenDetected = SQLConf.get.statefulOperatorCorrectnessCheckEnabled
+
+    try {
+      plan.foreach { subPlan =>
+        if (isStatefulOperation(subPlan)) {
+          subPlan.find { p =>
+            (p ne subPlan) && isStatefulOperationPossiblyEmitLateRows(p)
+          }.foreach { _ =>
+            val errorMsg = "Detected pattern of possible 'correctness' issue " +
+              "due to global watermark. " +
+              "The query contains stateful operation which can emit rows older than " +
+              "the current watermark plus allowed late record delay, which are \"late rows\"" +
+              " in downstream stateful operations and these rows can be discarded. " +
+              "Please refer the programming guide doc for more details. If you understand " +
+              "the possible risk of correctness issue and still need to run the query, " +
+              "you can disable this check by setting the config " +
+              "`spark.sql.streaming.statefulOperator.checkCorrectness.enabled` to false."
+            throwError(errorMsg)(plan)
+          }
+        }
+      }
+    } catch {
+      case e: AnalysisException if !failWhenDetected => logWarning(s"${e.message};\n$plan")
+    }
+  }
+
+  def checkForStreaming(plan: LogicalPlan, outputMode: OutputMode): Unit = {
     if (!plan.isStreaming) {
       throwError(
         "Queries without streaming sources cannot be executed with writeStream.start()")(plan)
@@ -48,7 +102,13 @@ object UnsupportedOperationChecker {
 
     /** Collect all the streaming aggregates in a sub plan */
     def collectStreamingAggregates(subplan: LogicalPlan): Seq[Aggregate] = {
-      subplan.collect { case a: Aggregate if a.isStreaming => a }
+      subplan.collect {
+        case a: Aggregate if a.isStreaming => a
+        // Since the Distinct node will be replaced to Aggregate in the optimizer rule
+        // [[ReplaceDistinctWithAggregate]], here we also need to check all Distinct node by
+        // assuming it as Aggregate.
+        case d @ Distinct(c: LogicalPlan) if d.isStreaming => Aggregate(c.output, c.output, c)
+      }
     }
 
     val mapGroupsWithStates = plan.collect {
@@ -128,6 +188,16 @@ object UnsupportedOperationChecker {
       !subplan.isStreaming || (aggs.nonEmpty && outputMode == InternalOutputModes.Complete)
     }
 
+    def checkUnsupportedExpressions(implicit operator: LogicalPlan): Unit = {
+      val unsupportedExprs = operator.expressions.flatMap(_.collect {
+        case m: MonotonicallyIncreasingID => m
+      }).distinct
+      if (unsupportedExprs.nonEmpty) {
+        throwError("Expression(s): " + unsupportedExprs.map(_.sql).mkString(", ") +
+          " is not supported with streaming DataFrames/Datasets")
+      }
+    }
+
     plan.foreachUp { implicit subPlan =>
 
       // Operations that cannot exists anywhere in a streaming plan
@@ -146,15 +216,18 @@ object UnsupportedOperationChecker {
           throwError("Commands like CreateTable*, AlterTable*, Show* are not supported with " +
             "streaming DataFrames/Datasets")
 
+        case _: InsertIntoDir =>
+          throwError("InsertIntoDir is not supported with streaming DataFrames/Datasets")
+
         // mapGroupsWithState and flatMapGroupsWithState
         case m: FlatMapGroupsWithState if m.isStreaming =>
 
           // Check compatibility with output modes and aggregations in query
-          val aggsAfterFlatMapGroups = collectStreamingAggregates(plan)
+          val aggsInQuery = collectStreamingAggregates(plan)
 
           if (m.isMapGroupsWithState) {                       // check mapGroupsWithState
             // allowed only in update query output mode and without aggregation
-            if (aggsAfterFlatMapGroups.nonEmpty) {
+            if (aggsInQuery.nonEmpty) {
               throwError(
                 "mapGroupsWithState is not supported with aggregation " +
                   "on a streaming DataFrame/Dataset")
@@ -163,8 +236,8 @@ object UnsupportedOperationChecker {
                 "mapGroupsWithState is not supported with " +
                   s"$outputMode output mode on a streaming DataFrame/Dataset")
             }
-          } else {                                           // check latMapGroupsWithState
-            if (aggsAfterFlatMapGroups.isEmpty) {
+          } else {                                           // check flatMapGroupsWithState
+            if (aggsInQuery.isEmpty) {
               // flatMapGroupsWithState without aggregation: operation's output mode must
               // match query output mode
               m.outputMode match {
@@ -190,7 +263,7 @@ object UnsupportedOperationChecker {
               } else if (collectStreamingAggregates(m).nonEmpty) {
                 throwError(
                   "flatMapGroupsWithState in append mode is not supported after " +
-                    s"aggregation on a streaming DataFrame/Dataset")
+                    "aggregation on a streaming DataFrame/Dataset")
               }
             }
           }
@@ -214,31 +287,51 @@ object UnsupportedOperationChecker {
           throwError("dropDuplicates is not supported after aggregation on a " +
             "streaming DataFrame/Dataset")
 
-        case Join(left, right, joinType, _) =>
+        case j @ Join(left, right, joinType, condition, _) =>
+          if (left.isStreaming && right.isStreaming && outputMode != InternalOutputModes.Append) {
+            throwError("Join between two streaming DataFrames/Datasets is not supported" +
+              s" in ${outputMode} output mode, only in Append output mode")
+          }
 
           joinType match {
-
             case _: InnerLike =>
-              if (left.isStreaming && right.isStreaming) {
-                throwError("Inner join between two streaming DataFrames/Datasets is not supported")
-              }
+              // no further validations needed
 
             case FullOuter =>
-              if (left.isStreaming || right.isStreaming) {
-                throwError("Full outer joins with streaming DataFrames/Datasets are not supported")
+              if (left.isStreaming && !right.isStreaming) {
+                throwError("FullOuter joins with streaming DataFrames/Datasets on the left " +
+                  "and a static DataFrame/Dataset on the right is not supported")
+              } else if (!left.isStreaming && right.isStreaming) {
+                throwError("FullOuter joins with streaming DataFrames/Datasets on the right " +
+                  "and a static DataFrame/Dataset on the left is not supported")
+              } else if (left.isStreaming && right.isStreaming) {
+                checkForStreamStreamJoinWatermark(j)
               }
 
-
-            case LeftOuter | LeftSemi | LeftAnti =>
+            case LeftAnti =>
               if (right.isStreaming) {
-                throwError("Left outer/semi/anti joins with a streaming DataFrame/Dataset " +
-                    "on the right is not supported")
+                throwError(s"$LeftAnti joins with a streaming DataFrame/Dataset " +
+                    "on the right are not supported")
               }
 
+            // We support streaming left outer and left semi joins with static on the right always,
+            // and with stream on both sides under the appropriate conditions.
+            case LeftOuter | LeftSemi =>
+              if (!left.isStreaming && right.isStreaming) {
+                throwError(s"$joinType join with a streaming DataFrame/Dataset " +
+                  "on the right and a static DataFrame/Dataset on the left is not supported")
+              } else if (left.isStreaming && right.isStreaming) {
+                checkForStreamStreamJoinWatermark(j)
+              }
+
+            // We support streaming right outer joins with static on the left always, and with
+            // stream on both sides under the appropriate conditions.
             case RightOuter =>
-              if (left.isStreaming) {
-                throwError("Right outer join with a streaming DataFrame/Dataset on the left is " +
-                    "not supported")
+              if (left.isStreaming && !right.isStreaming) {
+                throwError("RightOuter join with a streaming DataFrame/Dataset on the left and " +
+                    "a static DataFrame/DataSet on the right not supported")
+              } else if (left.isStreaming && right.isStreaming) {
+                checkForStreamStreamJoinWatermark(j)
               }
 
             case NaturalJoin(_) | UsingJoin(_, _) =>
@@ -254,17 +347,21 @@ object UnsupportedOperationChecker {
         case u: Union if u.children.map(_.isStreaming).distinct.size == 2 =>
           throwError("Union between streaming and batch DataFrames/Datasets is not supported")
 
-        case Except(left, right) if right.isStreaming =>
+        case Except(left, right, _) if right.isStreaming =>
           throwError("Except on a streaming DataFrame/Dataset on the right is not supported")
 
-        case Intersect(left, right) if left.isStreaming && right.isStreaming =>
+        case Intersect(left, right, _) if left.isStreaming && right.isStreaming =>
           throwError("Intersect between two streaming DataFrames/Datasets is not supported")
 
         case GroupingSets(_, _, child, _) if child.isStreaming =>
           throwError("GroupingSets is not supported on streaming DataFrames/Datasets")
 
-        case GlobalLimit(_, _) | LocalLimit(_, _) if subPlan.children.forall(_.isStreaming) =>
-          throwError("Limits are not supported on streaming DataFrames/Datasets")
+        case GlobalLimit(_, _) | LocalLimit(_, _)
+            if subPlan.children.forall(_.isStreaming) && outputMode == InternalOutputModes.Update =>
+          throwError("Limits are not supported on streaming DataFrames/Datasets in Update " +
+            "output mode")
+
+        case Offset(_, _) => throwError("Offset is not supported on streaming DataFrames/Datasets")
 
         case Sort(_, _, _) if !containsCompleteData(subPlan) =>
           throwError("Sorting is not supported on streaming DataFrames/Datasets, unless it is on " +
@@ -282,6 +379,35 @@ object UnsupportedOperationChecker {
 
         case _ =>
       }
+
+      // Check if there are unsupported expressions in streaming query plan.
+      checkUnsupportedExpressions(subPlan)
+    }
+
+    checkStreamingQueryGlobalWatermarkLimit(plan, outputMode)
+  }
+
+  def checkForContinuous(plan: LogicalPlan, outputMode: OutputMode): Unit = {
+    checkForStreaming(plan, outputMode)
+
+    plan.foreachUp { implicit subPlan =>
+      subPlan match {
+        case (_: Project | _: Filter | _: MapElements | _: MapPartitions |
+              _: DeserializeToObject | _: SerializeFromObject | _: SubqueryAlias |
+              _: TypedFilter) =>
+        case node if node.nodeName == "StreamingRelationV2" =>
+        case node =>
+          throwError(s"Continuous processing does not support ${node.nodeName} operations.")
+      }
+
+      subPlan.expressions.foreach { e =>
+        if (e.collectLeaves().exists {
+          case (_: CurrentTimestamp | _: Now | _: CurrentDate) => true
+          case _ => false
+        }) {
+          throwError(s"Continuous processing does not support current time operations.")
+        }
+      }
     }
   }
 
@@ -296,5 +422,35 @@ object UnsupportedOperationChecker {
   private def throwError(msg: String)(implicit operator: LogicalPlan): Nothing = {
     throw new AnalysisException(
       msg, operator.origin.line, operator.origin.startPosition, Some(operator))
+  }
+
+  private def checkForStreamStreamJoinWatermark(join: Join): Unit = {
+    val watermarkInJoinKeys = StreamingJoinHelper.isWatermarkInJoinKeys(join)
+
+    // Check if the nullable side has a watermark, and there's a range condition which
+    // implies a state value watermark on the first side.
+    val hasValidWatermarkRange = join.joinType match {
+      case LeftOuter | LeftSemi => StreamingJoinHelper.getStateValueWatermark(
+        join.left.outputSet, join.right.outputSet, join.condition, Some(1000000)).isDefined
+      case RightOuter => StreamingJoinHelper.getStateValueWatermark(
+        join.right.outputSet, join.left.outputSet, join.condition, Some(1000000)).isDefined
+      case FullOuter =>
+        Seq((join.left.outputSet, join.right.outputSet),
+          (join.right.outputSet, join.left.outputSet)).exists {
+          case (attributesToFindStateWatermarkFor, attributesWithEventWatermark) =>
+            StreamingJoinHelper.getStateValueWatermark(attributesToFindStateWatermarkFor,
+              attributesWithEventWatermark, join.condition, Some(1000000)).isDefined
+        }
+      case _ =>
+        throwError(
+          s"Join type ${join.joinType} is not supported with streaming DataFrame/Dataset")(join)
+    }
+
+    if (!watermarkInJoinKeys && !hasValidWatermarkRange) {
+      throwError(
+        s"Stream-stream ${join.joinType} join between two streaming DataFrame/Datasets " +
+          "is not supported without a watermark in the join keys, or a watermark on " +
+          "the nullable side and an appropriate range condition")(join)
+    }
   }
 }

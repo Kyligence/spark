@@ -23,10 +23,12 @@ import gc
 import itertools
 import operator
 import random
+import sys
 
-import pyspark.heapq3 as heapq
+import heapq
 from pyspark.serializers import BatchedSerializer, PickleSerializer, FlattenedValuesSerializer, \
     CompressedSerializer, AutoBatchedSerializer
+from pyspark.util import fail_on_stopiteration
 
 
 try:
@@ -35,7 +37,7 @@ try:
     process = None
 
     def get_used_memory():
-        """ Return the used memory in MB """
+        """ Return the used memory in MiB """
         global process
         if process is None or process._pid != os.getpid():
             process = psutil.Process(os.getpid())
@@ -48,7 +50,7 @@ try:
 except ImportError:
 
     def get_used_memory():
-        """ Return the used memory in MB """
+        """ Return the used memory in MiB """
         if platform.system() == 'Linux':
             for line in open('/proc/self/status'):
                 if line.startswith('VmRSS:'):
@@ -93,9 +95,9 @@ class Aggregator(object):
     """
 
     def __init__(self, createCombiner, mergeValue, mergeCombiners):
-        self.createCombiner = createCombiner
-        self.mergeValue = mergeValue
-        self.mergeCombiners = mergeCombiners
+        self.createCombiner = fail_on_stopiteration(createCombiner)
+        self.mergeValue = fail_on_stopiteration(mergeValue)
+        self.mergeCombiners = fail_on_stopiteration(mergeCombiners)
 
 
 class SimpleAggregator(Aggregator):
@@ -175,6 +177,8 @@ class ExternalMerger(Merger):
     Finally, if any items were spilled into disks, each partition
     will be merged into `data` and be yielded, then cleared.
 
+    Examples
+    --------
     >>> agg = SimpleAggregator(lambda x, y: x + y)
     >>> merger = ExternalMerger(agg, 10)
     >>> N = 10000
@@ -414,13 +418,14 @@ class ExternalMerger(Merger):
 
 class ExternalSorter(object):
     """
-    ExtenalSorter will divide the elements into chunks, sort them in
+    ExternalSorter will divide the elements into chunks, sort them in
     memory and dump them into disks, finally merge them back.
 
     The spilling will only happen when the used memory goes above
     the limit.
 
-
+    Examples
+    --------
     >>> sorter = ExternalSorter(1)  # 1M
     >>> import random
     >>> l = list(range(1024))
@@ -496,7 +501,7 @@ class ExternalSorter(object):
         if current_chunk:
             chunks.append(iter(current_chunk))
 
-        return heapq.merge(chunks, key=key, reverse=reverse)
+        return heapq.merge(*chunks, key=key, reverse=reverse)
 
 
 class ExternalList(object):
@@ -504,6 +509,8 @@ class ExternalList(object):
     ExternalList can have many items which cannot be hold in memory in
     the same time.
 
+    Examples
+    --------
     >>> l = ExternalList(list(range(100)))
     >>> len(l)
     100
@@ -604,6 +611,8 @@ class ExternalListOfList(ExternalList):
     """
     An external list for list.
 
+    Examples
+    --------
     >>> l = ExternalListOfList([[i, i] for i in range(100)])
     >>> len(l)
     200
@@ -633,6 +642,8 @@ class GroupByKey(object):
     """
     Group a sorted iterator as [(k1, it1), (k2, it2), ...]
 
+    Examples
+    --------
     >>> k = [i // 3 for i in range(6)]
     >>> v = [[i] for i in range(6)]
     >>> g = GroupByKey(zip(k, v))
@@ -794,7 +805,7 @@ class ExternalGroupBy(ExternalMerger):
 
         if self._sorted:
             # all the partitions are already sorted
-            sorted_items = heapq.merge(disk_items, key=operator.itemgetter(0))
+            sorted_items = heapq.merge(*disk_items, key=operator.itemgetter(0))
 
         else:
             # Flatten the combined values, so it will not consume huge
@@ -810,4 +821,4 @@ if __name__ == "__main__":
     import doctest
     (failure_count, test_count) = doctest.testmod()
     if failure_count:
-        exit(-1)
+        sys.exit(-1)

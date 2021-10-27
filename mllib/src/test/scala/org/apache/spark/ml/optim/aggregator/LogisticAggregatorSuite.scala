@@ -17,17 +17,18 @@
 package org.apache.spark.ml.optim.aggregator
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.ml.feature.Instance
+import org.apache.spark.ml.feature.{Instance, InstanceBlock}
 import org.apache.spark.ml.linalg.{BLAS, Matrices, Vector, Vectors}
+import org.apache.spark.ml.stat.Summarizer
 import org.apache.spark.ml.util.TestingUtils._
 import org.apache.spark.mllib.util.MLlibTestSparkContext
 
 class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
 
-  import DifferentiableLossAggregatorSuite.getClassificationSummarizers
-
   @transient var instances: Array[Instance] = _
   @transient var instancesConstantFeature: Array[Instance] = _
+  @transient var instancesConstantFeatureFiltered: Array[Instance] = _
+  @transient var standardizedInstances: Array[Instance] = _
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -41,6 +42,12 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
       Instance(1.0, 0.5, Vectors.dense(1.0, 1.0)),
       Instance(2.0, 0.3, Vectors.dense(1.0, 0.5))
     )
+    instancesConstantFeatureFiltered = Array(
+      Instance(0.0, 0.1, Vectors.dense(2.0)),
+      Instance(1.0, 0.5, Vectors.dense(1.0)),
+      Instance(2.0, 0.3, Vectors.dense(0.5))
+    )
+    standardizedInstances = standardize(instances)
   }
 
   /** Get summary statistics for some data and create a new LogisticAggregator. */
@@ -50,12 +57,26 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
       fitIntercept: Boolean,
       isMultinomial: Boolean): LogisticAggregator = {
     val (featuresSummarizer, ySummarizer) =
-      DifferentiableLossAggregatorSuite.getClassificationSummarizers(instances)
+      Summarizer.getClassificationSummarizers(sc.parallelize(instances))
     val numClasses = ySummarizer.histogram.length
-    val featuresStd = featuresSummarizer.variance.toArray.map(math.sqrt)
+    val featuresStd = featuresSummarizer.std.toArray
     val bcFeaturesStd = spark.sparkContext.broadcast(featuresStd)
     val bcCoefficients = spark.sparkContext.broadcast(coefficients)
     new LogisticAggregator(bcFeaturesStd, numClasses, fitIntercept, isMultinomial)(bcCoefficients)
+  }
+
+  /** Get summary statistics for some data and create a new BlockHingeAggregator. */
+  private def getNewBlockAggregator(
+      instances: Array[Instance],
+      coefficients: Vector,
+      fitIntercept: Boolean,
+      multinomial: Boolean): BlockLogisticAggregator = {
+    val (_, ySummarizer) =
+      Summarizer.getClassificationSummarizers(sc.parallelize(instances))
+    val numFeatures = instances.head.features.size
+    val numClasses = ySummarizer.histogram.length
+    val bcCoefficients = spark.sparkContext.broadcast(coefficients)
+    new BlockLogisticAggregator(numFeatures, numClasses, fitIntercept, multinomial)(bcCoefficients)
   }
 
   test("aggregator add method input size") {
@@ -128,8 +149,9 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
     val numFeatures = instances.head.features.size
     val numClasses = instances.map(_.label).toSet.size
     val intercepts = Vectors.dense(interceptArray)
-    val (featuresSummarizer, ySummarizer) = getClassificationSummarizers(instances)
-    val featuresStd = featuresSummarizer.variance.toArray.map(math.sqrt)
+    val (featuresSummarizer, ySummarizer) =
+      Summarizer.getClassificationSummarizers(sc.parallelize(instances))
+    val featuresStd = featuresSummarizer.std.toArray
     val weightSum = instances.map(_.weight).sum
 
     val agg = getNewAggregator(instances, Vectors.dense(coefArray ++ interceptArray),
@@ -181,6 +203,24 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
 
     assert(loss ~== agg.loss relTol 0.01)
     assert(gradient ~== agg.gradient relTol 0.01)
+
+    Seq(1, 2, 4).foreach { blockSize =>
+      val blocks1 = standardizedInstances
+        .grouped(blockSize)
+        .map(seq => InstanceBlock.fromInstances(seq))
+        .toArray
+      val blocks2 = blocks1.map { block =>
+        new InstanceBlock(block.labels, block.weights, block.matrix.toSparseRowMajor)
+      }
+
+      Seq(blocks1, blocks2).foreach { blocks =>
+        val blockAgg = getNewBlockAggregator(standardizedInstances,
+          Vectors.dense(coefArray ++ interceptArray), true, true)
+        blocks.foreach(blockAgg.add)
+        assert(agg.loss ~== blockAgg.loss relTol 1e-9)
+        assert(agg.gradient ~== blockAgg.gradient relTol 1e-9)
+      }
+    }
   }
 
   test("check correctness binomial") {
@@ -194,8 +234,9 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
     val coefArray = Array(1.0, 2.0)
     val intercept = 1.0
     val numFeatures = binaryInstances.head.features.size
-    val (featuresSummarizer, _) = getClassificationSummarizers(binaryInstances)
-    val featuresStd = featuresSummarizer.variance.toArray.map(math.sqrt)
+    val (featuresSummarizer, _) =
+      Summarizer.getClassificationSummarizers(sc.parallelize(binaryInstances))
+    val featuresStd = featuresSummarizer.std.toArray
     val weightSum = binaryInstances.map(_.weight).sum
 
     val agg = getNewAggregator(binaryInstances, Vectors.dense(coefArray ++ Array(intercept)),
@@ -207,11 +248,9 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
     val lossSum = binaryInstances.map { case Instance(l, w, f) =>
       val margin = BLAS.dot(Vectors.dense(stdCoef), f) + intercept
       val prob = 1.0 / (1.0 + math.exp(-margin))
-      -w * l * math.log(prob) - w * (1.0 - l) * math.log(1.0 - prob)
+      -w * l * math.log(prob) - w * (1.0 - l) * math.log1p(-prob)
     }.sum
     val loss = lossSum / weightSum
-
-
 
     // compute the gradients
     val gradientCoef = new Array[Double](numFeatures)
@@ -227,27 +266,68 @@ class LogisticAggregatorSuite extends SparkFunSuite with MLlibTestSparkContext {
 
     assert(loss ~== agg.loss relTol 0.01)
     assert(gradient ~== agg.gradient relTol 0.01)
+
+    Seq(1, 2, 4).foreach { blockSize =>
+      val blocks1 = standardize(binaryInstances)
+        .grouped(blockSize)
+        .map(seq => InstanceBlock.fromInstances(seq))
+        .toArray
+      val blocks2 = blocks1.map { block =>
+        new InstanceBlock(block.labels, block.weights, block.matrix.toSparseRowMajor)
+      }
+
+      Seq(blocks1, blocks2).foreach { blocks =>
+        val blockAgg = getNewBlockAggregator(binaryInstances,
+          Vectors.dense(coefArray ++ Array(intercept)), true, false)
+        blocks.foreach(blockAgg.add)
+        assert(agg.loss ~== blockAgg.loss relTol 1e-9)
+        assert(agg.gradient ~== blockAgg.gradient relTol 1e-9)
+      }
+    }
   }
 
   test("check with zero standard deviation") {
     val binaryInstances = instancesConstantFeature.map { instance =>
       if (instance.label <= 1.0) instance else Instance(0.0, instance.weight, instance.features)
     }
+    val binaryInstancesFiltered = instancesConstantFeatureFiltered.map { instance =>
+      if (instance.label <= 1.0) instance else Instance(0.0, instance.weight, instance.features)
+    }
     val coefArray = Array(1.0, 2.0, -2.0, 3.0, 0.0, -1.0)
+    val coefArrayFiltered = Array(3.0, 0.0, -1.0)
     val interceptArray = Array(4.0, 2.0, -3.0)
     val aggConstantFeature = getNewAggregator(instancesConstantFeature,
       Vectors.dense(coefArray ++ interceptArray), fitIntercept = true, isMultinomial = true)
-    instances.foreach(aggConstantFeature.add)
+    val aggConstantFeatureFiltered = getNewAggregator(instancesConstantFeatureFiltered,
+      Vectors.dense(coefArrayFiltered ++ interceptArray), fitIntercept = true, isMultinomial = true)
+
+    instancesConstantFeature.foreach(aggConstantFeature.add)
+    instancesConstantFeatureFiltered.foreach(aggConstantFeatureFiltered.add)
+
     // constant features should not affect gradient
-    assert(aggConstantFeature.gradient(0) === 0.0)
+    def validateGradient(grad: Vector, gradFiltered: Vector, numCoefficientSets: Int): Unit = {
+      for (i <- 0 until numCoefficientSets) {
+        assert(grad(i) === 0.0)
+        assert(grad(numCoefficientSets + i) == gradFiltered(i))
+      }
+    }
+
+    validateGradient(aggConstantFeature.gradient, aggConstantFeatureFiltered.gradient, 3)
 
     val binaryCoefArray = Array(1.0, 2.0)
+    val binaryCoefArrayFiltered = Array(2.0)
     val intercept = 1.0
     val aggConstantFeatureBinary = getNewAggregator(binaryInstances,
       Vectors.dense(binaryCoefArray ++ Array(intercept)), fitIntercept = true,
       isMultinomial = false)
-    instances.foreach(aggConstantFeatureBinary.add)
+    val aggConstantFeatureBinaryFiltered = getNewAggregator(binaryInstancesFiltered,
+      Vectors.dense(binaryCoefArrayFiltered ++ Array(intercept)), fitIntercept = true,
+      isMultinomial = false)
+    binaryInstances.foreach(aggConstantFeatureBinary.add)
+    binaryInstancesFiltered.foreach(aggConstantFeatureBinaryFiltered.add)
+
     // constant features should not affect gradient
-    assert(aggConstantFeatureBinary.gradient(0) === 0.0)
+    validateGradient(aggConstantFeatureBinary.gradient,
+      aggConstantFeatureBinaryFiltered.gradient, 1)
   }
 }

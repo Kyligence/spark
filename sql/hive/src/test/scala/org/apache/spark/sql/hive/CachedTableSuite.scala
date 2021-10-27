@@ -19,16 +19,19 @@ package org.apache.spark.sql.hive
 
 import java.io.File
 
-import org.apache.spark.sql.{AnalysisException, Dataset, QueryTest, SaveMode}
-import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
+import org.apache.commons.io.FileUtils
+
+import org.apache.spark.sql.{AnalysisException, Dataset, QueryTest, Row, SaveMode}
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.execution.columnar.InMemoryTableScanExec
 import org.apache.spark.sql.execution.datasources.{CatalogFileIndex, HadoopFsRelation, LogicalRelation}
 import org.apache.spark.sql.execution.datasources.parquet.ParquetFileFormat
 import org.apache.spark.sql.hive.test.TestHiveSingleton
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SQLTestUtils
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.RDDBlockId
+import org.apache.spark.storage.StorageLevel.{DISK_ONLY, MEMORY_ONLY}
 import org.apache.spark.util.Utils
 
 class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleton {
@@ -38,7 +41,7 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
     val plan = table(tableName).queryExecution.sparkPlan
     plan.collect {
       case InMemoryTableScanExec(_, _, relation) =>
-        relation.cachedColumnBuffers.id
+        relation.cacheBuilder.cachedColumnBuffers.id
       case _ =>
         fail(s"Table $tableName is not cached\n" + plan)
     }.head
@@ -97,20 +100,24 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
     }
   }
 
-  test("DROP nonexistant table") {
-    sql("DROP TABLE IF EXISTS nonexistantTable")
+  test("DROP nonexistent table") {
+    sql("DROP TABLE IF EXISTS nonexistentTable")
   }
 
-  test("uncache of nonexistant tables") {
+  test("uncache of nonexistent tables") {
+    val expectedErrorMsg = "Table or view not found:"
     // make sure table doesn't exist
-    intercept[NoSuchTableException](spark.table("nonexistantTable"))
-    intercept[NoSuchTableException] {
-      spark.catalog.uncacheTable("nonexistantTable")
-    }
-    intercept[NoSuchTableException] {
-      sql("UNCACHE TABLE nonexistantTable")
-    }
-    sql("UNCACHE TABLE IF EXISTS nonexistantTable")
+    var e = intercept[AnalysisException](spark.table("nonexistentTable")).getMessage
+    assert(e.contains(s"$expectedErrorMsg nonexistentTable"))
+    e = intercept[AnalysisException] {
+      uncacheTable("nonexistentTable")
+    }.getMessage
+    assert(e.contains(expectedErrorMsg))
+    e = intercept[AnalysisException] {
+      sql("UNCACHE TABLE nonexistentTable")
+    }.getMessage
+    assert(e.contains(s"$expectedErrorMsg nonexistentTable"))
+    sql("UNCACHE TABLE IF EXISTS nonexistentTable")
   }
 
   test("no error on uncache of non-cached table") {
@@ -118,9 +125,9 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
     withTable(tableName) {
       sql(s"CREATE TABLE $tableName(a INT)")
       // no error will be reported in the following three ways to uncache a table.
-      spark.catalog.uncacheTable(tableName)
+      uncacheTable(tableName)
       sql("UNCACHE TABLE newTable")
-      sparkSession.table(tableName).unpersist()
+      sparkSession.table(tableName).unpersist(blocking = true)
     }
   }
 
@@ -212,7 +219,7 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
 
     // Drop the table and create it again.
     sql("DROP TABLE refreshTable")
-    sparkSession.catalog.createExternalTable("refreshTable", tempPath.toString, "parquet")
+    sparkSession.catalog.createTable("refreshTable", tempPath.toString, "parquet")
     // It is not cached.
     assert(!isCached("refreshTable"), "refreshTable should not be cached.")
     // Refresh the table. REFRESH TABLE command should not make a uncached
@@ -233,7 +240,7 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
     tempPath.delete()
     table("src").write.mode(SaveMode.Overwrite).parquet(tempPath.toString)
     sql("DROP TABLE IF EXISTS refreshTable")
-    sparkSession.catalog.createExternalTable("refreshTable", tempPath.toString, "parquet")
+    sparkSession.catalog.createTable("refreshTable", tempPath.toString, "parquet")
     checkAnswer(
       table("refreshTable"),
       table("src").collect())
@@ -252,7 +259,7 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
 
     // Drop the table and create it again.
     sql("DROP TABLE refreshTable")
-    sparkSession.catalog.createExternalTable("refreshTable", tempPath.toString, "parquet")
+    sparkSession.catalog.createTable("refreshTable", tempPath.toString, "parquet")
     // It is not cached.
     assert(!isCached("refreshTable"), "refreshTable should not be cached.")
     // Refresh the table. REFRESH command should not make a uncached
@@ -296,7 +303,7 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
         val e = intercept[ParseException] {
           sql(s"CACHE TABLE $db.cachedTable AS SELECT 1")
         }.getMessage
-        assert(e.contains("It is not allowed to add database prefix ") &&
+        assert(e.contains("It is not allowed to add catalog/namespace prefix ") &&
           e.contains("to the table name in CACHE TABLE AS SELECT"))
       }
     }
@@ -345,6 +352,251 @@ class CachedTableSuite extends QueryTest with SQLTestUtils with TestHiveSingleto
       val samePlan = LogicalRelation(sameRelation, tableMeta)
 
       assert(spark.sharedState.cacheManager.lookupCachedData(samePlan).isDefined)
+    }
+  }
+
+  test("SPARK-27248 refreshTable should recreate cache with same cache name and storage level") {
+    // This section tests when a table is cached with its qualified name but its is refreshed with
+    // its unqualified name.
+    withTempDatabase { db =>
+      withTable(s"$db.cachedTable") {
+        withCache(s"$db.cachedTable") {
+          // Create table 'cachedTable' in default db for testing purpose.
+          sql(s"CREATE TABLE $db.cachedTable AS SELECT 1 AS key")
+
+          // Cache the table 'cachedTable' in temp db with qualified table name,
+          // and then check whether the table is cached with expected name
+          sql(s"CACHE TABLE $db.cachedTable OPTIONS('storageLevel' 'MEMORY_ONLY')")
+          assertCached(sql(s"SELECT * FROM $db.cachedTable"), s"$db.cachedTable", MEMORY_ONLY)
+          assert(spark.catalog.isCached(s"$db.cachedTable"),
+            s"Table '$db.cachedTable' should be cached.")
+
+          // Refresh the table 'cachedTable' in temp db with qualified table name, and then check
+          // whether the table is still cached with the same name and storage level.
+          sql(s"REFRESH TABLE $db.cachedTable")
+          assertCached(sql(s"select * from $db.cachedTable"), s"$db.cachedTable", MEMORY_ONLY)
+          assert(spark.catalog.isCached(s"$db.cachedTable"),
+            s"Table '$db.cachedTable' should be cached after refreshing with its qualified name.")
+
+          // Change the active database to the temp db and refresh the table with unqualified
+          // table name, and then check whether the table is still cached with the same name and
+          // storage level.
+          // Without bug fix 'SPARK-27248', the recreated cache name will be changed to
+          // 'cachedTable', instead of '$db.cachedTable'
+          activateDatabase(db) {
+            sql("REFRESH TABLE cachedTable")
+            assertCached(sql("SELECT * FROM cachedTable"), s"$db.cachedTable", MEMORY_ONLY)
+            assert(spark.catalog.isCached("cachedTable"),
+              s"Table '$db.cachedTable' should be cached after refreshing with its " +
+                "unqualified name.")
+          }
+        }
+      }
+    }
+
+
+    // This section tests when a table is cached with its unqualified name but it is refreshed
+    // with its qualified name.
+    withTempDatabase { db =>
+      withTable("cachedTable") {
+        withCache("cachedTable") {
+          // Create table 'cachedTable' in default db for testing purpose.
+          sql("CREATE TABLE cachedTable AS SELECT 1 AS key")
+
+          // Cache the table 'cachedTable' in default db without qualified table name , and then
+          // check whether the table is cached with expected name.
+          sql("CACHE TABLE cachedTable OPTIONS('storageLevel' 'DISK_ONLY')")
+          assertCached(sql("SELECT * FROM cachedTable"), "cachedTable", DISK_ONLY)
+          assert(spark.catalog.isCached("cachedTable"), "Table 'cachedTable' should be cached.")
+
+          // Refresh the table 'cachedTable' in default db with unqualified table name, and then
+          // check whether the table is still cached with the same name.
+          sql("REFRESH TABLE cachedTable")
+          assertCached(sql("SELECT * FROM cachedTable"), "cachedTable", DISK_ONLY)
+          assert(spark.catalog.isCached("cachedTable"),
+            "Table 'cachedTable' should be cached after refreshing with its unqualified name.")
+
+          // Change the active database to the temp db and refresh the table with qualified
+          // table name, and then check whether the table is still cached with the same name and
+          // storage level.
+          // Without bug fix 'SPARK-27248', the recreated cache name will be changed to
+          // 'default.cachedTable', instead of 'cachedTable'
+          activateDatabase(db) {
+            sql("REFRESH TABLE default.cachedTable")
+            assertCached(
+              sql("SELECT * FROM default.cachedTable"), "cachedTable", DISK_ONLY)
+            assert(spark.catalog.isCached("default.cachedTable"),
+              "Table 'cachedTable' should be cached after refreshing with its qualified name.")
+          }
+        }
+      }
+    }
+  }
+
+  test("SPARK-33963: do not use table stats while looking in table cache") {
+    val t = "table_on_test"
+    withTable(t) {
+      sql(s"CREATE TABLE $t (col int)")
+      assert(!spark.catalog.isCached(t))
+      sql(s"CACHE TABLE $t")
+      assert(spark.catalog.isCached(t))
+    }
+  }
+
+  test("SPARK-33950: refresh cache after partition dropping") {
+    withTable("t") {
+      sql(s"CREATE TABLE t (id int, part int) USING hive PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      sql("INSERT INTO t PARTITION (part=1) SELECT 1")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(1, 1)))
+      sql("ALTER TABLE t DROP PARTITION (part=0)")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(1, 1)))
+    }
+  }
+
+  test("SPARK-34011: refresh cache after partition renaming") {
+    withTable("t") {
+      sql("CREATE TABLE t (id int, part int) USING hive PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      sql("INSERT INTO t PARTITION (part=1) SELECT 1")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      QueryTest.checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(1, 1)))
+      sql("ALTER TABLE t PARTITION (part=0) RENAME TO PARTITION (part=2)")
+      assert(spark.catalog.isCached("t"))
+      QueryTest.checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 2), Row(1, 1)))
+    }
+  }
+
+  test("SPARK-34055: refresh cache in partition adding") {
+    withTable("t") {
+      sql("CREATE TABLE t (id int, part int) USING hive PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0)))
+
+      // Create new partition (part = 1) in the filesystem
+      val information = sql("SHOW TABLE EXTENDED LIKE 't' PARTITION (part = 0)")
+        .select("information")
+        .first().getString(0)
+      val part0Loc = information
+        .split("\\r?\\n")
+        .filter(_.startsWith("Location:"))
+        .head
+        .replace("Location: file:", "")
+      val part1Loc = part0Loc.replace("part=0", "part=1")
+      FileUtils.copyDirectory(new File(part0Loc), new File(part1Loc))
+
+      sql(s"ALTER TABLE t ADD PARTITION (part=1) LOCATION '$part1Loc'")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(0, 1)))
+    }
+  }
+
+  test("SPARK-34060: update stats of cached table") {
+    withSQLConf(SQLConf.AUTO_SIZE_UPDATE_ENABLED.key -> "true") {
+      def checkTableSize(expected: String): Unit = {
+        val stats =
+          sql("DESCRIBE TABLE EXTENDED t")
+            .select("data_type")
+            .where("col_name = 'Statistics'")
+            .first()
+            .getString(0)
+        assert(stats.contains(expected))
+      }
+
+      sql("CREATE TABLE t (id int, part int) USING hive PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      sql("INSERT INTO t PARTITION (part=1) SELECT 1")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(1, 1)))
+      checkTableSize("4 bytes")
+
+      sql("ALTER TABLE t DROP PARTITION (part=0)")
+      assert(spark.catalog.isCached("t"))
+      checkTableSize("2 bytes")
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(1, 1)))
+    }
+  }
+
+  test("SPARK-34076: should be able to drop temp view with cached tables") {
+    val t = "cachedTable"
+    val v = "tempView"
+    withTable(t) {
+      withTempView(v) {
+        sql(s"CREATE TEMPORARY VIEW $v AS SELECT key FROM src LIMIT 10")
+        sql(s"CREATE TABLE $t AS SELECT * FROM src")
+        sql(s"CACHE TABLE $t")
+      }
+    }
+  }
+
+  test("SPARK-34076: should be able to drop global temp view with cached tables") {
+    val t = "cachedTable"
+    val v = "globalTempView"
+    withTable(t) {
+      withGlobalTempView(v) {
+        sql(s"CREATE GLOBAL TEMPORARY VIEW $v AS SELECT key FROM src LIMIT 10")
+        sql(s"CREATE TABLE $t AS SELECT * FROM src")
+        sql(s"CACHE TABLE $t")
+      }
+    }
+  }
+
+  private def getPartitionLocation(t: String, partition: String): String = {
+    val information = sql(s"SHOW TABLE EXTENDED LIKE '$t' PARTITION ($partition)")
+      .select("information")
+      .first().getString(0)
+    information
+      .split("\\r?\\n")
+      .filter(_.startsWith("Location:"))
+      .head
+      .replace("Location: file:", "")
+  }
+
+  test("SPARK-34213: LOAD DATA refreshes cached table") {
+    withTable("src_tbl") {
+      withTable("dst_tbl") {
+        sql("CREATE TABLE src_tbl (c0 int, part int) USING hive PARTITIONED BY (part)")
+        sql("INSERT INTO src_tbl PARTITION (part=0) SELECT 0")
+        sql("CREATE TABLE dst_tbl (c0 int, part int) USING hive PARTITIONED BY (part)")
+        sql("INSERT INTO dst_tbl PARTITION (part=1) SELECT 1")
+        sql("CACHE TABLE dst_tbl")
+        assert(spark.catalog.isCached("dst_tbl"))
+        checkAnswer(sql("SELECT * FROM dst_tbl"), Row(1, 1))
+        val location = getPartitionLocation("src_tbl", "part=0")
+        sql(s"LOAD DATA LOCAL INPATH '$location' INTO TABLE dst_tbl PARTITION (part=0)")
+        assert(spark.catalog.isCached("dst_tbl"))
+        checkAnswer(sql("SELECT * FROM dst_tbl"), Seq(Row(0, 0), Row(1, 1)))
+      }
+    }
+  }
+
+  test("SPARK-34262: ALTER TABLE .. SET LOCATION refreshes cached table") {
+    withTable("src_tbl") {
+      withTable("dst_tbl") {
+        sql("CREATE TABLE src_tbl (c0 int, part int) USING hive PARTITIONED BY (part)")
+        sql("INSERT INTO src_tbl PARTITION (part=0) SELECT 0")
+        sql("CREATE TABLE dst_tbl (c0 int, part int) USING hive PARTITIONED BY (part)")
+        sql("ALTER TABLE dst_tbl ADD PARTITION (part=0)")
+        sql("INSERT INTO dst_tbl PARTITION (part=1) SELECT 1")
+        sql("CACHE TABLE dst_tbl")
+        assert(spark.catalog.isCached("dst_tbl"))
+        checkAnswer(sql("SELECT * FROM dst_tbl"), Row(1, 1))
+        val location = getPartitionLocation("src_tbl", "part=0")
+        sql(s"ALTER TABLE dst_tbl PARTITION (part=0) SET LOCATION '$location'")
+        assert(spark.catalog.isCached("dst_tbl"))
+        checkAnswer(sql("SELECT * FROM dst_tbl"), Seq(Row(0, 0), Row(1, 1)))
+      }
     }
   }
 }

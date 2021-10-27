@@ -20,7 +20,9 @@ package org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
+import org.apache.spark.sql.catalyst.expressions.codegen.Block._
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.collection.unsafe.sort.PrefixComparators._
 
 abstract sealed class SortDirection {
@@ -61,17 +63,16 @@ case class SortOrder(
     child: Expression,
     direction: SortDirection,
     nullOrdering: NullOrdering,
-    sameOrderExpressions: Set[Expression])
-  extends UnaryExpression with Unevaluable {
+    sameOrderExpressions: Seq[Expression])
+  extends Expression with Unevaluable {
 
-  /** Sort order is not foldable because we don't have an eval for it. */
-  override def foldable: Boolean = false
+  override def children: Seq[Expression] = child +: sameOrderExpressions
 
   override def checkInputDataTypes(): TypeCheckResult = {
     if (RowOrdering.isOrderable(dataType)) {
       TypeCheckResult.TypeCheckSuccess
     } else {
-      TypeCheckResult.TypeCheckFailure(s"cannot sort data type ${dataType.simpleString}")
+      TypeCheckResult.TypeCheckFailure(s"cannot sort data type ${dataType.catalogString}")
     }
   }
 
@@ -84,7 +85,7 @@ case class SortOrder(
   def isAscending: Boolean = direction == Ascending
 
   def satisfies(required: SortOrder): Boolean = {
-    (sameOrderExpressions + child).exists(required.child.semanticEquals) &&
+    children.exists(required.child.semanticEquals) &&
       direction == required.direction && nullOrdering == required.nullOrdering
   }
 }
@@ -93,8 +94,31 @@ object SortOrder {
   def apply(
      child: Expression,
      direction: SortDirection,
-     sameOrderExpressions: Set[Expression] = Set.empty): SortOrder = {
+     sameOrderExpressions: Seq[Expression] = Seq.empty): SortOrder = {
     new SortOrder(child, direction, direction.defaultNullOrdering, sameOrderExpressions)
+  }
+
+  /**
+   * Returns if a sequence of SortOrder satisfies another sequence of SortOrder.
+   *
+   * SortOrder sequence A satisfies SortOrder sequence B if and only if B is an equivalent of A
+   * or of A's prefix. Here are examples of ordering A satisfying ordering B:
+   * <ul>
+   *   <li>ordering A is [x, y] and ordering B is [x]</li>
+   *   <li>ordering A is [x(sameOrderExpressions=x1)] and ordering B is [x1]</li>
+   *   <li>ordering A is [x(sameOrderExpressions=x1), y] and ordering B is [x1]</li>
+   * </ul>
+   */
+  def orderingSatisfies(ordering1: Seq[SortOrder], ordering2: Seq[SortOrder]): Boolean = {
+    if (ordering2.isEmpty) {
+      true
+    } else if (ordering2.length > ordering1.length) {
+      false
+    } else {
+      ordering2.zip(ordering1).forall {
+        case (o2, o1) => o1.satisfies(o2)
+      }
+    }
   }
 }
 
@@ -124,7 +148,41 @@ case class SortPrefix(child: SortOrder) extends UnaryExpression {
       (!child.isAscending && child.nullOrdering == NullsLast)
   }
 
-  override def eval(input: InternalRow): Any = throw new UnsupportedOperationException
+  private lazy val calcPrefix: Any => Long = child.child.dataType match {
+    case BooleanType => (raw) =>
+      if (raw.asInstanceOf[Boolean]) 1 else 0
+    case DateType | TimestampType | _: IntegralType => (raw) =>
+      raw.asInstanceOf[java.lang.Number].longValue()
+    case FloatType | DoubleType => (raw) => {
+      val dVal = raw.asInstanceOf[java.lang.Number].doubleValue()
+      DoublePrefixComparator.computePrefix(dVal)
+    }
+    case StringType => (raw) =>
+      StringPrefixComparator.computePrefix(raw.asInstanceOf[UTF8String])
+    case BinaryType => (raw) =>
+      BinaryPrefixComparator.computePrefix(raw.asInstanceOf[Array[Byte]])
+    case dt: DecimalType if dt.precision <= Decimal.MAX_LONG_DIGITS =>
+      _.asInstanceOf[Decimal].toUnscaledLong
+    case dt: DecimalType if dt.precision - dt.scale <= Decimal.MAX_LONG_DIGITS =>
+      val p = Decimal.MAX_LONG_DIGITS
+      val s = p - (dt.precision - dt.scale)
+      (raw) => {
+        val value = raw.asInstanceOf[Decimal]
+        if (value.changePrecision(p, s)) value.toUnscaledLong else Long.MinValue
+      }
+    case dt: DecimalType => (raw) =>
+      DoublePrefixComparator.computePrefix(raw.asInstanceOf[Decimal].toDouble)
+    case _ => (Any) => 0L
+  }
+
+  override def eval(input: InternalRow): Any = {
+    val value = child.child.eval(input)
+    if (value == null) {
+      null
+    } else {
+      calcPrefix(value)
+    }
+  }
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     val childCode = child.child.genCode(ctx)
@@ -158,7 +216,7 @@ case class SortPrefix(child: SortOrder) extends UnaryExpression {
     }
 
     ev.copy(code = childCode.code +
-      s"""
+      code"""
          |long ${ev.value} = 0L;
          |boolean ${ev.isNull} = ${childCode.isNull};
          |if (!${childCode.isNull}) {

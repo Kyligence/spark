@@ -17,11 +17,17 @@
 
 package org.apache.spark.broadcast
 
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
+import org.apache.commons.collections.map.{AbstractReferenceMap, ReferenceMap}
+
 import org.apache.spark.{SecurityManager, SparkConf}
+import org.apache.spark.api.python.PythonBroadcast
 import org.apache.spark.internal.Logging
 
 private[spark] class BroadcastManager(
@@ -30,13 +36,16 @@ private[spark] class BroadcastManager(
     securityManager: SecurityManager)
   extends Logging {
 
+  val cleanQueryBroadcast = conf.getBoolean("spark.broadcast.autoClean.enabled", false)
+
   private var initialized = false
   private var broadcastFactory: BroadcastFactory = null
+  var cachedBroadcast = new ConcurrentHashMap[String, ListBuffer[Long]]()
 
   initialize()
 
   // Called by SparkContext or Executor before using Broadcast
-  private def initialize() {
+  private def initialize(): Unit = {
     synchronized {
       if (!initialized) {
         broadcastFactory = new TorrentBroadcastFactory
@@ -46,17 +55,53 @@ private[spark] class BroadcastManager(
     }
   }
 
-  def stop() {
+  def stop(): Unit = {
     broadcastFactory.stop()
   }
 
   private val nextBroadcastId = new AtomicLong(0)
 
-  def newBroadcast[T: ClassTag](value_ : T, isLocal: Boolean): Broadcast[T] = {
-    broadcastFactory.newBroadcast[T](value_, isLocal, nextBroadcastId.getAndIncrement())
+  private[spark] def currentBroadcastId: Long = nextBroadcastId.get()
+
+  private[broadcast] val cachedValues =
+    Collections.synchronizedMap(
+      new ReferenceMap(AbstractReferenceMap.HARD, AbstractReferenceMap.WEAK)
+        .asInstanceOf[java.util.Map[Any, Any]]
+    )
+
+  def cleanBroadCast(executionId: String): Unit = {
+    if (cachedBroadcast.containsKey(executionId)) {
+      cachedBroadcast.get(executionId)
+        .foreach(broadcastId => unbroadcast(broadcastId, true, false))
+      cachedBroadcast.remove(executionId)
+    }
   }
 
-  def unbroadcast(id: Long, removeFromDriver: Boolean, blocking: Boolean) {
+  def newBroadcast[T: ClassTag](value_ : T, isLocal: Boolean, executionId: String): Broadcast[T] = {
+    val bid = nextBroadcastId.getAndIncrement()
+    if (executionId != null && cleanQueryBroadcast) {
+      if (cachedBroadcast.containsKey(executionId)) {
+        cachedBroadcast.get(executionId) += bid
+      } else {
+        val list = new scala.collection.mutable.ListBuffer[Long]
+        list += bid
+        cachedBroadcast.put(executionId, list)
+      }
+    }
+    value_ match {
+      case pb: PythonBroadcast =>
+        // SPARK-28486: attach this new broadcast variable's id to the PythonBroadcast,
+        // so that underlying data file of PythonBroadcast could be mapped to the
+        // BroadcastBlockId according to this id. Please see the specific usage of the
+        // id in PythonBroadcast.readObject().
+        pb.setBroadcastId(bid)
+
+      case _ => // do nothing
+    }
+    broadcastFactory.newBroadcast[T](value_, isLocal, bid)
+  }
+
+  def unbroadcast(id: Long, removeFromDriver: Boolean, blocking: Boolean): Unit = {
     broadcastFactory.unbroadcast(id, removeFromDriver, blocking)
   }
 }

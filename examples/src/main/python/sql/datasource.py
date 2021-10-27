@@ -15,18 +15,77 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-
-from pyspark.sql import SparkSession
-# $example on:schema_merging$
-from pyspark.sql import Row
-# $example off:schema_merging$
-
 """
 A simple example demonstrating Spark SQL data sources.
 Run with:
   ./bin/spark-submit examples/src/main/python/sql/datasource.py
 """
+from pyspark.sql import SparkSession
+# $example on:schema_merging$
+from pyspark.sql import Row
+# $example off:schema_merging$
+
+
+def generic_file_source_options_example(spark):
+    # $example on:ignore_corrupt_files$
+    # enable ignore corrupt files
+    spark.sql("set spark.sql.files.ignoreCorruptFiles=true")
+    # dir1/file3.json is corrupt from parquet's view
+    test_corrupt_df = spark.read.parquet("examples/src/main/resources/dir1/",
+                                         "examples/src/main/resources/dir1/dir2/")
+    test_corrupt_df.show()
+    # +-------------+
+    # |         file|
+    # +-------------+
+    # |file1.parquet|
+    # |file2.parquet|
+    # +-------------+
+    # $example off:ignore_corrupt_files$
+
+    # $example on:recursive_file_lookup$
+    recursive_loaded_df = spark.read.format("parquet")\
+        .option("recursiveFileLookup", "true")\
+        .load("examples/src/main/resources/dir1")
+    recursive_loaded_df.show()
+    # +-------------+
+    # |         file|
+    # +-------------+
+    # |file1.parquet|
+    # |file2.parquet|
+    # +-------------+
+    # $example off:recursive_file_lookup$
+    spark.sql("set spark.sql.files.ignoreCorruptFiles=false")
+
+    # $example on:load_with_path_glob_filter$
+    df = spark.read.load("examples/src/main/resources/dir1",
+                         format="parquet", pathGlobFilter="*.parquet")
+    df.show()
+    # +-------------+
+    # |         file|
+    # +-------------+
+    # |file1.parquet|
+    # +-------------+
+    # $example off:load_with_path_glob_filter$
+
+    # $example on:load_with_modified_time_filter$
+    # Only load files modified before 07/1/2050 @ 08:30:00
+    df = spark.read.load("examples/src/main/resources/dir1",
+                         format="parquet", modifiedBefore="2050-07-01T08:30:00")
+    df.show()
+    # +-------------+
+    # |         file|
+    # +-------------+
+    # |file1.parquet|
+    # +-------------+
+    # Only load files modified after 06/01/2050 @ 08:30:00
+    df = spark.read.load("examples/src/main/resources/dir1",
+                         format="parquet", modifiedAfter="2050-06-01T08:30:00")
+    df.show()
+    # +-------------+
+    # |         file|
+    # +-------------+
+    # +-------------+
+    # $example off:load_with_modified_time_filter$
 
 
 def basic_datasource_example(spark):
@@ -52,6 +111,20 @@ def basic_datasource_example(spark):
     df = spark.read.load("examples/src/main/resources/people.json", format="json")
     df.select("name", "age").write.save("namesAndAges.parquet", format="parquet")
     # $example off:manual_load_options$
+
+    # $example on:manual_load_options_csv$
+    df = spark.read.load("examples/src/main/resources/people.csv",
+                         format="csv", sep=";", inferSchema="true", header="true")
+    # $example off:manual_load_options_csv$
+
+    # $example on:manual_save_options_orc$
+    df = spark.read.orc("examples/src/main/resources/users.orc")
+    (df.write.format("orc")
+        .option("orc.bloom.filter.columns", "favorite_color")
+        .option("orc.dictionary.key.threshold", "1.0")
+        .option("orc.column.encoding.direct", "name")
+        .save("users_with_options.orc"))
+    # $example off:manual_save_options_orc$
 
     # $example on:write_sorting_and_bucketing$
     df.write.bucketBy(42, "name").sortBy("age").saveAsTable("people_bucketed")
@@ -177,6 +250,16 @@ def jdbc_dataset_example(spark):
         .jdbc("jdbc:postgresql:dbserver", "schema.tablename",
               properties={"user": "username", "password": "password"})
 
+    # Specifying dataframe column data types on read
+    jdbcDF3 = spark.read \
+        .format("jdbc") \
+        .option("url", "jdbc:postgresql:dbserver") \
+        .option("dbtable", "schema.tablename") \
+        .option("user", "username") \
+        .option("password", "password") \
+        .option("customSchema", "id DECIMAL(38, 0), name STRING") \
+        .load()
+
     # Saving data to a JDBC source
     jdbcDF.write \
         .format("jdbc") \
@@ -205,6 +288,7 @@ if __name__ == "__main__":
         .getOrCreate()
 
     basic_datasource_example(spark)
+    generic_file_source_options_example(spark)
     parquet_example(spark)
     parquet_schema_merging_example(spark)
     json_dataset_example(spark)
