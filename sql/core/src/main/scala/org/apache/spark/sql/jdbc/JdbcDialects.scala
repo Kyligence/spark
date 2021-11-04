@@ -32,6 +32,7 @@ import org.apache.spark.sql.connector.catalog.TableChange
 import org.apache.spark.sql.connector.catalog.TableChange._
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
+import org.apache.spark.sql.execution.datasources.v2.TableSampleInfo
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 
@@ -308,6 +309,11 @@ abstract class JdbcDialect extends Serializable with Logging{
    * returns whether the dialect supports limit or not
    */
   def supportsLimit(): Boolean = true
+
+  def supportsTableSample: Boolean = false
+
+  def getTableSample(sample: TableSampleInfo): String =
+    throw new UnsupportedOperationException("TableSample is not supported by this data source")
 }
 
 /**
