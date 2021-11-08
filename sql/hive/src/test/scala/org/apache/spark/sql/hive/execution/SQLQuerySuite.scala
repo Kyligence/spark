@@ -2584,6 +2584,23 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
     }
   }
 
+  test("SPARK-37196: HiveDecimal Precision Scale match failed should return null") {
+    withTempDir { dir =>
+      withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> "false") {
+        withTable("test_precision") {
+          val df = sql(s"SELECT 'dummy' AS name, ${"1" * 20}.${"2" * 18} AS value")
+          df.write.mode("Overwrite").parquet(dir.getAbsolutePath)
+          sql(
+            s"""
+               |CREATE EXTERNAL TABLE test_precision(name STRING, value DECIMAL(18,6))
+               |STORED AS PARQUET LOCATION '${dir.getAbsolutePath}'
+               |""".stripMargin)
+          checkAnswer(sql("SELECT * FROM test_precision"), Row("dummy", null))
+        }
+      }
+    }
+  }
+
   test("SPARK-11374 Support skip.header.line.count option in Hive table") {
     withTable("skip_table_0", "skip_table_1", "skip_table_2", "skip_table_3", "skip_table_4") {
       withTempDir { dir =>
