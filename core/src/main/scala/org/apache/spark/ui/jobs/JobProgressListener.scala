@@ -595,4 +595,25 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
     throw new TimeoutException(
       s"Can't find $numExecutors executors before $timeout milliseconds elapsed")
   }
+
+  private[spark] def clear(): Unit = {
+    activeJobs.clear()
+    completedJobs.clear()
+    failedJobs.clear()
+    jobIdToData.clear()
+    jobGroupToJobIds.clear()
+
+    pendingStages.clear()
+    activeStages.clear()
+    completedStages.clear()
+    skippedStages.clear()
+    failedStages.clear()
+    stageIdToData.clear()
+    stageIdToInfo.clear()
+    stageIdToActiveJobIds.clear()
+    poolToActiveStages.clear()
+
+    executorIdToBlockManagerId.clear()
+
+  }
 }

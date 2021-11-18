@@ -26,6 +26,7 @@ import org.apache.spark.deploy.yarn.{Client, ClientArguments, YarnSparkHadoopUti
 import org.apache.spark.internal.Logging
 import org.apache.spark.launcher.SparkAppHandle
 import org.apache.spark.scheduler.TaskSchedulerImpl
+import org.apache.spark.util.Utils
 
 private[spark] class YarnClientSchedulerBackend(
     scheduler: TaskSchedulerImpl,
@@ -138,6 +139,7 @@ private[spark] class YarnClientSchedulerBackend(
     assert(client != null, "Attempted to stop this scheduler before starting it!")
     if (monitorThread != null) {
       monitorThread.stopMonitor()
+      monitorThread = null
     }
 
     // Report a final state to the launcher if one is connected. This is needed since in client
@@ -148,10 +150,12 @@ private[spark] class YarnClientSchedulerBackend(
     // so assume the application was successful.
     client.reportLauncherState(SparkAppHandle.State.FINISHED)
 
-    super.stop()
+    Utils.tryLogNonFatalError {
+      super.stop()
+    }
     YarnSparkHadoopUtil.get.stopCredentialUpdater()
     client.stop()
-    logInfo("Stopped")
+    logInfo("YarnClientSchedulerBackend stopped")
   }
 
 }

@@ -197,9 +197,11 @@ private[spark] class LiveListenerBus(val sparkContext: SparkContext) extends Spa
       // `stop` is called.
       eventLock.release()
       listenerThread.join()
+      listeners.clear()
     } else {
       // Keep quiet
     }
+    logInfo("LiveListenerBus stopped")
   }
 
   /**

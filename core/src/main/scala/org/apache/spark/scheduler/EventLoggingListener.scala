@@ -248,6 +248,7 @@ private[spark] class EventLoggingListener(
     } catch {
       case e: Exception => logDebug(s"failed to set time of $target", e)
     }
+    logInfo("EventLoggingListener stopped")
   }
 
   private[spark] def redactEvent(

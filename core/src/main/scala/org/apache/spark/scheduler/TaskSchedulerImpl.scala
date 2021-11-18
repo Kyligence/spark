@@ -85,7 +85,7 @@ private[spark] class TaskSchedulerImpl private[scheduler](
   // of tasks that are very short.
   val MIN_TIME_TO_SPECULATION = 100
 
-  private val speculationScheduler =
+  private var speculationScheduler =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("task-scheduler-speculation")
 
   // Threshold above which we warn user initial TaskSet may be starved
@@ -104,7 +104,7 @@ private[spark] class TaskSchedulerImpl private[scheduler](
 
   @volatile private var hasReceivedTask = false
   @volatile private var hasLaunchedTask = false
-  private val starvationTimer = new Timer(true)
+  private var starvationTimer = new Timer(true)
 
   // Incrementing task IDs
   val nextTaskId = new AtomicLong(0)
@@ -513,13 +513,22 @@ private[spark] class TaskSchedulerImpl private[scheduler](
 
   override def stop() {
     speculationScheduler.shutdown()
+    speculationScheduler = null
     if (backend != null) {
-      backend.stop()
+      Utils.tryLogNonFatalError {
+        backend.stop()
+        backend = null
+      }
     }
     if (taskResultGetter != null) {
-      taskResultGetter.stop()
+      Utils.tryLogNonFatalError {
+        taskResultGetter.stop()
+        taskResultGetter = null
+      }
     }
     starvationTimer.cancel()
+    starvationTimer = null
+    logInfo("TaskSchedulerImpl stopped")
   }
 
   override def defaultParallelism(): Int = backend.defaultParallelism()

@@ -54,6 +54,8 @@ private[spark] class BroadcastManager(
 
   def stop() {
     broadcastFactory.stop()
+    broadcastFactory = null
+    logInfo("BroadcastManager stopped")
   }
 
   private val nextBroadcastId = new AtomicLong(0)

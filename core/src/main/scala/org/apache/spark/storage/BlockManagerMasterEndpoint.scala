@@ -55,7 +55,7 @@ class BlockManagerMasterEndpoint(
   private val blockLocations = new JHashMap[BlockId, mutable.HashSet[BlockManagerId]]
   private val rddId2BlockIdIndex = new mutable.HashMap[Int, mutable.HashSet[BlockId]]
 
-  private val askThreadPool = ThreadUtils.newDaemonCachedThreadPool("block-manager-ask-thread-pool")
+  private var askThreadPool = ThreadUtils.newDaemonCachedThreadPool("block-manager-ask-thread-pool")
   private implicit val askExecutionContext = ExecutionContext.fromExecutorService(askThreadPool)
 
   private val topologyMapper = {
@@ -512,6 +512,8 @@ class BlockManagerMasterEndpoint(
 
   override def onStop(): Unit = {
     askThreadPool.shutdownNow()
+    askThreadPool = null
+    logInfo("AskThreadPool shutdownNow")
   }
 }
 

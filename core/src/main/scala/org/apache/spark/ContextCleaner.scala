@@ -73,7 +73,7 @@ private[spark] class ContextCleaner(sc: SparkContext) extends Logging {
 
   private val cleaningThread = new Thread() { override def run() { keepCleaning() }}
 
-  private val periodicGCService: ScheduledExecutorService =
+  private var periodicGCService: ScheduledExecutorService =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("context-cleaner-periodic-gc")
 
   /**
@@ -119,7 +119,7 @@ private[spark] class ContextCleaner(sc: SparkContext) extends Logging {
   private val cleanupTaskThreads = sc.conf.getInt(
     "spark.cleaner.referenceTracking.cleanupThreadNumber", 1)
 
-  private val cleanupExecutorPool: ExecutorService =
+  private var cleanupExecutorPool: ExecutorService =
     ThreadUtils.newDaemonFixedThreadPool(cleanupTaskThreads, "cleanup")
 
   @volatile private var stopped = false
@@ -152,7 +152,11 @@ private[spark] class ContextCleaner(sc: SparkContext) extends Logging {
       cleaningThread.interrupt()
     }
     cleaningThread.join()
+    cleanupExecutorPool.shutdownNow()
+    cleanupExecutorPool = null
     periodicGCService.shutdown()
+    periodicGCService = null
+    logInfo("ContextCleaner stopped")
   }
 
   /** Register an RDD for cleanup when it is garbage collected. */

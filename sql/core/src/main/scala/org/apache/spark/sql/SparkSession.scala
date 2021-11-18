@@ -700,6 +700,9 @@ class SparkSession private(
    */
   def stop(): Unit = {
     sparkContext.stop()
+    SparkSession.clearDefaultSession()
+    SparkSession.clearActiveSession()
+    logInfo("SparkSession stopped")
   }
 
   /**

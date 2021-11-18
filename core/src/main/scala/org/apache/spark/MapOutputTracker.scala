@@ -308,7 +308,7 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf,
 
   // Thread pool used for handling map output status requests. This is a separate thread pool
   // to ensure we don't block the normal dispatcher threads.
-  private val threadpool: ThreadPoolExecutor = {
+  private var threadpool: ThreadPoolExecutor = {
     val numThreads = conf.getInt("spark.shuffle.mapOutput.dispatcher.numThreads", 8)
     val pool = ThreadUtils.newDaemonFixedThreadPool(numThreads, "map-output-dispatcher")
     for (i <- 0 until numThreads) {
@@ -579,12 +579,14 @@ private[spark] class MapOutputTrackerMaster(conf: SparkConf,
   override def stop() {
     mapOutputRequests.offer(PoisonPill)
     threadpool.shutdown()
+    threadpool = null
     sendTracker(StopMapOutputTracker)
     mapStatuses.clear()
     trackerEndpoint = null
     cachedSerializedStatuses.clear()
     clearCachedBroadcast()
     shuffleIdLocks.clear()
+    logInfo("MapOutputTrackerMaster stopped")
   }
 }
 

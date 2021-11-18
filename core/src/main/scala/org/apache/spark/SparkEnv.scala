@@ -108,6 +108,7 @@ class SparkEnv (
         case None => // We just need to delete tmp dir created by driver, so do nothing on executor
       }
     }
+    logInfo("SparkEnv stopped")
   }
 
   private[spark]

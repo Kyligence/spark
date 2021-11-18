@@ -247,7 +247,7 @@ class SparkContext(config: SparkConf) extends Logging {
   def isStopped: Boolean = stopped.get()
 
   // An asynchronous listener bus for Spark events
-  private[spark] val listenerBus = new LiveListenerBus(this)
+  private[spark] var listenerBus = new LiveListenerBus(this)
 
   // This function allows components created by SparkEnv to be mocked in unit tests:
   private[spark] def createSparkEnv(
@@ -1899,6 +1899,8 @@ class SparkContext(config: SparkConf) extends Logging {
       logInfo("SparkContext already stopped.")
       return
     }
+
+    logInfo("SparkContext is to stop.")
     if (_shutdownHookRef != null) {
       ShutdownHookManager.removeShutdownHook(_shutdownHookRef)
     }
@@ -1909,6 +1911,7 @@ class SparkContext(config: SparkConf) extends Logging {
     Utils.tryLogNonFatalError {
       _ui.foreach(_.stop())
     }
+    _ui = null
     if (env != null) {
       Utils.tryLogNonFatalError {
         env.metricsSystem.report()
@@ -1917,6 +1920,7 @@ class SparkContext(config: SparkConf) extends Logging {
     Utils.tryLogNonFatalError {
       _cleaner.foreach(_.stop())
     }
+    _cleaner = null
     Utils.tryLogNonFatalError {
       _executorAllocationManager.foreach(_.stop())
     }
@@ -1925,10 +1929,14 @@ class SparkContext(config: SparkConf) extends Logging {
         listenerBus.stop()
         _listenerBusStarted = false
       }
+      listenerBus = null
+      _jobProgressListener.clear()
+      _jobProgressListener = null
     }
     Utils.tryLogNonFatalError {
       _eventLogger.foreach(_.stop())
     }
+    _eventLogger = null
     if (_dagScheduler != null) {
       Utils.tryLogNonFatalError {
         _dagScheduler.stop()
@@ -1939,16 +1947,20 @@ class SparkContext(config: SparkConf) extends Logging {
       Utils.tryLogNonFatalError {
         env.rpcEnv.stop(_heartbeatReceiver)
       }
+      _heartbeatReceiver = null
     }
     Utils.tryLogNonFatalError {
       _progressBar.foreach(_.stop())
     }
+    _progressBar = null
     _taskScheduler = null
+    _schedulerBackend = null
     // TODO: Cache.stop()?
     if (_env != null) {
       Utils.tryLogNonFatalError {
         _env.stop()
       }
+      _env = null
       SparkEnv.set(null)
     }
     // Clear this `InheritableThreadLocal`, or it will still be inherited in child threads even this

@@ -110,6 +110,7 @@ private[spark] class MetricsSystem private (
       logWarning("Stopping a MetricsSystem that is not running")
     }
     running = false
+    logInfo("MetricsSystem stopped")
   }
 
   def report() {

@@ -51,7 +51,7 @@ private[netty] class NettyRpcEnv(
     "rpc",
     conf.getInt("spark.rpc.io.threads", 0))
 
-  private val dispatcher: Dispatcher = new Dispatcher(this)
+  private var dispatcher: Dispatcher = new Dispatcher(this)
 
   private val streamManager = new NettyStreamManager(this)
 
@@ -67,7 +67,7 @@ private[netty] class NettyRpcEnv(
     }
   }
 
-  private val clientFactory = transportContext.createClientFactory(createClientBootstraps())
+  private var clientFactory = transportContext.createClientFactory(createClientBootstraps())
 
   /**
    * A separate client factory for file downloads. This avoids using the same RPC handler as
@@ -79,12 +79,12 @@ private[netty] class NettyRpcEnv(
    */
   @volatile private var fileDownloadFactory: TransportClientFactory = _
 
-  val timeoutScheduler = ThreadUtils.newDaemonSingleThreadScheduledExecutor("netty-rpc-env-timeout")
+  var timeoutScheduler = ThreadUtils.newDaemonSingleThreadScheduledExecutor("netty-rpc-env-timeout")
 
   // Because TransportClientFactory.createClient is blocking, we need to run it in this thread pool
   // to implement non-blocking send/ask.
   // TODO: a non-blocking TransportClientFactory.createClient in future
-  private[netty] val clientConnectionExecutor = ThreadUtils.newDaemonCachedThreadPool(
+  private[netty] var clientConnectionExecutor = ThreadUtils.newDaemonCachedThreadPool(
     "netty-rpc-connection",
     conf.getInt("spark.rpc.connect.threads", 64))
 
@@ -278,10 +278,13 @@ private[netty] class NettyRpcEnv(
 
   override def shutdown(): Unit = {
     cleanup()
+    logInfo("NettyRpcEnv shutdown")
   }
 
   override def awaitTermination(): Unit = {
     dispatcher.awaitTermination()
+    dispatcher = null
+    logInfo("NettyRpcEnv awaitTermination finished")
   }
 
   private def cleanup(): Unit = {
@@ -297,21 +300,26 @@ private[netty] class NettyRpcEnv(
     }
     if (timeoutScheduler != null) {
       timeoutScheduler.shutdownNow()
+      timeoutScheduler = null
     }
     if (dispatcher != null) {
       dispatcher.stop()
     }
     if (server != null) {
       server.close()
+      server = null
     }
     if (clientFactory != null) {
       clientFactory.close()
+      clientFactory = null
     }
     if (clientConnectionExecutor != null) {
       clientConnectionExecutor.shutdownNow()
+      clientConnectionExecutor = null
     }
     if (fileDownloadFactory != null) {
       fileDownloadFactory.close()
+      fileDownloadFactory = null
     }
   }
 

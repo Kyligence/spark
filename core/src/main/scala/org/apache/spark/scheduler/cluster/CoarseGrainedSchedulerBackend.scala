@@ -104,7 +104,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
     protected val addressToExecutorId = new HashMap[RpcAddress, String]
 
-    private val reviveThread =
+    private var reviveThread =
       ThreadUtils.newDaemonSingleThreadScheduledExecutor("driver-revive-thread")
 
     override def onStart() {
@@ -359,6 +359,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
     override def onStop() {
       reviveThread.shutdownNow()
+      reviveThread = null
     }
   }
 
@@ -408,6 +409,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     } catch {
       case e: Exception =>
         throw new SparkException("Error stopping standalone scheduler's driver endpoint", e)
+    } finally {
+      executorDataMap.clear()
     }
   }
 

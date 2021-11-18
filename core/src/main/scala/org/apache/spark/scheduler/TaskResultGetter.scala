@@ -159,5 +159,6 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
 
   def stop() {
     getTaskResultExecutor.shutdownNow()
+    logInfo("TaskResultExecutor shutdown")
   }
 }

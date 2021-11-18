@@ -177,10 +177,13 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv) extends Logging {
     // Enqueue a message that tells the message loops to stop.
     receivers.offer(PoisonPill)
     threadpool.shutdown()
+    logInfo("Dispatcher stopped")
   }
 
   def awaitTermination(): Unit = {
-    threadpool.awaitTermination(Long.MaxValue, TimeUnit.MILLISECONDS)
+    threadpool.awaitTermination(1000 * 10, TimeUnit.MILLISECONDS)
+    threadpool = null
+    logInfo("Dispatcher awaitTermination finished")
   }
 
   /**
@@ -191,7 +194,7 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv) extends Logging {
   }
 
   /** Thread pool used for dispatching messages. */
-  private val threadpool: ThreadPoolExecutor = {
+  private var threadpool: ThreadPoolExecutor = {
     val numThreads = nettyEnv.conf.getInt("spark.rpc.netty.dispatcher.numThreads",
       math.max(2, Runtime.getRuntime.availableProcessors()))
     val pool = ThreadUtils.newDaemonFixedThreadPool(numThreads, "dispatcher-event-loop")

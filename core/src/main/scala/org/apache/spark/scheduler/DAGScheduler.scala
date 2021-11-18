@@ -194,7 +194,7 @@ class DAGScheduler(
     sc.getConf.getInt("spark.stage.maxConsecutiveAttempts",
       DAGScheduler.DEFAULT_MAX_CONSECUTIVE_STAGE_ATTEMPTS)
 
-  private val messageScheduler =
+  private var messageScheduler =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("dag-scheduler-message")
 
   private[spark] val eventProcessLoop = new DAGSchedulerEventProcessLoop(this)
@@ -1666,8 +1666,10 @@ class DAGScheduler(
 
   def stop() {
     messageScheduler.shutdownNow()
+    messageScheduler = null
     eventProcessLoop.stop()
     taskScheduler.stop()
+    logInfo("DAGScheduler stopped")
   }
 
   eventProcessLoop.start()

@@ -37,7 +37,7 @@ private[spark] abstract class EventLoop[E](name: String) extends Logging {
 
   private val stopped = new AtomicBoolean(false)
 
-  private[spark] val eventThread = new Thread(name) {
+  private[spark] var eventThread = new Thread(name) {
     setDaemon(true)
 
     override def run(): Unit = {
@@ -81,6 +81,7 @@ private[spark] abstract class EventLoop[E](name: String) extends Logging {
         // Call onStop after the event thread exits to make sure onReceive happens before onStop
         onStopCalled = true
         onStop()
+        eventThread = null
       } catch {
         case ie: InterruptedException =>
           Thread.currentThread().interrupt()
