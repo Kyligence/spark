@@ -181,7 +181,7 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv) extends Logging {
   }
 
   def awaitTermination(): Unit = {
-    threadpool.awaitTermination(1000 * 10, TimeUnit.MILLISECONDS)
+    threadpool.awaitTermination(Long.MaxValue, TimeUnit.MILLISECONDS)
     threadpool = null
     logInfo("Dispatcher awaitTermination finished")
   }
