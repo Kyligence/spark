@@ -3060,6 +3060,11 @@ object SQLConf {
       .stringConf
       .createWithDefault(null)
 
+  val HIVE_SPECIFIC_FS_LOCATION =
+    buildConf("spark.sql.hive.specific.fs.location")
+      .stringConf
+      .createWithDefault(null)
+
   val VIEW_TRUNCATE_ENABLE =
     buildConf("spark.sql.view-truncate-enabled")
       .booleanConf
@@ -3728,6 +3733,8 @@ class SQLConf extends Serializable with Logging {
   def charVarcharAsString: Boolean = getConf(SQLConf.LEGACY_CHAR_VARCHAR_AS_STRING)
 
   def defaultDataBase: String = getConf(SQLConf.DEFAULT_DATABASE_NAME)
+
+  def specificHiveFsLocation: String = getConf(SQLConf.HIVE_SPECIFIC_FS_LOCATION)
 
   /** ********************** SQLConf functionality methods ************ */
 
