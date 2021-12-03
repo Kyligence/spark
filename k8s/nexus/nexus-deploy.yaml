@@ -1,0 +1,114 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexus-data-pv
+spec:
+  storageClassName: managed-nfs-storage
+  capacity:
+    storage: 50Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /data/nexus3  # 指定nfs的挂载点
+    server: 10.1.9.11  # 指定nfs服务地址
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-data-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  # 指定 storageClass 的名字，这里使用默认的 standard
+  storageClassName: managed-nfs-storage
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: default
+  name: nexus3
+  labels:
+    app: nexus3
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nexus3
+  template:
+    metadata:
+      labels:
+        app: nexus3
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000 
+      containers:
+      - name: nexus3
+        image: sonatype/nexus3:3.32.0
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8081
+            name: web
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 100
+          periodSeconds: 30
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 100
+          periodSeconds: 30
+          failureThreshold: 6
+        resources:
+          limits:
+            cpu: 4000m
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: nexus-data
+          mountPath: /nexus-data
+      volumes:
+        - name: nexus-data
+          persistentVolumeClaim:
+            claimName: nexus-data-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus3
+  namespace: default
+  labels:
+    app: nexus3
+spec:
+  selector:
+    app: nexus3
+  type: NodePort
+  ports:
+    - name: web
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+      nodePort: 31000
+    - name: docker
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 31500
+    
