@@ -1,0 +1,197 @@
+#!groovy
+@Grab('org.codehaus.groovy:groovy-yaml:3.0.5')
+import groovy.yaml.YamlBuilder
+
+class Container {
+
+    static class VolumeMount {
+        String name, subPath, mountPath
+
+        VolumeMount(String name, String subPath, String mountPath) {
+            this.name = name
+            this.subPath = subPath
+            this.mountPath = mountPath
+        }
+    }
+
+    String name
+    String image
+    List<String> command
+    boolean tty
+    List<VolumeMount> volumeMounts
+
+}
+
+class GitContainer extends Container {
+    GitContainer() {
+        this.name = 'git'
+        this.image = 'bitnami/git:latest'
+        this.tty = true
+        this.command = ['cat']
+        this.volumeMounts = [new VolumeMount('jenkins-common', null, '/var/jenkins_common')]
+    }
+}
+
+class MavenContainer extends Container {
+
+    MavenContainer(String name) {
+        this.name = name
+        this.image = 'maven:3.8.3-openjdk-8'
+        this.tty = true
+        this.command = ['cat']
+        this.volumeMounts = [
+                new VolumeMount('jenkins-common', 'maven3', '/root/.m2'),
+                new VolumeMount('jenkins-common', 'troubleshooting', '/var/troubleshooting')
+        ]
+    }
+}
+
+def testForModules(String stage, List<String> modules, List<String> tests) {
+    return [(stage): {
+        // 'container': use the same container to execute in parallel in the current pod
+        // 'node(POD_LABEL)': multiple pod in parallel, and this situation needs to rely on external shared storage
+        container(stage.toLowerCase()) {
+            def willTestModules = modules.join(",")
+            def willTestCases = tests.join(",")
+            sh script: """
+                if [ ! -d ${stage} ]; then
+                    mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
+                fi
+
+                cd ./${stage} && mvn clean test --fail-at-end \
+                -pl ${willTestModules} \
+                -Dtest='${willTestCases}' \
+                -DfailIfNoTests=false \
+                -Duser.timezone=GMT+8
+            """
+        }
+    }]
+}
+
+def testStages = testForModules('UTest-Stage-1', ["src/core-common", "src/core-job", "src/core-storage", "src/core-metadata"], []) +
+        testForModules('UTest-Stage-2', ["src/query", "src/smart", "src/source-hive", "src/streaming",
+                                         "src/second-storage/clickhouse", "src/second-storage/core", "src/second-storage/core-ui"], []) +
+        testForModules('UTest-Stage-3',
+                ["src/spark-project/engine-spark", "src/spark-project/kylin-user-session", "src/spark-project/kylin-user-session-dep",
+                 "src/spark-project/source-jdbc", "src/spark-project/sparder", "src/spark-project/spark-common", "src/spark-project/spark-it",
+                 "src/tool", "src/datasource-sdk", "src/external", "src/external-catalog", "src/assembly", "src/udf"], []) +
+        testForModules('UTest-Stage-4', ["src/server-base", "src/server"], []) +
+        testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"]) +
+        testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
+
+testContainers = testStages.collect { new MavenContainer(it.getKey().toLowerCase()) }
+
+@NonCPS
+def k8sYaml() {
+    def yaml = new YamlBuilder()
+    yaml([kind: 'Pod',
+          name: 'jenkins-agent',
+          spec: [containers: [new MavenContainer('maven'), new GitContainer()] + testContainers,
+                 volumes   : [[
+                                      name                 : 'jenkins-common',
+                                      persistentVolumeClaim: [
+                                              claimName: 'jenkins-common'
+                                      ]
+                              ]]]
+    ])
+    yaml.toString()
+}
+
+
+// ================= pipeline start ==================
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yaml k8sYaml()
+        }
+    }
+
+    parameters {
+        string(name: 'kap_repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'kap_branch', defaultValue: 'newten-dev', description: 'Kap branch')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: '', required: true)
+    }
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("git") {
+                    dir("sourcecode") {
+                        retry(3) {
+                            checkout([$class           : 'GitSCM', branches: [[name: "${params.kap_branch}"]],
+                                      userRemoteConfigs: [[credentialsId: "${params.certificate}", url: "git://10.1.2.192/${params.kap_repo}/KAP.git"]],
+                                      browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/${params.kap_repo}/KAP"],
+                                      extensions       : [
+                                              [$class: 'CleanBeforeCheckout'],
+                                              [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
+                                      ]
+                            ])
+                        }
+                    }
+/*                    // TODO
+                    script {
+                        def patchFile = "/shard/jenkins/license/newten.patch.${ghprbActualCommitAuthor}"
+                        if (fileExists(patchFile)) {
+                            sh script: """
+                             git apply "${patchFile}"
+                         """
+                        } else {
+                            sh script: """
+                             git apply /shard/jenkins/license/newten.patch
+                         """
+                        }
+
+                        sh "git checkout -- ."
+                    }*/
+                }
+            }
+        }
+        stage('Maven Install') {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        sh script: """
+                            mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
+                        """
+                    }
+                }
+            }
+        }
+        stage('Testing') {
+            steps {
+                script {
+                    parallel testStages
+                }
+            }
+
+        }
+        stage('SonarQube') {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        withSonarQubeEnv(credentialsId: 'sonar-local', installationName: 'sonar-local') {
+                            // You can override the credential to be used
+                            sh "mvn sonar:sonar -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+        }
+        failure {
+            container('maven') {
+                timestamps {
+                    sh "mkdir -p /var/troubleshooting/${JOB_NAME}/${BUILD_NUMBER} && \
+                        cp ./* -rf /var/troubleshooting/${JOB_NAME}/${BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+}
