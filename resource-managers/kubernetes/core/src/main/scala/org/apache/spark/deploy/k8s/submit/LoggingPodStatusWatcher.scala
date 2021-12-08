@@ -17,7 +17,7 @@
 package org.apache.spark.deploy.k8s.submit
 
 import io.fabric8.kubernetes.api.model.Pod
-import io.fabric8.kubernetes.client.{KubernetesClientException, Watcher}
+import io.fabric8.kubernetes.client.{KubernetesClient, KubernetesClientException, Watcher}
 import io.fabric8.kubernetes.client.Watcher.Action
 import java.net.HttpURLConnection.HTTP_GONE
 
@@ -37,7 +37,8 @@ private[k8s] trait LoggingPodStatusWatcher extends Watcher[Pod] {
  *
  * @param conf kubernetes driver conf.
  */
-private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
+private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf,
+                                               kubernetesClient: KubernetesClient)
   extends LoggingPodStatusWatcher with Logging {
 
   private val appId = conf.appId
@@ -106,6 +107,7 @@ private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
         pod.map { p => s"Container final statuses:\n\n${containersDescription(p)}" }
           .getOrElse("No containers were found in the driver pod."))
       logInfo(s"Application ${conf.appName} with submission ID $sId finished")
+      pod.map { p => kubernetesClient.pods().withName(p.getMetadata.getName).delete() }
     }
     podCompleted
   } else {
