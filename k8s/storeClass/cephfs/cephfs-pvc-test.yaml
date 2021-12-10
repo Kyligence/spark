@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: cephfs-claim
+spec:
+  accessModes:     
+    - ReadWriteOnce
+  storageClassName: cephfs-dynamic
+  resources:
+    requests:
+      storage: 2Gi
