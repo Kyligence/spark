@@ -57,7 +57,14 @@ pipeline {
                     simpleNewtenParallelTest()
                 }
             }
-
+            post {
+                always {
+                    timestamps {
+                        junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                        retestFailedTests()
+                    }
+                }
+            }
         }
         stage('SonarQube') {
             steps {
@@ -69,13 +76,6 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
-    }
-    post {
-        always {
-            timestamps {
-                junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
             }
         }
     }
