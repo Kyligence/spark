@@ -1,6 +1,5 @@
 import hudson.tasks.junit.TestResultAction
 
-@NonCPS
 def call() {
     def testResultActions = currentBuild.rawBuild.getActions(TestResultAction.class)
     if (testResultActions.isEmpty()) {
