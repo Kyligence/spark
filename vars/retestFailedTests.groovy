@@ -15,9 +15,9 @@ def call() {
     }
 
     echo "${lastTestResultAction.getFailCount()} failed tests will retesting..."
-    echo "${lastTestResultAction.getFailedTests().collect({ "${it.className}.${it.testName}" }).join('\n')}"
+    echo "${collectFailedTests(lastTestResultAction, ".", "\n")}"
 
-    def willRetestCases = lastTestResultAction.getFailedTests().collect({ "${it.className}#${it.testName}" }).join(',')
+    def willRetestCases = collectFailedTests(lastTestResultAction)
 
     container('maven') {
         def testStage = 'RTest-Stage'
@@ -36,4 +36,9 @@ def call() {
         """
         junit skipPublishingChecks: true, testResults: "${testStage}/**/target/surefire-reports/*.xml"
     }
+}
+
+@NonCPS
+def collectFailedTests(TestResultAction testResultAction, String combinator = "#", String joiner = ",") {
+    testResultAction.getFailedTests().collect({ "${it.className}${combinator}${it.testName}" }).join(joiner)
 }
