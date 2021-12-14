@@ -17,8 +17,9 @@ def call() {
     echo "${lastTestResultAction.getFailCount()} failed tests will retesting..."
     echo "${lastTestResultAction.getFailedTests().collect({ "${it.className}.${it.testName}" }).join('\n')}"
 
+    def willRetestCases = lastTestResultAction.getFailedTests().collect({ "${it.className}#${it.testName}" }).join(',')
+
     container('maven') {
-        def willRetestCases = lastTestResultAction.getFailedTests().collect({ "${it.className}#${it.testName}" }).join(',')
         def testStage = 'RTest-Stage'
         sh script: """
             if [ ! -d ${testStage} ]; then
