@@ -1,24 +1,15 @@
 import hudson.tasks.junit.TestResultAction
 
 def call() {
-    def testResultActions = currentBuild.rawBuild.getActions(TestResultAction.class)
-    if (testResultActions.isEmpty()) {
-        echo 'Test result not found...'
+    if (skipRetest()) {
         return
     }
 
-    def lastTestResultAction = testResultActions.last()
-    if (lastTestResultAction.getFailedTests().isEmpty()) {
-        echo 'No Failed Tests...'
-        return
-    }
-
-    echo "${lastTestResultAction.getFailCount()} failed tests will retesting..."
-    echo "${collectFailedTests(lastTestResultAction, ".", "\n")}"
-
-    def willRetestCases = collectFailedTests(lastTestResultAction)
+    echo "Will retest failed tests: "
+    echo "${collectFailedTests(".", "\n")}"
 
     container('maven') {
+        def willRetestCases = collectFailedTests()
         def testStage = 'RTest-Stage'
         sh script: """
             if [ ! -d ${testStage} ]; then
@@ -38,6 +29,25 @@ def call() {
 }
 
 @NonCPS
-def collectFailedTests(TestResultAction testResultAction, String combinator = "#", String joiner = ",") {
-    testResultAction.getFailedTests().collect({ "${it.className}${combinator}${it.testName}" }).join(joiner)
+def boolean skipRetest() {
+    def testResultActions = currentBuild.rawBuild.getActions(TestResultAction.class)
+    if (testResultActions.isEmpty()) {
+        echo 'Test result not found...'
+        return true
+    }
+
+    def lastTestResultAction = testResultActions.last()
+    if (lastTestResultAction.getFailedTests().isEmpty()) {
+        echo 'No Failed Tests...'
+        return true
+    }
+
+    return false
+
+}
+
+@NonCPS
+def collectFailedTests(String combinator = "#", String joiner = ",") {
+    def lastTestResultAction = currentBuild.rawBuild.getActions(TestResultAction.class).last()
+    return lastTestResultAction.getFailedTests().collect({ "${it.className}${combinator}${it.testName}" }).join(joiner)
 }
