@@ -119,7 +119,7 @@
     <maven.version>3.3.9</maven.version>
     <sbt.project.name>spark</sbt.project.name>
     <slf4j.version>1.7.32</slf4j.version>
-    <log4j.version>1.2.17</log4j.version>
+    <log4j.version>1.2.17-cloudera1</log4j.version>
     <hadoop.version>2.6.5</hadoop.version>
     <protobuf.version>2.5.0</protobuf.version>
     <yarn.version>${hadoop.version}</yarn.version>
