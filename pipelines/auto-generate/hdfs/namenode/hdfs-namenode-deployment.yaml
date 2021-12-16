@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: hdfs-namenode
+  name: hdfs-namenode
+  namespace: <<<namespace>>>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: hdfs-namenode
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: hdfs-namenode
+    spec:
+      initContainers:
+      - name: delete-lost-found
+        image: busybox:stable
+        volumeMounts:
+          - mountPath: /hadoop/dfs/name
+            name: hdfs-namenode-claim0
+        command:
+          - sh
+          - "-c"
+          - |
+            set -x
+            rm -rf /hadoop/dfs/name/lost+found
+      containers:
+      - name: hdfs-namenode
+        envFrom:
+        - configMapRef:
+            name: hdfs-env
+        env:
+          - name: CLUSTER_NAME
+            value: test-kylin
+          - name: HADOOP_MODE
+            value: namenode
+          - name: HADOOP_WEBHDFS_PORT
+            value: "50070"
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+        image: kyligence/hadoop:2.10.1
+        ports:
+          - containerPort: 50070
+          - containerPort: 9870
+          - containerPort: 8020
+        livenessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50070
+        readinessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50070
+        resources:
+          limits:
+            cpu: 1
+            memory: 2Gi
+          requests:
+            cpu: 1
+            memory: 2Gi
+        volumeMounts:
+          - mountPath: /hadoop/dfs/name
+            name: hdfs-namenode-claim0
+      volumes:
+        - name: hdfs-namenode-claim0
+          persistentVolumeClaim:
+            claimName: hdfs-namenode-claim0

@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: <<<namespace>>>
+  name: kyligence-enterprise
+spec:
+  rules:
+  - host: "<<<namespace>>>.uat.kylincorp.com"
+    http:
+      paths:
+      - path: /kylin
+        pathType: Prefix
+        backend:
+          service:
+            name: kyligence-enterprise-ui
+            port:
+              number: 7070

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    io.kompose.service: hdfs-datanode
+  name: hdfs-datanode
+  namespace: <<<namespace>>>
+spec:
+  serviceName: hdfs-datanode
+  replicas: 3
+  selector:
+    matchLabels:
+      io.kompose.service: hdfs-datanode
+  template:
+    metadata:
+      labels:
+        io.kompose.service: hdfs-datanode
+    spec:
+      containers:
+      - name: hdfs-datanode
+        image: kyligence/hadoop:2.10.1
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50075
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50075
+        ports:
+          - containerPort: 50075
+        volumeMounts:
+          - mountPath: /hadoop/dfs/data
+            name: hdfs-datanode-claim0
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 1
+            memory: 1Gi
+        envFrom:
+        - configMapRef:
+            name: hdfs-env
+        env:
+        - name: HADOOP_MODE
+          value: datanode
+        - name: HADOOP_WEBHDFS_PORT
+          value: "50070"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+  volumeClaimTemplates:
+  - metadata:
+      name: hdfs-datanode-claim0
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: rbd-dynamic
+      resources:
+        requests:
+          storage: 10Gi

@@ -1,0 +1,72 @@
+# beeline -u "jdbc:hive2://hive-server2:10000" -n hive -p hive
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: <<<namespace>>>
+  name: hive-server2
+spec:
+  selector:
+    app: hive-server2
+  ports:
+    - port: 10000
+      name: jdbc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hive-server2
+  namespace: <<<namespace>>>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive-server2
+  template:
+    metadata:
+      labels:
+        app: hive-server2
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      containers:
+      - name: hive-server2
+        image: 10.1.9.11:31500/hive:1.2.2-hadoop-2.10.1
+        ports:
+        - containerPort: 10000
+          name: jdbc
+        volumeMounts:
+        - name: config
+          mountPath: /opt/apache-hive-1.2.2-bin/conf/hive-site.xml
+          subPath: hive-site.xml
+        - name: config
+          mountPath: /opt/hadoop-2.10.1/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        command: ["/opt/apache-hive-1.2.2-bin/bin/hive"]
+        args: ["--service", "hiveserver2"]
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 1
+        env:
+        - name: HADOOP_HEAPSIZE
+          value: "1024"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          timeoutSeconds: 5
+          tcpSocket:
+            port: jdbc
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          timeoutSeconds: 1
+          tcpSocket:
+            port: jdbc
+      volumes:
+        - name: config
+          configMap:
+            name: yarn-xml

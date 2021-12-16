@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: yarn-historyserver
+  name: yarn-historyserver
+  namespace: <<<namespace>>>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: yarn-historyserver
+  template:
+    metadata:
+      labels:
+        io.kompose.service: yarn-historyserver
+    spec:
+      containers:
+      - name: yarn-historyserver
+        image: kyligence/hadoop:2.10.1
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 8188
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 8188
+        ports:
+          - containerPort: 8188
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 1
+            memory: 1Gi
+        volumeMounts:
+          - mountPath: /hadoop/yarn/timeline
+            name: yarn-historyserver-claim0
+        envFrom:
+        - configMapRef:
+            name: yarn-env
+        env:
+        - name: HADOOP_MODE
+          value: historyserver
+        - name: HADOOP_WEBHDFS_PORT
+          value: "50070"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+      volumes:
+        - name: yarn-historyserver-claim0
+          persistentVolumeClaim:
+            claimName: yarn-historyserver-claim0
