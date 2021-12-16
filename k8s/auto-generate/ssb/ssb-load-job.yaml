@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ssb-load-job
+  namespace: <<<namespace>>>
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      volumes:
+        - name: nfs
+          persistentVolumeClaim:
+            claimName: nfs-share-pvc
+      containers:
+        - name: ssb-load-job
+          image: 10.1.9.11:31500/hive:1.2.2-hadoop-2.10.1
+          env:
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+          volumeMounts:
+          - mountPath: /tmp/kyligence
+            name: nfs
+          command:
+          - bash
+          - "-c"
+          - |
+            set -x
+            mkdir -p /opt/kyligence
+            tar -zxvf /tmp/kyligence/share/ssb.tar.gz -C /opt/kyligence
+            beeline -u "jdbc:hive2://hive-server2:10000" -n hive -p hive -f /opt/kyligence/ssb/ssb.sql
+
+            hdfs dfs -put /opt/kyligence/ssb/data/SSB.CUSTOMER.csv hdfs://hdfs-namenode:8020/user/hive/warehouse/ssb.db/customer
+            hdfs dfs -put /opt/kyligence/ssb/data/SSB.DATES.csv hdfs://hdfs-namenode:8020/user/hive/warehouse/ssb.db/dates
+            hdfs dfs -put /opt/kyligence/ssb/data/SSB.LINEORDER.csv hdfs://hdfs-namenode:8020/user/hive/warehouse/ssb.db/lineorder
+            hdfs dfs -put /opt/kyligence/ssb/data/SSB.PART.csv hdfs://hdfs-namenode:8020/user/hive/warehouse/ssb.db/part
+            hdfs dfs -put /opt/kyligence/ssb/data/SSB.SUPPLIER.csv hdfs://hdfs-namenode:8020/user/hive/warehouse/ssb.db/supplier
+      restartPolicy: Never
