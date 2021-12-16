@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-client-provisioner
+  labels:
+    app: nfs-client-provisioner
+  # replace with namespace where provisioner is deployed
+  namespace: nfs #与RBAC文件中的namespace保持一致
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+          image: quay.io/external_storage/nfs-client-provisioner:latest
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "500m"
+            limits:
+              memory: "64Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+            - name: PROVISIONER_NAME
+              value: kubernetes.io/nfs #provisioner名称,请确保该名称与 nfs-StorageClass.yaml文件中的provisioner名称保持一致
+            - name: NFS_SERVER
+              value: 10.1.9.11     #NFS Server IP地址
+            - name: NFS_PATH
+              value: /data/k8s           #NFS挂载卷
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: 10.1.9.11       #NFS Server IP地址
+            path: /data/k8s              #NFS 挂载卷
