@@ -17,11 +17,10 @@
 
 package org.apache.spark.sql.jdbc.v2
 
-import java.util
-
 import org.apache.log4j.Level
 
 import org.apache.spark.sql.{AnalysisException, DataFrame}
+import org.apache.spark.sql.catalyst.analysis.{IndexAlreadyExistsException, NoSuchIndexException}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, Sample}
 import org.apache.spark.sql.connector.catalog.{Catalogs, Identifier, TableCatalog}
 import org.apache.spark.sql.connector.catalog.index.SupportsIndex
@@ -191,13 +190,14 @@ private[v2] trait V2JDBCTest extends SharedSparkSession with DockerIntegrationFu
   }
 
   def supportsIndex: Boolean = false
-  def testIndexProperties(jdbcTable: SupportsIndex): Unit = {}
 
-  test("SPARK-36913: Test INDEX") {
+  def indexOptions: String = ""
+
+  test("SPARK-36895: Test INDEX Using SQL") {
     if (supportsIndex) {
       withTable(s"$catalogName.new_table") {
         sql(s"CREATE TABLE $catalogName.new_table(col1 INT, col2 INT, col3 INT," +
-          s" col4 INT, col5 INT)")
+          " col4 INT, col5 INT)")
         val loaded = Catalogs.load(catalogName, conf)
         val jdbcTable = loaded.asInstanceOf[TableCatalog]
           .loadTable(Identifier.of(Array.empty[String], "new_table"))
@@ -205,77 +205,41 @@ private[v2] trait V2JDBCTest extends SharedSparkSession with DockerIntegrationFu
         assert(jdbcTable.indexExists("i1") == false)
         assert(jdbcTable.indexExists("i2") == false)
 
-        val properties = new util.Properties();
         val indexType = "DUMMY"
         var m = intercept[UnsupportedOperationException] {
-          jdbcTable.createIndex("i1", indexType, Array(FieldReference("col1")),
-            Array.empty[util.Map[NamedReference, util.Properties]], properties)
+          sql(s"CREATE index i1 ON $catalogName.new_table USING $indexType (col1)")
         }.getMessage
         assert(m.contains(s"Index Type $indexType is not supported." +
-          s" The supported Index Types are: BTREE and HASH"))
+          s" The supported Index Types are:"))
 
-        jdbcTable.createIndex("i1", "BTREE", Array(FieldReference("col1")),
-          Array.empty[util.Map[NamedReference, util.Properties]], properties)
-
-        jdbcTable.createIndex("i2", "",
-          Array(FieldReference("col2"), FieldReference("col3"), FieldReference("col5")),
-          Array.empty[util.Map[NamedReference, util.Properties]], properties)
+        sql(s"CREATE index i1 ON $catalogName.new_table USING BTREE (col1)")
+        sql(s"CREATE index i2 ON $catalogName.new_table (col2, col3, col5)" +
+          s" OPTIONS ($indexOptions)")
 
         assert(jdbcTable.indexExists("i1") == true)
         assert(jdbcTable.indexExists("i2") == true)
 
+        // This should pass without exception
+        sql(s"CREATE index IF NOT EXISTS i1 ON $catalogName.new_table (col1)")
+
         m = intercept[IndexAlreadyExistsException] {
-          jdbcTable.createIndex("i1", "", Array(FieldReference("col1")),
-            Array.empty[util.Map[NamedReference, util.Properties]], properties)
+          sql(s"CREATE index i1 ON $catalogName.new_table (col1)")
         }.getMessage
-        assert(m.contains("Failed to create index: i1 in new_table"))
+        assert(m.contains("Failed to create index i1 in new_table"))
 
-        var index = jdbcTable.listIndexes()
-        assert(index.length == 2)
+        sql(s"DROP index i1 ON $catalogName.new_table")
+        sql(s"DROP index i2 ON $catalogName.new_table")
 
-        assert(index(0).indexName.equals("i1"))
-        assert(index(0).indexType.equals("BTREE"))
-        var cols = index(0).columns
-        assert(cols.length == 1)
-        assert(cols(0).describe().equals("col1"))
-        assert(index(0).properties.size == 0)
-
-        assert(index(1).indexName.equals("i2"))
-        assert(index(1).indexType.equals("BTREE"))
-        cols = index(1).columns
-        assert(cols.length == 3)
-        assert(cols(0).describe().equals("col2"))
-        assert(cols(1).describe().equals("col3"))
-        assert(cols(2).describe().equals("col5"))
-        assert(index(1).properties.size == 0)
-
-        jdbcTable.dropIndex("i1")
-        assert(jdbcTable.indexExists("i1") == false)
-        assert(jdbcTable.indexExists("i2") == true)
-
-        index = jdbcTable.listIndexes()
-        assert(index.length == 1)
-
-        assert(index(0).indexName.equals("i2"))
-        assert(index(0).indexType.equals("BTREE"))
-        cols = index(0).columns
-        assert(cols.length == 3)
-        assert(cols(0).describe().equals("col2"))
-        assert(cols(1).describe().equals("col3"))
-        assert(cols(2).describe().equals("col5"))
-
-        jdbcTable.dropIndex("i2")
         assert(jdbcTable.indexExists("i1") == false)
         assert(jdbcTable.indexExists("i2") == false)
-        index = jdbcTable.listIndexes()
-        assert(index.length == 0)
+
+        // This should pass without exception
+        sql(s"DROP index IF EXISTS i1 ON $catalogName.new_table")
 
         m = intercept[NoSuchIndexException] {
-          jdbcTable.dropIndex("i2")
+          sql(s"DROP index i1 ON $catalogName.new_table")
         }.getMessage
-        assert(m.contains("Failed to drop index: i2"))
-
-        testIndexProperties(jdbcTable)
+        assert(m.contains("Failed to drop index i1 in new_table"))
       }
     }
   }
@@ -338,7 +302,7 @@ private[v2] trait V2JDBCTest extends SharedSparkSession with DockerIntegrationFu
         assert(samplePushed(df3))
         assert(limitPushed(df3, 2))
         assert(columnPruned(df3, "col1"))
-        assert(df3.collect().length == 2)
+        assert(df3.collect().length <= 2)
 
         // sample(... PERCENT) push down + limit push down + column pruning
         val df4 = sql(s"SELECT col1 FROM $catalogName.new_table" +
@@ -346,7 +310,7 @@ private[v2] trait V2JDBCTest extends SharedSparkSession with DockerIntegrationFu
         assert(samplePushed(df4))
         assert(limitPushed(df4, 2))
         assert(columnPruned(df4, "col1"))
-        assert(df4.collect().length == 2)
+        assert(df4.collect().length <= 2)
 
         // sample push down + filter push down + limit push down
         val df5 = sql(s"SELECT * FROM $catalogName.new_table" +
@@ -354,7 +318,7 @@ private[v2] trait V2JDBCTest extends SharedSparkSession with DockerIntegrationFu
         assert(samplePushed(df5))
         assert(filterPushed(df5))
         assert(limitPushed(df5, 2))
-        assert(df5.collect().length == 2)
+        assert(df5.collect().length <= 2)
 
         // sample + filter + limit + column pruning
         // sample pushed down, filer/limit not pushed down, column pruned
@@ -365,7 +329,7 @@ private[v2] trait V2JDBCTest extends SharedSparkSession with DockerIntegrationFu
         assert(!filterPushed(df6))
         assert(!limitPushed(df6, 2))
         assert(columnPruned(df6, "col1"))
-        assert(df6.collect().length == 2)
+        assert(df6.collect().length <= 2)
 
         // sample + limit
         // Push down order is sample -> filter -> limit
