@@ -6,8 +6,8 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: "8042"
-      port: 8042
-      targetPort: 8042
+    - name: "8402"
+      port: 8402
+      targetPort: 8402
   selector:
     io.kompose.service: yarn-nodemanager

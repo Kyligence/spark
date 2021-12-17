@@ -61,7 +61,6 @@ pipeline {
                 always {
                     timestamps {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
-                        retestFailedTests()
                     }
                 }
             }
