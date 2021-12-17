@@ -1315,7 +1315,11 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
                 catalog, ident, timeTravelSpec, writePrivilegesString)
               val loaded = createRelation(
                 catalog, ident, table, u.clearWritePrivileges.options, u.isStreaming)
-              loaded.foreach(AnalysisContext.get.relationCache.update(key, _))
+              if (SQLConf.get.isViewCacheEnable) {
+                loaded.foreach(AnalysisContext.get.relationCache.update(key, _))
+              } else {
+                loaded.filter(needCache).foreach(AnalysisContext.get.relationCache.update(key, _))
+              }
               u.getTagValue(LogicalPlan.PLAN_ID_TAG).map { planId =>
                 loaded.map { loadedRelation =>
                   val loadedConnectRelation = loadedRelation.clone()
@@ -1333,6 +1337,20 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
     def resolveRelationOrTempView(u: UnresolvedRelation): LogicalPlan = {
       EliminateSubqueryAliases(resolveRelation(u).getOrElse(u))
     }
+  }
+
+  def needCache(plan: LogicalPlan): Boolean = {
+    var need = false
+    val child = plan.children.apply(0)
+    plan match {
+      case (plan: View) => need = true
+      case _ => need = false
+    }
+    (plan, child) match {
+      case (plan: SubqueryAlias, child: MultiInstanceRelation) => need = true
+      case _ => need = false
+    }
+    need
   }
 
   /** Handle INSERT INTO for DSv2 */
