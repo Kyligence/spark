@@ -8,6 +8,7 @@ spec:
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
     - volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
@@ -22,31 +23,37 @@ spec:
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
     - name: "utest-stage-2"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
     - name: "utest-stage-3"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
     - name: "utest-stage-4"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
     - name: "itest-stage-1"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
     - name: "itest-stage-2"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+      imagePullPolicy: "Always"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
