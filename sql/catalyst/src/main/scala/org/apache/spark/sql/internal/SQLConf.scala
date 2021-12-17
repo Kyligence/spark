@@ -4446,6 +4446,11 @@ object SQLConf {
       .stringConf
       .createWithDefault(null)
 
+  val VIEW_CACHE_ENABLE =
+    buildConf("spark.sql.view-cache-enabled")
+      .booleanConf
+      .createWithDefault(true)
+
   val VIEW_TRUNCATE_ENABLE =
     buildConf("spark.sql.view-truncate-enabled")
       .booleanConf
@@ -5198,6 +5203,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
 
   override def setOpsPrecedenceEnforced: Boolean =
     getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
+
+  def isViewCacheEnable: Boolean = getConf(SQLConf.VIEW_CACHE_ENABLE)
 
   def isViewTruncateEnable: Boolean = getConf(SQLConf.VIEW_TRUNCATE_ENABLE)
 
