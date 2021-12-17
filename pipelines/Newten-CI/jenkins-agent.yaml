@@ -13,9 +13,12 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+        - name: "m2-repo"
+          mountPath: /root/.m2/repository/io/kyligence
       tty: true
       command:
         - "cat"
+
       image: "bitnami/git:latest"
       name: "git"
     - name: "utest-stage-1"
@@ -24,37 +27,57 @@ spec:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
       imagePullPolicy: "Always"
+      volumeMounts:
+      - name: "m2-repo"
+        mountPath: /root/.m2/repository/io/kyligence
     - name: "utest-stage-2"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
       imagePullPolicy: "Always"
+      volumeMounts:
+      - name: "m2-repo"
+        mountPath: /root/.m2/repository/io/kyligence
     - name: "utest-stage-3"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
       imagePullPolicy: "Always"
+      volumeMounts:
+      - name: "m2-repo"
+        mountPath: /root/.m2/repository/io/kyligence
     - name: "utest-stage-4"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
       imagePullPolicy: "Always"
+      volumeMounts:
+      - name: "m2-repo"
+        mountPath: /root/.m2/repository/io/kyligence      
     - name: "itest-stage-1"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
       imagePullPolicy: "Always"
+      volumeMounts:
+      - name: "m2-repo"
+        mountPath: /root/.m2/repository/io/kyligence
     - name: "itest-stage-2"
       tty: true
       command:
         - "cat"
       image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
       imagePullPolicy: "Always"
+      volumeMounts:
+      - name: "m2-repo"
+        mountPath: /root/.m2/repository/io/kyligence
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
+    - name: "m2-repo"
+      emptyDir: {}
