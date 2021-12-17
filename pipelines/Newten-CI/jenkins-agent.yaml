@@ -3,22 +3,12 @@ kind: "Pod"
 name: "jenkins-agent"
 spec:
   containers:
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+    - name: "maven"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "maven"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
     - volumeMounts:
-        - mountPath: "/var/jenkins_common"
-          name: "jenkins-common"
-          subPath: null
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
@@ -27,78 +17,36 @@ spec:
         - "cat"
       image: "bitnami/git:latest"
       name: "git"
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+    - name: "utest-stage-1"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "utest-stage-1"
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+    - name: "utest-stage-2"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "utest-stage-2"
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+    - name: "utest-stage-3"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "utest-stage-3"
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+    - name: "utest-stage-4"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "utest-stage-4"
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+    - name: "itest-stage-1"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "itest-stage-1"
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/var/troubleshooting"
-          name: "jenkins-common"
-          subPath: "troubleshooting"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
+    - name: "itest-stage-2"
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      name: "itest-stage-2"
+      image: "docker.ops.kylincorp.com/maven:3.8.3-openjdk-8-repo"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
