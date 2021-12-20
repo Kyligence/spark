@@ -11,7 +11,7 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
       - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
+        mountPath: /root/.m2/repository/io/kyligence
 
 
     - volumeMounts:
