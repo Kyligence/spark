@@ -46,7 +46,6 @@ spec:
         image: kyligence/hadoop:2.10.1
         ports:
           - containerPort: 50070
-          - containerPort: 9870
           - containerPort: 8020
         livenessProbe:
           failureThreshold: 20
