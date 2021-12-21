@@ -7,6 +7,8 @@ spec:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
           subPath: "maven3"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
@@ -20,3 +22,5 @@ spec:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
