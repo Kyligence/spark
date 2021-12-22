@@ -16,7 +16,7 @@ pipeline {
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
         string(name: 'branch', defaultValue: 'newten-dev', description: 'Kap branch?')
-        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
     }
 
     stages {
@@ -26,9 +26,9 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'KAP', 'git', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*', 'newten-dev'
+                                githubCheckout 'KAP', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/*', 'newten-dev'
                             }
-                            sh "git apply /var/cicd/patchs/newten.patch"
+                            sh "git apply /jenkinscommon/license/newten.patch"
                             sh "git checkout -- ."
                         }
                     }

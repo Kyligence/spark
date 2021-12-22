@@ -5,9 +5,8 @@ spec:
   containers:
     - name: "git"
       volumeMounts:
-        - mountPath: "/var/cicd"
+        - mountPath: "/jenkinscommon"
           name: "jenkins-common"
-          subPath: "newten-cicd"
       tty: true
       command:
         - "cat"
@@ -21,10 +20,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
     - name: "utest-stage-1"
       tty: true
@@ -34,10 +35,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
     - name: "utest-stage-2"
       tty: true
@@ -47,10 +50,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
     - name: "utest-stage-3"
       tty: true
@@ -60,10 +65,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
     - name: "utest-stage-4"
       tty: true
@@ -73,10 +80,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
     - name: "itest-stage-1"
       tty: true
@@ -86,10 +95,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
     - name: "itest-stage-2"
       tty: true
@@ -99,10 +110,12 @@ spec:
       imagePullPolicy: "Always"
       volumeMounts:
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
 
   volumes:
     - name: "jenkins-common"
@@ -110,3 +123,10 @@ spec:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "ke-maven-settings"
+      name: "maven-settings"
