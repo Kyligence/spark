@@ -26,7 +26,7 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'git', 'KAP', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*', 'newten-dev'
+                                githubCheckout 'KAP', 'git', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*', 'newten-dev'
                             }
                             sh "git apply /var/cicd/patchs/newten.patch"
                             sh "git checkout -- ."
