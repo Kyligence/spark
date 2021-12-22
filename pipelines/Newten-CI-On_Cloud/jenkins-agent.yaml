@@ -117,6 +117,21 @@ spec:
           readOnly: false
           subPath: "settings.xml"
 
+    - name: "sonar-cloud"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-11"
+      imagePullPolicy: "Always"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:

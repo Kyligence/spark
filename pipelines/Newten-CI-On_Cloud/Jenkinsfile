@@ -63,7 +63,7 @@ pipeline {
         }
         stage('SonarQube') {
             steps {
-                container("maven") {
+                container("sonar-cloud") {
                     dir("sourcecode") {
                         withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
                             // You can override the credential to be used
