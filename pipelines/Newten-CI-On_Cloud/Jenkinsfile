@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/Newten-CI/jenkins-agent.yaml'
+            yamlFile 'pipelines/Newten-CI-On_Cloud/jenkins-agent.yaml'
         }
     }
 
@@ -26,11 +26,6 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                sshCmdWithCredentials(
-                                    'bash -c /var/lib/git/pull.sh',
-                                    'private_git',
-                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
-                                )
                                 githubCheckout 'git', 'KAP', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*', 'newten-dev'
                             }
                             sh "git apply /var/cicd/patchs/newten.patch"
@@ -70,7 +65,7 @@ pipeline {
             steps {
                 container("maven") {
                     dir("sourcecode") {
-                        withSonarQubeEnv(credentialsId: 'sonar-local', installationName: 'sonar-local') {
+                        withSonarQubeEnv(credentialsId: 'sonar key', installationName: 'sonar cloud') {
                             // You can override the credential to be used
                             sh "mvn sonar:sonar -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml"
                         }
