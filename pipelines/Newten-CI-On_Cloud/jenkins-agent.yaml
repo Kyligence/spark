@@ -32,10 +32,10 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "32000Mi"
+          memory: "48000Mi"
           cpu: "16000m"
         requests:
-          memory: "32000Mi"
+          memory: "40000Mi"
           cpu: "16000m"
 
     - name: "sonar-cloud"
