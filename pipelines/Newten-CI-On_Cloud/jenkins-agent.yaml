@@ -13,11 +13,11 @@ spec:
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "4000Mi"
-          cpu: "2000m"
+          memory: "1000Mi"
+          cpu: "1000m"
         requests:
-          memory: "4000Mi"
-          cpu: "2000m"
+          memory: "1000Mi"
+          cpu: "1000m"
 
     - name: "maven"
       tty: true
@@ -35,13 +35,13 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "6000Mi"
-          cpu: "3000m"
+          memory: "2000Mi"
+          cpu: "2000m"
         requests:
-          memory: "6000Mi"
-          cpu: "3000m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
-    - name: "utest-stage-1"
+    - name: "test-stage-1"
       tty: true
       command:
         - "cat"
@@ -63,7 +63,7 @@ spec:
           memory: "16000Mi"
           cpu: "8000m"
 
-    - name: "utest-stage-2"
+    - name: "test-stage-2"
       tty: true
       command:
         - "cat"
@@ -79,54 +79,10 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "16000Mi"
+          memory: "32000Mi"
           cpu: "8000m"
         requests:
-          memory: "16000Mi"
-          cpu: "8000m"
-
-    - name: "itest-stage-1"
-      tty: true
-      command:
-        - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      imagePullPolicy: "Always"
-      volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
-        - mountPath: "/root/.m2/settings.xml"
-          name: "maven-settings"
-          readOnly: false
-          subPath: "settings.xml"
-      resources:
-        limits:
-          memory: "16000Mi"
-          cpu: "8000m"
-        requests:
-          memory: "16000Mi"
-          cpu: "8000m"
-
-    - name: "itest-stage-2"
-      tty: true
-      command:
-        - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      imagePullPolicy: "Always"
-      volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
-        - mountPath: "/root/.m2/settings.xml"
-          name: "maven-settings"
-          readOnly: false
-          subPath: "settings.xml"
-      resources:
-        limits:
-          memory: "16000Mi"
-          cpu: "8000m"
-        requests:
-          memory: "16000Mi"
+          memory: "32000Mi"
           cpu: "8000m"
 
     - name: "sonar-cloud"
@@ -145,11 +101,11 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "6000Mi"
-          cpu: "3000m"
+          memory: "2000Mi"
+          cpu: "2000m"
         requests:
-          memory: "6000Mi"
-          cpu: "3000m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
   volumes:
     - name: "jenkins-common"

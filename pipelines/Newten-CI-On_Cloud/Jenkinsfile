@@ -28,8 +28,8 @@ pipeline {
                             retry(3) {
                                 githubCheckout 'KAP', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/*', 'newten-dev'
                             }
-                            sh "git apply /jenkinscommon/license/newten.patch"
-                            sh "git checkout -- ."
+//                             sh "git apply /jenkinscommon/license/newten.patch"
+//                             sh "git checkout -- ."
                         }
                     }
                 }
@@ -56,7 +56,7 @@ pipeline {
             post {
                 always {
                     timestamps {
-                        junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                        junit skipPublishingChecks: true, testResults: 'Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
                 }
             }
