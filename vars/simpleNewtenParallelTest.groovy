@@ -4,18 +4,18 @@ def call() {
             "src/core-common",
             "src/core-job",
             "src/core-storage",
-            "src/core-metadata"], [])
-    def ut2 = testForModules(
-            'UTest-Stage-2', [
+            "src/core-metadata",
             "src/query",
             "src/smart",
             "src/source-hive",
             "src/streaming",
+            "src/server-base",
+            "src/server",
             "src/second-storage/clickhouse",
             "src/second-storage/core",
             "src/second-storage/core-ui"], [])
-    def ut3 = testForModules(
-            'UTest-Stage-3', [
+    def ut2 = testForModules(
+            'UTest-Stage-2', [
             "src/spark-project/engine-spark",
             "src/spark-project/kylin-user-session",
             "src/spark-project/kylin-user-session-dep",
@@ -29,14 +29,10 @@ def call() {
             "src/external-catalog",
             "src/assembly",
             "src/udf"], [])
-    def ut4 = testForModules(
-            'UTest-Stage-4', [
-            "src/server-base",
-            "src/server"], [])
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 
-    def allTestStages = ut1 + ut2 + ut3 + ut4 + it1 + it2
+    def allTestStages = ut1 + ut2 + it1 + it2
 
     echo 'parallel run all tests...'
     parallel allTestStages

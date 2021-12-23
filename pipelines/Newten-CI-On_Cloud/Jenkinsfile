@@ -67,7 +67,7 @@ pipeline {
                     dir("sourcecode") {
                         withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
                             // You can override the credential to be used
-                            sh "mvn sonar:sonar -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml"
+                            sh "mvn sonar:sonar -T 2C -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml"
                         }
                     }
                 }
