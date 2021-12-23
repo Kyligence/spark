@@ -57,10 +57,10 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "12000Mi"
+          memory: "10000Mi"
           cpu: "4000m"
         requests:
-          memory: "12000Mi"
+          memory: "10000Mi"
           cpu: "4000m"
 
     - name: "utest-stage-2"
@@ -79,10 +79,10 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "12000Mi"
+          memory: "10000Mi"
           cpu: "4000m"
         requests:
-          memory: "12000Mi"
+          memory: "10000Mi"
           cpu: "4000m"
 
     - name: "itest-stage-1"
@@ -101,11 +101,11 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "20000Mi"
-          cpu: "8000m"
+          memory: "10000Mi"
+          cpu: "4000m"
         requests:
-          memory: "20000Mi"
-          cpu: "8000m"
+          memory: "10000Mi"
+          cpu: "4000m"
 
     - name: "itest-stage-2"
       tty: true
@@ -123,11 +123,11 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "16000Mi"
-          cpu: "8000m"
+          memory: "10000Mi"
+          cpu: "4000m"
         requests:
-          memory: "16000Mi"
-          cpu: "8000m"
+          memory: "10000Mi"
+          cpu: "4000m"
 
     - name: "sonar-cloud"
       tty: true
