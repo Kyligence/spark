@@ -42,7 +42,7 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
     return [(stage): {
         // 'container': use the same container to execute in parallel in the current pod
         // 'node(POD_LABEL)': multiple pod in parallel, and this situation needs to rely on external shared storage
-        container(stage.toLowerCase()) {
+        container('maven') {
             def willTestModules = modules.join(",")
             def willTestCases = tests.join(",")
             sh script: """
