@@ -35,7 +35,7 @@ spec:
           memory: "48000Mi"
           cpu: "16000m"
         requests:
-          memory: "40000Mi"
+          memory: "48000Mi"
           cpu: "16000m"
 
     - name: "sonar-cloud"

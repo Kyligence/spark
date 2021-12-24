@@ -56,7 +56,7 @@ pipeline {
             post {
                 always {
                     timestamps {
-                        junit skipPublishingChecks: true, testResults: 'Test-Stage-*/**/target/surefire-reports/*.xml'
+                        junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
                 }
             }
