@@ -28,8 +28,6 @@ pipeline {
                             retry(3) {
                                 githubCheckout 'KAP', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/*'
                             }
-//                             sh "git apply /jenkinscommon/license/newten.patch"
-//                             sh "git checkout -- ."
                         }
                     }
                 }

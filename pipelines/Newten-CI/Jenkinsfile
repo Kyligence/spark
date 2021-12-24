@@ -4,7 +4,7 @@
 
 pipeline {
     options {
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 2, unit: 'HOURS')
     }
 
     agent {
@@ -33,8 +33,6 @@ pipeline {
                                 )
                                 githubCheckout 'KAP', 'git', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*'
                             }
-                            sh "git apply /var/cicd/patchs/newten.patch"
-                            sh "git checkout -- ."
                         }
                     }
                 }
