@@ -31,7 +31,7 @@ pipeline {
                                     'private_git',
                                     ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
-                                githubCheckout 'KAP', 'git', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*', 'KE-31788'
+                                githubCheckout 'KAP', 'git', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*'
                             }
                             sh "git apply /var/cicd/patchs/newten.patch"
                             sh "git checkout -- ."
