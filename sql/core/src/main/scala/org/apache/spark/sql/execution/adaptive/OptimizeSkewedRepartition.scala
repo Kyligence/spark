@@ -50,7 +50,7 @@ object OptimizeSkewedRepartition extends CustomShuffleReaderRule {
       }.length
 
       if (numShuffles > 0) {
-        logDebug("OptimizeSkewedRepartition rule is not applied due" +
+        logInfo("OptimizeSkewedRepartition rule is not applied due" +
           " to additional shuffles will be introduced.")
         plan
       } else {
@@ -80,7 +80,7 @@ object OptimizeSkewedRepartition extends CustomShuffleReaderRule {
       val numPartitions = stageInfo.partitionsWithSizes.length
       // We use the median size of the original shuffle partitions to detect skewed partitions.
       val medSize = medianSize(stageInfo.mapStats)
-      logDebug(
+      logInfo(
         s"""
            |Optimizing skew repartition.
            |Partitions size info:
@@ -104,7 +104,7 @@ object OptimizeSkewedRepartition extends CustomShuffleReaderRule {
           val skewSpecs = createSkewPartitionSpecs(
             stageInfo.mapStats.shuffleId, reducerId, targetSize0)
           if (skewSpecs.isDefined) {
-            logDebug(s"Partition $partitionIndex " +
+            logInfo(s"Partition $partitionIndex " +
               s"(${FileUtils.byteCountToDisplaySize(actualSize)}) is skewed, " +
               s"split it into ${skewSpecs.get.length} parts.")
             numSkewed += 1
@@ -121,7 +121,7 @@ object OptimizeSkewedRepartition extends CustomShuffleReaderRule {
         }
       }
 
-      logDebug(s"number of skewed partitions: num $numSkewed")
+      logInfo(s"number of skewed partitions: num $numSkewed")
       if (numSkewed > 0) {
         val newPlan = CustomShuffleReaderExec(stageInfo.shuffleStage, partitions.toSeq)
         newPlan

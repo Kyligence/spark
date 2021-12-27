@@ -113,6 +113,12 @@ object OptimizeSkewedJoin extends CustomShuffleReaderRule {
       reducerId: Int,
       targetSize: Long): Option[Seq[PartialReducerPartitionSpec]] = {
     val mapPartitionSizes = getMapSizesForReduceId(shuffleId, reducerId)
+    logInfo(
+      s"""
+         |Create skew partition specs.
+         | target size: $targetSize,
+         | partition size: ${mapPartitionSizes.mkString(",")}
+        """.stripMargin)
     val mapStartIndices = ShufflePartitionsUtil.splitSizeListByTargetSize(
       mapPartitionSizes, targetSize)
     if (mapStartIndices.length > 1) {
@@ -167,7 +173,7 @@ object OptimizeSkewedJoin extends CustomShuffleReaderRule {
       // We use the median size of the original shuffle partitions to detect skewed partitions.
       val leftMedSize = medianSize(left.mapStats)
       val rightMedSize = medianSize(right.mapStats)
-      logDebug(
+      logInfo(
         s"""
           |Optimizing skewed join.
           |Left side partitions size info:
@@ -205,7 +211,7 @@ object OptimizeSkewedJoin extends CustomShuffleReaderRule {
           val skewSpecs = createSkewPartitionSpecs(
             left.mapStats.shuffleId, reducerId, leftTargetSize)
           if (skewSpecs.isDefined) {
-            logDebug(s"Left side partition $partitionIndex " +
+            logInfo(s"Left side partition $partitionIndex " +
               s"(${FileUtils.byteCountToDisplaySize(leftActualSize)}) is skewed, " +
               s"split it into ${skewSpecs.get.length} parts.")
             numSkewedLeft += 1
@@ -221,7 +227,7 @@ object OptimizeSkewedJoin extends CustomShuffleReaderRule {
           val skewSpecs = createSkewPartitionSpecs(
             right.mapStats.shuffleId, reducerId, rightTargetSize)
           if (skewSpecs.isDefined) {
-            logDebug(s"Right side partition $partitionIndex " +
+            logInfo(s"Right side partition $partitionIndex " +
               s"(${FileUtils.byteCountToDisplaySize(rightActualSize)}) is skewed, " +
               s"split it into ${skewSpecs.get.length} parts.")
             numSkewedRight += 1
@@ -240,7 +246,7 @@ object OptimizeSkewedJoin extends CustomShuffleReaderRule {
         }
       }
 
-      logDebug(s"number of skewed partitions: left $numSkewedLeft, right $numSkewedRight")
+      logInfo(s"number of skewed partitions: left $numSkewedLeft, right $numSkewedRight")
       if (numSkewedLeft > 0 || numSkewedRight > 0) {
         val newLeft = CustomShuffleReaderExec(left.shuffleStage, leftSidePartitions.toSeq)
         val newRight = CustomShuffleReaderExec(right.shuffleStage, rightSidePartitions.toSeq)
@@ -277,7 +283,7 @@ object OptimizeSkewedJoin extends CustomShuffleReaderRule {
       }.length
 
       if (numShuffles > 0) {
-        logDebug("OptimizeSkewedJoin rule is not applied due" +
+        logInfo("OptimizeSkewedJoin rule is not applied due" +
           " to additional shuffles will be introduced.")
         plan
       } else {
