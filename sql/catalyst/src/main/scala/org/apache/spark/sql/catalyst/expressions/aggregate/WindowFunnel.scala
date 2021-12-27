@@ -24,12 +24,11 @@ import org.apache.spark.sql.types.{DataType, IntegerType}
 
 
 /**
- * @param windowLit event window ts in long
- * @param eventTsCol expected to return ts in long
- * @param evtConds evt conditions, return boolean to determine the event
- * @param dimValueExpr evt dim col, return string
- * @param mutableAggBufferOffset
- * @param inputAggBufferOffset
+ * @param windowLit window size in long
+ * @param evtNumExpr number of events
+ * @param eventTsCol event ts in long
+ * @param evtConds expr to return event id (starting from 0)
+ * @param dimValueExpr expr to return other dim values (关联属性)
  */
 case class WindowFunnel(windowLit: Expression,
                         evtNumExpr: Expression,
