@@ -22,7 +22,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, Da
 import org.apache.spark.sql.TypedImperativeAggregateSuite.TypedMax
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{BoundReference, Expression, GenericInternalRow, ImplicitCastInputTypes, SpecificInternalRow}
-import org.apache.spark.sql.catalyst.expressions.aggregate.TypedImperativeAggregate
+import org.apache.spark.sql.catalyst.expressions.aggregate.{TypedImperativeAggregate, WindowFunnel}
 import org.apache.spark.sql.execution.aggregate.HashAggregateExec
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
@@ -219,6 +219,113 @@ class TypedImperativeAggregateSuite extends QueryTest with SharedSparkSession {
     val max = TypedMax(column.expr, nullable = true)
     Column(max.toAggregateExpression())
   }
+
+  private def checkWindowAnswer(df: DataFrame, expected: Seq[(Int, Int)]): Unit = {
+    df.show(false)
+    checkAnswer(df, expected.toDF())
+  }
+
+  test("test window funnel") {
+    val colNames = Seq("uid", "eid", "dim1", "dim2", "ts")
+
+    val df1 = Seq(
+      //"uid", "eid", "dim1", "dim2", "ts"
+      // single sequence
+      (901, 1, null, null, 1)
+      ,(901, 2, null, null, 2)
+      ,(901, 3, null, null, 3)
+      ,(901, 4, null, null, 4)
+      ,(901, 5, null, null, 5)
+      // single sequence (out of window)
+      ,(902, 1, null, null, 1)
+      ,(902, 2, null, null, 2)
+      ,(902, 3, null, null, 100)
+      ,(902, 4, null, null, 101)
+      ,(902, 5, null, null, 102)
+    ).toDF(colNames: _*)
+    df1.createOrReplaceTempView("events")
+    checkWindowAnswer(spark.sql("select uid, window_funnel(10, 5, ts, eid - 1, null) from events group by uid"), Seq((901, 5), (902, 2)))
+
+    val df2 = Seq(
+      //"uid", "eid", "dim1", "dim2", "ts"
+      // multiple sequence
+      (901, 1, null, null, 1)
+      ,(901, 2, null, null, 2)
+      ,(901, 1, null, null, 3)
+      ,(901, 3, null, null, 4)
+      ,(901, 1, null, null, 5)
+      ,(901, 2, null, null, 6)
+      ,(901, 4, null, null, 7)
+      ,(901, 5, null, null, 11)
+    ).toDF(colNames: _*)
+    df2.createOrReplaceTempView("events")
+    checkWindowAnswer(spark.sql("select uid, window_funnel(10, 5, ts, eid - 1, null) from events group by uid"), Seq((901, 5)))
+
+    val df3 = Seq(
+      //"uid", "eid", "dim1", "dim2", "ts"
+      // multiple sequence with dim
+      (901, 1, "CN", null, 1)
+      ,(901, 2, null, null, 2)
+      ,(901, 1, null, null, 3)
+      ,(901, 3, null, "CN", 4)
+      ,(901, 1, null, null, 5)
+      ,(901, 2, null, null, 6)
+      ,(901, 4, null, "CN", 7)
+      ,(901, 5, null, null, 8)
+      // multiple sequence with dim
+      ,(902, 1, "CN", null, 1)
+      ,(902, 2, null, null, 2)
+      ,(902, 1, null, null, 3)
+      ,(902, 3, null, "CN", 4)
+      ,(902, 1, null, null, 5)
+      ,(902, 2, null, null, 6)
+      ,(902, 4, null, "US", 7)
+      ,(902, 5, null, null, 8)
+    ).toDF(colNames: _*)
+    df3.createOrReplaceTempView("events")
+    checkWindowAnswer(spark.sql(
+      "select uid, window_funnel(10, 5, ts, eid - 1, " +
+        "case when eid = 1 then dim1 " +
+        "when eid = 2 then null " +
+        "when eid = 3 then dim2 " +
+        "when eid = 4 then dim2 " +
+        "else null end) from events group by uid"),
+      Seq((901, 5), (902, 3)))
+  }
+
+  test("test window funnel radnom") {
+    val events = (0 until 1000000).map { _ =>
+      (random.nextInt(100000) + 1, // uid
+        random.nextInt(5) + 1, // evt id 1-5
+        "dim_" + random.nextInt(100), // dim col1 0-2
+        "dim_" + random.nextInt(100), // dim col2 0-2
+        random.nextInt(1000), // ts
+      )
+    }
+    val df = events.toDF("uid", "eid", "dim1", "dim2", "ts")
+    println(s"generated")
+
+//    df.orderBy("uid").show(100, false)
+
+    val wf = WindowFunnel(
+      lit(100).expr,
+      lit(5).expr,
+      Column("ts").expr,
+      Column("eid").expr,
+      lit(null).expr
+    ).toAggregateExpression()
+
+    println(s"started")
+    (0 until 5).foreach { _ =>
+      val agg = df.groupBy("uid").agg(Column(wf))
+      val started = System.currentTimeMillis()
+      val result = agg.collect()
+      assert(result != null)
+      println(s">>>>> collected ${System.currentTimeMillis() - started}ms")
+    }
+  }
+
+
 }
 
 object TypedImperativeAggregateSuite {
