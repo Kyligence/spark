@@ -31,6 +31,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName
 import org.apache.spark.SparkException
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.util.RebaseDateTime.RebaseSpec
 import org.apache.spark.sql.connector.expressions.aggregate.{Aggregation, Count, CountStar, Max, Min}
 import org.apache.spark.sql.execution.datasources.v2.V2ColumnUtils
 import org.apache.spark.sql.internal.SQLConf.{LegacyBehaviorPolicy, PARQUET_AGGREGATE_PUSHDOWN_ENABLED}
@@ -157,7 +158,7 @@ object ParquetUtils {
       partitionSchema: StructType,
       aggregation: Aggregation,
       aggSchema: StructType,
-      datetimeRebaseMode: LegacyBehaviorPolicy.Value,
+      datetimeRebaseSpec: RebaseSpec,
       isCaseSensitive: Boolean): InternalRow = {
     val (primitiveTypes, values) = getPushedDownAggResult(
       footer, filePath, dataSchema, partitionSchema, aggregation, isCaseSensitive)
@@ -168,7 +169,7 @@ object ParquetUtils {
 
     val schemaConverter = new ParquetToSparkSchemaConverter
     val converter = new ParquetRowConverter(schemaConverter, parquetSchema, aggSchema,
-      None, datetimeRebaseMode, LegacyBehaviorPolicy.CORRECTED, NoopUpdater)
+      None, datetimeRebaseSpec, RebaseSpec(LegacyBehaviorPolicy.CORRECTED), NoopUpdater)
     val primitiveTypeNames = primitiveTypes.map(_.getPrimitiveTypeName)
     primitiveTypeNames.zipWithIndex.foreach {
       case (PrimitiveType.PrimitiveTypeName.BOOLEAN, i) =>
