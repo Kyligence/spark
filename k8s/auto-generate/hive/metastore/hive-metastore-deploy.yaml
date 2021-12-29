@@ -51,7 +51,7 @@ spec:
           value: "1024"
         - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
           value: "true"
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         livenessProbe:
           initialDelaySeconds: 10
           periodSeconds: 10

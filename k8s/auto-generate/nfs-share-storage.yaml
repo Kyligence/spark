@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: nfs-share-pv
+  name: nfs-share-pv-<<<namespace>>>
 spec:
   capacity:
     storage: 20Gi
@@ -24,6 +24,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  volumeName: nfs-share-pv
+  volumeName: nfs-share-pv-<<<namespace>>>
   volumeMode: Filesystem
   storageClassName: ""
