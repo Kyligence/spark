@@ -16,6 +16,7 @@ spec:
       containers:
         - name: ssb-load-job
           image: 10.1.9.11:31500/hive:1.2.2-hadoop-2.10.1
+          imagePullPolicy: Always
           env:
           - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
             value: "true"
