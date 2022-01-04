@@ -24,6 +24,7 @@ import scala.collection.JavaConverters._
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.TrueFileFilter
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers._
 
 import org.apache.spark.internal.config.SHUFFLE_MANAGER
@@ -31,6 +32,7 @@ import org.apache.spark.rdd.ShuffledRDD
 import org.apache.spark.serializer.{JavaSerializer, KryoSerializer}
 import org.apache.spark.shuffle.sort.SortShuffleManager
 
+@Ignore
 class SortShuffleSuite extends ShuffleSuite with BeforeAndAfterAll {
 
   // This test suite should run all tests in ShuffleSuite with sort-based shuffle.

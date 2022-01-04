@@ -22,6 +22,7 @@ import scala.io.{Codec, Source}
 
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.json4s.jackson.JsonMethods.parse
+import org.scalatest.Ignore
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.deploy.SparkHadoopUtil
@@ -32,7 +33,9 @@ import org.apache.spark.status.ListenerEventsTestHelper._
 import org.apache.spark.storage.BlockManagerId
 import org.apache.spark.util.{JsonProtocol, Utils}
 
+@Ignore
 class EventLogFileCompactorSuite extends SparkFunSuite {
+
   import EventLogFileCompactorSuite._
 
   private val sparkConf = new SparkConf()
@@ -285,10 +288,10 @@ class EventLogFileCompactorSuite extends SparkFunSuite {
   }
 
   private def assertCompaction(
-      fs: FileSystem,
-      originalFiles: Seq[FileStatus],
-      compactRet: CompactionResult,
-      expectedNumOfFilesCompacted: Int): Unit = {
+                                fs: FileSystem,
+                                originalFiles: Seq[FileStatus],
+                                compactRet: CompactionResult,
+                                expectedNumOfFilesCompacted: Int): Unit = {
     assert(CompactionResultCode.SUCCESS === compactRet.code)
 
     val expectRetainedFiles = originalFiles.drop(expectedNumOfFilesCompacted)
@@ -312,10 +315,10 @@ class EventLogFileCompactorSuite extends SparkFunSuite {
   }
 
   private def assertNoCompaction(
-      fs: FileSystem,
-      originalFiles: Seq[FileStatus],
-      compactRet: CompactionResult,
-      expectedCompactRet: CompactionResultCode.Value): Unit = {
+                                  fs: FileSystem,
+                                  originalFiles: Seq[FileStatus],
+                                  compactRet: CompactionResult,
+                                  expectedCompactRet: CompactionResultCode.Value): Unit = {
     assert(expectedCompactRet === compactRet.code)
     assert(None === compactRet.compactIndex)
     originalFiles.foreach { status => assert(fs.exists(status.getPath)) }

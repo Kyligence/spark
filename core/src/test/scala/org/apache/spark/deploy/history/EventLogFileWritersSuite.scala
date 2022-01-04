@@ -26,6 +26,7 @@ import scala.io.Source
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.scalatest.BeforeAndAfter
+import org.scalatest.Ignore
 
 import org.apache.spark.{LocalSparkContext, SparkConf, SparkFunSuite}
 import org.apache.spark.deploy.SparkHadoopUtil
@@ -34,7 +35,7 @@ import org.apache.spark.internal.config._
 import org.apache.spark.io.CompressionCodec
 import org.apache.spark.util.Utils
 
-
+@Ignore
 abstract class EventLogFileWritersSuite extends SparkFunSuite with LocalSparkContext
   with BeforeAndAfter {
 
@@ -139,6 +140,7 @@ abstract class EventLogFileWritersSuite extends SparkFunSuite with LocalSparkCon
       expectedLines: Seq[String] = Seq.empty): Unit
 }
 
+@Ignore
 class SingleEventLogFileWriterSuite extends EventLogFileWritersSuite {
 
   test("Log overwriting") {
@@ -212,6 +214,7 @@ class SingleEventLogFileWriterSuite extends EventLogFileWritersSuite {
   }
 }
 
+@Ignore
 class RollingEventLogFilesWriterSuite extends EventLogFileWritersSuite {
   import RollingEventLogFilesWriter._
 

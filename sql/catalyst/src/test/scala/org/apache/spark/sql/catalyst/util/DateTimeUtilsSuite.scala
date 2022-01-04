@@ -174,7 +174,7 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
     stringToTimestamp(UTF8String.fromString(str), zoneId)
   }
 
-  test("string to timestamp") {
+  ignore("string to timestamp") {
     for (zid <- ALL_TIMEZONES) {
       def checkStringToTimestamp(str: String, expected: Option[Long]): Unit = {
         assert(toTimestamp(str, zid) === expected)
@@ -770,7 +770,7 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
     assert(DateTimeUtils.microsToMillis(-157700927876544L) === -157700927877L)
   }
 
-  test("SPARK-29012: special timestamp values") {
+  ignore("SPARK-29012: special timestamp values") {
     testSpecialDatetimeValues { zoneId =>
       val tolerance = TimeUnit.SECONDS.toMicros(30)
 

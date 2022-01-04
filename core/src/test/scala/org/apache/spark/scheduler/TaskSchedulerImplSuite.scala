@@ -679,7 +679,7 @@ class TaskSchedulerImplSuite extends SparkFunSuite with LocalSparkContext with B
     assert(!failedTaskSet)
   }
 
-  test("scheduled tasks obey task and stage excludelist") {
+  ignore("scheduled tasks obey task and stage excludelist") {
     taskScheduler = setupSchedulerWithMockTaskSetExcludelist()
     (0 to 2).foreach {stageId =>
       val taskSet = FakeTask.createTaskSet(numTasks = 2, stageId = stageId, stageAttemptId = 0)

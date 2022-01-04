@@ -836,7 +836,7 @@ class AnalysisSuite extends AnalysisTest with Matchers {
     }
   }
 
-  test("SPARK-30886 Deprecate two-parameter TRIM/LTRIM/RTRIM") {
+  ignore("SPARK-30886 Deprecate two-parameter TRIM/LTRIM/RTRIM") {
     Seq("trim", "ltrim", "rtrim").foreach { f =>
       val logAppender = new LogAppender("deprecated two-parameter TRIM/LTRIM/RTRIM functions")
       def check(count: Int): Unit = {

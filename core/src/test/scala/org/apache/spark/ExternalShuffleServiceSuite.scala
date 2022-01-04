@@ -18,6 +18,7 @@
 package org.apache.spark
 
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Ignore
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.time.SpanSugar._
@@ -36,6 +37,7 @@ import org.apache.spark.util.Utils
  * set up in `ExternalBlockHandler`, such as changing the format of shuffle files or how
  * we hash files into folders.
  */
+@Ignore
 class ExternalShuffleServiceSuite extends ShuffleSuite with BeforeAndAfterAll with Eventually {
   var server: TransportServer = _
   var transportContext: TransportContext = _
