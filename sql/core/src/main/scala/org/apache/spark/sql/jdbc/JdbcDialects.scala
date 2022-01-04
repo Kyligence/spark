@@ -30,7 +30,7 @@ import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.util.{DateFormatter, DateTimeUtils, TimestampFormatter}
 import org.apache.spark.sql.connector.catalog.TableChange
 import org.apache.spark.sql.connector.catalog.TableChange._
-import org.apache.spark.sql.connector.expressions.aggregate.{AggregateFunc, Count, CountStar, Max, Min, Sum}
+import org.apache.spark.sql.connector.expressions.aggregate.{AggregateFunc, Count, CountStar, GeneralAggregateFunc, Max, Min, Sum}
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.execution.datasources.v2.TableSampleInfo
@@ -216,7 +216,11 @@ abstract class JdbcDialect extends Serializable with Logging{
         val column = quoteIdentifier(sum.column.fieldNames.head)
         Some(s"SUM($distinct$column)")
       case _: CountStar =>
-        Some(s"COUNT(*)")
+        Some("COUNT(*)")
+      case f: GeneralAggregateFunc if f.name() == "AVG" =>
+        assert(f.inputs().length == 1)
+        val distinct = if (f.isDistinct) "DISTINCT " else ""
+        Some(s"AVG($distinct${f.inputs().head})")
       case _ => None
     }
   }
