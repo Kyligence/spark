@@ -17,12 +17,13 @@
 
 package org.apache.spark.sql
 
+
 import java.io.File
 import java.nio.charset.StandardCharsets
 
-import scala.collection.mutable
-
 import org.apache.commons.io.FileUtils
+import org.scalatest.Ignore
+import scala.collection.mutable
 
 import org.apache.spark.sql.catalyst.expressions.AttributeSet
 import org.apache.spark.sql.catalyst.util._
@@ -262,6 +263,7 @@ trait PlanStabilitySuite extends TPCDSBase with DisableAdaptiveExecutionSuite {
   }
 }
 
+@Ignore
 class TPCDSV1_4_PlanStabilitySuite extends PlanStabilitySuite {
   override val goldenFilePath: String =
     new File(baseResourcePath, s"approved-plans-v1_4").getAbsolutePath
@@ -273,6 +275,7 @@ class TPCDSV1_4_PlanStabilitySuite extends PlanStabilitySuite {
   }
 }
 
+@Ignore
 class TPCDSV1_4_PlanStabilityWithStatsSuite extends PlanStabilitySuite {
   override def injectStats: Boolean = true
 
@@ -286,6 +289,7 @@ class TPCDSV1_4_PlanStabilityWithStatsSuite extends PlanStabilitySuite {
   }
 }
 
+@Ignore
 class TPCDSV2_7_PlanStabilitySuite extends PlanStabilitySuite {
   override val goldenFilePath: String =
     new File(baseResourcePath, s"approved-plans-v2_7").getAbsolutePath
@@ -297,6 +301,7 @@ class TPCDSV2_7_PlanStabilitySuite extends PlanStabilitySuite {
   }
 }
 
+@Ignore
 class TPCDSV2_7_PlanStabilityWithStatsSuite extends PlanStabilitySuite {
   override def injectStats: Boolean = true
 
@@ -309,7 +314,7 @@ class TPCDSV2_7_PlanStabilityWithStatsSuite extends PlanStabilitySuite {
     }
   }
 }
-
+@Ignore
 class TPCDSModifiedPlanStabilitySuite extends PlanStabilitySuite {
   override val goldenFilePath: String =
     new File(baseResourcePath, s"approved-plans-modified").getAbsolutePath
@@ -321,6 +326,7 @@ class TPCDSModifiedPlanStabilitySuite extends PlanStabilitySuite {
   }
 }
 
+@Ignore
 class TPCDSModifiedPlanStabilityWithStatsSuite extends PlanStabilitySuite {
   override def injectStats: Boolean = true
 

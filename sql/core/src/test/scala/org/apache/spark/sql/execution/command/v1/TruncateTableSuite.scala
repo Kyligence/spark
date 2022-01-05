@@ -41,7 +41,7 @@ trait TruncateTableSuiteBase extends command.TruncateTableSuiteBase {
   override val invalidPartColumnError =
     "TRUNCATE TABLE ... PARTITION is not supported for tables that are not partitioned"
 
-  test("SPARK-30312: truncate table - keep acl/permission") {
+  ignore("SPARK-30312: truncate table - keep acl/permission") {
     Seq(true, false).foreach { ignore =>
       withSQLConf(
         "fs.file.impl" -> classOf[FakeLocalFsFileSystem].getName,
