@@ -718,6 +718,27 @@ object DataSourceStrategy
           Some(new Sum(FieldReference(name), aggregates.isDistinct))
         case aggregate.Average(PushableColumnWithoutNestedColumn(name), _) =>
           Some(new GeneralAggregateFunc("AVG", aggregates.isDistinct, Array(FieldReference(name))))
+        case aggregate.VariancePop(PushableColumnWithoutNestedColumn(name), _) =>
+          Some(new GeneralAggregateFunc("VAR_POP", aggregates.isDistinct, Array(FieldReference(name))))
+        case aggregate.VarianceSamp(PushableColumnWithoutNestedColumn(name), _) =>
+          Some(new GeneralAggregateFunc("VAR_SAMP", aggregates.isDistinct, Array(FieldReference(name))))
+        case aggregate.StddevPop(PushableColumnWithoutNestedColumn(name), _) =>
+          Some(new GeneralAggregateFunc("STDDEV_POP", aggregates.isDistinct, Array(FieldReference(name))))
+        case aggregate.StddevSamp(PushableColumnWithoutNestedColumn(name), _) =>
+          Some(new GeneralAggregateFunc("STDDEV_SAMP", aggregates.isDistinct, Array(FieldReference(name))))
+        case aggregate.CovPopulation(PushableColumnWithoutNestedColumn(left),
+        PushableColumnWithoutNestedColumn(right), _) =>
+          Some(new GeneralAggregateFunc("COVAR_POP", aggregates.isDistinct,
+            Array(FieldReference(left), FieldReference(right))))
+        case aggregate.CovSample(PushableColumnWithoutNestedColumn(left),
+        PushableColumnWithoutNestedColumn(right), _) =>
+          Some(new GeneralAggregateFunc("COVAR_SAMP", aggregates.isDistinct,
+            Array(FieldReference(left), FieldReference(right))))
+        case aggregate.Corr(PushableColumnWithoutNestedColumn(left),
+        PushableColumnWithoutNestedColumn(right), _) =>
+          Some(new GeneralAggregateFunc("CORR", aggregates.isDistinct,
+            Array(FieldReference(left), FieldReference(right))))
+
         case _ => None
       }
     } else {
