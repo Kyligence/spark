@@ -216,7 +216,7 @@ class DataSourceV2ScanExecRedactionSuite extends DataSourceScanRedactionTest {
     }
   }
 
-  test("SPARK-30362: test input metrics for DSV2") {
+  ignore("SPARK-30362: test input metrics for DSV2") {
     withSQLConf(SQLConf.USE_V1_SOURCE_LIST.key -> "") {
       Seq("json", "orc", "parquet").foreach { format =>
         withTempPath { path =>
