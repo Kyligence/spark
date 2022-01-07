@@ -38,7 +38,7 @@ pipeline {
                             //
                             if (params.branch ==~ /.*yinglong.*/ ) {
                                 echo 'checkout KAP_Frontend to kystudio'
-                                deleteDir 'kystudio'
+                                deleteDir('./kystudio')
                                 dir('kystudio') {
                                     retry(3) {
                                         githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
