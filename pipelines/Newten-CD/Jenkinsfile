@@ -27,11 +27,16 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
+                                sshCmdWithCredentials(
+                                    'bash -c /var/lib/git/pull.sh',
+                                    'private_git',
+                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
+                                )
                                 githubCheckout 'KAP'
                             }
 
                             //
-                            if (params.branch ==~ /yinglong/ ) {
+                            if (params.branch ==~ /.*yinglong.*/ ) {
                                 echo 'checkout KAP_Frontend to kystudio'
                                 deleteDir 'kystudio'
                                 dir('kystudio') {
