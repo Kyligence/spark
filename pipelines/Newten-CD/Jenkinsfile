@@ -23,7 +23,7 @@ pipeline {
     stages {
         stage("Checkout Source Code") {
             steps {
-                container("git") {
+                container("build") {
                     dir("sourcecode") {
                         script {
                             retry(3) {
