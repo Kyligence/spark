@@ -16,7 +16,7 @@ spec:
       command:
         - "cat"
       image: "10.1.9.11:31500/kydocker/newten-build:latest"
-      imagePullPolicy: "Always"
+      imagePullPolicy: "IfNotPresent"
       name: "build"
   volumes:
     - name: "jenkins-common"
