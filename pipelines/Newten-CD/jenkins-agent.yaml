@@ -17,7 +17,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "harbor.ops.kylincorp.com/newten-build:latest"
+      image: "harbor.ops.kylincorp.com/devops/newten-build:latest"
       imagePullPolicy: "Always"
       name: "build"
   volumes:
