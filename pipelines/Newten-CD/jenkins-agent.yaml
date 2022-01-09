@@ -15,8 +15,8 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "10.1.9.11:31500/kydocker/newten-build:latest"
-      imagePullPolicy: "IfNotPresent"
+      image: "harbor.ops.kylincorp.com/newten-build"
+      imagePullPolicy: "Always"
       name: "build"
   volumes:
     - name: "jenkins-common"

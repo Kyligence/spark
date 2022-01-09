@@ -16,9 +16,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
 ENV PROGUARD_VERSION=6.2.2
 RUN cd /usr/share && wget --no-check-certificate https://sourceforge.net/projects/proguard/files/proguard/6.2/proguard${PROGUARD_VERSION}.zip && unzip proguard${PROGUARD_VERSION}.zip && rm proguard${PROGUARD_VERSION}.zip
 ENV PROGUARD_HOME /usr/share/proguard${PROGUARD_VERSION}
+RUN cd /usr/share && wget --no-check-certificate https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 && tar -xvf phantomjs-2.1.1-linux-x86_64.tar.bz2 && rm phantomjs-2.1.1-linux-x86_64.tar.bz2
+ENV PHANTOMJS_HOME /usr/share/phantomjs-2.1.1-linux-x86_64
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 ENV MAVEN_HOME /usr/share/maven
-ENV PATH $PROGUARD_HOME/bin:$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH
+ENV PATH $PHANTOMJS_HOME/bin:$PROGUARD_HOME/bin:$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH
 ENV LANG C.UTF-8
 RUN cp $PROGUARD_HOME/bin/proguard.sh $PROGUARD_HOME/bin/proguard
 RUN cd /bin && rm -f sh && ln -s /bin/bash sh
