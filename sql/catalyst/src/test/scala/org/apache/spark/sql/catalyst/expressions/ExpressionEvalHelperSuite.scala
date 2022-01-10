@@ -19,8 +19,10 @@ package org.apache.spark.sql.catalyst.expressions
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
-import org.apache.spark.sql.types.{DataType, IntegerType}
+import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, CodegenFallback, ExprCode}
+import org.apache.spark.sql.catalyst.expressions.codegen.Block._
+import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, GenericArrayData}
+import org.apache.spark.sql.types.{DataType, IntegerType, MapType}
 
 /**
  * A test suite for testing [[ExpressionEvalHelper]].
@@ -30,9 +32,22 @@ import org.apache.spark.sql.types.{DataType, IntegerType}
  */
 class ExpressionEvalHelperSuite extends SparkFunSuite with ExpressionEvalHelper {
 
-  test("SPARK-16489 checkEvaluation should fail if expression reuses variable names") {
-    val e = intercept[RuntimeException] { checkEvaluation(BadCodegenExpression(), 10) }
+  test("SPARK-16489: checkEvaluation should fail if expression reuses variable names") {
+    val e = intercept[Exception] { checkEvaluation(BadCodegenExpression(), 10) }
     assert(e.getMessage.contains("some_variable"))
+  }
+
+  test("SPARK-25388: checkEvaluation should fail if nullable in DataType is incorrect") {
+    val e = intercept[RuntimeException] {
+      checkEvaluation(MapIncorrectDataTypeExpression(), Map(3 -> 7, 6 -> null))
+    }
+    assert(e.getMessage.contains("and exprNullable was"))
+  }
+
+  test("SPARK-33619: make sure checkExceptionInExpression work as expected") {
+    checkExceptionInExpression[Exception](
+      BadCodegenAndEvalExpression(),
+      "Cannot determine simple type name \"NoSuchElementException\"")
   }
 }
 
@@ -45,9 +60,39 @@ case class BadCodegenExpression() extends LeafExpression {
   override def eval(input: InternalRow): Any = 10
   override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     ev.copy(code =
-      s"""
+      code"""
         |int some_variable = 11;
         |int ${ev.value} = 10;
+      """.stripMargin)
+  }
+  override def dataType: DataType = IntegerType
+}
+
+/**
+ * An expression that returns a MapData with incorrect DataType whose valueContainsNull is false
+ * while its value includes null
+ */
+case class MapIncorrectDataTypeExpression() extends LeafExpression with CodegenFallback {
+  override def nullable: Boolean = false
+  override def eval(input: InternalRow): Any = {
+    val keys = new GenericArrayData(Array(3, 6))
+    val values = new GenericArrayData(Array(7, null))
+    new ArrayBasedMapData(keys, values)
+  }
+  // since values includes null, valueContainsNull must be true
+  override def dataType: DataType = MapType(IntegerType, IntegerType, valueContainsNull = false)
+}
+
+case class BadCodegenAndEvalExpression() extends LeafExpression {
+  override def nullable: Boolean = false
+  override def eval(input: InternalRow): Any =
+    throw new Exception("Cannot determine simple type name \"NoSuchElementException\"")
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    // it should be java.util.NoSuchElementException in generated code.
+    ev.copy(code =
+      code"""
+            |int ${ev.value} = 10;
+            |throw new NoSuchElementException("compile failed!");
       """.stripMargin)
   }
   override def dataType: DataType = IntegerType

@@ -17,8 +17,8 @@
 
 package org.apache.spark.rdd
 
-import org.apache.spark.annotation.Since
 import org.apache.spark.TaskContext
+import org.apache.spark.annotation.Since
 import org.apache.spark.internal.Logging
 import org.apache.spark.partial.BoundedDouble
 import org.apache.spark.partial.MeanEvaluator
@@ -128,9 +128,9 @@ class DoubleRDDFunctions(self: RDD[Double]) extends Logging with Serializable {
     }
     // Compute the minimum and the maximum
     val (max: Double, min: Double) = self.mapPartitions { items =>
-      Iterator(items.foldRight(Double.NegativeInfinity,
-        Double.PositiveInfinity)((e: Double, x: (Double, Double)) =>
-        (x._1.max(e), x._2.min(e))))
+      Iterator(
+        items.foldRight((Double.NegativeInfinity, Double.PositiveInfinity)
+        )((e: Double, x: (Double, Double)) => (x._1.max(e), x._2.min(e))))
     }.reduce { (maxmin1, maxmin2) =>
       (maxmin1._1.max(maxmin2._1), maxmin1._2.min(maxmin2._2))
     }
@@ -173,7 +173,7 @@ class DoubleRDDFunctions(self: RDD[Double]) extends Logging with Serializable {
     if (buckets.length < 2) {
       throw new IllegalArgumentException("buckets array must have at least two elements")
     }
-    // The histogramPartition function computes the partail histogram for a given
+    // The histogramPartition function computes the partial histogram for a given
     // partition. The provided bucketFunction determines which bucket in the array
     // to increment or returns None if there is no bucket. This is done so we can
     // specialize for uniformly distributed buckets and save the O(log n) binary

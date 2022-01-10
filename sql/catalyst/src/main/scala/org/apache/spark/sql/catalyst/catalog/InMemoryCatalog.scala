@@ -94,11 +94,20 @@ class InMemoryCatalog(
     }
   }
 
+  private def toCatalogPartitionSpec = ExternalCatalogUtils.convertNullPartitionValues(_)
+  private def toCatalogPartitionSpecs(specs: Seq[TablePartitionSpec]): Seq[TablePartitionSpec] = {
+    specs.map(toCatalogPartitionSpec)
+  }
+  private def toCatalogPartitionSpec(
+      parts: Seq[CatalogTablePartition]): Seq[CatalogTablePartition] = {
+    parts.map(part => part.copy(spec = toCatalogPartitionSpec(part.spec)))
+  }
+
   // --------------------------------------------------------------------------
   // Databases
   // --------------------------------------------------------------------------
 
-  override protected def doCreateDatabase(
+  override def createDatabase(
       dbDefinition: CatalogDatabase,
       ignoreIfExists: Boolean): Unit = synchronized {
     if (catalog.contains(dbDefinition.name)) {
@@ -119,7 +128,7 @@ class InMemoryCatalog(
     }
   }
 
-  override protected def doDropDatabase(
+  override def dropDatabase(
       db: String,
       ignoreIfNotExists: Boolean,
       cascade: Boolean): Unit = synchronized {
@@ -180,7 +189,7 @@ class InMemoryCatalog(
   // Tables
   // --------------------------------------------------------------------------
 
-  override protected def doCreateTable(
+  override def createTable(
       tableDefinition: CatalogTable,
       ignoreIfExists: Boolean): Unit = synchronized {
     assert(tableDefinition.identifier.database.isDefined)
@@ -221,7 +230,7 @@ class InMemoryCatalog(
     }
   }
 
-  override protected def doDropTable(
+  override def dropTable(
       db: String,
       table: String,
       ignoreIfNotExists: Boolean,
@@ -264,7 +273,7 @@ class InMemoryCatalog(
     }
   }
 
-  override protected def doRenameTable(
+  override def renameTable(
       db: String,
       oldName: String,
       newName: String): Unit = synchronized {
@@ -303,13 +312,14 @@ class InMemoryCatalog(
     catalog(db).tables(tableDefinition.identifier.table).table = newTableDefinition
   }
 
-  override def alterTableSchema(
+  override def alterTableDataSchema(
       db: String,
       table: String,
-      schema: StructType): Unit = synchronized {
+      newDataSchema: StructType): Unit = synchronized {
     requireTableExists(db, table)
     val origTable = catalog(db).tables(table).table
-    catalog(db).tables(table).table = origTable.copy(schema = schema)
+    val newSchema = StructType(newDataSchema ++ origTable.partitionSchema)
+    catalog(db).tables(table).table = origTable.copy(schema = newSchema)
   }
 
   override def alterTableStats(
@@ -326,6 +336,11 @@ class InMemoryCatalog(
     catalog(db).tables(table).table
   }
 
+  override def getTablesByName(db: String, tables: Seq[String]): Seq[CatalogTable] = {
+    requireDbExists(db)
+    tables.flatMap(catalog(db).tables.get).map(_.table)
+  }
+
   override def tableExists(db: String, table: String): Boolean = synchronized {
     requireDbExists(db)
     catalog(db).tables.contains(table)
@@ -338,6 +353,12 @@ class InMemoryCatalog(
 
   override def listTables(db: String, pattern: String): Seq[String] = synchronized {
     StringUtils.filterPattern(listTables(db), pattern)
+  }
+
+  override def listViews(db: String, pattern: String): Seq[String] = synchronized {
+    requireDbExists(db)
+    val views = catalog(db).tables.filter(_._2.table.tableType == CatalogTableType.VIEW).keySet
+    StringUtils.filterPattern(views.toSeq.sorted, pattern)
   }
 
   override def loadTable(
@@ -377,10 +398,11 @@ class InMemoryCatalog(
   override def createPartitions(
       db: String,
       table: String,
-      parts: Seq[CatalogTablePartition],
+      newParts: Seq[CatalogTablePartition],
       ignoreIfExists: Boolean): Unit = synchronized {
     requireTableExists(db, table)
     val existingParts = catalog(db).tables(table).partitions
+    val parts = toCatalogPartitionSpec(newParts)
     if (!ignoreIfExists) {
       val dupSpecs = parts.collect { case p if existingParts.contains(p.spec) => p.spec }
       if (dupSpecs.nonEmpty) {
@@ -416,12 +438,13 @@ class InMemoryCatalog(
   override def dropPartitions(
       db: String,
       table: String,
-      partSpecs: Seq[TablePartitionSpec],
+      parts: Seq[TablePartitionSpec],
       ignoreIfNotExists: Boolean,
       purge: Boolean,
       retainData: Boolean): Unit = synchronized {
     requireTableExists(db, table)
     val existingParts = catalog(db).tables(table).partitions
+    val partSpecs = toCatalogPartitionSpecs(parts)
     if (!ignoreIfNotExists) {
       val missingSpecs = partSpecs.collect { case s if !existingParts.contains(s) => s }
       if (missingSpecs.nonEmpty) {
@@ -455,8 +478,10 @@ class InMemoryCatalog(
   override def renamePartitions(
       db: String,
       table: String,
-      specs: Seq[TablePartitionSpec],
-      newSpecs: Seq[TablePartitionSpec]): Unit = synchronized {
+      fromSpecs: Seq[TablePartitionSpec],
+      toSpecs: Seq[TablePartitionSpec]): Unit = synchronized {
+    val specs = toCatalogPartitionSpecs(fromSpecs)
+    val newSpecs = toCatalogPartitionSpecs(toSpecs)
     require(specs.size == newSpecs.size, "number of old and new partition specs differ")
     requirePartitionsExist(db, table, specs)
     requirePartitionsNotExist(db, table, newSpecs)
@@ -495,7 +520,8 @@ class InMemoryCatalog(
   override def alterPartitions(
       db: String,
       table: String,
-      parts: Seq[CatalogTablePartition]): Unit = synchronized {
+      alterParts: Seq[CatalogTablePartition]): Unit = synchronized {
+    val parts = toCatalogPartitionSpec(alterParts)
     requirePartitionsExist(db, table, parts.map(p => p.spec))
     parts.foreach { p =>
       catalog(db).tables(table).partitions.put(p.spec, p)
@@ -505,7 +531,8 @@ class InMemoryCatalog(
   override def getPartition(
       db: String,
       table: String,
-      spec: TablePartitionSpec): CatalogTablePartition = synchronized {
+      partSpec: TablePartitionSpec): CatalogTablePartition = synchronized {
+    val spec = toCatalogPartitionSpec(partSpec)
     requirePartitionsExist(db, table, Seq(spec))
     catalog(db).tables(table).partitions(spec)
   }
@@ -513,7 +540,8 @@ class InMemoryCatalog(
   override def getPartitionOption(
       db: String,
       table: String,
-      spec: TablePartitionSpec): Option[CatalogTablePartition] = synchronized {
+      partSpec: TablePartitionSpec): Option[CatalogTablePartition] = synchronized {
+    val spec = toCatalogPartitionSpec(partSpec)
     if (!partitionExists(db, table, spec)) {
       None
     } else {
@@ -524,12 +552,17 @@ class InMemoryCatalog(
   override def listPartitionNames(
       db: String,
       table: String,
-      partialSpec: Option[TablePartitionSpec] = None): Seq[String] = synchronized {
+      partSpec: Option[TablePartitionSpec] = None): Seq[String] = synchronized {
     val partitionColumnNames = getTable(db, table).partitionColumnNames
-
+    val partialSpec = partSpec.map(toCatalogPartitionSpec)
     listPartitions(db, table, partialSpec).map { partition =>
       partitionColumnNames.map { name =>
-        escapePathName(name) + "=" + escapePathName(partition.spec(name))
+        val partValue = if (partition.spec(name) == null) {
+          DEFAULT_PARTITION_NAME
+        } else {
+          escapePathName(partition.spec(name))
+        }
+        escapePathName(name) + "=" + partValue
       }.mkString("/")
     }.sorted
   }
@@ -540,7 +573,7 @@ class InMemoryCatalog(
       partialSpec: Option[TablePartitionSpec] = None): Seq[CatalogTablePartition] = synchronized {
     requireTableExists(db, table)
 
-    partialSpec match {
+    partialSpec.map(toCatalogPartitionSpec) match {
       case None => catalog(db).tables(table).partitions.values.toSeq
       case Some(partial) =>
         catalog(db).tables(table).partitions.toSeq.collect {
@@ -563,24 +596,24 @@ class InMemoryCatalog(
   // Functions
   // --------------------------------------------------------------------------
 
-  override protected def doCreateFunction(db: String, func: CatalogFunction): Unit = synchronized {
+  override def createFunction(db: String, func: CatalogFunction): Unit = synchronized {
     requireDbExists(db)
     requireFunctionNotExists(db, func.identifier.funcName)
     catalog(db).functions.put(func.identifier.funcName, func)
   }
 
-  override protected def doDropFunction(db: String, funcName: String): Unit = synchronized {
+  override def dropFunction(db: String, funcName: String): Unit = synchronized {
     requireFunctionExists(db, funcName)
     catalog(db).functions.remove(funcName)
   }
 
-  override protected def doAlterFunction(db: String, func: CatalogFunction): Unit = synchronized {
+  override def alterFunction(db: String, func: CatalogFunction): Unit = synchronized {
     requireDbExists(db)
     requireFunctionExists(db, func.identifier.funcName)
     catalog(db).functions.put(func.identifier.funcName, func)
   }
 
-  override protected def doRenameFunction(
+  override def renameFunction(
       db: String,
       oldName: String,
       newName: String): Unit = synchronized {

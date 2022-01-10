@@ -18,7 +18,7 @@
 package org.apache.spark.sql.catalyst.plans.logical
 
 /**
- * A visitor pattern for traversing a [[LogicalPlan]] tree and compute some properties.
+ * A visitor pattern for traversing a [[LogicalPlan]] tree and computing some properties.
  */
 trait LogicalPlanVisitor[T] {
 
@@ -30,6 +30,7 @@ trait LogicalPlanVisitor[T] {
     case p: Filter => visitFilter(p)
     case p: Generate => visitGenerate(p)
     case p: GlobalLimit => visitGlobalLimit(p)
+    case p: Offset => visitOffset(p)
     case p: Intersect => visitIntersect(p)
     case p: Join => visitJoin(p)
     case p: LocalLimit => visitLocalLimit(p)
@@ -37,7 +38,6 @@ trait LogicalPlanVisitor[T] {
     case p: Project => visitProject(p)
     case p: Repartition => visitRepartition(p)
     case p: RepartitionByExpression => visitRepartitionByExpr(p)
-    case p: ResolvedHint => visitHint(p)
     case p: Sample => visitSample(p)
     case p: ScriptTransformation => visitScriptTransform(p)
     case p: Union => visitUnion(p)
@@ -61,7 +61,7 @@ trait LogicalPlanVisitor[T] {
 
   def visitGlobalLimit(p: GlobalLimit): T
 
-  def visitHint(p: ResolvedHint): T
+  def visitOffset(p: Offset): T
 
   def visitIntersect(p: Intersect): T
 

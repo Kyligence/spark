@@ -19,15 +19,13 @@ package org.apache.spark.util
 
 import java.{lang => jl}
 import java.io.ObjectInputStream
-import java.util.{ArrayList, Collections}
+import java.util.ArrayList
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.collection.JavaConverters._
-
 import org.apache.spark.{InternalAccumulator, SparkContext, TaskContext}
+import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.AccumulableInfo
-
 
 private[spark] case class AccumulatorMetadata(
     id: Long,
@@ -202,10 +200,12 @@ abstract class AccumulatorV2[IN, OUT] extends Serializable {
   }
 
   override def toString: String = {
+    // getClass.getSimpleName can cause Malformed class name error,
+    // call safer `Utils.getSimpleName` instead
     if (metadata == null) {
-      "Un-registered Accumulator: " + getClass.getSimpleName
+      "Un-registered Accumulator: " + Utils.getSimpleName(getClass)
     } else {
-      getClass.getSimpleName + s"(id: $id, name: $name, value: $value)"
+      Utils.getSimpleName(getClass) + s"(id: $id, name: $name, value: $value)"
     }
   }
 }
@@ -214,7 +214,7 @@ abstract class AccumulatorV2[IN, OUT] extends Serializable {
 /**
  * An internal class used to track accumulators by Spark itself.
  */
-private[spark] object AccumulatorContext {
+private[spark] object AccumulatorContext extends Logging {
 
   /**
    * This global map holds the original accumulator objects that are created on the driver.
@@ -261,13 +261,16 @@ private[spark] object AccumulatorContext {
    * Returns the [[AccumulatorV2]] registered with the given ID, if any.
    */
   def get(id: Long): Option[AccumulatorV2[_, _]] = {
-    Option(originals.get(id)).map { ref =>
-      // Since we are storing weak references, we must check whether the underlying data is valid.
+    val ref = originals.get(id)
+    if (ref eq null) {
+      None
+    } else {
+      // Since we are storing weak references, warn when the underlying data is not valid.
       val acc = ref.get
       if (acc eq null) {
-        throw new IllegalStateException(s"Attempted to access garbage collected accumulator $id")
+        logWarning(s"Attempted to access garbage collected accumulator $id")
       }
-      acc
+      Option(acc)
     }
   }
 
@@ -293,7 +296,8 @@ class LongAccumulator extends AccumulatorV2[jl.Long, jl.Long] {
   private var _count = 0L
 
   /**
-   * Adds v to the accumulator, i.e. increment sum by v and count by 1.
+   * Returns false if this accumulator has had any values added to it or the sum is non-zero.
+   *
    * @since 2.0.0
    */
   override def isZero: Boolean = _sum == 0L && _count == 0
@@ -371,6 +375,9 @@ class DoubleAccumulator extends AccumulatorV2[jl.Double, jl.Double] {
   private var _sum = 0.0
   private var _count = 0L
 
+  /**
+   * Returns false if this accumulator has had any values added to it or the sum is non-zero.
+   */
   override def isZero: Boolean = _sum == 0.0 && _count == 0
 
   override def copy(): DoubleAccumulator = {
@@ -442,65 +449,46 @@ class DoubleAccumulator extends AccumulatorV2[jl.Double, jl.Double] {
  * @since 2.0.0
  */
 class CollectionAccumulator[T] extends AccumulatorV2[T, java.util.List[T]] {
-  private val _list: java.util.List[T] = Collections.synchronizedList(new ArrayList[T]())
+  private var _list: java.util.List[T] = _
 
-  override def isZero: Boolean = _list.isEmpty
+  private def getOrCreate = {
+    _list = Option(_list).getOrElse(new java.util.ArrayList[T]())
+    _list
+  }
+
+  /**
+   * Returns false if this accumulator instance has any values in it.
+   */
+  override def isZero: Boolean = this.synchronized(getOrCreate.isEmpty)
 
   override def copyAndReset(): CollectionAccumulator[T] = new CollectionAccumulator
 
   override def copy(): CollectionAccumulator[T] = {
     val newAcc = new CollectionAccumulator[T]
-    _list.synchronized {
-      newAcc._list.addAll(_list)
+    this.synchronized {
+      newAcc.getOrCreate.addAll(getOrCreate)
     }
     newAcc
   }
 
-  override def reset(): Unit = _list.clear()
+  override def reset(): Unit = this.synchronized {
+    _list = null
+  }
 
-  override def add(v: T): Unit = _list.add(v)
+  override def add(v: T): Unit = this.synchronized(getOrCreate.add(v))
 
   override def merge(other: AccumulatorV2[T, java.util.List[T]]): Unit = other match {
-    case o: CollectionAccumulator[T] => _list.addAll(o.value)
+    case o: CollectionAccumulator[T] => this.synchronized(getOrCreate.addAll(o.value))
     case _ => throw new UnsupportedOperationException(
       s"Cannot merge ${this.getClass.getName} with ${other.getClass.getName}")
   }
 
-  override def value: java.util.List[T] = _list.synchronized {
-    java.util.Collections.unmodifiableList(new ArrayList[T](_list))
+  override def value: java.util.List[T] = this.synchronized {
+    java.util.Collections.unmodifiableList(new ArrayList[T](getOrCreate))
   }
 
-  private[spark] def setValue(newValue: java.util.List[T]): Unit = {
-    _list.clear()
-    _list.addAll(newValue)
+  private[spark] def setValue(newValue: java.util.List[T]): Unit = this.synchronized {
+    _list = null
+    getOrCreate.addAll(newValue)
   }
-}
-
-
-class LegacyAccumulatorWrapper[R, T](
-    initialValue: R,
-    param: org.apache.spark.AccumulableParam[R, T]) extends AccumulatorV2[T, R] {
-  private[spark] var _value = initialValue  // Current value on driver
-
-  override def isZero: Boolean = _value == param.zero(initialValue)
-
-  override def copy(): LegacyAccumulatorWrapper[R, T] = {
-    val acc = new LegacyAccumulatorWrapper(initialValue, param)
-    acc._value = _value
-    acc
-  }
-
-  override def reset(): Unit = {
-    _value = param.zero(initialValue)
-  }
-
-  override def add(v: T): Unit = _value = param.addAccumulator(_value, v)
-
-  override def merge(other: AccumulatorV2[T, R]): Unit = other match {
-    case o: LegacyAccumulatorWrapper[R, T] => _value = param.addInPlace(_value, o.value)
-    case _ => throw new UnsupportedOperationException(
-      s"Cannot merge ${this.getClass.getName} with ${other.getClass.getName}")
-  }
-
-  override def value: R = _value
 }

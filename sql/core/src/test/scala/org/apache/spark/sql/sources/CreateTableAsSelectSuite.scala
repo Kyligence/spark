@@ -19,20 +19,16 @@ package org.apache.spark.sql.sources
 
 import java.io.File
 
-import org.scalatest.BeforeAndAfterEach
-
 import org.apache.spark.SparkException
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.catalyst.parser.ParseException
-import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.internal.SQLConf.BUCKETING_MAX_BUCKETS
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.util.Utils
 
-class CreateTableAsSelectSuite
-  extends DataSourceTest
-  with SharedSQLContext
-  with BeforeAndAfterEach {
+class CreateTableAsSelectSuite extends DataSourceTest with SharedSparkSession {
   import testImplicits._
 
   protected override lazy val sql = spark.sql _
@@ -82,7 +78,7 @@ class CreateTableAsSelectSuite
     }
   }
 
-  test("CREATE TABLE USING AS SELECT based on the file without write permission") {
+  ignore("CREATE TABLE USING AS SELECT based on the file without write permission") {
     // setWritable(...) does not work on Windows. Please refer JDK-6728842.
     assume(!Utils.isWindows)
     val childPath = new File(path.toString, "child")
@@ -106,7 +102,7 @@ class CreateTableAsSelectSuite
     path.setWritable(true)
   }
 
-  test("create a table, drop it and create another one with the same name") {
+  ignore("create a table, drop it and create another one with the same name") {
     withTable("jsonTable") {
       sql(
         s"""
@@ -170,13 +166,13 @@ class CreateTableAsSelectSuite
         )
       }.getMessage
       assert(error.contains("Operation not allowed") &&
-        error.contains("CREATE TEMPORARY TABLE ... USING ... AS query"))
+        error.contains("CREATE TEMPORARY TABLE"))
     }
   }
 
   test("disallows CREATE EXTERNAL TABLE ... USING ... AS query") {
     withTable("t") {
-      val error = intercept[ParseException] {
+      val error = intercept[AnalysisException] {
         sql(
           s"""
              |CREATE EXTERNAL TABLE t USING PARQUET
@@ -187,7 +183,7 @@ class CreateTableAsSelectSuite
       }.getMessage
 
       assert(error.contains("Operation not allowed") &&
-        error.contains("CREATE EXTERNAL TABLE ... USING"))
+        error.contains("CREATE EXTERNAL TABLE ..."))
     }
   }
 
@@ -225,7 +221,7 @@ class CreateTableAsSelectSuite
 
   test("create table using as select - with invalid number of buckets") {
     withTable("t") {
-      Seq(0, 100000).foreach(numBuckets => {
+      Seq(0, 100001).foreach(numBuckets => {
         val e = intercept[AnalysisException] {
           sql(
             s"""
@@ -236,8 +232,39 @@ class CreateTableAsSelectSuite
              """.stripMargin
           )
         }.getMessage
-        assert(e.contains("Number of buckets should be greater than 0 but less than 100000"))
+        assert(e.contains("Number of buckets should be greater than 0 but less than"))
       })
+    }
+  }
+
+  test("create table using as select - with overridden max number of buckets") {
+    def createTableSql(numBuckets: Int): String =
+      s"""
+         |CREATE TABLE t USING PARQUET
+         |OPTIONS (PATH '${path.toURI}')
+         |CLUSTERED BY (a) SORTED BY (b) INTO $numBuckets BUCKETS
+         |AS SELECT 1 AS a, 2 AS b
+       """.stripMargin
+
+    val maxNrBuckets: Int = 200000
+    val catalog = spark.sessionState.catalog
+    withSQLConf(BUCKETING_MAX_BUCKETS.key -> maxNrBuckets.toString) {
+
+      // Within the new limit
+      Seq(100001, maxNrBuckets).foreach(numBuckets => {
+        withTable("t") {
+          sql(createTableSql(numBuckets))
+          val table = catalog.getTableMetadata(TableIdentifier("t"))
+          assert(table.bucketSpec == Option(BucketSpec(numBuckets, Seq("a"), Seq("b"))))
+        }
+      })
+
+      // Over the new limit
+      withTable("t") {
+        val e = intercept[AnalysisException](sql(createTableSql(maxNrBuckets + 1)))
+        assert(
+          e.getMessage.contains("Number of buckets should be greater than 0 but less than "))
+      }
     }
   }
 

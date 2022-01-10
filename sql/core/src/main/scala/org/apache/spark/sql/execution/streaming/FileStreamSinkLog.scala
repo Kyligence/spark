@@ -22,7 +22,6 @@ import java.net.URI
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.json4s.NoTypeHints
 import org.json4s.jackson.Serialization
-import org.json4s.jackson.Serialization.{read, write}
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.SQLConf
@@ -82,7 +81,8 @@ object SinkFileStatus {
 class FileStreamSinkLog(
     metadataLogVersion: Int,
     sparkSession: SparkSession,
-    path: String)
+    path: String,
+    _retentionMs: Option[Long] = None)
   extends CompactibleFileStreamLog[SinkFileStatus](metadataLogVersion, sparkSession, path) {
 
   private implicit val formats = Serialization.formats(NoTypeHints)
@@ -98,18 +98,30 @@ class FileStreamSinkLog(
     s"Please set ${SQLConf.FILE_SINK_LOG_COMPACT_INTERVAL.key} (was $defaultCompactInterval) " +
       "to a positive value.")
 
-  override def compactLogs(logs: Seq[SinkFileStatus]): Seq[SinkFileStatus] = {
-    val deletedFiles = logs.filter(_.action == FileStreamSinkLog.DELETE_ACTION).map(_.path).toSet
-    if (deletedFiles.isEmpty) {
-      logs
+  val retentionMs: Long = _retentionMs match {
+    case Some(retention) =>
+      logInfo(s"Retention is set to $retention ms")
+      retention
+
+    case _ => Long.MaxValue
+  }
+
+  override def shouldRetain(log: SinkFileStatus, currentTime: Long): Boolean = {
+    if (retentionMs < Long.MaxValue) {
+      if (currentTime - log.modificationTime > retentionMs) {
+        logDebug(s"${log.path} excluded by retention - current time: $currentTime / " +
+          s"modification time: ${log.modificationTime} / retention: $retentionMs ms.")
+        false
+      } else {
+        true
+      }
     } else {
-      logs.filter(f => !deletedFiles.contains(f.path))
+      true
     }
   }
 }
 
 object FileStreamSinkLog {
   val VERSION = 1
-  val DELETE_ACTION = "delete"
   val ADD_ACTION = "add"
 }

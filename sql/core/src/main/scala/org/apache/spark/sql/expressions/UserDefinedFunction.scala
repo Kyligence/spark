@@ -1,25 +1,28 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.apache.spark.sql.expressions
 
-import org.apache.spark.annotation.InterfaceStability
-import org.apache.spark.sql.catalyst.expressions.ScalaUDF
-import org.apache.spark.sql.Column
+import org.apache.spark.annotation.Stable
+import org.apache.spark.sql.{Column, Encoder}
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+import org.apache.spark.sql.catalyst.expressions.{Expression, ScalaUDF}
+import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression, Complete}
+import org.apache.spark.sql.execution.aggregate.ScalaAggregator
 import org.apache.spark.sql.types.DataType
 
 /**
@@ -27,8 +30,8 @@ import org.apache.spark.sql.types.DataType
  *
  * As an example:
  * {{{
- *   // Defined a UDF that returns true or false based on some numeric score.
- *   val predict = udf((score: Double) => if (score > 0.5) true else false)
+ *   // Define a UDF that returns true or false based on some numeric score.
+ *   val predict = udf((score: Double) => score > 0.5)
  *
  *   // Projects a column that adds a prediction column based on the score column.
  *   df.select( predict(df("score")) )
@@ -36,22 +39,15 @@ import org.apache.spark.sql.types.DataType
  *
  * @since 1.3.0
  */
-@InterfaceStability.Stable
-case class UserDefinedFunction protected[sql] (
-    f: AnyRef,
-    dataType: DataType,
-    inputTypes: Option[Seq[DataType]]) {
-
-  private var _nameOption: Option[String] = None
-  private var _nullable: Boolean = true
-  private var _deterministic: Boolean = true
+@Stable
+sealed abstract class UserDefinedFunction {
 
   /**
    * Returns true when the UDF can return a nullable value.
    *
    * @since 2.3.0
    */
-  def nullable: Boolean = _nullable
+  def nullable: Boolean
 
   /**
    * Returns true iff the UDF is deterministic, i.e. the UDF produces the same output given the same
@@ -59,70 +55,121 @@ case class UserDefinedFunction protected[sql] (
    *
    * @since 2.3.0
    */
-  def deterministic: Boolean = _deterministic
+  def deterministic: Boolean
 
   /**
    * Returns an expression that invokes the UDF, using the given arguments.
    *
    * @since 1.3.0
    */
-  def apply(exprs: Column*): Column = {
-    Column(ScalaUDF(
-      f,
-      dataType,
-      exprs.map(_.expr),
-      inputTypes.getOrElse(Nil),
-      udfName = _nameOption,
-      nullable = _nullable,
-      udfDeterministic = _deterministic))
-  }
-
-  private def copyAll(): UserDefinedFunction = {
-    val udf = copy()
-    udf._nameOption = _nameOption
-    udf._nullable = _nullable
-    udf._deterministic = _deterministic
-    udf
-  }
+  @scala.annotation.varargs
+  def apply(exprs: Column*): Column
 
   /**
    * Updates UserDefinedFunction with a given name.
    *
    * @since 2.3.0
    */
-  def withName(name: String): UserDefinedFunction = {
-    val udf = copyAll()
-    udf._nameOption = Option(name)
-    udf
-  }
+  def withName(name: String): UserDefinedFunction
 
   /**
    * Updates UserDefinedFunction to non-nullable.
    *
    * @since 2.3.0
    */
-  def asNonNullabe(): UserDefinedFunction = {
-    if (!nullable) {
-      this
-    } else {
-      val udf = copyAll()
-      udf._nullable = false
-      udf
-    }
-  }
+  def asNonNullable(): UserDefinedFunction
 
   /**
    * Updates UserDefinedFunction to nondeterministic.
    *
    * @since 2.3.0
    */
-  def asNondeterministic(): UserDefinedFunction = {
-    if (!_deterministic) {
+  def asNondeterministic(): UserDefinedFunction
+}
+
+private[spark] case class SparkUserDefinedFunction(
+    f: AnyRef,
+    dataType: DataType,
+    inputEncoders: Seq[Option[ExpressionEncoder[_]]] = Nil,
+    outputEncoder: Option[ExpressionEncoder[_]] = None,
+    name: Option[String] = None,
+    nullable: Boolean = true,
+    deterministic: Boolean = true) extends UserDefinedFunction {
+
+  @scala.annotation.varargs
+  override def apply(exprs: Column*): Column = {
+    Column(createScalaUDF(exprs.map(_.expr)))
+  }
+
+  private[sql] def createScalaUDF(exprs: Seq[Expression]): ScalaUDF = {
+    ScalaUDF(
+      f,
+      dataType,
+      exprs,
+      inputEncoders,
+      outputEncoder,
+      udfName = name,
+      nullable = nullable,
+      udfDeterministic = deterministic)
+  }
+
+  override def withName(name: String): SparkUserDefinedFunction = {
+    copy(name = Option(name))
+  }
+
+  override def asNonNullable(): SparkUserDefinedFunction = {
+    if (!nullable) {
       this
     } else {
-      val udf = copyAll()
-      udf._deterministic = false
-      udf
+      copy(nullable = false)
+    }
+  }
+
+  override def asNondeterministic(): SparkUserDefinedFunction = {
+    if (!deterministic) {
+      this
+    } else {
+      copy(deterministic = false)
+    }
+  }
+}
+
+private[sql] case class UserDefinedAggregator[IN, BUF, OUT](
+    aggregator: Aggregator[IN, BUF, OUT],
+    inputEncoder: Encoder[IN],
+    name: Option[String] = None,
+    nullable: Boolean = true,
+    deterministic: Boolean = true) extends UserDefinedFunction {
+
+  @scala.annotation.varargs
+  def apply(exprs: Column*): Column = {
+    Column(AggregateExpression(scalaAggregator(exprs.map(_.expr)), Complete, isDistinct = false))
+  }
+
+  // This is also used by udf.register(...) when it detects a UserDefinedAggregator
+  def scalaAggregator(exprs: Seq[Expression]): ScalaAggregator[IN, BUF, OUT] = {
+    val iEncoder = inputEncoder.asInstanceOf[ExpressionEncoder[IN]]
+    val bEncoder = aggregator.bufferEncoder.asInstanceOf[ExpressionEncoder[BUF]]
+    ScalaAggregator(exprs, aggregator, iEncoder, bEncoder, nullable, deterministic)
+  }
+
+  override def withName(name: String): UserDefinedAggregator[IN, BUF, OUT] = {
+    copy(name = Option(name))
+  }
+
+  override def asNonNullable(): UserDefinedAggregator[IN, BUF, OUT] = {
+    if (!nullable) {
+      this
+    } else {
+      copy(nullable = false)
+    }
+  }
+
+  override def asNondeterministic(): UserDefinedAggregator[IN, BUF, OUT] = {
+    if (!deterministic) {
+      this
+    } else {
+      copy(deterministic = false)
     }
   }
 }

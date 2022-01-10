@@ -1,19 +1,19 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.apache.spark.sql.catalyst.parser
 
@@ -51,13 +51,18 @@ class DataTypeParserSuite extends SparkFunSuite {
   checkDataType("dOUBle", DoubleType)
   checkDataType("decimal(10, 5)", DecimalType(10, 5))
   checkDataType("decimal", DecimalType.USER_DEFAULT)
+  checkDataType("Dec(10, 5)", DecimalType(10, 5))
+  checkDataType("deC", DecimalType.USER_DEFAULT)
   checkDataType("DATE", DateType)
   checkDataType("timestamp", TimestampType)
   checkDataType("string", StringType)
-  checkDataType("ChaR(5)", StringType)
-  checkDataType("varchAr(20)", StringType)
-  checkDataType("cHaR(27)", StringType)
+  checkDataType("ChaR(5)", CharType(5))
+  checkDataType("ChaRacter(5)", CharType(5))
+  checkDataType("varchAr(20)", VarcharType(20))
+  checkDataType("cHaR(27)", CharType(27))
   checkDataType("BINARY", BinaryType)
+  checkDataType("void", NullType)
+  checkDataType("interval", CalendarIntervalType)
 
   checkDataType("array<doublE>", ArrayType(DoubleType, true))
   checkDataType("Array<map<int, tinYint>>", ArrayType(MapType(IntegerType, ByteType, true), true))
@@ -98,9 +103,9 @@ class DataTypeParserSuite extends SparkFunSuite {
         StructType(
           StructField("deciMal", DecimalType.USER_DEFAULT, true) ::
           StructField("anotherDecimal", DecimalType(5, 2), true) :: Nil), true) ::
-      StructField("MAP", MapType(TimestampType, StringType), true) ::
+      StructField("MAP", MapType(TimestampType, VarcharType(10)), true) ::
       StructField("arrAy", ArrayType(DoubleType, true), true) ::
-      StructField("anotherArray", ArrayType(StringType, true), true) :: Nil)
+      StructField("anotherArray", ArrayType(CharType(9), true), true) :: Nil)
   )
   // Use backticks to quote column names having special characters.
   checkDataType(
@@ -108,7 +113,7 @@ class DataTypeParserSuite extends SparkFunSuite {
     StructType(
       StructField("x+y", IntegerType, true) ::
       StructField("!@#$%^&*()", StringType, true) ::
-      StructField("1_2.345<>:\"", StringType, true) :: Nil)
+      StructField("1_2.345<>:\"", VarcharType(20), true) :: Nil)
   )
   // Empty struct.
   checkDataType("strUCt<>", StructType(Nil))

@@ -19,18 +19,16 @@ package org.apache.spark.sql.catalyst.optimizer
 
 import scala.annotation.tailrec
 
+import org.apache.spark.sql.catalyst.SQLConfHelper
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.planning.PhysicalOperation
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
-import org.apache.spark.sql.internal.SQLConf
 
 /**
  * Encapsulates star-schema detection logic.
  */
-object StarSchemaDetection extends PredicateHelper {
-
-  private def conf = SQLConf.get
+object StarSchemaDetection extends PredicateHelper with SQLConfHelper {
 
   /**
    * Star schema consists of one or more fact tables referencing a number of dimension
@@ -187,11 +185,11 @@ object StarSchemaDetection extends PredicateHelper {
           stats.rowCount match {
             case Some(rowCount) if rowCount >= 0 =>
               if (stats.attributeStats.nonEmpty && stats.attributeStats.contains(col)) {
-                val colStats = stats.attributeStats.get(col)
-                if (colStats.get.nullCount > 0) {
+                val colStats = stats.attributeStats.get(col).get
+                if (!colStats.hasCountStats || colStats.nullCount.get > 0) {
                   false
                 } else {
-                  val distinctCount = colStats.get.distinctCount
+                  val distinctCount = colStats.distinctCount.get
                   val relDiff = math.abs((distinctCount.toDouble / rowCount.toDouble) - 1.0d)
                   // ndvMaxErr adjusted based on TPCDS 1TB data results
                   relDiff <= conf.ndvMaxError * 2
@@ -199,9 +197,9 @@ object StarSchemaDetection extends PredicateHelper {
               } else {
                 false
               }
-            case None => false
+            case _ => false
           }
-        case None => false
+        case _ => false
       }
     case _ => false
   }
@@ -241,7 +239,7 @@ object StarSchemaDetection extends PredicateHelper {
         case Some(col) if t.outputSet.contains(col) =>
           val stats = t.stats
           stats.attributeStats.nonEmpty && stats.attributeStats.contains(col)
-        case None => false
+        case _ => false
       }
     case _ => false
   }

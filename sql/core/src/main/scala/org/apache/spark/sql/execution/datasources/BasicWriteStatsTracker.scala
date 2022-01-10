@@ -17,10 +17,15 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import java.io.FileNotFoundException
+
+import scala.collection.mutable
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkContext, TaskContext}
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.SQLExecution
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
@@ -28,11 +33,11 @@ import org.apache.spark.util.SerializableConfiguration
 
 
 /**
- * Simple metrics collected during an instance of [[FileFormatWriter.ExecuteWriteTask]].
+ * Simple metrics collected during an instance of [[FileFormatDataWriter]].
  * These were first introduced in https://github.com/apache/spark/pull/18159 (SPARK-20703).
  */
 case class BasicWriteTaskStats(
-    numPartitions: Int,
+    partitions: Seq[InternalRow],
     numFiles: Int,
     numBytes: Long,
     numRows: Long)
@@ -41,28 +46,39 @@ case class BasicWriteTaskStats(
 
 /**
  * Simple [[WriteTaskStatsTracker]] implementation that produces [[BasicWriteTaskStats]].
- * @param hadoopConf
  */
 class BasicWriteTaskStatsTracker(hadoopConf: Configuration)
-  extends WriteTaskStatsTracker {
+  extends WriteTaskStatsTracker with Logging {
 
-  private[this] var numPartitions: Int = 0
+  private[this] val partitions: mutable.ArrayBuffer[InternalRow] = mutable.ArrayBuffer.empty
   private[this] var numFiles: Int = 0
+  private[this] var submittedFiles: Int = 0
   private[this] var numBytes: Long = 0L
   private[this] var numRows: Long = 0L
 
-  private[this] var curFile: String = null
+  private[this] var curFile: Option[String] = None
 
-
-  private def getFileSize(filePath: String): Long = {
+  /**
+   * Get the size of the file expected to have been written by a worker.
+   * @param filePath path to the file
+   * @return the file size or None if the file was not found.
+   */
+  private def getFileSize(filePath: String): Option[Long] = {
     val path = new Path(filePath)
     val fs = path.getFileSystem(hadoopConf)
-    fs.getFileStatus(path).getLen()
+    try {
+      Some(fs.getFileStatus(path).getLen())
+    } catch {
+      case e: FileNotFoundException =>
+        // may arise against eventually consistent object stores
+        logDebug(s"File $path is not yet visible", e)
+        None
+    }
   }
 
 
   override def newPartition(partitionValues: InternalRow): Unit = {
-    numPartitions += 1
+    partitions.append(partitionValues)
   }
 
   override def newBucket(bucketId: Int): Unit = {
@@ -70,12 +86,19 @@ class BasicWriteTaskStatsTracker(hadoopConf: Configuration)
   }
 
   override def newFile(filePath: String): Unit = {
-    if (numFiles > 0) {
-      // we assume here that we've finished writing to disk the previous file by now
-      numBytes += getFileSize(curFile)
+    statCurrentFile()
+    curFile = Some(filePath)
+    submittedFiles += 1
+  }
+
+  private def statCurrentFile(): Unit = {
+    curFile.foreach { path =>
+      getFileSize(path).foreach { len =>
+        numBytes += len
+        numFiles += 1
+      }
+      curFile = None
     }
-    curFile = filePath
-    numFiles += 1
   }
 
   override def newRow(row: InternalRow): Unit = {
@@ -83,10 +106,20 @@ class BasicWriteTaskStatsTracker(hadoopConf: Configuration)
   }
 
   override def getFinalStats(): WriteTaskStats = {
-    if (numFiles > 0) {
-      numBytes += getFileSize(curFile)
+    statCurrentFile()
+
+    // Reports bytesWritten and recordsWritten to the Spark output metrics.
+    Option(TaskContext.get()).map(_.taskMetrics().outputMetrics).foreach { outputMetrics =>
+      outputMetrics.setBytesWritten(numBytes)
+      outputMetrics.setRecordsWritten(numRows)
     }
-    BasicWriteTaskStats(numPartitions, numFiles, numBytes, numRows)
+
+    if (submittedFiles != numFiles) {
+      logInfo(s"Expected $submittedFiles files, but only saw $numFiles. " +
+        "This could be due to the output format not writing empty files, " +
+        "or files being not immediately visible in the filesystem.")
+    }
+    BasicWriteTaskStats(partitions.toSeq, numFiles, numBytes, numRows)
   }
 }
 
@@ -108,7 +141,7 @@ class BasicWriteJobStatsTracker(
 
   override def processStats(stats: Seq[WriteTaskStats]): Unit = {
     val sparkContext = SparkContext.getActive.get
-    var numPartitions: Long = 0L
+    var partitionsSet: mutable.Set[InternalRow] = mutable.HashSet.empty
     var numFiles: Long = 0L
     var totalNumBytes: Long = 0L
     var totalNumOutput: Long = 0L
@@ -116,18 +149,35 @@ class BasicWriteJobStatsTracker(
     val basicStats = stats.map(_.asInstanceOf[BasicWriteTaskStats])
 
     basicStats.foreach { summary =>
-      numPartitions += summary.numPartitions
+      partitionsSet ++= summary.partitions
       numFiles += summary.numFiles
       totalNumBytes += summary.numBytes
       totalNumOutput += summary.numRows
     }
 
-    metrics("numFiles").add(numFiles)
-    metrics("numOutputBytes").add(totalNumBytes)
-    metrics("numOutputRows").add(totalNumOutput)
-    metrics("numParts").add(numPartitions)
+    metrics(BasicWriteJobStatsTracker.NUM_FILES_KEY).add(numFiles)
+    metrics(BasicWriteJobStatsTracker.NUM_OUTPUT_BYTES_KEY).add(totalNumBytes)
+    metrics(BasicWriteJobStatsTracker.NUM_OUTPUT_ROWS_KEY).add(totalNumOutput)
+    metrics(BasicWriteJobStatsTracker.NUM_PARTS_KEY).add(partitionsSet.size)
 
     val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
     SQLMetrics.postDriverMetricUpdates(sparkContext, executionId, metrics.values.toList)
+  }
+}
+
+object BasicWriteJobStatsTracker {
+  private val NUM_FILES_KEY = "numFiles"
+  private val NUM_OUTPUT_BYTES_KEY = "numOutputBytes"
+  private val NUM_OUTPUT_ROWS_KEY = "numOutputRows"
+  private val NUM_PARTS_KEY = "numParts"
+
+  def metrics: Map[String, SQLMetric] = {
+    val sparkContext = SparkContext.getActive.get
+    Map(
+      NUM_FILES_KEY -> SQLMetrics.createMetric(sparkContext, "number of written files"),
+      NUM_OUTPUT_BYTES_KEY -> SQLMetrics.createSizeMetric(sparkContext, "written output"),
+      NUM_OUTPUT_ROWS_KEY -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
+      NUM_PARTS_KEY -> SQLMetrics.createMetric(sparkContext, "number of dynamic part")
+    )
   }
 }

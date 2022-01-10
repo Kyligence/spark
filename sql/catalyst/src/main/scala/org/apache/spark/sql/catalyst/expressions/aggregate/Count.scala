@@ -17,8 +17,10 @@
 
 package org.apache.spark.sql.catalyst.expressions.aggregate
 
+import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 
 // scalastyle:off line.size.limit
@@ -26,10 +28,21 @@ import org.apache.spark.sql.types._
   usage = """
     _FUNC_(*) - Returns the total number of retrieved rows, including rows containing null.
 
-    _FUNC_(expr) - Returns the number of rows for which the supplied expression is non-null.
+    _FUNC_(expr[, expr...]) - Returns the number of rows for which the supplied expression(s) are all non-null.
 
     _FUNC_(DISTINCT expr[, expr...]) - Returns the number of rows for which the supplied expression(s) are unique and non-null.
-  """)
+  """,
+  examples = """
+    Examples:
+      > SELECT _FUNC_(*) FROM VALUES (NULL), (5), (5), (20) AS tab(col);
+       4
+      > SELECT _FUNC_(col) FROM VALUES (NULL), (5), (5), (20) AS tab(col);
+       3
+      > SELECT _FUNC_(DISTINCT col) FROM VALUES (NULL), (5), (5), (10) AS tab(col);
+       2
+  """,
+  group = "agg_funcs",
+  since = "1.0.0")
 // scalastyle:on line.size.limit
 case class Count(children: Seq[Expression]) extends DeclarativeAggregate {
 
@@ -38,13 +51,31 @@ case class Count(children: Seq[Expression]) extends DeclarativeAggregate {
   // Return data type.
   override def dataType: DataType = LongType
 
-  private lazy val count = AttributeReference("count", LongType, nullable = false)()
+  override def checkInputDataTypes(): TypeCheckResult = {
+    if (children.isEmpty && !SQLConf.get.getConf(SQLConf.ALLOW_PARAMETERLESS_COUNT)) {
+      TypeCheckResult.TypeCheckFailure(s"$prettyName requires at least one argument. " +
+        s"If you have to call the function $prettyName without arguments, set the legacy " +
+        s"configuration `${SQLConf.ALLOW_PARAMETERLESS_COUNT.key}` as true")
+    } else {
+      TypeCheckResult.TypeCheckSuccess
+    }
+  }
+
+  protected lazy val count = AttributeReference("count", LongType, nullable = false)()
 
   override lazy val aggBufferAttributes = count :: Nil
 
   override lazy val initialValues = Seq(
     /* count = */ Literal(0L)
   )
+
+  override lazy val mergeExpressions = Seq(
+    /* count = */ count.left + count.right
+  )
+
+  override lazy val evaluateExpression = count
+
+  override def defaultResult: Option[Literal] = Option(Literal(0L))
 
   override lazy val updateExpressions = {
     val nullableChildren = children.filter(_.nullable)
@@ -58,14 +89,6 @@ case class Count(children: Seq[Expression]) extends DeclarativeAggregate {
       )
     }
   }
-
-  override lazy val mergeExpressions = Seq(
-    /* count = */ count.left + count.right
-  )
-
-  override lazy val evaluateExpression = count
-
-  override def defaultResult: Option[Literal] = Option(Literal(0L))
 }
 
 object Count {
