@@ -28,7 +28,6 @@ spec:
   resources:
     requests:
       storage: 20Gi
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -38,7 +37,7 @@ metadata:
   labels:
     app: nexus3
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: nexus3
@@ -47,10 +46,6 @@ spec:
       labels:
         app: nexus3
     spec:
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 3000
-        fsGroup: 2000 
       containers:
       - name: nexus3
         image: sonatype/nexus3:3.32.0
@@ -73,13 +68,18 @@ spec:
           initialDelaySeconds: 100
           periodSeconds: 30
           failureThreshold: 6
+        env:
+        - name: MAX_HEAP
+          value: "800m"
+        - name: MIN_HEAP
+          value: "300m"
         resources:
           limits:
-            cpu: 4000m
-            memory: 2Gi
+            memory: "4Gi"
+            cpu: "1000m"
           requests:
-            cpu: 500m
-            memory: 512Mi
+            memory: "2Gi"
+            cpu: "500m"
         volumeMounts:
         - name: nexus-data
           mountPath: /nexus-data
@@ -87,7 +87,6 @@ spec:
         - name: nexus-data
           persistentVolumeClaim:
             claimName: nexus-data-pvc
-
 ---
 apiVersion: v1
 kind: Service
@@ -111,4 +110,3 @@ spec:
       port: 5000
       targetPort: 5000
       nodePort: 31500
-    

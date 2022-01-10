@@ -5,7 +5,7 @@ metadata:
   labels:
     app: nfs-client-provisioner
   # replace with namespace where provisioner is deployed
-  namespace: nfs #与RBAC文件中的namespace保持一致
+  namespace: kube-system #与RBAC文件中的namespace保持一致
 spec:
   replicas: 1
   selector:
@@ -21,7 +21,8 @@ spec:
       serviceAccountName: nfs-client-provisioner
       containers:
         - name: nfs-client-provisioner
-          image: quay.io/external_storage/nfs-client-provisioner:latest
+          # image: quay.io/external_storage/nfs-client-provisioner:latest
+          image: registry.cn-beijing.aliyuncs.com/mydlq/nfs-subdir-external-provisioner:v4.0.0
           resources:
             requests:
               memory: "32Mi"

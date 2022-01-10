@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: test-claim
+  name: test-claim-local
   namespace: ops
 spec:
-  storageClassName: nfs-dynamic
+  storageClassName: local-storage
   accessModes:
     - ReadWriteMany
   resources:

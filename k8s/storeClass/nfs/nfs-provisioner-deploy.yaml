@@ -4,7 +4,7 @@ metadata:
   name: nfs-client-provisioner
   labels:
     app: nfs-client-provisioner
-  # namespace: nfs #与RBAC文件中的namespace保持一致
+  namespace: kube-system  #与RBAC文件中的namespace保持一致
 spec:
   replicas: 1
   strategy: 
@@ -22,6 +22,13 @@ spec:
       - name: nfs-client-provisioner
         # image: gcr.io/k8s-staging-sig-storage/nfs-subdir-external-provisioner
         image: registry.cn-beijing.aliyuncs.com/mydlq/nfs-subdir-external-provisioner:v4.0.0
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "500m"
+          limits:
+            memory: "64Mi"
+            cpu: "500m"
         volumeMounts:
         - name: nfs-client-root
           mountPath: /persistentvolumes
