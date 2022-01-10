@@ -111,7 +111,9 @@ private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf,
         pod.map { p => s"Container final statuses:\n\n${containersDescription(p)}" }
           .getOrElse("No containers were found in the driver pod."))
       logInfo(s"Application ${conf.appName} with submission ID $sId finished")
-      pod.map { p => kubernetesClient.pods().withName(p.getMetadata.getName).delete() }
+      if (conf.get(KUBERNETES_DELETE_DRIVER)) {
+        pod.map { p => kubernetesClient.pods().withName(p.getMetadata.getName).delete() }
+      }
     }
     podCompleted
   } else {
