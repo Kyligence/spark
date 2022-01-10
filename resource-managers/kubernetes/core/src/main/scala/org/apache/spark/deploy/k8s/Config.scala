@@ -459,6 +459,14 @@ private[spark] object Config extends Logging {
       .checkValue(delay => delay > 0, "delay must be a positive time value")
       .createWithDefaultString("30s")
 
+  val KUBERNETES_DELETE_DRIVER =
+    ConfigBuilder("spark.kubernetes.driver.deleteOnCompleted")
+      .doc("If set to false then driver pods will not be deleted in case " +
+        "of completion.")
+      .version("3.1.1")
+      .booleanConf
+      .createWithDefault(true)
+
   val KUBERNETES_DRIVER_LABEL_PREFIX = "spark.kubernetes.driver.label."
   val KUBERNETES_DRIVER_ANNOTATION_PREFIX = "spark.kubernetes.driver.annotation."
   val KUBERNETES_DRIVER_SERVICE_ANNOTATION_PREFIX = "spark.kubernetes.driver.service.annotation."
