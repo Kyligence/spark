@@ -29,7 +29,7 @@ pipeline {
                                 sshCmdWithCredentials(
                                     'bash -c /var/lib/git/pull.sh',
                                     'private_git',
-                                    ['name':'github','host':'git://github.com/Kyligence/KAP', 'allowAnyHosts': true]
+                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
                                 githubCheckout 'KAP', null, 'git', '10.1.2.192', '+refs/pull/*:refs/remotes/origin/pr/*'
                             }
