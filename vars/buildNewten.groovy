@@ -26,5 +26,5 @@ EOF
         """
     }
 
-    sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
+    sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -skipObf"
 }
