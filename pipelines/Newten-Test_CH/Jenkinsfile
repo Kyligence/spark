@@ -56,7 +56,7 @@ pipeline {
                     container('maven') {
                         dir("sourcecode") {
                             sh script: """
-                                mvn test -pl src/second-storage/clickhouse-it -Duser.timezone=GMT+8
+                                mvn test --fail-at-end -pl src/second-storage/clickhouse-it -Duser.timezone=GMT+8
                             """
                         }
         }
