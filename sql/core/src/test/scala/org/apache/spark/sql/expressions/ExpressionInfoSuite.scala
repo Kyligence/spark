@@ -259,7 +259,7 @@ class ExpressionInfoSuite extends SparkFunSuite with SharedSparkSession {
     }
   }
 
-  test("Check source for different kind of UDFs") {
+  ignore("Check source for different kind of UDFs") {
     import org.apache.spark.sql.IntegratedUDFTestUtils
     val catalog = spark.sessionState.catalog
     assert(catalog.lookupFunctionInfo(FunctionIdentifier("sum")).getSource === "built-in")
