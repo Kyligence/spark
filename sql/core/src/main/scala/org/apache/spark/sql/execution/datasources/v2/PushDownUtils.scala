@@ -20,13 +20,11 @@ package org.apache.spark.sql.execution.datasources.v2
 import scala.collection.mutable
 
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, AttributeSet, Expression, NamedExpression, PredicateHelper, SchemaPruning}
-import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.util.CharVarcharUtils
-import org.apache.spark.sql.connector.expressions.{FieldReference, SortOrder}
-import org.apache.spark.sql.connector.expressions.aggregate.Aggregation
+import org.apache.spark.sql.connector.expressions.SortOrder
 import org.apache.spark.sql.connector.expressions.filter.{Filter => V2Filter}
-import org.apache.spark.sql.connector.read.{Scan, ScanBuilder, SupportsPushDownAggregates, SupportsPushDownFilters, SupportsPushDownLimit, SupportsPushDownRequiredColumns, SupportsPushDownTableSample, SupportsPushDownTopN, SupportsPushDownV2Filters}
-import org.apache.spark.sql.execution.datasources.{DataSourceStrategy, PushableColumnWithoutNestedColumn}
+import org.apache.spark.sql.connector.read.{Scan, ScanBuilder, SupportsPushDownFilters, SupportsPushDownLimit, SupportsPushDownRequiredColumns, SupportsPushDownTableSample, SupportsPushDownTopN, SupportsPushDownV2Filters}
+import org.apache.spark.sql.execution.datasources.DataSourceStrategy
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources
 import org.apache.spark.sql.types.StructType
@@ -100,38 +98,6 @@ object PushDownUtils extends PredicateHelper {
         (Right(r.pushedFilters), (untranslatableExprs ++ postScanFilters).toSeq)
 
       case _ => (Left(Nil), filters)
-    }
-  }
-
-  /**
-   * Pushes down aggregates to the data source reader
-   *
-   * @return pushed aggregation.
-   */
-  def pushAggregates(
-      scanBuilder: ScanBuilder,
-      aggregates: Seq[AggregateExpression],
-      groupBy: Seq[Expression]): Option[Aggregation] = {
-
-    def columnAsString(e: Expression): Option[FieldReference] = e match {
-      case PushableColumnWithoutNestedColumn(name) =>
-        Some(FieldReference(name).asInstanceOf[FieldReference])
-      case _ => None
-    }
-
-    scanBuilder match {
-      case r: SupportsPushDownAggregates if aggregates.nonEmpty =>
-        val translatedAggregates = aggregates.flatMap(DataSourceStrategy.translateAggregate)
-        val translatedGroupBys = groupBy.flatMap(columnAsString)
-
-        if (translatedAggregates.length != aggregates.length ||
-          translatedGroupBys.length != groupBy.length) {
-          return None
-        }
-
-        val agg = new Aggregation(translatedAggregates.toArray, translatedGroupBys.toArray)
-        Some(agg).filter(r.pushAggregation)
-      case _ => None
     }
   }
 
