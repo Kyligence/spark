@@ -261,12 +261,11 @@ class V2SessionCatalog(catalog: SessionCatalog)
     }
   }
 
-  override def dropNamespace(namespace: Array[String]): Boolean = namespace match {
+  override def dropNamespace(
+      namespace: Array[String],
+      cascade: Boolean): Boolean = namespace match {
     case Array(db) if catalog.databaseExists(db) =>
-      if (catalog.listTables(db).nonEmpty) {
-        throw QueryExecutionErrors.namespaceNotEmptyError(namespace)
-      }
-      catalog.dropDatabase(db, ignoreIfNotExists = false, cascade = false)
+      catalog.dropDatabase(db, ignoreIfNotExists = false, cascade)
       true
 
     case Array(_) =>
