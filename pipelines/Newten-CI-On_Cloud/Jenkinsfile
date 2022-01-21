@@ -65,7 +65,15 @@ pipeline {
                     dir("sourcecode") {
                         withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
                             // You can override the credential to be used
-                            sh "mvn sonar:sonar -T 2C -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml"
+                            sh script: """
+                                mvn sonar:sonar -T 2C \
+                                -Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                -Dsonar.pullrequest.key=${ghprbPullId} \
+                                -Dsonar.projectKey=Kyligence_KAP \
+                                -Dsonar.organization=kyligence \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml
+                            """
                         }
                     }
                 }
