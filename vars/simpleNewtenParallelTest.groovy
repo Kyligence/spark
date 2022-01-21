@@ -28,7 +28,8 @@ def call() {
             "src/external",
             "src/external-catalog",
             "src/assembly",
-            "src/udf"], [])
+            "src/udf",
+            "src/second-storage/clickhouse-it"], [])
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 
