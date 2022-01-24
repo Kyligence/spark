@@ -30,6 +30,7 @@ import org.apache.hadoop.yarn.api.records.{ApplicationAttemptId, ApplicationId}
 import org.apache.spark.SparkContext
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
+import org.apache.spark.internal.config.DRIVER_TOKEN_RECEIVE_ENABLED
 import org.apache.spark.rpc._
 import org.apache.spark.scheduler._
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
@@ -270,7 +271,14 @@ private[spark] abstract class YarnSchedulerBackend(
       case u @ UpdateDelegationTokens(tokens) =>
         // Add the tokens to the current user and send a message to the scheduler so that it
         // notifies all registered executors of the new tokens.
-        SparkHadoopUtil.get.addDelegationTokens(tokens, sc.conf)
+        if (sc.conf.get(DRIVER_TOKEN_RECEIVE_ENABLED)) {
+          logWarning(s"Updating driver token because ${DRIVER_TOKEN_RECEIVE_ENABLED.key} is true")
+          SparkHadoopUtil.get.addDelegationTokens(tokens, sc.conf)
+        }
+        else {
+          logInfo(s"Skip to update driver token because " +
+            s"${DRIVER_TOKEN_RECEIVE_ENABLED.key} is false")
+        }
         driverEndpoint.send(u)
     }
 

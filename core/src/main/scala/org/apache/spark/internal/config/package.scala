@@ -49,6 +49,12 @@ package object config {
     .bytesConf(ByteUnit.MiB)
     .createOptional
 
+  private[spark] val DRIVER_TOKEN_RECEIVE_ENABLED =
+    ConfigBuilder("spark.driver.token.receive.enabled")
+      .doc("If true, driver will receive token from AM")
+      .booleanConf
+      .createWithDefault(false)
+
   private[spark] val EVENT_LOG_COMPRESS =
     ConfigBuilder("spark.eventLog.compress")
       .booleanConf

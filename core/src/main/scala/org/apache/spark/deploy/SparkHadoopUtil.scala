@@ -145,22 +145,28 @@ class SparkHadoopUtil extends Logging {
    * Add or overwrite current user's credentials with serialized delegation tokens,
    * also confirms correct hadoop configuration is set.
    */
-  private[spark] def addDelegationTokens(tokens: Array[Byte], sparkConf: SparkConf) {
+  private[spark] def addDelegationTokens(tokens: Array[Byte], sparkConf: SparkConf,
+                                        isAm: Boolean = false) {
     UserGroupInformation.setConfiguration(newConfiguration(sparkConf))
     val creds = deserialize(tokens)
-    logInfo(s"SparkEnv executorId ${SparkEnv.get.executorId}")
-    if (SparkEnv.get.executorId != SparkContext.DRIVER_IDENTIFIER) {
-      logInfo("Updating delegation tokens for current user.")
-      logInfo(s"Adding/updating delegation tokens ${dumpTokens(creds)}")
-      addCurrentUserCredentials(creds)
-      val user = UserGroupInformation.getCurrentUser
-      logInfo(s"Spark user hashcode : ${user.hashCode()}")
-      user.getTokens
-        .asScala.map(tokenToString).foreach(token => logInfo(token))
-    } else {
-      logInfo("Skip update tokens with driver.")
+    logInfo("Updating delegation tokens for current user.")
+    logInfo(s"Adding/updating delegation tokens ${dumpTokens(creds)}")
+
+    if (SparkEnv.get != null) {
+      logInfo(s"Updating executorId ${SparkEnv.get.executorId}")
+      // This shouldn't happen
+      // in yarn-cluster, driver and AM in the same jvm, so we should update in AM
+      if (!isAm && SparkEnv.get.executorId == SparkContext.DRIVER_IDENTIFIER
+        && !sparkConf.get(DRIVER_TOKEN_RECEIVE_ENABLED)) {
+        throw new IllegalStateException("Cannot update token in driver!")
+      }
     }
 
+    addCurrentUserCredentials(creds)
+    val user = UserGroupInformation.getCurrentUser
+    logInfo(s"Spark user : ${user.getShortUserName}-${user.hashCode()}")
+    user.getTokens
+      .asScala.map(tokenToString).foreach(token => logInfo(token))
   }
 
   /**
