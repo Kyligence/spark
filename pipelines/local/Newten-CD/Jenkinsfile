@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/Newten-CD/jenkins-agent.yaml'
+            yamlFile 'pipelines/local/Newten-CD/jenkins-agent.yaml'
         }
     }
 
@@ -58,18 +58,6 @@ pipeline {
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "mkdir -p /var/cicd/artifacts/dev/${BUILD_NUMBER} && \
                             cp dist/*.tar.gz /var/cicd/artifacts/dev/Kyligence-Enterprise-${version}.${BUILD_NUMBER}.tar.gz"
-                    }
-                }
-            }
-        }
-        stage('Starting Newten') {
-            steps {
-                warnError(catchInterruptions: false, message: 'Start Newten failed...') {
-                    script {
-                        r = build propagate: false, job: 'Newten-Starter', parameters: [string(name: 'package_version', value: "${params.version}"), string(name: 'run_env', value: 'dev')]
-                        if(r.result != 'SUCCESS'){
-                            sh 'exit 1'
-                        }
                     }
                 }
             }
