@@ -48,7 +48,7 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simple.Ke-4.3.x-Dev-CI-On_Cloud.ParallelTest()
+                    simple43xParallelTest()
                 }
             }
             post {
