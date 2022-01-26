@@ -48,7 +48,7 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simpleNewtenParallelTest()
+                    simple.ke-4.3.x-dev.ParallelTest.groovy()
                 }
             }
             post {
