@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/aws/Newten-CI-Ke-4.3.x-Dev-On_Cloud/jenkins-agent.yaml'
+            yamlFile 'pipelines/aws/Ke-4.3.x-Dev-CI-On_Cloud/jenkins-agent.yaml'
         }
     }
 
