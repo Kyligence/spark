@@ -9,10 +9,7 @@ def call() {
             "src/smart",
             "src/source-hive",
             "src/server-base",
-            "src/server",
-            "src/second-storage/clickhouse",
-            "src/second-storage/core",
-            "src/second-storage/core-ui"], [])
+            "src/server"], [])
     def ut2 = testForModules(
             'UTest-Stage-2', [
             "src/spark-project/engine-spark",
