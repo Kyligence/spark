@@ -16,7 +16,6 @@ def call() {
             "src/spark-project/kylin-user-session",
             "src/spark-project/kylin-user-session-dep",
             "src/spark-project/source-jdbc",
-            "src/spark-project/sparder",
             "src/spark-project/spark-common",
             "src/spark-project/spark-it",
             "src/tool",
