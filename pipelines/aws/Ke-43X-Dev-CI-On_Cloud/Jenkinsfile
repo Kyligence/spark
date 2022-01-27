@@ -48,7 +48,7 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simple43xdevParallelTest()
+                    simpleKe43xDevParallelTest()
                 }
             }
             post {
