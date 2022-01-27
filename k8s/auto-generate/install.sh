@@ -45,6 +45,8 @@ kubectl apply -f ./namespace/namespace.yaml \
 	&& kubectl apply -f ./yarn/yarn-env-configmap.yaml \
 	&& kubectl apply -f ./yarn/yarn-xml-configmap.yaml \
 	&& kubectl apply -f ./docker-registry-secret.yaml \
+	&& kubectl apply -f ./rancher-monitoring/prometheus/jmx-exporter-configmap.yaml \
+	&& kubectl apply -f ./rancher-monitoring/prometheus/servicemonitor.yaml \
 	&& kubectl apply -f ./nfs-share-storage.yaml
 #
 #
@@ -192,19 +194,7 @@ echo "[OK]部署 Hive Server2"
 #
 #
 #
-echo "[11/12]导入SSB数据"
-kubectl apply -f ./ssb/ssb-load-job.yaml \
-	&& kubectl -n $opt_namespace wait --for=condition=complete job/ssb-load-job --timeout=-1s
-
-if [ $? -eq 1 ]
-then
-	echo "[FAILED]导入SSB数据" && exit 1
-fi
-echo "[OK]导入SSB数据"
-#
-#
-#
-echo "[12/12]部署 Kyligence Enterprise"
+echo "[11/12]部署 Kyligence Enterprise"
 kubectl apply -f ./kyligence-enterprise \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/kyligence-enterprise --timeout=-1s
 
@@ -216,6 +206,11 @@ echo "[OK]部署 Kyligence Enterprise"
 #
 #
 #
+
+echo "[12/13]导入SSB数据"
+pod=$(kubectl get pods -l app=kyligence-enterprise -n kyligence --no-headers | awk '{print $1}')
+kubectl exec -it $pod -c kyligence-enterprise -n kyligence -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
+echo "[OK]导入SSB数据"
 
 cat ./banner.txt
 

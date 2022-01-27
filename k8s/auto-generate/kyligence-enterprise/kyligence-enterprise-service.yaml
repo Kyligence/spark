@@ -3,10 +3,15 @@ kind: Service
 metadata:
   namespace: <<<namespace>>>
   name: kyligence-enterprise
+  labels:
+    metrics-exporter: prometheus
 spec:
   selector:
     app: kyligence-enterprise
   clusterIP: None
+  ports:
+  - port: 8080
+    name: metrics
 ---
 apiVersion: v1
 kind: Service
