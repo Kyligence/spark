@@ -201,6 +201,8 @@ spec:
   ports:
   - name: mysql
     port: 3306
+  - name: metrics
+    port: 9104
   selector:
     app: mysql
 ---
@@ -285,6 +287,38 @@ spec:
           periodSeconds: 10
           successThreshold: 1
           failureThreshold: 20
+      - name: mysql-prometheus-exporter
+        image: prom/mysqld-exporter:v0.13.0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 200Mi
+          requests:
+            cpu: 500m
+            memory: 200Mi
+        ports:
+        - containerPort: 9104
+          name: metrics
+        livenessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          httpGet:
+            path: /metrics
+            port: metrics
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          httpGet:
+            path: /metrics
+            port: metrics
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql
+              key: password
+        - name: DATA_SOURCE_NAME
+          value: root:$(MYSQL_ROOT_PASSWORD)@(localhost:3306)/
       volumes:
       - name: config
         configMap:

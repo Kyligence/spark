@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: hdfs-namenode
   namespace: <<<namespace>>>
+  labels:
+    metrics-exporter: prometheus
 spec:
   ports:
     - name: "50070"
@@ -14,5 +16,7 @@ spec:
     - name: "8020"
       port: 8020
       targetPort: 8020
+    - port: 8080
+      name: metrics
   selector:
     io.kompose.service: hdfs-namenode

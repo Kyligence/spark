@@ -3,10 +3,14 @@ kind: Service
 metadata:
   name: yarn-historyserver
   namespace: <<<namespace>>>
+  labels:
+    metrics-exporter: prometheus
 spec:
   ports:
     - name: "8188"
       port: 8188
       targetPort: 8188
+    - port: 8080
+      name: metrics
   selector:
     io.kompose.service: yarn-historyserver

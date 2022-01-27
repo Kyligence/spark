@@ -3,11 +3,15 @@ kind: Service
 metadata:
   name: hdfs-datanode
   namespace: <<<namespace>>>
+  labels:
+    metrics-exporter: prometheus
 spec:
   clusterIP: None
   ports:
     - name: "50075"
       port: 50075
       targetPort: 50075
+    - port: 8080
+      name: metrics
   selector:
     io.kompose.service: hdfs-datanode

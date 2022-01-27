@@ -18,17 +18,20 @@ spec:
         io.kompose.service: hdfs-namenode
     spec:
       initContainers:
-      - name: delete-lost-found
-        image: busybox:stable
+      - name: jmx-exporter
+        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
         volumeMounts:
-          - mountPath: /hadoop/dfs/name
-            name: hdfs-namenode-claim0
+        - name: exporter-dir
+          mountPath: /opt/jmx-exporter/
+        - mountPath: /hadoop/dfs/name
+          name: hdfs-namenode-claim0
         command:
           - sh
           - "-c"
           - |
             set -x
             rm -rf /hadoop/dfs/name/lost+found
+            cp /opt/jmx_prometheus_javaagent-0.16.1.jar /opt/jmx-exporter/
       containers:
       - name: hdfs-namenode
         envFrom:
@@ -43,6 +46,8 @@ spec:
             value: "50070"
           - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
             value: "true"
+          - name: HADOOP_OPTS
+            value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
         image: kyligence/hadoop:2.10.1
         ports:
           - containerPort: 50070
@@ -73,7 +78,17 @@ spec:
         volumeMounts:
           - mountPath: /hadoop/dfs/name
             name: hdfs-namenode-claim0
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml
       volumes:
         - name: hdfs-namenode-claim0
           persistentVolumeClaim:
             claimName: hdfs-namenode-claim0
+        - name: exporter-dir
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: jmx-exporter-config
