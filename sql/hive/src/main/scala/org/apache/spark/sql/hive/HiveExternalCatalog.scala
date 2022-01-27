@@ -19,6 +19,7 @@ package org.apache.spark.sql.hive
 
 import java.io.IOException
 import java.lang.reflect.InvocationTargetException
+import java.net.URI
 import java.util
 import java.util.Locale
 
@@ -44,10 +45,9 @@ import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, DateTimeUtils}
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.execution.datasources.{PartitioningUtils, SourceOptions}
 import org.apache.spark.sql.hive.client.HiveClient
-import org.apache.spark.sql.internal.HiveSerDe
+import org.apache.spark.sql.internal.{HiveSerDe, SQLConf}
 import org.apache.spark.sql.internal.StaticSQLConf._
 import org.apache.spark.sql.types.{DataType, StructType}
-
 
 /**
  * A persistent implementation of the system catalog using Hive.
@@ -1257,6 +1257,18 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     }
   }
 
+  def replaceLocationWithSpecialPrefix(storage: CatalogStorageFormat): CatalogStorageFormat = {
+    val specificLocation = conf.get(SQLConf.HIVE_SPECIFIC_FS_LOCATION)
+    val path = storage.locationUri.get
+    val replacePathStr = path.toString.replaceAll("hdfs://hacluster", specificLocation)
+    CatalogStorageFormat(Option(new URI(replacePathStr)),
+      storage.inputFormat,
+      storage.outputFormat,
+      storage.serde,
+      storage.compressed,
+      storage.properties)
+  }
+
   override def listPartitionsByFilter(
       db: String,
       table: String,
@@ -1271,7 +1283,8 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
 
     val clientPrunedPartitions =
       client.getPartitionsByFilter(rawTable, predicates, timeZoneId).map { part =>
-        part.copy(spec = restorePartitionSpec(part.spec, partColNameMap))
+        part.copy(spec = restorePartitionSpec(part.spec, partColNameMap),
+          storage = replaceLocationWithSpecialPrefix(part.storage))
       }
     prunePartitionsByFilter(catalogTable, clientPrunedPartitions, predicates, defaultTimeZoneId)
   }
