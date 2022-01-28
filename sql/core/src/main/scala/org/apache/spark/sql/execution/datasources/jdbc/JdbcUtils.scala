@@ -1022,12 +1022,7 @@ object JdbcUtils extends Logging {
   def dropNamespace(
       conn: Connection, options: JDBCOptions, namespace: String, cascade: Boolean): Unit = {
     val dialect = JdbcDialects.get(options.url)
-    val dropCmd = if (cascade) {
-      s"DROP SCHEMA ${dialect.quoteIdentifier(namespace)} CASCADE"
-    } else {
-      s"DROP SCHEMA ${dialect.quoteIdentifier(namespace)}"
-    }
-    executeStatement(conn, options, dropCmd)
+    executeStatement(conn, options, dialect.dropSchema(namespace, cascade))
   }
 
   /**
