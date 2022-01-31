@@ -39,7 +39,7 @@ pipeline {
                     dir("sourcecode") {
                         sh script: """
                             mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
-                            mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
+                            mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests
                         """
                     }
                 }
@@ -62,19 +62,18 @@ pipeline {
         stage('SonarQube') {
             steps {
                 container("sonar-cloud") {
-                    dir("sourcecode") {
-                        withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
-                            // You can override the credential to be used
-                            sh script: """
-                                mvn sonar:sonar -T 2C \
-                                -Dsonar.pullrequest.base=${ghprbTargetBranch} \
-                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
-                                -Dsonar.pullrequest.key=${ghprbPullId} \
-                                -Dsonar.projectKey=Kyligence_KAP \
-                                -Dsonar.organization=kyligence \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml
-                            """
-                        }
+                    withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
+                        // You can override the credential to be used
+                        sh script: """
+                            mvn sonar:sonar -T 4C \
+                            -Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                            -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                            -Dsonar.pullrequest.key=${ghprbPullId} \
+                            -Dsonar.projectKey=Kyligence_KAP \
+                            -Dsonar.organization=kyligence \
+                            -Dsonar.host.url=https://sonarcloud.io \
+                            -Dsonar.coverage.jacoco.xmlReportPaths="\$(find "`pwd`" -path '*jacoco.xml' | sed 's/.*/&/' | tr '\n' ',')"
+                        """
                     }
                 }
             }
