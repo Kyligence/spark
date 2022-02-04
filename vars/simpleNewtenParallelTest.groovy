@@ -27,7 +27,7 @@ def call() {
             "src/tool",
             "src/datasource-sdk",
             "src/external",
-            "src/external-catalog",
+            "src/external-catalog/external-catalog-sdk",
             "src/assembly",
             "src/second-storage/clickhouse-it"], [])
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
