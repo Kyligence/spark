@@ -26,7 +26,7 @@ pipeline {
         stage('get_commit_id') {
               steps {
                  script {
-                        env.GIT_COMMIT_MSG = sh (script: 'git log -1 --pretty=%B ${GIT_COMMIT}', returnStdout: true).trim()
+                        env.GIT_COMMIT_ID = sh (script: 'git log -1 --pretty=%B ${GIT_COMMIT}', returnStdout: true).trim()
                     }   
                 }
             }
@@ -67,7 +67,7 @@ pipeline {
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "mkdir -p /var/cicd/artifacts/dev/${JOB_NAME} && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/${JOB_NAME}/${JOB_NAME}-${version}.${BUILD_NUMBER}.tar.gz"
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/${JOB_NAME}/${JOB_NAME}-${version}.${BUILD_NUMBER}-${GIT_COMMIT_ID}.tar.gz"
                     }
                 }
             }
