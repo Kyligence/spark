@@ -57,7 +57,7 @@ pipeline {
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "mkdir -p /var/cicd/artifacts/dev/${JOB_NAME} && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/${JOB_NAME}/KE-${JOB_NAME}-${version}.${BUILD_NUMBER}.tar.gz"
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/${JOB_NAME}/${JOB_NAME}-${version}.${BUILD_NUMBER}.tar.gz"
                     }
                 }
             }
