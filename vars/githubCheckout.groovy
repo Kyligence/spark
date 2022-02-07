@@ -12,5 +12,11 @@ def call(String project, String branch = null, String schema = 'git', String rem
                           [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
                   ]
         ])
+        sh script: '''
+        if [ -f license.patch ]; then
+            git apply license.patch
+            git checkout -- .
+        fi
+        '''
     }
 }
