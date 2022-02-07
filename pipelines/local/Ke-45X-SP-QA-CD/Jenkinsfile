@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/local/Newten-CD/jenkins-agent.yaml'
+            yamlFile 'pipelines/local/Ke-4.5.x-SP-QA-CD/jenkins-agent.yaml'
         }
     }
 
