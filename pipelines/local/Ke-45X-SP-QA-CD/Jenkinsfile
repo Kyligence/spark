@@ -22,6 +22,15 @@ pipeline {
     }
 
     stages {
+
+        stage('get_commit_id') {
+              steps {
+                 script {
+                        env.GIT_COMMIT_MSG = sh (script: 'git log -1 --pretty=%B ${GIT_COMMIT}', returnStdout: true).trim()
+                    }   
+                }
+            }
+
         stage("Checkout Source Code") {
             steps {
                 container("build") {
