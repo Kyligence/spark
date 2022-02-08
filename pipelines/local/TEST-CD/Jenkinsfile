@@ -55,7 +55,7 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                        
-                        sh "mkdir -p /var/cicd/artifacts/dev/TEST-CD && pwd \
+                        sh "mkdir -p /var/cicd/artifacts/dev/TEST-CD && \
                         touch /var/cicd/artifacts/dev/TEST-CD/NEWTEN-QA-${version}.${BUILD_NUMBER}.tar.gz"
                     }
                 }
