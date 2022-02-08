@@ -2,10 +2,9 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: ceph-pvc-test1
-  namespace: default
-  annotations:
-    volume.beta.kubernetes.io/storage-class: cephfs-dynamic
+  namespace: cephfs
 spec:
+  storageClassName: cephfs-dynamic
   accessModes:
     - ReadWriteMany
   resources:
@@ -16,6 +15,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: test-pod-1
+  namespace: cephfs
 spec:
   containers:
   - name: test-pod-1
@@ -40,47 +40,3 @@ spec:
     - name: pvc
       persistentVolumeClaim:
         claimName: ceph-pvc-test1
-
----
-
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: ceph-pvc-test2
-  namespace: default
-spec:
-  storageClassName: cephfs-dynamic
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 1Gi
----
-kind: Pod
-apiVersion: v1
-metadata:
-  name: test-pod-2
-spec:
-  containers:
-  - name: test-pod-2
-    image: hub.leffss.com/library/busybox:v1.29.2
-    resources:
-      requests:
-        memory: "32Mi"
-        cpu: "500m"
-      limits:
-        memory: "64Mi"
-        cpu: "500m"
-    command:
-      - "/bin/sh"
-    args:
-      - "-c"
-      - "touch /mnt/SUCCESS-ceph-pvc-test2 && exit 0 || exit 1"
-    volumeMounts:
-      - name: pvc
-        mountPath: "/mnt"
-  restartPolicy: "Never"
-  volumes:
-    - name: pvc
-      persistentVolumeClaim:
-        claimName: ceph-pvc-test2

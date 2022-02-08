@@ -1,37 +1,15 @@
-apiVersion: v1
+---
 kind: Namespace
-metadata:
-   name: cephfs
-   labels:
-     name: cephfs
- 
----
 apiVersion: v1
-kind: ServiceAccount
 metadata:
-  name: cephfs-provisioner
-  namespace: kube-system
- 
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: cephfs-provisioner
-  namespace: kube-system
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["create", "get", "delete"]
-  - apiGroups: [""]
-    resources: ["endpoints"]
-    verbs: ["get", "list", "watch", "create", "update", "patch"]
- 
+  name: cephfs
+
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: cephfs-provisioner
-  namespace: kube-system
+  namespace: cephfs
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -49,20 +27,39 @@ rules:
     resources: ["services"]
     resourceNames: ["kube-dns","coredns"]
     verbs: ["list", "get"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cephfs-provisioner
+  namespace: cephfs
+subjects:
+  - kind: ServiceAccount
+    name: cephfs-provisioner
+    namespace: cephfs
+roleRef:
+  kind: ClusterRole
+  name: cephfs-provisioner
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cephfs-provisioner
+  namespace: cephfs
+rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "create", "delete"]
-  - apiGroups: ["policy"]
-    resourceNames: ["cephfs-provisioner"]
-    resources: ["podsecuritypolicies"]
-    verbs: ["use"]
- 
+    verbs: ["create", "get", "delete"]
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: cephfs-provisioner
-  namespace: kube-system
+  namespace: cephfs
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -70,32 +67,23 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: cephfs-provisioner
- 
 ---
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: cephfs-provisioner
-subjects:
-  - kind: ServiceAccount
-    name: cephfs-provisioner
-    namespace: kube-system
-roleRef:
-  kind: ClusterRole
-  name: cephfs-provisioner
-  apiGroup: rbac.authorization.k8s.io
- 
+  namespace: cephfs
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cephfs-provisioner
-  namespace: kube-system
+  namespace: cephfs
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: cephfs-provisioner
-  replicas: 1
   strategy:
     type: Recreate
   template:
@@ -107,18 +95,16 @@ spec:
       - name: cephfs-provisioner
         image: "quay.io/external_storage/cephfs-provisioner:latest"
         resources:
-          requests:
-            memory: "32Mi"
-            cpu: "500m"
           limits:
-            memory: "64Mi"
             cpu: "500m"
+            memory: "64Mi"
         env:
         - name: PROVISIONER_NAME
           value: ceph.com/cephfs
+        - name: PROVISIONER_SECRET_NAMESPACE
+          value: cephfs
         command:
         - "/usr/local/bin/cephfs-provisioner"
         args:
         - "-id=cephfs-provisioner-1"
-        - "-disable-ceph-namespace-isolation=true"
       serviceAccount: cephfs-provisioner

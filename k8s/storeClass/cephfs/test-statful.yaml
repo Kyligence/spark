@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cephfs-provisioner-nginx
+  namespace: cephfs
+spec:
+  serviceName: "nginx"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest   #nginx的镜像
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: "/mnt"      #容器里面的挂载目录，该目录挂载到NFS的共享目录上
+          name: test
+  volumeClaimTemplates:
+  - metadata:
+      name: test
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Mi
+      storageClassName: cephfs-dynamic
