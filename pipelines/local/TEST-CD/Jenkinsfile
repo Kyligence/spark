@@ -57,7 +57,7 @@ pipeline {
                        
                         sh "mkdir -p /var/cicd/artifacts/dev/TEST-CD && \
                             git rev-parse --short HEAD && \
-                        touch /var/cicd/artifacts/dev/TEST-CD/NEWTEN-QA-${version}.${BUILD_NUMBER}.tar.gz"
+                        touch /var/cicd/artifacts/dev/TEST-CD/NEWTEN-QA-${version}.${BUILD_NUMBER}-`git rev-parse --short HEAD`.tar.gz"
                     }
                 }
             }
