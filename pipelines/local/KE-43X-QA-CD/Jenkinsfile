@@ -2,12 +2,11 @@
 
 @Library('devopslib') _
 
-environment{
-    GIT_COMMIT_ID = "12345"
-}
-
-
 pipeline {
+    
+    environment{
+        GIT_COMMIT_ID = "12345"
+   } 
     options {
         timeout(time: 1, unit: 'HOURS')
     }
