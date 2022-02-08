@@ -31,6 +31,7 @@ pipeline {
                             retry(3) {
                                 sshCmdWithCredentials(
                                     'bash -c /var/lib/git/pull.sh',
+                                    'GIT_COMMIT_ID=git rev-parse --short HEAD',
                                     'private_git',
                                     ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
