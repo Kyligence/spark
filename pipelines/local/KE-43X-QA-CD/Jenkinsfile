@@ -8,7 +8,7 @@ pipeline {
         GIT_COMMIT_ID = "12345"
    } 
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 2, unit: 'HOURS')
     }
 
     agent {
