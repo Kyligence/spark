@@ -73,8 +73,8 @@ spec:
         volumeMounts:
           - name: nexus-data-rbd
             mountPath: /nexus-data
-          - name: nexus-data
-            mountPath: /nexus-data-old
+          # - name: nexus-data
+          #   mountPath: /nexus-data-old
       containers:
       - name: nexus3-rbd
         image: sonatype/nexus3:3.32.0
@@ -107,15 +107,15 @@ spec:
         volumeMounts:
         - name: nexus-data-rbd
           mountPath: /nexus-data
-        - name: nexus-data
-          mountPath: /nexus-data-old
+        # - name: nexus-data
+        #   mountPath: /nexus-data-old
       volumes:
         - name: nexus-data-rbd
           persistentVolumeClaim:
             claimName: nexus-data-rbd-pvc
-        - name: nexus-data
-          persistentVolumeClaim:
-            claimName: nexus-data-pvc
+        # - name: nexus-data
+        #   persistentVolumeClaim:
+        #     claimName: nexus-data-pvc
 ---
 apiVersion: v1
 kind: Service
