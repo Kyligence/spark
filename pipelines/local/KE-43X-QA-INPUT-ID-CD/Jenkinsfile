@@ -13,7 +13,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/local/KE-43X-QA-CD/jenkins-agent.yaml'
+            yamlFile 'pipelines/local/KE-43X-QA-INPUT-ID-CD/jenkins-agent.yaml'
         }
     }
 
