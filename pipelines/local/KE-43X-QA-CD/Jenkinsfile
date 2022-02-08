@@ -61,8 +61,8 @@ pipeline {
                     dir("sourcecode") {
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                        sh "mkdir -p /var/cicd/artifacts/dev/KE-43X && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/KE-43X/KE-43X-QA-${version}.${BUILD_NUMBER}-${branch}.tar.gz"
+                        sh "mkdir -p /var/cicd/artifacts/dev/KE-43X && git rev-parse --short HEAD \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/KE-43X/KE-43X-QA-${version}.${BUILD_NUMBER}-${branch}.`git rev-parse --short HEAD`.tar.gz"
                     }
                 }
             }
