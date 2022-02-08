@@ -9,14 +9,14 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/local/NEWTEN-QA-INPUT-ID-CD/jenkins-agent.yaml'
+            yamlFile 'pipelines/local/KE-45X-SP-QA-INPUT-ID-CD/jenkins-agent.yaml'
         }
     }
 
     parameters {
-        string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
-        string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
+        string(name: 'branch', defaultValue: 'ke-4.5.x-sp-qa', description: 'Kap branch?')
+        string(name: 'version', defaultValue: 'ke-4.5.x-sp-qa', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
@@ -56,8 +56,8 @@ pipeline {
                     dir("sourcecode") {
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                        sh "mkdir -p /var/cicd/artifacts/dev/NEWTEN && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/NEWTEN/${version}-${branch}-${BUILD_NUMBER}.tar.gz"
+                        sh "mkdir -p /var/cicd/artifacts/dev/KE-45X-SP && \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/KE-45X-SP/${version}-${branch}-${BUILD_NUMBER}.tar.gz"
                     }
                 }
             }
