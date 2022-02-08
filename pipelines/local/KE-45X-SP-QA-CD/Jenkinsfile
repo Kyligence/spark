@@ -1,0 +1,68 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/local/KE-45X-SP-QA-CD/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'version', defaultValue: 'ke-4.5.x-sp-qa', description: 'Kap version?')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'branch', defaultValue: 'ke-4.5.x-sp-qa', description: 'Kap branch?')
+        string(name: 'commitid', defaultValue: 'commit-id', description: 'Kap commitid?')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+    }
+
+    stages {
+ 
+        stage("Checkout Source Code") {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                sshCmdWithCredentials(
+                                    'bash -c /var/lib/git/pull.sh',
+                                    'private_git',
+                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
+                                )
+                                githubCheckout 'KAP'
+                            }
+
+                            //
+                            if (params.branch ==~ /.*yinglong.*/ ) {
+                                echo 'checkout KAP_Frontend to kystudio'
+                                sh 'rm -rf ./kystudio'
+                                dir('kystudio') {
+                                    retry(3) {
+                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Building Package') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        buildNewten(params.version)
+                        archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                        sh "mkdir -p /var/cicd/artifacts/dev/KE-45X-SP && \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/KE-45X-SP/KE-45X-SP-QA-${version}.${BUILD_NUMBER}-${GIT_COMMIT_ID}.tar.gz"
+                    }
+                }
+            }
+        }
+    }
+}
