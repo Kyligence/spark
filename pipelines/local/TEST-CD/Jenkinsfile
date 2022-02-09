@@ -34,7 +34,7 @@ pipeline {
                                     ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
                                 //githubCheckout 'KAP'
-                                localGithubCheckOutCommitID 'KAP'
+                                githubCheckout 'KAP'
                             }
 
                             //
@@ -43,7 +43,7 @@ pipeline {
                                 sh 'rm -rf ./kystudio'
                                 dir('kystudio') {
                                     retry(3) {
-                                        localGithubCheckOutCommitID 'KAP' 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                        githubCheckout 'KAP' 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                                     }
                                 }
                             }
