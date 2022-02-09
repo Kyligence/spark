@@ -5,19 +5,20 @@ spec:
   containers:
     - name: "git"
       volumeMounts:
-        - mountPath: "/jenkinscommon"
-          name: "jenkins-common"
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
       tty: true
       command:
         - "cat"
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "1000Mi"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
         requests:
-          memory: "1000Mi"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
     - name: "maven"
       tty: true
