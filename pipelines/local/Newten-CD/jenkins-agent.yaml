@@ -18,7 +18,7 @@ spec:
       command:
         - "cat"
       image: "harbor.ops.kylincorp.com/devops/newten-build:latest"
-      imagePullPolicy: "Always"
+      imagePullPolicy: "IfNotPresent"
       name: "build"
   volumes:
     - name: "jenkins-common"
