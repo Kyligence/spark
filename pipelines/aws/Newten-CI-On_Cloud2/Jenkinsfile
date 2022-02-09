@@ -14,8 +14,8 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: '', description: 'Kap repo?', defaultValue: 'Kyligence')
-        string(name: 'branch', defaultValue: '', description: 'Kap branch?', defaultValue: 'tweaks')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'branch', defaultValue: 'tweaks', description: 'Kap branch?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
     }
 
