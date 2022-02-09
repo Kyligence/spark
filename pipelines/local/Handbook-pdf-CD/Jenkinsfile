@@ -20,8 +20,8 @@ pipeline {
 
     stages {
         stage("Checkout Source Code") {
-             echo "1.Checkout Source Code Stage"
-            // steps {
+            steps {
+                echo "1.Checkout Source Code Stage"
             //     container("build") {
             //         dir("sourcecode") {
             //             script {
@@ -47,11 +47,11 @@ pipeline {
             //             }
             //         }
             //     }
-            // }
+            }
         }
         stage('Building Package') {
-             echo "2.Building Package Stage"
-            // steps {
+            steps {
+                echo "2.Building Package Stage"
             //     container("build") {
             //         dir("sourcecode") {
             //             buildNewten(params.version)
@@ -60,7 +60,7 @@ pipeline {
             //             cp dist/*.tar.gz /var/cicd/artifacts/dev/Newten-CD/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
             //         }
             //     }
-            // }
+            }
         }
     }
 }
