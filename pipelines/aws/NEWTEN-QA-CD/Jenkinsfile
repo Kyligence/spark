@@ -1,0 +1,66 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/NEWTEN-QA-CD/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                sshCmdWithCredentials(
+                                    'bash -c /var/lib/git/pull.sh',
+                                    'private_git',
+                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
+                                )
+                                githubCheckout 'KAP'
+                            }
+
+                            //
+                            if (params.branch ==~ /.*yinglong.*/ ) {
+                                echo 'checkout KAP_Frontend to kystudio'
+                                sh 'rm -rf ./kystudio'
+                                dir('kystudio') {
+                                    retry(3) {
+                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Building Package') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        buildNewten(params.version)
+                        archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                        sh "mkdir -p /var/cicd/artifacts/dev/NEWTEN && \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/NEWTEN/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
+                    }
+                }
+            }
+        }
+    }
+}
