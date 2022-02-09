@@ -1,0 +1,28 @@
+---
+kind: "Pod"
+name: "handbook-agent"
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "kubernetes-work01"
+  containers:
+    - volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+      tty: true
+      command:
+        - "cat"
+      image: "harbor.ops.kylincorp.com/devops/newten-build:latest"
+      imagePullPolicy: "IfNotPresent"
+      name: "build"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: {}
