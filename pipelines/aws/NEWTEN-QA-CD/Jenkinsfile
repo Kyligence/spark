@@ -21,35 +21,22 @@ pipeline {
     }
 
     stages {
-        stage("Checkout Source Code") {
+        
+          stage("Checkout Source Code") {
             steps {
-                container("build") {
+                container("git") {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                //sshCmdWithCredentials(
-                                //    'bash -c /var/lib/git/pull.sh',
-                                //    'private_git',
-                                //    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
-                                //)
-                                awsGithubCheckOut 'KAP'
-                            }
-
-                            //
-                            if (params.branch ==~ /.*yinglong.*/ ) {
-                                echo 'checkout KAP_Frontend to kystudio'
-                                sh 'rm -rf ./kystudio'
-                                dir('kystudio') {
-                                    retry(3) {
-                                        awsGithubCheckOut 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                                    }
-                                }
+                                githubCheckout 'KAP', null, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*'
                             }
                         }
                     }
                 }
             }
         }
+        
+        
         stage('Building Package') {
             steps {
                 container("build") {
