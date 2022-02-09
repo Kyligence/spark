@@ -16,7 +16,7 @@ spec:
       command:
         - "cat"
       image: "sunfuzhou/newten-build:latest"
-      imagePullPolicy: "Always"
+      imagePullPolicy: "IfNotPresent"
       name: "build"
   volumes:
     - name: "jenkins-common"
