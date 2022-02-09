@@ -32,7 +32,7 @@ pipeline {
                                 //    'private_git',
                                 //    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 //)
-                                githubCheckout 'KAP'
+                                awsGithubCheckOut 'KAP'
                             }
 
                             //
@@ -41,7 +41,7 @@ pipeline {
                                 sh 'rm -rf ./kystudio'
                                 dir('kystudio') {
                                     retry(3) {
-                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                        awsGithubCheckOut 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                                     }
                                 }
                             }
