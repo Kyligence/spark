@@ -37,10 +37,15 @@ pipeline {
             steps {
                 container("maven") {
                     dir("sourcecode") {
-                        sh script: """
-                            mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
-                            mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests
-                        """
+                        script{
+                            try {
+                                onTry
+                            }
+                            catch (exception) {
+                                onCatch
+                            }
+                        }
+                        sh script: "mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests"
                     }
                 }
             }

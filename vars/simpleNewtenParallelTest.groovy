@@ -5,7 +5,7 @@ def call() {
             "src/core-job",
             "src/core-storage",
             "src/core-metadata",
-            "src/yinglong-enterprise-core-metadata",
+            "src/ke-enterprise-core-metadata",
             "src/query",
             "src/smart",
             "src/source-hive",
@@ -26,7 +26,6 @@ def call() {
             "src/spark-project/spark-it",
             "src/tool",
             "src/datasource-sdk",
-            "src/external",
             "src/external-catalog/external-catalog-sdk",
             "src/assembly",
             "src/second-storage/clickhouse-it"], [])
