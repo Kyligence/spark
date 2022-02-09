@@ -56,8 +56,8 @@ pipeline {
                     dir("sourcecode") {
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                        sh "mkdir -p /var/cicd/artifacts/dev/NEWTEN && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/NEWTEN/${version}-${branch}-${BUILD_NUMBER}.tar.gz"
+                        sh "mkdir -p /var/cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD && \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/${version}-${branch}-${BUILD_NUMBER}.tar.gz"
                     }
                 }
             }
