@@ -5,7 +5,7 @@ def call(String project, String branch = null, String schema = 'git', String rem
                   userRemoteConfigs: [[credentialsId: "${params.certificate ?: 'kyligence-git'}",
                                        name         : "origin",
                                        refspec      : "${refspec}",
-                                       url          : "${schema}://${remoteHost}/${params.repo ?: 'Kyligence'}/${project}.git"]],
+                                       url          : "${schema}:@${remoteHost}/${params.repo ?: 'Kyligence'}/${project}.git"]],
                   browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/${project}"],
                   extensions       : [
                           [$class: 'CleanBeforeCheckout'],
