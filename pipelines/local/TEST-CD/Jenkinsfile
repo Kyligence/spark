@@ -33,7 +33,6 @@ pipeline {
                                     'private_git',
                                     ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
-                                //githubCheckout 'KAP'
                                 githubCheckout 'KAP'
                             }
 
