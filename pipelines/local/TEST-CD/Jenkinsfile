@@ -14,8 +14,9 @@ pipeline {
     }
 
     parameters {
-        string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
+        string(name: 'commitid', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
@@ -32,7 +33,8 @@ pipeline {
                                     'private_git',
                                     ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
-                                githubCheckout 'KAP'
+                                //githubCheckout 'KAP'
+                                localGithubCheckOutCommitID 'KAP'
                             }
 
                             //
@@ -41,7 +43,7 @@ pipeline {
                                 sh 'rm -rf ./kystudio'
                                 dir('kystudio') {
                                     retry(3) {
-                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                        localGithubCheckOutCommitID 'KAP' 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                                     }
                                 }
                             }
