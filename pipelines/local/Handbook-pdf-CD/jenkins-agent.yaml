@@ -5,21 +5,24 @@ spec:
   nodeSelector:
     kubernetes.io/hostname: "kubernetes-work01"
   containers:
-    - volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - mountPath: "/var/cicd"
-          name: "jenkins-common"
-          subPath: "newten-cicd"
+    - name: "build"
+      image: "10.1.9.11:31500/gitbookcli:latest"
+      imagePullPolicy: "IfNotPresent"
       tty: true
       command:
         - "cat"
-      image: "harbor.ops.kylincorp.com/devops/newten-build:latest"
-      imagePullPolicy: "IfNotPresent"
-      name: "build"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+      volumeMounts:
+        - mountPath: "/book"
+          name: "jenkins-common"
+          subPath: "handbook"
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
