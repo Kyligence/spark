@@ -5,6 +5,19 @@ spec:
   nodeSelector:
     kubernetes.io/hostname: "kubernetes-work01"
   containers:
+    - name: "git"
+      image: "bitnami/git:latest"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
     - name: "build"
       image: "10.1.9.11:31500/gitbookcli:latest"
       imagePullPolicy: "IfNotPresent"
@@ -22,6 +35,8 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+        - 
+          /home/jenkins/agent
 
   volumes:
     - name: "jenkins-common"

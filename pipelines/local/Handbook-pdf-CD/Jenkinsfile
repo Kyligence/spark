@@ -23,13 +23,12 @@ pipeline {
     stages {
         stage("Clone") {
             steps {
-                container("build") {
+                container("git") {
                     dir("sourcecode") {
                         script {
                             retry(3) {
                                 githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
-                            ls
                         }
                     }
                 }
