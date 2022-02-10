@@ -40,6 +40,10 @@ pipeline {
             steps {
                 container("build") {
                     sh("ls -al .")
+                    dir("sourcecode") {
+                        sh("ls -al .")
+                        sh "gitbook install"
+                    }
                     script{
                         try {
                             sc_file = pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh
@@ -52,17 +56,6 @@ pipeline {
                             echo "Stage is always successful"
                             echo ex.getMessage()
                         }
-                    }
-                }
-            }
-        }
-        stage('Install') {
-            steps {
-                container("build") {
-                    sh("ls -al .")
-                    dir("sourcecode") {
-                        sh("ls -al .")
-                        sh "gitbook install"
                     }
                 }
             }
