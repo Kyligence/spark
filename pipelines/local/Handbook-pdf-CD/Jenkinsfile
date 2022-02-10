@@ -40,8 +40,8 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         echo 'Deadline'
-                        sh "ls -al ${env.WORKSPACE}"
                         sh "gitbook build & gitbook pdf"
+                        sh "ls -al ${env.WORKSPACE}"
                     }
                 }
             }
