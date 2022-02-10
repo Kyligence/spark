@@ -35,9 +35,6 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
-        - 
-          /home/jenkins/agent
-
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
