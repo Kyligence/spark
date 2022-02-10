@@ -27,9 +27,21 @@ pipeline {
                 container("git") {
                     dir("sourcecode") {
                         script {
-                            retry(3) {
-                                githubCheckout 'KAP', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                            //---------
+                            if (params.branch ==~ /.*yinglong.*/ ) {
+                                echo 'checkout KAP_Frontend to kystudio'
+                                sh 'rm -rf ./kystudio'
+                                dir('kystudio') {
+                                    retry(3) {
+                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                    }
+                                }
                             }
+                            //--------------
+                            retry(3) {
+                                githubCheckout 'KAP', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                            }
+                            
                         }
                     }
                 }
