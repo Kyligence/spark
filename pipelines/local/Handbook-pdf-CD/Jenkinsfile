@@ -41,8 +41,8 @@ pipeline {
                     dir("sourcecode") {
                         echo 'Deadline'
                         sh "ls -al ${env.WORKSPACE}"
-                        sh script: '''
-npm install -g markdown-link-check
+                        sh("npm install -g markdown-link-check")
+                        sh script: """
 succ=1
 function check_dead_link(){
     for file in `ls $1`
@@ -61,7 +61,7 @@ if [ $succ -eq 0 ]; then
     echo "Found dead links, please find logs above."
     exit 1
 fi || exit 0;
-'''
+"""
                     }
                 }
             }
