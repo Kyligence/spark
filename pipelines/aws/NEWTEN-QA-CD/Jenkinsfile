@@ -28,18 +28,19 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             //---------
-                            if (params.branch ==~ /.*yinglong.*/ ) {
-                                echo 'checkout KAP_Frontend to kystudio'
-                                sh 'rm -rf ./kystudio'
-                                dir('kystudio') {
-                                    retry(1) {
-                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                                    }
-                                }
-                            }
+                            //if (params.branch ==~ /.*yinglong.*/ ) {
+                            //    echo 'checkout KAP_Frontend to kystudio'
+                            //    sh 'rm -rf ./kystudio'
+                            //    dir('kystudio') {
+                            //        retry(1) {
+                            //            githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                            //        }
+                            //    }
+                            // }
                             //--------------
                             retry(1) {
-                                githubCheckout 'KAP', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                //githubCheckout 'KAP', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'KAP',
                             }
                             
                         }
