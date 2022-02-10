@@ -25,9 +25,8 @@ pipeline {
         stage("Clone") {
             steps {
                 container("git") {
-                    tree
                     dir("sourcecode") {
-                        tree
+                        sh("ls -al .")
                         script {
                             retry(3) {
                                 githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
@@ -43,7 +42,6 @@ pipeline {
                     script{
                         try {     
                             retry(3){
-                                
                                 sh('./pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh')
                             }
                         }
