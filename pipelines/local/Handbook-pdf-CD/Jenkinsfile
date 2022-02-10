@@ -95,7 +95,8 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        echo 'Upload'
+                        println 'Upload'
+                        sh("ls -al /var/cicd/handbook/")
                     }
                 }
             }
