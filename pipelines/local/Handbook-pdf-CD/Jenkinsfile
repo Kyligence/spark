@@ -36,7 +36,7 @@ pipeline {
                             // }
 
                             // retry(3) {
-                            githubCloneBranch 'Kyligence-Enterprise-Manual', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 90
+                            githubCheckout 'Kyligence-Enterprise-Manual', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             // }
                             ls -l
                         }
