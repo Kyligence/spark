@@ -11,8 +11,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     npm config set registry=http://mvn.ops.kylincorp.com/repository/npm-public/ && \
     npm install -g gitbook-cli && \
     npm install -g markdown-link-check && \
-    DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    cd /tmp && gitbook init && rm -f /tmp/*.md
+    DEBIAN_FRONTEND=noninteractive apt-get clean
 
 ENV BOOKDIR /gitbook
 VOLUME $BOOKDIR

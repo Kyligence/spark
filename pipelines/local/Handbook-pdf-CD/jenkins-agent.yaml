@@ -19,7 +19,7 @@ spec:
           memory: "1Gi"
           cpu: "1000m"
     - name: "build"
-      image: "10.1.9.11:31500/gitbookcli:1.06"
+      image: "10.1.9.11:31500/gitbookcli:1.07"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
