@@ -15,11 +15,8 @@ pipeline {
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
-        string(name: 'commitid', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
-        string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
-        string(name: 'branch/commitid', defaultValue: 'master', description: 'Branch name or commit Id, which will be fetch the code.')
     }
 
     stages {
