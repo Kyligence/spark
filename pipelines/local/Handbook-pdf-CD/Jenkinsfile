@@ -38,17 +38,11 @@ pipeline {
         stage('Deadline Checker') {
             steps {
                 container("build") {
-                    dir("sourcecode") {
-                        echo 'Deadline'
-                        sh "ls -al ${env.WORKSPACE}"
-                        sh("npm install -g markdown-link-check")
-
-                        script{
-                            retry(3){
-                                sh('pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh')
-                            }
-                        }
-                    }
+                    // script{
+                    //     retry(3){
+                    //         sh('pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh')
+                    //     }
+                    // }
                 }
             }
         }
@@ -56,7 +50,6 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        echo 'Deadline'
                         sh "gitbook install"
                         sh "ls -al ${env.WORKSPACE}"
                     }
