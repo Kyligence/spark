@@ -26,8 +26,9 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'Kyligence-Enterprise-Manual', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
+                            ls
                         }
                     }
                 }
@@ -38,6 +39,7 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         echo 'Deadline'
+                        ls
                     }
                 }
             }
