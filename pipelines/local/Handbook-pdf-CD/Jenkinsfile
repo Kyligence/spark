@@ -21,24 +21,12 @@ pipeline {
     stages {
         stage("Checkout Source Code") {
             steps {
-                echo "1.Checkout Source Code Stage"
                 container("build") {
                     dir("sourcecode") {
                         script {
                             retry(3) {
                                 githubCheckout 'Kyligence-Enterprise-Manua', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
-
-                            //
-                            // if (params.branch ==~ /.*yinglong.*/ ) {
-                            //     echo 'checkout KAP_Frontend to kystudio'
-                            //     sh 'rm -rf ./kystudio'
-                            //     dir('kystudio') {
-                            //         retry(3) {
-                            //             githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                            //         }
-                            //     }
-                            // }
                         }
                     }
                 }
@@ -46,7 +34,6 @@ pipeline {
         }
         stage('Building Package') {
             steps {
-                echo "2.Building Package Stage"
                 container("build") {
                     dir("sourcecode") {
                         sh "mkdir -p /var/cicd/handbook/ && \
