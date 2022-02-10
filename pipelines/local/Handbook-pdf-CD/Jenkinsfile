@@ -42,7 +42,7 @@ pipeline {
                     sh("ls -al .")
                     dir("sourcecode") {
                         sh("ls -al .")
-                        sh "gitbook install"
+                        sh("npm install highlight.js & gitbook install")
                         sh("ls -al ./_book")
                     }
                     script{
