@@ -39,7 +39,9 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         echo 'Deadline'
-                        ls
+                        script {
+                            ls
+                        }
                     }
                 }
             }
