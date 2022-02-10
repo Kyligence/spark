@@ -30,6 +30,7 @@ pipeline {
                                 githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
                         }
+                        sh("ls -al ${env.WORKSPACE}")
                     }
                 }
             }
@@ -39,9 +40,8 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         echo 'Deadline'
-                        script {
-                            ls
-                        }
+                        sh "ls -al ${env.WORKSPACE}"
+                        sh "gitbook build & gitbook pdf"
                     }
                 }
             }
