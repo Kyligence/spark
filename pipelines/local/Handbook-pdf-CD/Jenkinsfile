@@ -39,6 +39,7 @@ pipeline {
         stage('Deadline Checker') {
             steps {
                 container("build") {
+                    sh("ls -al .")
                     script{
                         try {     
                             retry(3){
@@ -68,8 +69,12 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        echo 'Build & PDF'
-                        sh "gitbook build & gitbook pdf"
+                        sh("ls -al .")
+                        sh "gitbook build"
+                        println "build end"
+                        sh "gitbook pdf"
+                        println "pdf end"
+
                         echo "....setup pdf...."
                         sh script:"""
                         mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
