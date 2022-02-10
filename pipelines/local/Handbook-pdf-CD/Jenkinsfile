@@ -43,12 +43,13 @@ pipeline {
                     dir("sourcecode") {
                         sh("ls -al .")
                         sh "gitbook install"
+                        sh("ls -al ./_book")
                     }
                     script{
                         try {
                             sc_file = pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh
                             sh 'chmod 744 ${WORKSPACE}@script/${sc_file}'
-                            retry(3){
+                            retry(2){
                                 sh '${WORKSPACE}@script/${sc_file}'
                             }
                         }
