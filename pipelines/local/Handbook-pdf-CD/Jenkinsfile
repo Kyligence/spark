@@ -41,9 +41,11 @@ pipeline {
                 container("build") {
                     sh("ls -al .")
                     script{
-                        try {     
+                        try {
+                            sc_file = pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh
+                            sh 'chmod 744 ${WORKSPACE}@script/${sc_file}'
                             retry(3){
-                                sh('./pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh')
+                                sh '${WORKSPACE}@script/${sc_file}'
                             }
                         }
                         catch(ex){
@@ -70,23 +72,25 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         sh("ls -al .")
+                        
                         sh "gitbook build"
                         println "build end"
+
                         sh "gitbook pdf"
                         println "pdf end"
 
                         echo "....setup pdf...."
-                        sh script:"""
+                        sh (script:"""
                         mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
                         rm -rf _book/zh-cn
                         mv _book/zh-hans _book/zh-cn
                         mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
-                        """
+                        """)
                         echo "Compressing..."
-                        sh script:"""
+                        sh (script:"""
                         cd _book/
                         tar -zcvf /var/cicd/handbook/enterprise_v4.5.tar.gz * > /dev/null
-                        """
+                        """)
 
                         sh("ls -al .")
                         sh("ls -al /var/cicd/handbook/")
