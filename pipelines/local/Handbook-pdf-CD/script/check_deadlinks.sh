@@ -1,6 +1,6 @@
 #!/bin/bash -il
 # if [ "$check_deadlinks" == "true" ]; then
-    npm install -g markdown-link-check
+    # npm install -g markdown-link-check
     succ=1
     function check_dead_link(){
         for file in `ls $1`
