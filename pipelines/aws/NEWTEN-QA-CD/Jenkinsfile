@@ -22,7 +22,6 @@ pipeline {
 
     stages {
         
-          stages {
         stage("Checkout Source Code") {
             steps {
                 container("build") {
@@ -47,6 +46,7 @@ pipeline {
                 }
             }
         }
+
         stage('Building Package') {
             steps {
                 container("build") {
