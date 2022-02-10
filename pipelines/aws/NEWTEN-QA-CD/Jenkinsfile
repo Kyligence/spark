@@ -29,7 +29,6 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                          
                                 githubCheckout 'KAP'
                             }
 
