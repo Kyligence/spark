@@ -6,7 +6,7 @@ spec:
     kubernetes.io/hostname: "kubernetes-work01"
   containers:
     - name: "build"
-      image: "docker.ops.kylincorp.com/gitbookcli:latest"
+      image: "10.1.9.11:31500/gitbookcli:latest"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
