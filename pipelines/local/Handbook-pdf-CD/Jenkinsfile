@@ -38,6 +38,7 @@ pipeline {
         stage('Deadline Checker') {
             steps {
                 container("build") {
+                    sh("ls -al .")
                     // script{
                     //     retry(3){
                     //         sh('pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh')
@@ -49,9 +50,10 @@ pipeline {
         stage('Install') {
             steps {
                 container("build") {
+                    sh("ls -al .")
                     dir("sourcecode") {
+                        sh("ls -al .")
                         sh "gitbook install"
-                        sh "ls -al ${env.WORKSPACE}"
                     }
                 }
             }
@@ -74,6 +76,9 @@ pipeline {
                         cd _book/
                         tar -zcvf /var/cicd/handbook/enterprise_v4.5.tar.gz * > /dev/null
                         """
+
+                        sh("ls -al .")
+                        sh("ls -al /var/cicd/handbook/")
                     }
                 }
             }
