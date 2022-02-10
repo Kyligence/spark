@@ -5,10 +5,10 @@ spec:
   containers:
     - volumeMounts:
         - mountPath: "/root/.m2"
-          name: "jenkins-common"
+          name: "jenkins-common-cd"
           subPath: "maven3"
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
+          mountPath: /root/.m2/repository/io/kyligence-cd
         - mountPath: "/var/cicd"
           name: "jenkins-common-cd"
           subPath: "newten-cicd"
@@ -21,7 +21,7 @@ spec:
       
     - name: "git"
       volumeMounts:
-        - mountPath: "/jenkinscommon"
+        - mountPath: "/jenkinscommon-cd"
           name: "jenkins-common-cd"
       tty: true
       command:
