@@ -24,8 +24,19 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         script {
+
+                            // 需要配置本地 git mirror 后才可用
+                            // retry(3) {
+                            //     sshCmdWithCredentials(
+                            //         'bash -c /var/lib/git/pull.sh',
+                            //         'private_git',
+                            //         ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
+                            //     )
+                            //     githubCheckout 'Kyligence-Enterprise-Manual'
+                            // }
+
                             retry(3) {
-                                githubCheckout 'Kyligence-Enterprise-Manual', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'Kyligence-Enterprise-Manual', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
                         }
                     }

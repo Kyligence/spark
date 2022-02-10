@@ -13,4 +13,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* && \
     cd /tmp && gitbook init && rm -f /tmp/*.md
 
-WORKDIR /book
+ENV BOOKDIR /gitbook
+VOLUME $BOOKDIR
+EXPOSE 4000
+
+WORKDIR /gitbook
