@@ -28,7 +28,7 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'KAP'
+                                awsGithubCheckOut 'KAP'
                             }
 
                             //
@@ -37,7 +37,7 @@ pipeline {
                                 sh 'rm -rf ./kystudio'
                                 dir('kystudio') {
                                     retry(3) {
-                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                        awsGithubCheckOut 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                                     }
                                 }
                             }
