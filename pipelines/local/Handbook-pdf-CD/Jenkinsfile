@@ -3,7 +3,6 @@
 @Library('devopslib') _
 
 pipeline {
-    skip = false
 
     options {
         timeout(time: 1, unit: 'HOURS')
