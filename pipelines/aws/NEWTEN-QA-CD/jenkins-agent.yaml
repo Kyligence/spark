@@ -5,12 +5,12 @@ spec:
   containers:
     - volumeMounts:
         - mountPath: "/root/.m2"
-          name: "jenkins-common-cd"
+          name: "jenkins-common"
           subPath: "maven3"
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence-cd
+          mountPath: /root/.m2/repository/io/kyligence
         - mountPath: "/var/cicd"
-          name: "jenkins-common-cd"
+          name: "jenkins-common"
           subPath: "newten-cicd"
       tty: true
       command:
@@ -21,8 +21,8 @@ spec:
       
     - name: "git"
       volumeMounts:
-        - mountPath: "/jenkinscommon-cd"
-          name: "jenkins-common-cd"
+        - mountPath: "/jenkinscommon"
+          name: "jenkins-common"
       tty: true
       command:
         - "cat"
@@ -37,8 +37,8 @@ spec:
 
       
   volumes:
-    - name: "jenkins-common-cd"
+    - name: "jenkins-common"
       persistentVolumeClaim:
-        claimName: "jenkins-common-cd"
-    - name: "kyligence-repo-cd"
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
       emptyDir: { }
