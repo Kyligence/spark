@@ -3,6 +3,7 @@ kind: "Pod"
 name: "jenkins-agent"
 spec:
   containers:
+
     - volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -18,22 +19,7 @@ spec:
       image: "sunfuzhou/newten-build:latest"
       imagePullPolicy: "IfNotPresent"
       name: "build"
-      
-    - name: "git"
-      volumeMounts:
-        - mountPath: "/jenkinscommon"
-          name: "jenkins-common"
-      tty: true
-      command:
-        - "cat"
-      image: "bitnami/git:latest"
-      resources:
-        limits:
-          memory: "1000Mi"
-          cpu: "1000m"
-        requests:
-          memory: "1000Mi"
-          cpu: "1000m"
+     
 
       
   volumes:
