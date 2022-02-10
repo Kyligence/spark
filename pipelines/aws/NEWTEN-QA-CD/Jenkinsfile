@@ -32,15 +32,7 @@ pipeline {
                             }
 
                             //
-                            if (params.branch ==~ /.*yinglong.*/ ) {
-                                echo 'checkout KAP_Frontend to kystudio'
-                                sh 'rm -rf ./kystudio'
-                                dir('kystudio') {
-                                    retry(3) {
-                                        awsGithubCheckOut 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                                    }
-                                }
-                            }
+                
                         }
                     }
                 }
