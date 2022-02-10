@@ -1,5 +1,5 @@
 #!/bin/bash -il
-if [ "$check_deadlinks" == "true" ]; then
+# if [ "$check_deadlinks" == "true" ]; then
     # npm install -g markdown-link-check
     succ=1
     function check_dead_link(){
@@ -19,4 +19,4 @@ if [ "$check_deadlinks" == "true" ]; then
         echo "Found dead links, please find logs above."
         exit 1
     fi || exit 0;
-fi
+# fi
