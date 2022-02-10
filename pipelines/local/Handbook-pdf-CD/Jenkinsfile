@@ -14,17 +14,20 @@ pipeline {
     }
 
     parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'commitid', defaultValue: 'newten-qa', description: 'Kap branch?')
+        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
+        string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
         string(name: 'branch/commitid', defaultValue: 'master', description: 'Branch name or commit Id, which will be fetch the code.')
     }
 
     stages {
-        stage("Checkout Source Code") {
+        stage("Clone") {
             steps {
-                container("build") {
+                container("git") {
                     dir("sourcecode") {
                         script {
-
                             // 需要配置本地 git mirror 后才可用
                             // retry(3) {
                             //     sshCmdWithCredentials(
@@ -35,20 +38,38 @@ pipeline {
                             //     githubCheckout 'Kyligence-Enterprise-Manual'
                             // }
 
-                            retry(3) {
-                                githubCheckout 'Kyligence-Enterprise-Manual', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                            }
+                            // retry(3) {
+                            githubCloneBranch 'Kyligence-Enterprise-Manual', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 90
+                            // }
+                            ls -l
                         }
                     }
                 }
             }
         }
-        stage('Building Package') {
+        stage('Deadline') {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        sh "mkdir -p /var/cicd/handbook/ && \
-                        ls "
+                        echo 'Deadline'
+                    }
+                }
+            }
+        }
+        stage('Package') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                       echo 'Package'
+                    }
+                }
+            }
+        }
+        stage('Upload') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        echo 'Upload'
                     }
                 }
             }

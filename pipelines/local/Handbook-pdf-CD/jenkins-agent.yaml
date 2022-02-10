@@ -5,6 +5,21 @@ spec:
   nodeSelector:
     kubernetes.io/hostname: "kubernetes-work01"
   containers:
+    - name: "git"
+      volumeMounts:
+        - mountPath: "/jenkinscommon"
+          name: "jenkins-common"
+      tty: true
+      command:
+        - "cat"
+      image: "bitnami/git:latest"
+      resources:
+        limits:
+          memory: "1000Mi"
+          cpu: "1000m"
+        requests:
+          memory: "1000Mi"
+          cpu: "1000m"
     - name: "build"
       image: "10.1.9.11:31500/gitbookcli:latest"
       imagePullPolicy: "IfNotPresent"
@@ -27,5 +42,3 @@ spec:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
-    - name: "kyligence-repo"
-      emptyDir: {}
