@@ -2,7 +2,7 @@ def call(String project, String branch = null, String schema = 'git', String rem
     timestamps {
         checkout([$class           : 'GitSCM',
                   branches         : [[name: "${branch ?: params.branch ?: sha1}"]],
-                  userRemoteConfigs: [[credentialsId: "${params.certificate ?: 'kyligence-git'}",
+                  userRemoteConfigs: [[credentialsId: "${params.certificate ?: 'kyligencegit'}",
                                        name         : "origin",
                                        refspec      : "${refspec}",
                                        url          : "${schema}://${remoteHost}/${params.repo ?: 'Kyligence'}/${project}.git"]],
