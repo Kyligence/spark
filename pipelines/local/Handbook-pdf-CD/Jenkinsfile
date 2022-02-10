@@ -41,7 +41,7 @@ pipeline {
                     dir("sourcecode") {
                         echo 'Deadline'
                         sh "ls -al ${env.WORKSPACE}"
-                        bash """
+                        sh """
 npm install -g markdown-link-check
 succ=1
 function check_dead_link(){
