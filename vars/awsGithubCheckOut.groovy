@@ -1,4 +1,4 @@
-def call(String project, String branch = null, String schema = 'git', String remoteHost = 'github.com', refspec = '+refs/heads/*:refs/remotes/origin/*') {
+def call(String project, String branch = null, String schema = 'https', String remoteHost = 'github.com', refspec = '+refs/heads/*:refs/remotes/origin/*') {
     timestamps {
         checkout([$class           : 'GitSCM',
                   branches         : [[name: "${branch ?: params.branch ?: sha1}"]],
