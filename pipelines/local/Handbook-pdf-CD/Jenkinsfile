@@ -41,7 +41,7 @@ pipeline {
                     dir("sourcecode") {
                         echo 'Deadline'
                         sh "ls -al ${env.WORKSPACE}"
-                        sh """
+                        sh script: '''
 npm install -g markdown-link-check
 succ=1
 function check_dead_link(){
@@ -61,7 +61,7 @@ if [ $succ -eq 0 ]; then
     echo "Found dead links, please find logs above."
     exit 1
 fi || exit 0;
-"""
+'''
                     }
                 }
             }
@@ -84,14 +84,14 @@ fi || exit 0;
                         echo 'Build & PDF'
                         sh "gitbook build & gitbook pdf"
                         echo "....setup pdf...."
-                        sh """
+                        sh script:"""
                         mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
                         rm -rf _book/zh-cn
                         mv _book/zh-hans _book/zh-cn
                         mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
                         """
                         echo "Compressing..."
-                        sh """
+                        sh script:"""
                         cd _book/
                         tar -zcvf /var/cicd/handbook/enterprise_v4.5.tar.gz * > /dev/null
                         """
