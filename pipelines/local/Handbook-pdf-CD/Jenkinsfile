@@ -15,9 +15,9 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?', required: true)
-        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?', required: true)
-        string(name: 'version', defaultValue: '', description: 'Kap version?', required: true)
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
+        string(name: 'version', defaultValue: '4.5', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
@@ -41,12 +41,27 @@ pipeline {
                 container("build") {
                     script{
                         try {
-                            def sc_file = "pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh"
-                            print sc_file
-                            sh("ls -al pipelines/local/Handbook-pdf-CD/script/")
-                            sh("chmod 744 ${sc_file}")
                             retry(3){
-                                def checked = sh(script: "${sc_file}", returnStatus: true)
+                                sh(script: """
+succ=1
+function check_dead_link(){
+    for file in `ls $1`
+    do
+        if [ -d $1"/"$file ]; then
+            check_dead_link $1"/"$file $2
+        elif [ "${file: 0-3 :3}" == ".md" ]; then
+            markdown-link-check $1"/"$file -c check_dead_link_conf.json || succ=0
+        fi
+    done
+}
+echo "Start to check dead links."
+check_dead_link en
+check_dead_link zh-hans
+if [ $succ -eq 0 ]; then
+    echo "Found dead links, please find logs above."
+    exit 1
+fi || exit 0;                                
+                                """)
                             }
                         }
                         catch(ex){
@@ -60,29 +75,30 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        sh (script:"""
-                        gitbook build
-                        gitbook pdf
+                        script{
+                            sh("gitbook build")
+                            sh("gitbook pdf")
+                            sh (script:"""
+                            mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
+                            rm -rf _book/zh-cn
+                            mv _book/zh-hans _book/zh-cn
+                            mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
+                            """)
 
-                        mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
-                        rm -rf _book/zh-cn
-                        mv _book/zh-hans _book/zh-cn
-                        mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
-                        """)
+                            sh (script: """ls -al _book \
+                            ls -al _book/en \
+                            ls -al -book/zh-cn \
+                            """)
 
-                        sh (script: """ls -al _book \
-                        ls -al _book/en \
-                        ls -al -book/zh-cn \
-                        """)
+                            def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)
+                            sh (script:"""
+                            echo ${commitid}
+                            cd _book/
+                            tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}-${commitid}.tar.gz * > /dev/null
+                            """)
 
-                        def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)
-                        sh (script:"""
-                        echo ${commitid}
-                        cd _book/
-                        tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}-${commitid}.tar.gz * > /dev/null
-                        """)
-
-                        sh("ls -al /var/cicd/handbook/")
+                            sh("ls -al /var/cicd/handbook/")
+                        }
                     }
                 }
             }
