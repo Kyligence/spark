@@ -15,9 +15,9 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
-        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
-        string(name: 'version', defaultValue: '', description: 'Kap version?')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?', required: true)
+        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?', required: true)
+        string(name: 'version', defaultValue: '', description: 'Kap version?', required: true)
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
@@ -26,12 +26,12 @@ pipeline {
             steps {
                 container("git") {
                     dir("sourcecode") {
-                        sh("ls -al .")
                         script {
                             retry(3) {
                                 githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
                         }
+                        sh("gitbook install")
                     }
                 }
             }
@@ -39,22 +39,17 @@ pipeline {
         stage('Deadline Checker') {
             steps {
                 container("build") {
-                    sh("ls -al .")
-                    dir("sourcecode") {
-                        sh("ls -al .")
-                        sh("npm install highlight.js & gitbook install")
-                        sh("ls -al .")
-                    }
                     script{
                         try {
-                            sc_file = pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh
-                            sh 'chmod 744 ${WORKSPACE}@script/${sc_file}'
-                            retry(2){
-                                sh '${WORKSPACE}@script/${sc_file}'
+                            def sc_file = "pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh"
+                            print sc_file
+                            sh("ls -al pipelines/local/Handbook-pdf-CD/script/")
+                            sh("chmod 744 ${sc_file}")
+                            retry(3){
+                                def checked = sh(script: "${sc_file}", returnStatus: true)
                             }
                         }
                         catch(ex){
-                            echo "Stage is always successful"
                             echo ex.getMessage()
                         }
                     }
@@ -65,28 +60,28 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        sh("ls -al .")
-                        
-                        sh "gitbook build"
-                        println "build end"
-
-                        sh "gitbook pdf"
-                        println "pdf end"
-
-                        echo "....setup pdf...."
                         sh (script:"""
+                        gitbook build
+                        gitbook pdf
+
                         mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
                         rm -rf _book/zh-cn
                         mv _book/zh-hans _book/zh-cn
                         mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
                         """)
-                        echo "Compressing..."
-                        sh (script:"""
-                        cd _book/
-                        tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}.tar.gz * > /dev/null
+
+                        sh (script: """ls -al _book \
+                        ls -al _book/en \
+                        ls -al -book/zh-cn \
                         """)
 
-                        sh("ls -al .")
+                        def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)
+                        sh (script:"""
+                        echo ${commitid}
+                        cd _book/
+                        tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}-${commitid}.tar.gz * > /dev/null
+                        """)
+
                         sh("ls -al /var/cicd/handbook/")
                     }
                 }
