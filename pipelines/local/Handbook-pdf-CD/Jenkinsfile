@@ -43,7 +43,7 @@ pipeline {
                         script{
                             try {
                                 retry(3){
-                                    sh(script: """#!/bin/bash +x
+                                    def check_status = sh(script: """#!/bin/bash +x
 npm install -g markdown-link-check
 succ=1
 function check_dead_link(){
@@ -58,13 +58,18 @@ function check_dead_link(){
 }
 echo "Start to check dead links."
 check_dead_link en
-check_dead_link zh-hans
+check_dead_link zh-hans   
 if [ \$succ -eq 0 ]; then
     echo "Found dead links, please find logs above."
     exit 1
-fi || exit 0;                                
-                                """)
+fi || exit 0;
+                                """,returnStatus: true)
                                 }
+                                if(check_status == 0){
+                                    echo "Found dead links, please find logs above."
+                                    sh("exit 1")
+                                }
+                                sh("exit 0")
                             }
                             catch(ex){
                                 echo ex.getMessage()
@@ -79,8 +84,10 @@ fi || exit 0;
                 container("build") {
                     dir("sourcecode") {
                         script{
-                            sh("gitbook build")
-                            sh("gitbook pdf")
+                            retry(3){
+                                sh("gitbook build")
+                                sh("gitbook pdf")
+                            }
                             sh (script:"""
                             mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
                             rm -rf _book/zh-cn
