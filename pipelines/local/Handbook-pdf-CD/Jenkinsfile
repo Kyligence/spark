@@ -83,7 +83,7 @@ pipeline {
                         echo "Compressing..."
                         sh (script:"""
                         cd _book/
-                        tar -zcvf /var/cicd/handbook/enterprise_v4.5.tar.gz * > /dev/null
+                        tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}.tar.gz * > /dev/null
                         """)
 
                         sh("ls -al .")
