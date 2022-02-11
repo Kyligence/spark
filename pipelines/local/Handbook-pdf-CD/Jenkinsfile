@@ -44,6 +44,7 @@ pipeline {
                             try {
                                 retry(3){
                                     sh(script: """#!/bin/bash +x
+npm install -g markdown-link-check
 succ=1
 function check_dead_link(){
     for file in `ls \$1`
