@@ -31,7 +31,6 @@ pipeline {
                                 githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
                         }
-                        sh("gitbook install")
                     }
                 }
             }
@@ -40,10 +39,11 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                    script{
-                        try {
-                            retry(3){
-                                sh(script: """#!/bin/bash +x
+                        sh("gitbook install")
+                        script{
+                            try {
+                                retry(3){
+                                    sh(script: """#!/bin/bash +x
 succ=1
 function check_dead_link(){
     for file in `ls \$1`
@@ -63,12 +63,12 @@ if [ \$succ -eq 0 ]; then
     exit 1
 fi || exit 0;                                
                                 """)
+                                }
+                            }
+                            catch(ex){
+                                echo ex.getMessage()
                             }
                         }
-                        catch(ex){
-                            echo ex.getMessage()
-                        }
-                    }
                     }
                 }
             }
