@@ -49,7 +49,7 @@ pipeline {
                                 def run_status = sh (
                                     returnStatus: true,
                                     script: """#!/bin/bash +x
-                                    sh ./pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
+                                    sh ../pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
                                     """
                                 )
                                 print run_status
