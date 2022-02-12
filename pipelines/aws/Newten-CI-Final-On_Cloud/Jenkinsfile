@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/aws/Newten-CI-On_Cloud/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
         }
     }
 
@@ -47,7 +47,7 @@ pipeline {
         }
         stage('Testing') {
             steps {
-                script {
+                retry(3) {
                     simpleNewtenParallelTest()
                 }
             }

@@ -5,25 +5,32 @@ def call() {
             "src/core-job",
             "src/core-storage",
             "src/core-metadata",
+            "src/yinglong-enterprise-core-metadata",
+            "src/license-service",
             "src/query",
             "src/smart",
             "src/source-hive",
+            "src/streaming",
             "src/server-base",
-            "src/server"], [])
+            "src/server",
+            "src/second-storage/clickhouse",
+            "src/second-storage/core",
+            "src/second-storage/core-ui"], [])
     def ut2 = testForModules(
             'UTest-Stage-2', [
             "src/spark-project/engine-spark",
             "src/spark-project/kylin-user-session",
             "src/spark-project/kylin-user-session-dep",
             "src/spark-project/source-jdbc",
+            "src/spark-project/sparder",
             "src/spark-project/spark-common",
             "src/spark-project/spark-it",
             "src/tool",
             "src/datasource-sdk",
+            "src/external-catalog/external-catalog-sdk",
             "src/external",
             "src/external-catalog",
-            "src/assembly",
-            "src/udf"], [])
+            "src/second-storage/clickhouse-it"], [])
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 

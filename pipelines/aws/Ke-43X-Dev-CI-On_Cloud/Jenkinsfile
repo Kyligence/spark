@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/aws/Ke-43X-Dev-CI-On_Cloud/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
         }
     }
 
@@ -48,7 +48,9 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simpleKe43xDevParallelTest()
+                    retry(3) {
+                        simpleKe43xParallelTest()
+                    }
                 }
             }
             post {

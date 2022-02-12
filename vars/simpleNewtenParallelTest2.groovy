@@ -6,6 +6,7 @@ def call() {
             "src/core-storage",
             "src/core-metadata",
             "src/ke-enterprise-core-metadata",
+            "src/license-service",
             "src/query",
             "src/smart",
             "src/source-hive",
@@ -26,8 +27,6 @@ def call() {
             "src/spark-project/spark-it",
             "src/tool",
             "src/datasource-sdk",
-            "src/external-catalog/external-catalog-sdk",
-            "src/assembly",
             "src/second-storage/clickhouse-it"], [])
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
