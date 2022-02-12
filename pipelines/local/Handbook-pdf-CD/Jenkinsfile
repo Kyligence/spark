@@ -38,23 +38,26 @@ pipeline {
         stage('Deadline Checker') {
             steps {
                 container("build") {
-                    dir("sourcecode") {
-                        retry(3) {
-                            sh("gitbook install")
-                        }
+                    // dir("sourcecode") {
                         script {
-                            // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
-                            def run_status = sh (
-                                script: """cd ${ROOT_BIN_PATH} &&  \
-                                    ./run.sh  ${env.var1} '${str_param_1}' """,
-                                    returnStatus:true
-                            )
-                            print run_status
-                            // 失败强制退出
-                            if (run_status != 0) {
-                                print '脚本执行失败，强制退出'
-                                sh 'exit 1'
-                            }
+                            // retry(3) {
+                                // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
+                                def run_status = sh (
+                                    returnStatus: true,
+                                    script: 
+                                    """#!/bin/bash 
+                                    set +X
+                                    ls -l ../pipelines/local/Handbook-pdf-CD/script/
+                                    sh ../pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
+                                    """
+                                )
+                                print run_status
+                                // 失败强制退出
+                                if (run_status != 0) {
+                                    print '死链检查失败，请检查！'
+                                    // sh 'exit 1'
+                                }
+                            // }
                         }
 //                         script{
 //                             retry(3){
@@ -89,7 +92,7 @@ pipeline {
 //                             }
 //                         }
                     }
-                }
+                // }
             }
         }
         stage('Build') {
@@ -98,8 +101,11 @@ pipeline {
                     dir("sourcecode") {
                         script{
                             retry(3){
-                                sh("gitbook build")
-                                sh("gitbook pdf")
+                                sh(script:"""
+                                gitbook install 
+                                gitbook build
+                                gitbook pdf
+                                """)
                             }
                             sh (script:"""
                             mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
@@ -110,7 +116,7 @@ pipeline {
 
                             sh (script: """ls -al _book \
                             ls -al _book/en \
-                            ls -al -book/zh-cn \
+                            ls -al _book/zh-cn \
                             """)
 
                             def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)

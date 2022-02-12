@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/aws/Newten-CI-On_Cloud/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
         }
     }
 
@@ -48,7 +48,9 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simpleNewtenParallelTest()
+                    retry(3) {
+                        simpleNewtenParallelTest()
+                    }
                 }
             }
             post {
@@ -59,7 +61,7 @@ pipeline {
                 }
             }
         }
-        stage('SonarQube') {
+        stage('SonarCloud') {
             steps {
                 container("sonar-cloud") {
                     dir("sourcecode") {

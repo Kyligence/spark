@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/aws/Ke-45X-Dev-CI-On_Cloud/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
         }
     }
 
@@ -61,7 +61,7 @@ pipeline {
                 }
             }
         }
-        stage('SonarQube') {
+        stage('SonarCloud') {
             steps {
                 container("sonar-cloud") {
                     dir("sourcecode") {
@@ -74,7 +74,8 @@ pipeline {
                                 -Dsonar.pullrequest.key=${ghprbPullId} \
                                 -Dsonar.projectKey=Kyligence_KAP \
                                 -Dsonar.organization=kyligence \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/jacoco.xml
+                                -Dsonar.host.url=https://sonarcloud.io \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/*Test-Stage-*/**/*jacoco.xml
                             """
                         }
                     }

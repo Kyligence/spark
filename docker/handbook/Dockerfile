@@ -1,13 +1,20 @@
-# Use an official Node.js runtime as a parent image
-FROM node:8.11.1
-# Set npm registry to China Taobao and install Gitbook
-RUN npm config set registry https://registry.npm.taobao.org && \
-    npm install gitbook-cli -g && \
-    gitbook -V && \
-    mkdir /gitbook
-WORKDIR /gitbook
-COPY . /gitbook
-# Make port 4000 available to the world outside this container
+FROM ubuntu:18.04
+LABEL MAINTAINER lex <liming.meng@kyligence.io>
+
+RUN mv /etc/apt/sources.list /etc/apt/sourses.list.backup
+COPY ./sources.list /etc/apt/sources.list
+COPY ./nodesource_setup.sh /gitbook/nodesource_setup.sh
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    bash /gitbook/nodesource_setup.sh && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y calibre-bin nodejs
+RUN npm config set registry=http://mvn.ops.kylincorp.com/repository/npm-public/ && \
+    npm install -g gitbook-cli && \
+    npm install -g markdown-link-check && \
+    DEBIAN_FRONTEND=noninteractive apt-get clean
+
+ENV BOOKDIR /gitbook
+VOLUME $BOOKDIR
 EXPOSE 4000
 
-CMD ["sh", "-c", "gitbook install /gitbook; gitbook serve /gitbook"]
+WORKDIR /gitbook

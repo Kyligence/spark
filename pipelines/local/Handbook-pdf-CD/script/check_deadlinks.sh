@@ -1,4 +1,4 @@
-#!/bin/bash -il
+#!/bin/bash
 # if [ "$check_deadlinks" == "true" ]; then
     # npm install -g markdown-link-check
     succ=1
