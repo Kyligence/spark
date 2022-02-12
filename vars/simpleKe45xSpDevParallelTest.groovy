@@ -5,7 +5,6 @@ def call() {
             "src/core-job",
             "src/core-storage",
             "src/core-metadata",
-            "src/yinglong-enterprise-core-metadata",
             "src/license-service",
             "src/query",
             "src/smart",
