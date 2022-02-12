@@ -49,8 +49,10 @@ pipeline {
             steps {
                 script {
                     if (params.branch == "newten" ) {
+                        print("branch newten")
                         simpleNewtenParallelTestSp()
                     }else{
+                        print("branch other")
                         simpleNewtenParallelTest()
                     }
                 }
