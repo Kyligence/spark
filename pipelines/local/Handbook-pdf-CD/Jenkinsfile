@@ -114,11 +114,6 @@ pipeline {
                             mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
                             """)
 
-                            sh (script: """ls -al _book \
-                            ls -al _book/en \
-                            ls -al _book/zh-cn \
-                            """)
-
                             def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)
                             sh (script:"""
                             echo ${commitid}
