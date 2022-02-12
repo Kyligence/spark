@@ -38,17 +38,14 @@ pipeline {
         stage('Deadline Checker') {
             steps {
                 container("build") {
-                    dir("sourcecode") {
-                        retry(3) {
-                            sh("gitbook install")
-                        }
-                        
+                    // dir("sourcecode") {
                         script {
                             // retry(3) {
                                 // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
                                 def run_status = sh (
                                     returnStatus: true,
-                                    script: """#!/bin/bash 
+                                    script: 
+                                    """#!/bin/bash 
                                     set +X
                                     ls -l ../pipelines/local/Handbook-pdf-CD/script/
                                     sh ../pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
@@ -95,7 +92,7 @@ pipeline {
 //                             }
 //                         }
                     }
-                }
+                // }
             }
         }
         stage('Build') {
@@ -104,8 +101,11 @@ pipeline {
                     dir("sourcecode") {
                         script{
                             retry(3){
-                                sh("gitbook build")
-                                sh("gitbook pdf")
+                                sh(script:"""
+                                gitbook install 
+                                gitbook build
+                                gitbook pdf
+                                """)
                             }
                             sh (script:"""
                             mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
