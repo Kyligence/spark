@@ -39,11 +39,12 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        sh("gitbook install")
+                        retry(3) {
+                            sh("gitbook install")
+                        }
                         script{
-                            try {
-                                retry(3){
-                                    def check_status = sh(script: """#!/bin/bash +x
+                            retry(3){
+                                def check_status = sh(script: """#!/bin/bash +x
 npm install -g markdown-link-check
 succ=1
 function check_dead_link(){
@@ -64,15 +65,13 @@ if [ \$succ -eq 0 ]; then
     exit 1
 fi || exit 0;
                                 """,returnStatus: true)
-                                }
-                                if(check_status == 0){
-                                    echo "Found dead links, please find logs above."
-                                    sh("exit 1")
-                                }
-                                sh("exit 0")
                             }
-                            catch(ex){
-                                echo ex.getMessage()
+                            echo check_status
+                            if(check_status == 0){
+                                echo "Found dead links, please find logs above."
+                                sh("exit 1")
+                            }else{
+                                sh("exit 0")
                             }
                         }
                     }
