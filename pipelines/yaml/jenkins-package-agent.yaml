@@ -2,9 +2,20 @@
 kind: "Pod"
 name: "jenkins-agent"
 spec:
+  # nodeSelector:
+  #   kubernetes.io/hostname: "kubernetes-work01"
   containers:
-
-    - volumeMounts:
+    - name: "build"
+      image: "docker.ops.kylincorp.com/newten-build:latest"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+      volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
           subPath: "maven3"
@@ -13,15 +24,6 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
-      tty: true
-      command:
-        - "cat"
-      image: "sunfuzhou/newten-build:latest"
-      imagePullPolicy: "IfNotPresent"
-      name: "build"
-     
-
-      
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
