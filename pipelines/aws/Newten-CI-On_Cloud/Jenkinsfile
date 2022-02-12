@@ -48,7 +48,11 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simpleNewtenParallelTest()
+                    if (params.branch == "newten" ) {
+                        simpleNewtenParallelTestSp()
+                    }else{
+                        simpleNewtenParallelTest()
+                    }
                 }
             }
             post {
