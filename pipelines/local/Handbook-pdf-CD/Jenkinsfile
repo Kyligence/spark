@@ -114,7 +114,7 @@ pipeline {
 
                             sh (script: """ls -al _book \
                             ls -al _book/en \
-                            ls -al -book/zh-cn \
+                            ls -al _book/zh-cn \
                             """)
 
                             def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)
