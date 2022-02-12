@@ -1,7 +1,7 @@
 def call(String version, boolean skipPatch = true, boolean skipLicense = true) {
-    if (!skipPatch) {
-        sh 'git apply /var/cicd/patchs/newten.patch'
-    }
+    // if (!skipPatch) {
+    //     sh 'git apply /var/cicd/patchs/newten.patch'
+    // }
 
     if (!skipLicense) {
         sh script
