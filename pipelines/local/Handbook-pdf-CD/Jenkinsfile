@@ -42,6 +42,20 @@ pipeline {
                         retry(3) {
                             sh("gitbook install")
                         }
+                        script {
+                            // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
+                            def run_status = sh (
+                                script: """cd ${ROOT_BIN_PATH} &&  \
+                                    ./run.sh  ${env.var1} '${str_param_1}' """,
+                                    returnStatus:true
+                            )
+                            print run_status
+                            // 失败强制退出
+                            if (run_status != 0) {
+                                print '脚本执行失败，强制退出'
+                                sh 'exit 1'
+                            }
+                        }
 //                         script{
 //                             retry(3){
 //                                 def check_status = sh(script: """#!/bin/bash +x
