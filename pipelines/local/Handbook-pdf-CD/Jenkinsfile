@@ -48,7 +48,9 @@ pipeline {
                                 // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
                                 def run_status = sh (
                                     returnStatus: true,
-                                    script: """#!/bin/bash +x
+                                    script: """#!/bin/bash 
+                                    set +X
+                                    ls -l ../pipelines/local/Handbook-pdf-CD/script/
                                     sh ../pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
                                     """
                                 )
