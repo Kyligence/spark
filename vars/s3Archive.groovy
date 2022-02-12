@@ -7,27 +7,38 @@ def call(String type) {
 }
 
 def uploadArchive() {
-    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
-        sh script: """
-            mkdir -p ${BUILD_NUMBER}/report
-            outputs=\$(find "\$(pwd)" -path '*surefire-reports/*.xml' | sed 's/.*/&/')
-            for out in \$outputs; do
-                cp \$out ${BUILD_NUMBER}/
-            done
-            tar czf ${BUILD_NUMBER}.tar.gz ${BUILD_NUMBER}/
-        """
-        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci-result/${JOB_NAME}/", includePathPattern: "${BUILD_NUMBER}.tar.gz")
-    }
-    if (defaultJvmArgs().contains('-DpersistBuild=true')) {
-        sh script: """
-            mkdir -p ${defaultTargetBranch()}
-            outputs=\$(find "\$(pwd)" -path '*test_data/*.zip' | sed 's/.*/&/')
-            for out in \$outputs; do
-                cp \$out ${defaultTargetBranch()}
-            done
-        """
+    timestamps {
         withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
-            s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci/", includePathPattern: "${defaultTargetBranch()}/*")
+            // Upload reports for analyze
+            sh script: """
+                mkdir -p ${BUILD_NUMBER}/report
+                outputs=\$(find "\$(pwd)" -path '*surefire-reports/*.xml' | sed 's/.*/&/')
+                for out in \$outputs; do
+                    cp \$out ${BUILD_NUMBER}/
+                done
+                tar czf ${BUILD_NUMBER}.tar.gz ${BUILD_NUMBER}/
+            """
+            s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci-result/${JOB_NAME}/", includePathPattern: "${BUILD_NUMBER}.tar.gz")
+        }
+        if (defaultJvmArgs().contains('-DpersistBuild=true')) {
+            // Upload repository cache for speedup maven install 
+            sh script: """
+                cp -r /jenkins-common/.kem2/repository .
+                tar czf repository.tar.gz repository
+            """
+            s3Upload(file: 'repository.tar.gz', bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz", force: true)
+
+            // Upload Build Result
+            sh script: """
+                mkdir -p ${targetBranch()}
+                outputs=\$(find "\$(pwd)" -path '*test_data/*.zip' | sed 's/.*/&/')
+                for out in \$outputs; do
+                    cp \$out ${targetBranch()}
+                done
+            """
+            withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci/", includePathPattern: "${targetBranch()}/*")
+            }
         }
     }
 }
@@ -35,14 +46,18 @@ def uploadArchive() {
 def downloadArchive() {
     timestamps {
         withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
-            s3Download(file: './repository.tar.gz', bucket: 'k8s-bucket-devops', path: "ke-ci-repository/repository.tar.gz", force: true)
+            if (s3DoesObjectExist(bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz")) {
+                s3Download(file: 'repository.tar.gz', bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz", force: true)
+                sh script: """
+                    tar zxf repository.tar.gz 
+                    mv repository/* /jenkins-common/.kem2/repository/
+                """
+            }
+            s3Download(file: './tmp', bucket: 'k8s-bucket-devops', path: "ke-ci/${targetBranch()}/", force: true)
             sh script: """
-                tar zxf repository.tar.gz 
-                mv repository/* /jenkins-common/.kem2/repository/
-            """
-            s3Download(file: './tmp', bucket: 'k8s-bucket-devops', path: "ke-ci/${defaultTargetBranch()}/", force: true)
-            sh script: """
-                mv ./tmp/ke-ci/${defaultTargetBranch()} ./src/examples/test_data
+                if [ -z ./tmp/ke-ci/${targetBranch()}]; then
+                    mv ./tmp/ke-ci/${targetBranch()} ./src/examples/test_data
+                fi 
                 rm -rf ./tmp
             """
         }
@@ -53,9 +68,12 @@ def defaultJvmArgs() {
     return params.args.isEmpty() ? '-DskipBuild=true' : params.args
 }
 
-def defaultTargetBranch() {
+def targetBranch() {
     if (binding.variables.containsKey('ghprbTargetBranch')) {
         return ghprbTargetBranch
+    }
+    if (!params.branch.isEmpty()) {
+        return params.branch
     }
     return 'newten-dev'
 }
