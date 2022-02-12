@@ -53,9 +53,12 @@ pipeline {
                     dir("sourcecode") {
                         buildNewten(params.version, false, false)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                        def commitid = sh(returnStatus:true, script: "git rev-parse --short HEAD")
-                        sh "mkdir -p /var/cicd/artifacts/rc/Newten-CD && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/rc/Newten-CD/${version}-${commitid}-${BUILD_NUMBER}.tar.gz"
+                        script {
+                            def commitid = sh(returnStatus:true, script: "git rev-parse --short HEAD")
+                            print commitid
+                            sh "mkdir -p /var/cicd/artifacts/rc/Newten-CD && \
+                            cp dist/*.tar.gz /var/cicd/artifacts/rc/Newten-CD/${version}-${commitid}-${BUILD_NUMBER}.tar.gz"
+                        }
                     }
                 }
             }
