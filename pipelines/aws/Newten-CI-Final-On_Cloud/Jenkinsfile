@@ -59,7 +59,7 @@ pipeline {
                 }
             }
         }
-        stage('SonarQube') {
+        stage('SonarCloud') {
             steps {
                 container("sonar-cloud") {
                     dir("sourcecode") {
