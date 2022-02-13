@@ -23,14 +23,22 @@ pipeline {
     }
 
     stages {
-        stage("Checkout Source Code") {
+        stage('Build Package') {
+            steps {
+                echo 'nothing'
+            }
+        }
+        stage("Generate ENV") {
             steps {
                 container("jenkins-busybox-agent") {
                     // retry(3) {
                         script {
                             result = sh(
                                 returnStatus: true,
-                                script: 'k8s/auto-generate/install.sh --package_file=/data/jenkins-common/newten-cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/newten-qa-newten-qa-5.tar.gz --namespace=test-1'
+                                script: """#!/bin/bash 
+                                    set +X
+                                    sh ./k8s/auto-generate/install.sh --package_file=/data/jenkins-common/newten-cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/newten-qa-newten-qa-5.tar.gz --namespace=test-1
+                                """
                             ).trim()
                             if(result == 0){
                                 print 'SUCCESS'
