@@ -16,7 +16,7 @@ pipeline {
     parameters {
         string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
-        string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
+        string(name: 'version', defaultValue: '4.5.8.1', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
