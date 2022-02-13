@@ -37,15 +37,15 @@ pipeline {
                         echo "查看 K8S 集群 Pod 列表"
                         sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
                         sh "kubectl get pods"
-                    }
+                    
                     // retry(3) {
                         script {
-                            sh "ls -al ."
                             result = sh (
                                 returnStatus: true,
                                 script: """#!/bin/sh
                                     set +x
-                                    sh ${WORKSPACE}/k8s/auto-generate/install.sh --package_file=/data/jenkins-common/newten-cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/newten-qa-newten-qa-5.tar.gz --namespace=test-1
+                                    cd ${WORKSPACE}/k8s/auto-generate/
+                                    sh install.sh --package_file=/data/jenkins-common/newten-cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/newten-qa-newten-qa-5.tar.gz --namespace=test-1
                                 """
                             ).trim()
                             if(result == 0){
@@ -57,6 +57,7 @@ pipeline {
                             }
                         }
                     // }
+                    }
                 }
             }
         }
