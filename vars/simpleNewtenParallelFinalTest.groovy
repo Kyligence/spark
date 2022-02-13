@@ -13,7 +13,6 @@ def call() {
             "src/server"], [])
     def ut2 = testForModules(
             'UTest-Stage-2', [
-            "src/yinglong-enterprise-core-metadata",
             "src/license-service",
             "src/spark-project/engine-spark",
             "src/spark-project/kylin-user-session",
