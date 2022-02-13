@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-busybox-agent.yaml'
         }
     }
 
@@ -17,26 +17,30 @@ pipeline {
         string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
         string(name: 'version', defaultValue: '4.5.8.1', description: 'Kap version?')
+        string(name: 'namespace', defaultValue: 'test', description: 'Kap version?')
+        string(name: 'package_file', defaultValue: 'newten-cicd/artifacts/dev/Newten-CD/newten-qa-01fb10ea46-209-.tar.gz', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
     stages {
         stage("Checkout Source Code") {
             steps {
-                container("build") {
-                    dir("sourcecode") {
-                        retry(3) {
-                            script {
-                                result = sh(returnStatus: true, script: 'install.sh --package_file=/data/jenkins-common/newten-cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/newten-qa-newten-qa-5.tar.gz --namespace=test-1').trim()
-                                if(result == 0){
-                                    // exit 0
-                                    currentBuild.result = 'SUCCESS'
-                                }else{
-                                    currentBuild.result = 'FAILED'
-                                }
+                container("jenkins-busybox-agent") {
+                    // retry(3) {
+                        script {
+                            result = sh(
+                                returnStatus: true,
+                                script: 'k8s/auto-generate/install.sh --package_file=/data/jenkins-common/newten-cicd/artifacts/dev/NEWTEN-QA-INPUT-ID-CD/newten-qa-newten-qa-5.tar.gz --namespace=test-1'
+                            ).trim()
+                            if(result == 0){
+                                print 'SUCCESS'
+                                currentBuild.result = 'SUCCESS'
+                            }else{
+                                print 'FAILED'
+                                currentBuild.result = 'FAILED'
                             }
                         }
-                    }
+                    // }
                 }
             }
         }
