@@ -2,6 +2,9 @@
 
 @Library('devopslib') _
 
+package_file = ''
+
+
 pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
