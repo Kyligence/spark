@@ -30,7 +30,7 @@ pipeline {
         }
         stage("Generate ENV") {
             steps {
-                container("jenkins-busybox-agent") {
+                container("busybox") {
                     // retry(3) {
                         script {
                             result = sh(
