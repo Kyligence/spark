@@ -114,7 +114,7 @@ pipeline {
                             mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
                             """)
 
-                            def commitid = sh(script:"git rev-parse --short HEAD",returnStatus: true)
+                            commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
                             sh (script:"""
                             echo ${commitid}
                             cd _book/
