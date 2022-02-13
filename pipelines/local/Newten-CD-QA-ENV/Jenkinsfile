@@ -26,6 +26,7 @@ pipeline {
         stage('Build Package') {
             steps {
                 echo 'nothing'
+                sh "ls -al ."
             }
         }
         stage("Generate ENV") {
@@ -33,6 +34,7 @@ pipeline {
                 container("busybox") {
                     // retry(3) {
                         script {
+                            sh "ls -al ."
                             result = sh(
                                 returnStatus: true,
                                 script: """#!/bin/bash 
