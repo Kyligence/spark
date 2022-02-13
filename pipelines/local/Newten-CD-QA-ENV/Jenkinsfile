@@ -13,8 +13,6 @@ pipeline {
         }
     }
 
-    agent any
-
     parameters {
         string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
