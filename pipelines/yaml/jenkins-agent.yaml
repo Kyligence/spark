@@ -1,0 +1,83 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "git"
+      volumeMounts:
+        - mountPath: "/jenkinscommon"
+          name: "jenkins-common"
+      tty: true
+      command:
+        - "cat"
+      image: "bitnami/git:latest"
+      resources:
+        limits:
+          memory: "1000Mi"
+          cpu: "1000m"
+        requests:
+          memory: "1000Mi"
+          cpu: "1000m"
+
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-8"
+      imagePullPolicy: "Always"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
+      resources:
+        limits:
+          memory: "56000Mi"
+          cpu: "16000m"
+        requests:
+          memory: "56000Mi"
+          cpu: "16000m"
+
+    - name: "sonar-cloud"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-11"
+      imagePullPolicy: "Always"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+      resources:
+        limits:
+          memory: "2000Mi"
+          cpu: "2000m"
+        requests:
+          memory: "2000Mi"
+          cpu: "2000m"
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "ke-maven-settings"
+      name: "maven-settings"
+    - name: "dockersock"
+      hostPath:
+        path: "/var/run/docker.sock"

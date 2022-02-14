@@ -2,24 +2,11 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: test-claim
-  namespace: default
+  namespace: ops
 spec:
-  storageClassName: managed-nfs-storage
+  storageClassName: nfs-dynamic
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 10Mi
----
-# kind: PersistentVolumeClaim
-# apiVersion: v1
-# metadata:
-#   name: auto-pv-with-nfs-client-provisioner
-#   namespace: ops
-# spec:
-#   storageClassName: managed-nfs-storage        #使用nfs-client-provisioner作为NFS外部provisioner的Storage Class Name；
-#   accessModes:
-#     - ReadWriteMany
-#   resources:
-#     requests:
-#       storage: 1Mi      #NFS Server中对应的挂载目录大小；目前CFS文件存储不限制挂载目录的容量；storage不超过文件存储最大容量限制即可

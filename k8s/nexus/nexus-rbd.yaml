@@ -1,0 +1,176 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexus-data-pv
+  namespace: ops
+  labels:
+    pv: nfs-nexus
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 50Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /data/nexus3  # 指定nfs的挂载点
+    server: 10.1.9.11  # 指定nfs服务地址
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-data-pvc
+  namespace: ops
+spec:
+  accessModes:
+    - ReadWriteMany
+  # 指定 storageClass 的名字，这里使用默认的 standard
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 20Gi
+  selector:
+    matchLabels:
+      pv: nfs-nexus
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-data-rbd-pvc
+  namespace: ops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # 指定 storageClass 的名字，这里使用默认的 standard
+  storageClassName: "rbd-dynamic"
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ops
+  name: nexus3-rbd
+  labels:
+    app: nexus3-rbd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus3-rbd
+  template:
+    metadata:
+      labels:
+        app: nexus3-rbd
+    spec:
+      initContainers:
+      - name: chown-nexusdata-owner-to-nexus
+        image: busybox:1.34.1
+        command: [ "/bin/sh","-c" ]
+        args: [ "chown -R 200:200 /nexus-data" ]
+        volumeMounts:
+          - name: nexus-data-rbd
+            mountPath: /nexus-data
+          # - name: nexus-data
+          #   mountPath: /nexus-data-old
+      containers:
+      - name: nexus3-rbd
+        image: sonatype/nexus3:3.32.0
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8081
+            name: web
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 100
+          periodSeconds: 30
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 100
+          periodSeconds: 30
+          failureThreshold: 6
+        resources:
+          limits:
+            memory: "4Gi"
+            cpu: "4000m"
+          requests:
+            memory: "2Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: nexus-data-rbd
+          mountPath: /nexus-data
+        # - name: nexus-data
+        #   mountPath: /nexus-data-old
+      volumes:
+        - name: nexus-data-rbd
+          persistentVolumeClaim:
+            claimName: nexus-data-rbd-pvc
+        # - name: nexus-data
+        #   persistentVolumeClaim:
+        #     claimName: nexus-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus3-rbd
+  namespace: ops
+  labels:
+    app: nexus3-rbd
+spec:
+  selector:
+    app: nexus3-rbd
+  type: NodePort
+  ports:
+    - name: web
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+      nodePort: 31000
+    - name: docker
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 31500
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nexus3-rbd
+  namespace: ops
+  annotations:
+    field.cattle.io/description: 制品库 & 代理私服
+status:
+  loadBalancer:
+    ingress:
+      - ip: 10.1.9.11
+      - ip: 10.1.9.12
+spec:
+  rules:
+    - host: mvn.ops.kylincorp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nexus3-rbd
+                port:
+                  number: 8081
+    - host: docker.ops.kylincorp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nexus3-rbd
+                port:
+                  number: 5000

@@ -1,0 +1,41 @@
+---
+kind: "Pod"
+name: "handbook-agent"
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "kubernetes-work01"
+  containers:
+    - name: "git"
+      image: "bitnami/git:latest"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+    - name: "build"
+      image: "10.1.9.11:31500/handbook:0.1"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+      volumeMounts:
+        - mountPath: "/gitbook"
+          name: "jenkins-common"
+          subPath: "handbook"
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"

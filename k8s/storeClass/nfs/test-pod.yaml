@@ -1,0 +1,26 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-pod
+  namespace: ops
+spec:
+  containers:
+  - name: test-pod
+    image: busybox:1.24
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "64Mi"
+    command:
+      - "/bin/sh"
+    args:
+      - "-c"
+      - "touch /mnt/SUCCESS && exit 0 || exit 1"   #创建一个SUCCESS文件后退出
+    volumeMounts:
+      - name: nfs-pvc
+        mountPath: "/mnt"
+  restartPolicy: "Never"
+  volumes:
+    - name: nfs-pvc
+      persistentVolumeClaim:
+        claimName: test-claim  #与PVC名称保持一致

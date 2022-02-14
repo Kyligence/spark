@@ -1,0 +1,12 @@
+FROM ubuntu:18.04
+LABEL MAINTAINER lex <liming.meng@kyligence.io>
+
+RUN mv /etc/apt/sources.list /etc/apt/sourses.list.backup
+COPY ./sources.list /etc/apt/sources.list
+
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update  && \
+    DEBIAN_FRONTEND="noninteractive" apt-get install -y calibre-bin nodejs npm  && \
+    npm install -g gitbook-cli && \
+    cd /tmp && gitbook init && rm -f /tmp/*.md
+
+WORKDIR /book

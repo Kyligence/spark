@@ -1,0 +1,32 @@
+---
+kind: "Pod"
+name: "jenkins-package-agent"
+spec:
+  # nodeSelector:
+  #   kubernetes.io/hostname: "kubernetes-work01"
+  containers:
+    - name: "build"
+      image: "docker.ops.kylincorp.com/newten-build:latest"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }

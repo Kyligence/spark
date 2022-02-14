@@ -4,18 +4,17 @@ def call() {
             "src/core-common",
             "src/core-job",
             "src/core-storage",
-            "src/core-metadata"], [])
-    def ut2 = testForModules(
-            'UTest-Stage-2', [
+            "src/core-metadata",
             "src/query",
             "src/smart",
             "src/source-hive",
             "src/streaming",
-            "src/second-storage/clickhouse",
-            "src/second-storage/core",
-            "src/second-storage/core-ui"], [])
-    def ut3 = testForModules(
-            'UTest-Stage-3', [
+            "src/server-base",
+            "src/server"], [])
+    def ut2 = testForModules(
+            'UTest-Stage-2', [
+            "src/yinglong-enterprise-core-metadata",
+            "src/license-service",
             "src/spark-project/engine-spark",
             "src/spark-project/kylin-user-session",
             "src/spark-project/kylin-user-session-dep",
@@ -25,18 +24,14 @@ def call() {
             "src/spark-project/spark-it",
             "src/tool",
             "src/datasource-sdk",
-            "src/external",
-            "src/external-catalog",
-            "src/assembly",
-            "src/udf"], [])
-    def ut4 = testForModules(
-            'UTest-Stage-4', [
-            "src/server-base",
-            "src/server"], [])
+            "src/second-storage/clickhouse",
+            "src/second-storage/core",
+            "src/second-storage/core-ui",
+            "src/second-storage/clickhouse-it"], [])
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 
-    def allTestStages = ut1 + ut2 + ut3 + ut4 + it1 + it2
+    def allTestStages = ut1 + ut2 + it1 + it2
 
     echo 'parallel run all tests...'
     parallel allTestStages
@@ -46,20 +41,23 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
     return [(stage): {
         // 'container': use the same container to execute in parallel in the current pod
         // 'node(POD_LABEL)': multiple pod in parallel, and this situation needs to rely on external shared storage
-        container(stage.toLowerCase()) {
+        container('maven') {
             def willTestModules = modules.join(",")
             def willTestCases = tests.join(",")
-            sh script: """
-                if [ ! -d ${stage} ]; then
-                    mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
-                fi
 
-                cd ./${stage} && mvn clean test --fail-at-end \
-                -pl ${willTestModules} \
-                -Dtest='${willTestCases}' \
-                -DfailIfNoTests=false \
-                -Duser.timezone=GMT+8
-            """
+            retry(3){
+                sh script: """
+                    if [ ! -d ${stage} ]; then
+                        mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
+                    fi
+
+                    cd ./${stage} && mvn clean test --fail-at-end \
+                    -pl ${willTestModules} \
+                    -Dtest='${willTestCases}' \
+                    -DfailIfNoTests=false \
+                    -Duser.timezone=GMT+8
+                """
+            }
         }
     }]
 }

@@ -1,0 +1,141 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/local/Handbook-pdf-CD/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
+        string(name: 'version', defaultValue: '4.5', description: 'Kap version?')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+    }
+
+    stages {
+        stage("Clone") {
+            steps {
+                container("git") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                githubCheckout 'Kyligence-Enterprise-Manual', null, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Deadline Checker') {
+            steps {
+                container("build") {
+                    // dir("sourcecode") {
+                        script {
+                            // retry(3) {
+                                // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
+                                def run_status = sh (
+                                    returnStatus: true,
+                                    script: 
+                                    """#!/bin/bash 
+                                    set +X
+                                    ls -l ../pipelines/local/Handbook-pdf-CD/script/
+                                    sh ../pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
+                                    """
+                                )
+                                print run_status
+                                // 失败强制退出
+                                if (run_status != 0) {
+                                    print '死链检查失败，请检查！'
+                                    // sh 'exit 1'
+                                }
+                            // }
+                        }
+//                         script{
+//                             retry(3){
+//                                 def check_status = sh(script: """#!/bin/bash +x
+// npm install -g markdown-link-check
+// succ=1
+// function check_dead_link(){
+//     for file in `ls \$1`
+//     do
+//         if [ -d \$1"/"\$file ]; then
+//             check_dead_link \$1"/"\$file \$2
+//         elif [ "\${file: 0-3 :3}" == ".md" ]; then
+//             markdown-link-check \$1"/"\$file -c check_dead_link_conf.json || succ=0
+//         fi
+//     done
+// }
+// echo "Start to check dead links."
+// check_dead_link en
+// check_dead_link zh-hans   
+// if [ \$succ -eq 0 ]; then
+//     echo "Found dead links, please find logs above."
+//     exit 1
+// fi || exit 0;
+//                                 """,returnStatus: true)
+//                             }
+//                             echo check_status
+//                             if(check_status == 0){
+//                                 echo "Found dead links, please find logs above."
+//                                 sh("exit 1")
+//                             }else{
+//                                 sh("exit 0")
+//                             }
+//                         }
+                    }
+                // }
+            }
+        }
+        stage('Build') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script{
+                            retry(3){
+                                sh(script:"""
+                                gitbook install 
+                                gitbook build
+                                gitbook pdf
+                                """)
+                            }
+                            sh (script:"""
+                            mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
+                            rm -rf _book/zh-cn
+                            mv _book/zh-hans _book/zh-cn
+                            mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
+                            """)
+
+                            commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
+                            sh (script:"""
+                            echo ${commitid}
+                            cd _book/
+                            tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}-${commitid}.tar.gz * > /dev/null
+                            """)
+
+                            sh("ls -al /var/cicd/handbook/")
+                        }
+                    }
+                }
+            }
+        }
+        stage('Upload') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        println 'Upload'
+                        sh("ls -al /var/cicd/handbook/")
+                    }
+                }
+            }
+        }
+    }
+}

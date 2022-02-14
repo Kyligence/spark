@@ -1,0 +1,91 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: cephfs
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-secret-client-cephfs
+  namespace: cephfs
+type: kubernetes.io/rbd
+data:
+  key: QVFBM3ZmdGhtZmJuSUJBQVN6S2lCUkVuV3JrR0x2NDc5OVJrMFE9PQ==
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: myservice-pv
+  labels:
+    name: myservice-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  cephfs:
+    monitors: 
+    - 10.1.9.21:6789
+    - 10.1.9.22:6789
+    - 10.1.9.23:6789
+    path: /data/myservice
+    user: admin
+    secretRef:
+      name: ceph-secret-client-cephfs
+    readOnly: false
+  persistentVolumeReclaimPolicy: Delete
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myservice-pvc
+  namespace: cephfs
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 2Gi
+  selector:
+    matchLabels:
+      name: myservice-pv
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: myservice
+  name: myservice
+  namespace: cephfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myservice
+  template:
+    metadata:
+      labels:
+        app: myservice
+    spec:
+      containers:
+      - name: myservice
+        image: busybox:1.24
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "64Mi"
+        command:
+          - "/bin/sh"
+        args:
+          - "-c"
+          - "touch /mnt/SUCCESS && exit 0 || exit 1"   #创建一个SUCCESS文件后退出
+        volumeMounts:
+          - name: data
+            mountPath: /data
+      restartPolicy: "Always"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: myservice-pvc

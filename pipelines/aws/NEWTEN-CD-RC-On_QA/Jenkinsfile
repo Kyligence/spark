@@ -1,0 +1,55 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/NEWTEN-QA-CD/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
+        string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
+    }
+
+    stages {
+        
+        stage("Checkout Source Code") {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                awsGithubCheckOut 'KAP'
+                            }
+
+                            //
+                
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Building Package') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        buildNewten(params.version)
+                        archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                        sh "mkdir -p /var/cicd/artifacts/dev/Newten-CD && \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/Newten-CD/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
+                    }
+                }
+            }
+        }
+    }
+}

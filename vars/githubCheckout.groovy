@@ -1,16 +1,22 @@
-def call(String project, String remoteHost = '10.1.2.192', refspec = '+refs/heads/*:refs/remotes/origin/*', String defaultBranch = 'master') {
+def call(String project, String branch = null, String schema = 'git', String remoteHost = '10.1.2.192', refspec = '+refs/heads/*:refs/remotes/origin/*') {
     timestamps {
         checkout([$class           : 'GitSCM',
-                  branches         : [[name: "${params.branch ?: sha1 ?: defaultBranch}"]],
+                  branches         : [[name: "${branch ?: params.branch ?: sha1}"]],
                   userRemoteConfigs: [[credentialsId: "${params.certificate ?: 'kyligence-git'}",
                                        name         : "origin",
                                        refspec      : "${refspec}",
-                                       url          : "git://${remoteHost}/${params.repo ?: 'Kyligence'}/${project}.git"]],
+                                       url          : "${schema}://${remoteHost}/${params.repo ?: 'Kyligence'}/${project}.git"]],
                   browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/${project}"],
                   extensions       : [
                           [$class: 'CleanBeforeCheckout'],
                           [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
                   ]
         ])
+        sh script: '''
+        if [ -f license.patch ]; then
+            git apply license.patch
+            git checkout -- .
+        fi
+        '''
     }
 }

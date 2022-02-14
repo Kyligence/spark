@@ -1,4 +1,5 @@
 #!/bin/bash
+#
 
 #说明
 show_usage="args: [-p , -n]\
