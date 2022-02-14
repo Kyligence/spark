@@ -208,8 +208,8 @@ echo "[OK]部署 Kyligence Enterprise"
 #
 
 echo "[12/13]导入SSB数据"
-pod=$(kubectl get pods -l app=kyligence-enterprise -n kyligence --no-headers | awk '{print $1}')
-kubectl exec -it $pod -c kyligence-enterprise -n kyligence -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
+pod=$(kubectl get pods -l app=kyligence-enterprise -n $opt_namespace --no-headers | awk '{print $1}')
+kubectl exec -it $pod -c kyligence-enterprise -n $opt_namespace -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
 echo "[OK]导入SSB数据"
 
 cat ./banner.txt
