@@ -48,9 +48,7 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    retry(3) {
-                        simpleNewtenParallelTest()
-                    }
+                    simpleNewtenParallelTest()
                 }
             }
             post {

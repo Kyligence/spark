@@ -43,17 +43,19 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
         container('maven') {
             def willTestModules = modules.join(",")
             def willTestCases = tests.join(",")
-            sh script: """
-                if [ ! -d ${stage} ]; then
-                    mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
-                fi
+            retry(3){
+                sh script: """
+                    if [ ! -d ${stage} ]; then
+                        mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
+                    fi
 
-                cd ./${stage} && mvn clean test --fail-at-end \
-                -pl ${willTestModules} \
-                -Dtest='${willTestCases}' \
-                -DfailIfNoTests=false \
-                -Duser.timezone=GMT+8
-            """
+                    cd ./${stage} && mvn clean test --fail-at-end \
+                    -pl ${willTestModules} \
+                    -Dtest='${willTestCases}' \
+                    -DfailIfNoTests=false \
+                    -Duser.timezone=GMT+8
+                """
+            }
         }
     }]
 }
