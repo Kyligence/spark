@@ -52,7 +52,7 @@ kubectl apply -f ./namespace/namespace.yaml \
 #
 #
 #
-echo "[1/12]部署 Zookeeper"
+echo "[1/10]部署 Zookeeper"
 kubectl apply -f ./zookeeper/zookeeper.yaml
 if [ $? -eq 1 ]
 then
@@ -71,7 +71,7 @@ echo "[OK]部署 Zookeeper"
 #
 #
 #
-echo "[2/12]部署 Mysql"
+echo "[2/10]部署 Mysql"
 kubectl apply -f ./mysql/mysql.yaml \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/mysql --timeout=-1s
 
@@ -83,7 +83,7 @@ echo "[OK]部署 Mysql"
 #
 #
 #
-echo "[3/12]部署 HDFS-NameNode"
+echo "[3/10]部署 HDFS-NameNode"
 kubectl apply -f ./hdfs/namenode \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/hdfs-namenode --timeout=-1s
 
@@ -95,7 +95,7 @@ echo "[OK]部署 HDFS-NameNode"
 #
 #
 #
-echo "[4/12]部署 HDFS-DataNode"
+echo "[4/10]部署 HDFS-DataNode"
 kubectl apply -f ./hdfs/datanode
 
 if [ $? -eq 1 ]
@@ -115,7 +115,7 @@ echo "[OK]部署 HDFS-DataNode"
 #
 #
 #
-echo "[5/12]部署 Yarn-HistoryServer"
+echo "[5/10]部署 Yarn-HistoryServer"
 kubectl apply -f ./yarn/historyserver \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/yarn-historyserver --timeout=-1s
 
@@ -127,7 +127,7 @@ echo "[OK]部署 Yarn-HistoryServer"
 #
 #
 #
-echo "[6/12]部署 Yarn-ResourceManager"
+echo "[6/10]部署 Yarn-ResourceManager"
 kubectl apply -f ./yarn/resourcemanager \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/yarn-resourcemanager --timeout=-1s
 
@@ -139,7 +139,7 @@ echo "[OK]部署 Yarn-ResourceManager"
 #
 #
 #
-echo "[7/12]部署 Yarn-NodeManager"
+echo "[7/10]部署 Yarn-NodeManager"
 kubectl apply -f ./yarn/nodemanager
 
 if [ $? -eq 1 ]
@@ -159,7 +159,7 @@ echo "[OK]部署 Yarn-NodeManager"
 #
 #
 #
-echo "[8/12]初始化 Hive Metastore 元数据"
+echo "[8/10]初始化 Hive Metastore 元数据"
 kubectl apply -f ./hive/metastore/hive-initschema-job.yaml \
 	&& kubectl -n $opt_namespace wait --for=condition=complete job/hive-initschema-job --timeout=-1s
 
@@ -171,7 +171,7 @@ echo "[OK]初始化 Hive Metastore 元数据"
 #
 #
 #
-echo "[9/12]部署 Hive Metastore"
+echo "[9/10]部署 Hive Metastore"
 kubectl apply -f ./hive/metastore/hive-metastore-deploy.yaml \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/hive-metastore --timeout=-1s
 
@@ -183,7 +183,7 @@ echo "[OK]部署 Hive Metastore"
 #
 #
 #
-echo "[10/12]部署 Hive Server2"
+echo "[10/10]部署 Hive Server2"
 kubectl apply -f ./hive/server2/hive-server2.yaml \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/hive-server2 --timeout=-1s
 
@@ -192,27 +192,7 @@ then
 	echo "[FAILED]部署 Hive Server2" && exit 1
 fi
 echo "[OK]部署 Hive Server2"
-#
-#
-#
-echo "[11/12]部署 Kyligence Enterprise"
-kubectl apply -f ./kyligence-enterprise \
-	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/kyligence-enterprise --timeout=-1s
-
-if [ $? -eq 1 ]
-then
-	echo "[FAILED]部署 Kyligence Enterprise" && exit 1
-fi
-echo "[OK]部署 Kyligence Enterprise"
-#
-#
-#
-
-echo "[12/13]导入SSB数据"
-pod=$(kubectl get pods -l app=kyligence-enterprise -n kyligence --no-headers | awk '{print $1}')
-kubectl exec -it $pod -c kyligence-enterprise -n kyligence -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
-echo "[OK]导入SSB数据"
 
 cat ./banner.txt
 
-echo http://${opt_namespace}.uat.kylincorp.com/kylin
+echo "[FINISH]部署整套大数据中间件完成！"
