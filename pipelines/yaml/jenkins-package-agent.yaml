@@ -62,12 +62,5 @@ spec:
         items:
           - key: "settings.xml"
             path: "settings.xml"
-        name: "ke-maven-settings"
+        name: "lex-mvn-settings"
       name: "lex-mvn-settings"
-    - configMap:
-        defaultMode: 0777
-        items:
-          - key: "settings.xml"
-            path: "settings.xml"
-        name: "ke-npm-repo"
-      name: "lex-npm-repo"
