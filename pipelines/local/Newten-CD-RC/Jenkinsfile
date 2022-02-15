@@ -60,7 +60,7 @@ pipeline {
                             def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD").trim()
                             print commitid
                             sh "mkdir -p /var/cicd/artifacts/rc/Newten-CD && \
-                            cp dist/*.tar.gz /var/cicd/artifacts/rc/Newten-CD/KE-${version}-${BUILD_NUMBER}-${commitid}.tar.gz"
+                            cp dist/*.tar.gz /var/cicd/artifacts/rc/Newten-CD/KE-${version}-RC-${BUILD_NUMBER}-${commitid}.tar.gz"
                         }
                     }
                 }

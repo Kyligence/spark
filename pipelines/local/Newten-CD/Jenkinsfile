@@ -65,7 +65,7 @@ pipeline {
                             cp -rf license.patch /var/cicd/newten.patch
                             mkdir -p /var/cicd/artifacts/dev/Newten-CD
                             cp dist/*.tar.gz /var/cicd/artifacts/rc/Newten-CD/KE-${version}-${BUILD_NUMBER}-${commitid}.tar.gz"
-                            echo "newten-cicd/artifacts/dev/Newten-CD/KE-${version}-${BUILD_NUMBER}-${commitid}.tar.gz"
+                            echo "newten-cicd/artifacts/dev/Newten-CD/KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
                             """).trim()
                             print package_file
                         }
