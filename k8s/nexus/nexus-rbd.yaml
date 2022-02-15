@@ -154,6 +154,16 @@ status:
       - ip: 10.1.9.12
 spec:
   rules:
+    - host: repository.ops.kylincorp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nexus3-rbd
+                port:
+                  number: 8081
     - host: mvn.ops.kylincorp.com
       http:
         paths:

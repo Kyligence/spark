@@ -22,6 +22,10 @@ spec:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
           subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository/io/kyligence
         - mountPath: "/var/cicd"
@@ -34,9 +38,12 @@ spec:
       command:
         - "cat"
       resources:
+        request:
+          cpu: "300m"
+          memory: "300Mi"
         limits:
-          cpu: 1
-          memory: "1Gi"
+          cpu: "750m"
+          memory: "750m"
       volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
@@ -50,3 +57,17 @@ spec:
     - name:  "kube-config"
       hostPath:
         path:  "/home/jenkins/.kube"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "ke-maven-settings"
+      name: "lex-mvn-settings"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "ke-npm-repo"
+      name: "lex-npm-repo"
