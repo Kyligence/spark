@@ -2,8 +2,8 @@
 kind: "Pod"
 name: "jenkins-package-agent"
 spec:
-  # nodeSelector:
-  #   kubernetes.io/hostname: "kubernetes-work01"
+  nodeSelector:
+    kubernetes.io/hostname: "kubernetes-work01"
   containers:
     - name: "build"
       image: "docker.ops.kylincorp.com/newten-build:latest"
@@ -11,6 +11,13 @@ spec:
       tty: true
       command:
         - "cat"
+      resources:
+        request:
+          memory: "2000Mi"
+          cpu: "500m"
+        limits:
+          memory: "4000Mi"
+          cpu: "2000m"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
