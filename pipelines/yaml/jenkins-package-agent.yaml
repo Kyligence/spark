@@ -11,10 +11,6 @@ spec:
       tty: true
       command:
         - "cat"
-      resources:
-        limits:
-          cpu: 4
-          memory: "4Gi"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
