@@ -13,8 +13,8 @@ spec:
         - "cat"
       resources:
         limits:
-          memory: "8Gi"
-          cpu: "4"
+          cpu: 4
+          memory: "4Gi"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -32,8 +32,8 @@ spec:
         - "cat"
       resources:
         limits:
-          memory: "2Gi"
-          cpu: "1"
+          cpu: 1
+          memory: "1Gi"
       volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
