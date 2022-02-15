@@ -51,13 +51,15 @@ def downloadArchive() {
                 sh script: """
                     tar zxf repository.tar.gz 
                     mv repository/* /jenkins-common/.kem2/repository/
+                    ls -al /jenkins-common/.kem2/repository/
                 """
             }
             s3Download(file: './tmp', bucket: 'k8s-bucket-devops', path: "ke-ci/${targetBranch()}/", force: true)
             sh script: """
-                if [ -z ./tmp/ke-ci/${targetBranch()}]; then
+                if [ -d ./tmp/ke-ci/${targetBranch()} ]; then
                     mv ./tmp/ke-ci/${targetBranch()} ./src/examples/test_data
-                fi 
+                    ls -al ./src/examples/test_data
+                fi
                 rm -rf ./tmp
             """
         }
