@@ -65,6 +65,7 @@ spec:
         requests:
           memory: "1G"
           cpu: "1000m"
+
     - name: "kubectl"
       image: "cnych/kubectl"
       imagePullPolicy: "IfNotPresent"
@@ -88,13 +89,13 @@ spec:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
-    - configMap:
-        defaultMode: 0777
-        items:
-          - key: "settings.xml"
-            path: "settings.xml"
-        name: "ke-maven-settings"
-      name: "maven-settings"
+    # - configMap:
+    #     defaultMode: 0777
+    #     items:
+    #       - key: "settings.xml"
+    #         path: "settings.xml"
+    #     name: "ke-maven-settings"
+    #   name: "maven-settings"
     - name: "dockersock"
       hostPath:
         path: "/var/run/docker.sock"
