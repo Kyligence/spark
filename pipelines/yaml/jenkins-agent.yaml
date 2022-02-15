@@ -14,11 +14,11 @@ spec:
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "1G"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
         requests:
-          memory: "1G"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
     - name: "maven"
       tty: true
@@ -38,11 +38,11 @@ spec:
           name: "dockersock"
       resources:
         limits:
-          memory: "1G"
-          cpu: "1000m"
+          memory: "56000Mi"
+          cpu: "16000m"
         requests:
-          memory: "1G"
-          cpu: "1000m"
+          memory: "56000Mi"
+          cpu: "16000m"
 
     - name: "sonar-cloud"
       tty: true
@@ -60,45 +60,25 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "1G"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
         requests:
-          memory: "1G"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
-    - name: "kubectl"
-      image: "cnych/kubectl"
-      imagePullPolicy: "IfNotPresent"
-      tty: true
-      command:
-        - "cat"
-      resources:
-        limits:
-          memory: "1G"
-          cpu: "1000m"
-        requests:
-          memory: "1G"
-          cpu: "1000m"
-      volumeMounts:
-        - mountPath: "/var/cicd"
-          name: "jenkins-common"
-          subPath: "newten-cicd"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
-    # - configMap:
-    #     defaultMode: 0777
-    #     items:
-    #       - key: "settings.xml"
-    #         path: "settings.xml"
-    #     name: "ke-maven-settings"
-    #   name: "maven-settings"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "ke-maven-settings"
+      name: "maven-settings"
     - name: "dockersock"
       hostPath:
         path: "/var/run/docker.sock"
-    - name:  "kube-config"
-      hostPath:
-        path:  "/home/jenkins/.kube"
