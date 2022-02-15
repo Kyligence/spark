@@ -4,12 +4,12 @@
 
 pipeline {
     options {
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 6, unit: 'HOURS')
     }
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
+            yamlFile 'pipelines/aws/Daily-CI/jenkins-agent.yaml'
         }
     }
 
@@ -26,6 +26,7 @@ pipeline {
                 container("git") {
                     dir("sourcecode") {
                         script {
+                            currentBuild.description = "${params.branch} ${params.args}"
                             retry(3) {
                                 githubCheckout 'KAP', null, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*'
                             }
@@ -49,22 +50,27 @@ pipeline {
         }
         stage('Testing') {
             steps {
-                script {
-                    retry(3) {
-                        simpleNewtenParallelTest()
+                container('maven') {
+                    dir("sourcecode") {
+                        sh script: """mvn clean test \
+                            -DfailIfNoTests=false \
+                            -Duser.timezone=GMT+8 ${params.args}
+                            """
                     }
                 }
             }
             post {
                 always {
                     timestamps {
-                        junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                        junit skipPublishingChecks: true, testResults: '**/target/surefire-reports/*.xml'
                     }
-                    s3Archive('upload')
+                    container('maven') {
+                        s3Archive('upload')
+                    }
                 }
             }
         }
-        stage('SonarCloud') {
+        stage('SonarQube') {
             steps {
                 container("sonar-cloud") {
                     dir("sourcecode") {
@@ -72,13 +78,11 @@ pipeline {
                             // You can override the credential to be used
                             sh script: """
                                 mvn sonar:sonar -T 4C \
-                                -Dsonar.pullrequest.base=${ghprbTargetBranch} \
-                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
-                                -Dsonar.pullrequest.key=${ghprbPullId} \
-                                -Dsonar.projectKey=Kyligence_KAP \
-                                -Dsonar.organization=kyligence \
                                 -Dsonar.host.url=https://sonarcloud.io \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/*Test-Stage-*/**/*jacoco.xml
+                                -Dsonar.organization=kyligence \
+                                -Dsonar.projectKey=Kyligence_KAP \
+                                -Dsonar.branch.name=${params.branch}
+                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/*jacoco.xml
                             """
                         }
                     }
