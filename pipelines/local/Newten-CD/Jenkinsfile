@@ -40,14 +40,11 @@ pipeline {
                                 githubCheckout 'KAP'
                             }
 
-                            //
-                            if (params.branch ==~ /.*yinglong.*/ ) {
-                                echo 'checkout KAP_Frontend to kystudio'
-                                sh 'rm -rf ./kystudio'
-                                dir('kystudio') {
-                                    retry(3) {
-                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                                    }
+                            echo 'checkout KAP_Frontend to kystudio'
+                            sh 'rm -rf ./kystudio'
+                            dir('kystudio') {
+                                retry(3) {
+                                    githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                                 }
                             }
                         }

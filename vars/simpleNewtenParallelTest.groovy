@@ -45,7 +45,7 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
             def willTestModules = modules.join(",")
             def willTestCases = tests.join(",")
 
-            retry(3){
+            // retry(3){
                 sh script: """
                     if [ ! -d ${stage} ]; then
                         mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
@@ -57,7 +57,7 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
                     -DfailIfNoTests=false \
                     -Duser.timezone=GMT+8
                 """
-            }
+            // }
         }
     }]
 }
