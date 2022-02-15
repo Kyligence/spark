@@ -6,7 +6,7 @@ spec:
     kubernetes.io/hostname: "kubernetes-work01"
   containers:
     - name: "build"
-      image: "10.1.10.11:31500/newten-build:latest"
+      image: "docker.ops.kylincorp.com/newten-build:latest"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
