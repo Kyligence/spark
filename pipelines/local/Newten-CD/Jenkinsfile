@@ -2,6 +2,10 @@
 
 @Library('devopslib') _
 
+package_file = ''
+namespace = 'test'
+
+
 pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -9,7 +13,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/local/Newten-CD/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
         }
     }
 
@@ -17,6 +21,7 @@ pipeline {
         string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
         string(name: 'version', defaultValue: 'newten-qa', description: 'Kap version?')
+        string(name: 'namespace', defaultValue: 'qa', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
@@ -35,14 +40,11 @@ pipeline {
                                 githubCheckout 'KAP'
                             }
 
-                            //
-                            if (params.branch ==~ /.*yinglong.*/ ) {
-                                echo 'checkout KAP_Frontend to kystudio'
-                                sh 'rm -rf ./kystudio'
-                                dir('kystudio') {
-                                    retry(3) {
-                                        githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                                    }
+                            echo 'checkout KAP_Frontend to kystudio'
+                            sh 'rm -rf ./kystudio'
+                            dir('kystudio') {
+                                retry(3) {
+                                    githubCheckout 'KAP_Frontend', 'newten', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                                 }
                             }
                         }
@@ -56,13 +58,47 @@ pipeline {
                     dir("sourcecode") {
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                        sh script: 
-                        """
-                        rm -rf /var/cicd/newten.patch
-                        cp -rf license.patch /var/cicd/newten.patch
-                        mkdir -p /var/cicd/artifacts/dev/Newten-CD
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/Newten-CD/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}.tar.gz
-                        """
+                        script {
+                            def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD").trim()
+                            def package_file = sh(returnStdout: true,
+                                script: """
+                                rm -rf /var/cicd/newten.patch
+                                cp -rf license.patch /var/cicd/newten.patch
+                                mkdir -p /var/cicd/artifacts/dev/Newten-CD
+                                cp dist/*.tar.gz /var/cicd/artifacts/dev/Newten-CD/${version}-${commitid}-${BUILD_NUMBER}.tar.gz
+                                echo '/var/cicd/artifacts/dev/Newten-CD/${version}-${commitid}-${BUILD_NUMBER}.tar.gz'
+                            """).trim()
+                            print 'package_file: ${package_file}'
+                        }
+                    }
+                }
+            }
+        }
+        stage("Generate ENV") {
+            steps {
+                container("kubectl") {
+
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        echo "查看 K8S 集群 Pod 列表"
+                        sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+                    
+                        script {
+                            result = sh (
+                                returnStatus: true,
+                                script: """#!/bin/sh
+                                    set +x
+                                    cd ${WORKSPACE}/k8s/auto-generate/
+                                    sh install.sh --package_file=${package_file} --namespace=${namespace ?: params.namespace ?: namespace}
+                                """
+                            ).trim()
+                            if(result == 0){
+                                print 'SUCCESS'
+                                currentBuild.result = 'SUCCESS'
+                            }else{
+                                print 'FAILED'
+                                currentBuild.result = 'FAILED'
+                            }
+                        }
                     }
                 }
             }

@@ -37,19 +37,20 @@ pipeline {
             steps {
                 container("maven") {
                     dir("sourcecode") {
-                        sh script: """
-                            mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
-                            mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
-                        """
+                        script {
+                            retry(3) {
+                                sh script: """
+                                    mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests
+                                """
+                            }
+                        }
                     }
                 }
             }
         }
         stage('Testing') {
             steps {
-                retry(3) {
-                    simpleNewtenParallelTest()
-                }
+                simpleNewtenParallelTest2()
             }
             post {
                 always {

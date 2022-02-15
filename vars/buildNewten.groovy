@@ -1,10 +1,11 @@
 def call(String version, boolean skipPatch = true, boolean skipLicense = true) {
     if (!skipPatch) {
-        sh 'git apply /var/cicd/patchs/newten.patch'
+        // sh 'git apply /var/cicd/patchs/newten.patch'
+        echo "skipPatch"
     }
 
     if (!skipLicense) {
-        sh script
+        sh script:
         """
             cat << EOF > trial-license.cfg
 License for Kyligence Enterprise Evaluation.

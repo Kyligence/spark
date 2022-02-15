@@ -1,6 +1,6 @@
 ---
 kind: "Pod"
-name: "jenkins-agent"
+name: "jenkins-package-agent"
 spec:
   # nodeSelector:
   #   kubernetes.io/hostname: "kubernetes-work01"
@@ -24,9 +24,26 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+    - name: "kubectl"
+      image: "cnych/kubectl"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "2Gi"
+          cpu: "2000m"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
+    - name:  "kube-config"
+      hostPath:
+        path:  "/home/jenkins/.kube"

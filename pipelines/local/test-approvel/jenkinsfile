@@ -1,0 +1,167 @@
+def skipRemainingStages = false,skipApprove = false,Exec = false,timeout_mins = 4320,Applier_id,Applier_name,Applier_mail,Approver_mail,Operator_mail,input_message
+pipeline {
+    agent any
+    //调用颜色插件
+    options {
+        ansiColor('xterm')
+    }
+    environment {
+       Applier_name = ''
+       Applier_mail = ''
+       Approver_mail = ''
+       Operator_mail = ''
+       input_message = ''
+    }
+    stages {
+        stage('任务申请') {
+            steps {
+                wrap([$class: 'BuildUser']) {
+                   script {
+                   //获取当前登录用户账户、姓名、邮箱
+                   Applier_id = "${BUILD_USER_ID}"
+                   Applier_name = "${env.BUILD_USER}"
+                   Applier_mail = "${env.BUILD_USER_EMAIL}"
+                   }
+                }
+                script {
+                    //  判断是否需要审批
+                    if ("$Mode" == 'Query' || "$Mode" == 'Lock' || "$Mode" == 'Unlock') {
+                        skipApprove = true
+                        Exec = true
+                        //  echo "\033[32m 该操作无需审批，待自动执行。 \033[0m"
+                        return
+                    }
+
+                    if ("$Approver" != '') {
+                       Approver = "$Approver".split('@')[0] //只取审批人@前面字符
+                        //如果审批人为自己，则退出任务
+                        if (Applier_id == Approver) {
+                            echo "\033[31m 审批人不能为本人，任务已终止。 \033[0m"
+                            skipRemainingStages = true  //跳过下一个stage
+                            currentBuild.result = 'ABORTED' //当前stage build result设置为 aborted
+                            return
+                        }
+                    }else {
+                        echo "\033[31m 审批人不能为空，任务已终止。 \033[0m"
+                        skipRemainingStages = true
+                        currentBuild.result = 'ABORTED'
+                        return
+                    }
+
+                    //定义发送给审批者和执行者的邮件内容（详述任务内容）
+                    switch ("$Mode") {
+                        case 'Extend':
+                            input_message = "$Applier_name 申请将域账号 $UserName 延期$Days 天"
+                            break;
+                        case 'Disable':
+                            input_message = "$Applier_name 申请禁用域账号 $UserName"
+                            break;
+                        case 'Enable':
+                            input_message = "$Applier_name 申请启用域账号 $UserName"
+                            break;
+                    }
+                    Approver_mail = "$Approver"+'@x.com'
+                    //Send Approve mail to Approver
+                    emailext(
+                    subject:"【请审批】${env.JOB_NAME}(#${env.BUILD_NUMBER})",
+                    body:'''$input_message <br> <a href="${BUILD_URL}input">请点击该链接使用域账号登录后审批</a>''',
+                    to:"$Approver_mail"
+                    )
+                    echo "\033[32m 申请完成，待$Approver 审批。 \033[0m"
+                }
+
+            }
+        }
+        stage('等待审批') {
+            when {
+                expression {!skipRemainingStages}
+                expression {!skipApprove}
+            }
+            steps {
+
+                script {
+                    //等待审批人审批，并通过timeout设置任务过期时间，防止任务永远挂起
+                    def userInput
+                    timeout(timeout_mins) {
+                        try {
+                            userInput = input(
+                                id: 'inputap', message: "$input_message", ok:'同意', submitter:"$Approver", parameters: [
+                                [$class: 'BooleanParameterDefinition', defaultValue: true, description: '', name: '确认']
+                                ])
+                        } catch(err) { // input false
+                            def user = err.getCauses()[0].getUser()
+                            userInput = false
+                            echo "\033[31m 任务已被审批人 ${user} 拒绝。 \033[0m"
+                            currentBuild.result = 'ABORTED'
+
+                        }
+                    }
+                    if (userInput == true) {
+                        //发邮件待系统管理员执行任务
+                        echo "\033[32m 已审批完成，待系统管理员执行。 \033[0m"
+                        Operator_mail = "$Operator"+'@xin.com'
+                        emailext(
+                            subject:"【请执行】${env.JOB_NAME}(#${env.BUILD_NUMBER})",
+                            body:'''$input_message ，$Approver 已审批完成。 <br> <a href="${BUILD_URL}input">请点击该链接使用域账号登录后审批</a>''',
+                            to:"$Operator_mail"
+                        )
+
+                        //等待系统管理员决定是否执行任务
+                        def userInput2
+                        timeout(timeout_mins) {
+                            try {
+                                userInput2 = input(
+                                    id: 'inputop', message: "$input_message", ok:'执行', submitter:"$Operator_users", parameters: [
+                                    [$class: 'BooleanParameterDefinition', defaultValue: true, description: '', name: '确认']
+                                    ])
+                            } catch(err) { // input false
+                                def user = err.getCauses()[0].getUser()
+                                userInput2 = false
+                                echo "\033[31m 任务已被系统管理员 ${user} 拒绝。 \033[0m"
+                                currentBuild.result = 'ABORTED'
+                            }
+                        }
+
+                        if (userInput2 == true) {
+                            Exec = true
+
+                        } else {
+                            emailext(
+                                subject:"【拒绝】${env.JOB_NAME}(#${env.BUILD_NUMBER})",
+                                body:"""系统管理员拒绝了您的申请任务 ${env.JOB_NAME}(#${env.BUILD_NUMBER})。<br> <a href="${JOB_URL}">点击该链接可查看任务</a><br><br>如您有任何疑问请联系 ITSupport@xin.com""",
+                                to:"$Applier_mail"
+                            )
+                            return
+                        }
+
+                    } else {
+                        emailext(
+                            subject:"【拒绝】${env.JOB_NAME}(#${env.BUILD_NUMBER})",
+                            body:"""审批人$Approver 未通过您的申请任务 ${env.JOB_NAME}(#${env.BUILD_NUMBER})。<br> <a href="${JOB_URL}">点击该链接可查看任务</a>""",
+                            to:"$Applier_mail"
+                        )
+                        return
+                    }
+                }
+
+            }
+        }
+        stage('任务执行') {
+            when {
+                expression {Exec}
+            }
+            steps {
+                script {
+                    sh """
+                    set +x
+                    echo "\033[34m 任务执行结果： \033[0m"
+                    python3 /data/py/SaltAPI.py --host "10.10.3.25"  --script "http://autoit.x.com:8999/Useradmin.ps1" --args "$Mode $Applier_id $UserName $Days"
+                    """
+                //  echo "任务已执行完成。"
+                }
+
+            }
+        }
+    }
+
+}
