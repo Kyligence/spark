@@ -13,8 +13,8 @@ spec:
         - "cat"
       resources:
         limits:
-          memory: "1Gi"
-          cpu: "1000m"
+          memory: "4Gi"
+          cpu: "8000m"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
