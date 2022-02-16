@@ -46,7 +46,21 @@ spec:
   storageClassName: "rbd-dynamic"
   resources:
     requests:
-      storage: 30Gi
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-data-rbd-100-pvc
+  namespace: ops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # 指定 storageClass 的名字，这里使用默认的 standard
+  storageClassName: "rbd-dynamic-retain"
+  resources:
+    requests:
+      storage: 80Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,6 +71,8 @@ metadata:
     app: nexus3-rbd
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: nexus3-rbd
@@ -65,6 +81,7 @@ spec:
       labels:
         app: nexus3-rbd
     spec:
+      nodeName: kubernetes-work01
       initContainers:
       - name: chown-nexusdata-owner-to-nexus
         image: busybox:1.34.1
@@ -73,6 +90,8 @@ spec:
         volumeMounts:
           - name: nexus-data-rbd
             mountPath: /nexus-data
+          # - name: nexus-data-rbd-100
+          #   mountPath: /nexus-data-backup
           # - name: nexus-data
           #   mountPath: /nexus-data-old
       containers:
@@ -113,6 +132,9 @@ spec:
         - name: nexus-data-rbd
           persistentVolumeClaim:
             claimName: nexus-data-rbd-pvc
+        # - name: nexus-data-rbd-100
+        #   persistentVolumeClaim:
+        #     claimName: nexus-data-rbd-100-pvc
         # - name: nexus-data
         #   persistentVolumeClaim:
         #     claimName: nexus-data-pvc
