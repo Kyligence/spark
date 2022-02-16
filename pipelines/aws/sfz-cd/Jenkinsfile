@@ -48,7 +48,9 @@ pipeline {
                        sh """#!/bin/bash
                                 pwd
                                 cd  kystudio
+                                cat .npmrc
                                 sed -i s#http://10.1.2.111:4873#http://devops-nexus:8081/repository/kyligence-npm#g .npmrc
+                                cat .npmrc
                                 echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
                                 echo 'always-auth=true' >> .yarnrc
                                 echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
