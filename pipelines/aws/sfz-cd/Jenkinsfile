@@ -15,8 +15,8 @@ pipeline {
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
-        string(name: 'branch', defaultValue: 'newten-qa', description: 'Kap branch?')
-        string(name: 'commitid', defaultValue: 'newten-qa', description: 'Kap branch?')
+        string(name: 'branch', defaultValue: 'newten-dev', description: 'Kap branch?')
+        string(name: 'commitid', defaultValue: 'newten-dev', description: 'Kap branch?')
         string(name: 'version', defaultValue: '4.5.x', description: 'Kap version?')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
     }
@@ -28,9 +28,11 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         script {
+                             awsGithubCheckOut 'KAP'
                              sh """ 
                                  echo "------------------------------------------------"
                                      pwd
+                                     ls -al
                                  echo "-------------------------------------------------"
                                 """
                         }
