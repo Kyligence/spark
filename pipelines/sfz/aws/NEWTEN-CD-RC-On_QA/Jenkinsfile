@@ -28,12 +28,16 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         script {
-                            retry(3) {
+                            retry(1) {
                                 awsGithubCheckOut 'KAP'
                             }
-
-                            //
-                
+                            sh """#!/bin/bash
+                                pwd
+                                sed -i s#http://10.1.2.111:4873#http://devops-nexus:8081/repository/kyligence-npm#g .npmrc
+                                echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
+                                echo 'always-auth=true' >> .yarnrc
+                                echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
+                            """
                         }
                     }
                 }
@@ -44,6 +48,13 @@ pipeline {
             steps {
                 container("build") {
                     dir("sourcecode") {
+                            sh """#!/bin/bash
+                                pwd
+                                sed -i s#http://10.1.2.111:4873#http://devops-nexus:8081/repository/kyligence-npm#g .npmrc
+                                echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
+                                echo 'always-auth=true' >> .yarnrc
+                                echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
+                            """
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "mkdir -p /var/cicd/artifacts/dev/Newten-CD && \
