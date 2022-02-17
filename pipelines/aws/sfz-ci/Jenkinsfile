@@ -64,10 +64,14 @@ pipeline {
                                 mkdir  dist
                                 echo -e '\n-------------------'
                                 touch dist/KE-${version}-DEV-${BUILD_NUMBER}-`git rev-parse --short HEAD`.tar.gz
+                                cp -p dist/*.tar.gz  .
+                                echo -e '\n-------------------'
+                                ls -al
+                                echo -e '\n-------------------'
                                 ls -al dist
-                             """
-                       
-                           s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/*.gz")
+                                echo -e '\n-------------------'
+                             """                       
+                           s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "*.tar.gz")
                        }
                     }
                 }
