@@ -55,8 +55,6 @@ pipeline {
                          // Upload reports for analyze
                         
                           sh script: """
-                                def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
-                                print commitid
                                 #!/bin/bash
                                 echo -e '\n-------------------'
                                 pwd
