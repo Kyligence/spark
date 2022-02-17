@@ -64,19 +64,23 @@ pipeline {
 
                         buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                        //def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                        //    print commitid
                         //sh "ls -al dist/ && mkdir -p /var/cicd/artifacts/dev/newten &&  \
                         //cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
                         
                       //--s3 上传方式 借用 焦恩伟的 s3上传代码 在https://github.com/Kyligence/devopslib/tree/master/vars/s3Archive.groovy
                       withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
                             sh script: """
+                                def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                                print commitid
                                 #!/bin/bash
                                 echo -e '\n-------------------'
                                 pwd
                                 echo -e '\n-------------------'
                                 ls -al dist/
                                 echo -e '\n-------------------'
-                                mv dist/*.tar.gz  dist/${branch}-`git rev-parse --short HEAD`-${BUILD_NUMBER}.tar.gz
+                                mv dist/*.tar.gz  dist/KE-${version}-DEV-${BUILD_NUMBER}-`git rev-parse --short HEAD`.tar.gz
                                 ls -al dist/
                              """
                        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/*.gz")
