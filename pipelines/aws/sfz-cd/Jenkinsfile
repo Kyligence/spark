@@ -48,22 +48,27 @@ pipeline {
                        sh """#!/bin/bash
                                 pwd
                                 ls -al 
-                                mkdir -pv dist
-                                touch dist/123.tar.gz
+                            
                                 cd  kystudio
-                                echo "-------------------------------------------------------"
+                                echo  -e  '\n------------------------------------------------------------'
                                 cat .npmrc
                                 sed -i s#http://10.1.2.111:4873#http://devops-nexus:8081/repository/kyligence-npm#g .npmrc
+                                echo  -e  '\n------------------------------------------------------------'
                                 cat .npmrc
                                 echo "------------------------------------------------------------"
-                                echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
-                                echo 'always-auth=true' >> .yarnrc
-                                echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
+                                echo -e '\nemail=binbin.zou@kyligence.io' >> .npmrc
+                                echo 'always-auth=true' >> .npmrc
+                                echo '_auth=bnBtLWRldjpucG0tZGV2' >> .npmrc
+                                cat .npmrc
+                                echo  -e  '\n------------------------------------------------------------'
+                                cd ..
                         """
-                        //buildNewten(params.version)
+                         buildNewten(params.version)
                          archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "ls -al dist/ && mkdir -p /var/cicd/artifacts/dev/newten &&  \
                         cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
+                        
+                        //--s3 上传方式
                         withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
                          // Upload reports for analyze
                           sh script: """
