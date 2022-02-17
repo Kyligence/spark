@@ -86,6 +86,7 @@ pipeline {
                                 echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
                                 echo 'always-auth=true' >> .yarnrc
                                 echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
+                                cd ..
                                 
                             """
                        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/124.tar.gz")
