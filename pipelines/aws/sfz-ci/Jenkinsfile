@@ -12,6 +12,9 @@ pipeline {
             yamlFile 'pipelines/aws/sfz-ci/jenkins-agent.yaml'
         }
     }
+    triggers {
+        pollSCM (‘H/5 * * * *)’)
+    }
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
