@@ -47,9 +47,6 @@ pipeline {
                     dir("sourcecode") {
                        sh """#!/bin/bash
                                 pwd
-                                echo "------------------------------------------------"
-                                touch dist/123.tar.gz
-                                ls -al dist/
                                 cd  kystudio
                                 echo "-------------------------------------------------------"
                                 cat .npmrc
@@ -59,15 +56,11 @@ pipeline {
                                 echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
                                 echo 'always-auth=true' >> .yarnrc
                                 echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
-                                
                         """
-                        //buildNewten(params.version)
-                        echo "--------------------------------"
+                        buildNewten(params.version)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                        sh "mkdir -p /var/cicd/artifacts/dev/newten && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz
-                        ls -l /var/cicd/artifacts/dev/newten/*
-                        "
+                        sh "mkdir -p /var/cicd/artifacts/dev/Newten-CD && \
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/Newten-CD/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
                     }
                 }
             }
