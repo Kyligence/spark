@@ -78,10 +78,10 @@ pipeline {
                                 echo -e "\n-------------------"
                                 ls -al 
                                 echo -e "\n-------------------"
-                                mkdir -pv dist
+                                mkdir  dist
                                 echo -e "\n-------------------"
                                 touch dist/124.tar.gz
-                                ls -l dist
+                                ls -al
                              """
                        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/124.tar.gz")
         }
