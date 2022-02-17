@@ -63,9 +63,9 @@ pipeline {
                                 echo -e '\n-------------------'
                                 mkdir  dist
                                 echo -e '\n-------------------'
-                                touch dist/125.tar.gz
+                                touch dist/${branch}`-git rev-parse --short HEAD`-${BUILD_NUMBER}.tar.gz
                                 ls -al dist
-                                cp dist/*.gz .
+                                
                                
                              """
                        
