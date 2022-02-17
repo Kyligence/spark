@@ -63,8 +63,8 @@ pipeline {
                                 echo  -e  '\n------------------------------------------------------------'
                                 cd ..
                         """
-                         buildNewten(params.version)
-                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                         //buildNewten(params.version)
+                         //archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "ls -al dist/ && mkdir -p /var/cicd/artifacts/dev/newten &&  \
                         cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
                         
