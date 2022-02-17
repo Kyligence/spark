@@ -66,8 +66,7 @@ pipeline {
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "mkdir -p /var/cicd/artifacts/dev/newten && \
                         cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-${BUILD_NUMBER}-.tar.gz
-                        ls -l /var/cicd/artifacts/dev/newten/*
-                        "
+                        ls -l /var/cicd/artifacts/dev/newten/*"
                     }
                 }
             }
