@@ -65,7 +65,12 @@ pipeline {
                         sh "ls -al dist/ && mkdir -p /var/cicd/artifacts/dev/newten &&  \
                         cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz"
                         withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
-                         s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci/", includePathPattern: "${targetBranch()}/*")
+                         // Upload reports for analyze
+                          sh script: """
+                                  touch 123.tar
+                            """
+                       s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "123.tar")
+        }
                     }
                 }
             }
