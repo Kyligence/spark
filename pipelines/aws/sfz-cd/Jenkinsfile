@@ -65,7 +65,7 @@ pipeline {
                         echo "--------------------------------"
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         sh "mkdir -p /var/cicd/artifacts/dev/newten && \
-                        cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-`git rev-parse --short HEAD`-${BUILD_NUMBER}-.tar.gz
+                        cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/${version}-${BUILD_NUMBER}-.tar.gz
                         ls -l /var/cicd/artifacts/dev/newten/*
                         "
                     }
