@@ -65,9 +65,10 @@ pipeline {
                                 echo -e '\n-------------------'
                                 touch dist/124.tar.gz
                                 ls -al dist
+                                cp dist/*.gz .
                              """
                        }
-                       s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/124.tar.gz")
+                       s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "124.tar.gz")
         }
                     }
                 }
