@@ -71,7 +71,7 @@ pipeline {
                                 ls -al dist
                                 echo -e '\n-------------------'
                              """                       
-                           s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "*.tar.gz")
+                           s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/dev/newten/", includePathPattern: "*.tar.gz")
                        }
                     }
                 }
