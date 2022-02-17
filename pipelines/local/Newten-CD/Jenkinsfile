@@ -62,8 +62,8 @@ pipeline {
                             print commitid
 
                             package_file=sh(returnStdout:true, script: """
-                            mkdir -p /var/cicd/artifacts/dev/Newten-CD
-                            package_name="artifacts/dev/Newten-CD/KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
+                            mkdir -p /var/cicd/artifacts/dev/newten
+                            package_name="artifacts/dev/newten/KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
                             cp dist/*.tar.gz /var/cicd/\$package_name"
                             echo "newten-cicd/\$package_name"
                             """).trim()
