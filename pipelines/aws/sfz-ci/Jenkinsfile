@@ -65,12 +65,10 @@ pipeline {
                                 echo -e '\n-------------------'
                                 touch dist/${branch}-`git rev-parse --short HEAD`-${BUILD_NUMBER}.tar.gz
                                 ls -al dist
-                                
-                               
                              """
                        
-                       s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/*.gz")
-        }
+                           s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/*.gz")
+                       }
                     }
                 }
             }
