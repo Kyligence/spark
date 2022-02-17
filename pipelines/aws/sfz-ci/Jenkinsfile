@@ -53,7 +53,7 @@ pipeline {
                         //--s3 上传方式
                         withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
                          // Upload reports for analyze
-                         dir("sourcecode") {
+                        
                           sh script: """
                                 #!/bin/bash
                                 echo -e '\n-------------------'
@@ -68,7 +68,7 @@ pipeline {
                                 cp dist/*.gz .
                                
                              """
-                       }
+                       
                        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/*.gz")
         }
                     }
