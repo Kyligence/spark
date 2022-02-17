@@ -73,22 +73,16 @@ pipeline {
                          // Upload reports for analyze
                           sh script: """
                                 #!/bin/bash
+                                echo -e "\n-------------------"
                                 pwd
+                                echo -e "\n-------------------"
                                 ls -al 
+                                echo -e "\n-------------------"
                                 mkdir -pv dist
+                                echo -e "\n-------------------"
                                 touch dist/124.tar.gz
-                                cd  kystudio
-                                echo "-------------------------------------------------------"
-                                cat .npmrc
-                                sed -i s#http://10.1.2.111:4873#http://devops-nexus:8081/repository/kyligence-npm#g .npmrc
-                                cat .npmrc
-                                echo "------------------------------------------------------------"
-                                echo -e '\nemail=binbin.zou@kyligence.io' >> .yarnrc
-                                echo 'always-auth=true' >> .yarnrc
-                                echo '_auth=bnBtLWRldjpucG0tZGV2' >> .yarnrc
-                                cd ..
-                                
-                            """
+                                ls -l dist
+                             """
                        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/124.tar.gz")
         }
                     }
