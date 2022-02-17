@@ -78,10 +78,10 @@ pipeline {
                                 echo -e '\n-------------------'
                                 ls -al dist/
                                 echo -e '\n-------------------'
-                                mv dist/*.tar.gz  dist/KE-${version}-DEV-${BUILD_NUMBER}-`git rev-parse --short HEAD`.tar.gz
+                                mv dist/*.tar.gz  KE-${version}-DEV-${BUILD_NUMBER}-`git rev-parse --short HEAD`.tar.gz
                                 ls -al dist/
                              """
-                       s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "dist/*.gz")
+                       s3Upload(bucket: 'k8s-bucket-devops', path: "ke-cd/newten/", includePathPattern: "*.tar.gz")
                        }
                     }
                 }
