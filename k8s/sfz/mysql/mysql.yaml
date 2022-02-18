@@ -217,7 +217,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: rbd-dynamic
+  storageClassName: local-path
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -82,7 +82,7 @@ spec:
       name: hdfs-datanode-claim0
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: rbd-dynamic
+      storageClassName: local-path
       resources:
         requests:
           storage: 10Gi

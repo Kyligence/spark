@@ -26,4 +26,4 @@ spec:
       storage: 1Gi
   volumeName: nfs-share-pv-<<<namespace>>>
   volumeMode: Filesystem
-  storageClassName: ""
+  storageClassName: "local-path"
