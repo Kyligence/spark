@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyligence-enterprise
+  name: kyligence-enterprise-<<<version>>>
   namespace: <<<namespace>>>
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyligence-enterprise
+      app: kyligence-enterprise-<<<version>>>
   template:
     metadata:
       labels:
-        app: kyligence-enterprise
+        app: kyligence-enterprise-<<<version>>>
     spec:
-      hostname: kyligence-enterprise
+      hostname: kyligence-enterprise-<<<version>>>
       volumes:
         - name: nfs
           persistentVolumeClaim:
@@ -21,8 +21,8 @@ spec:
         - name: share
           emptyDir: {}
         - configMap:
-            name: kyligence-enterprise-config
-          name: kyligence-enterprise-config
+            name: kyligence-enterprise-config-<<<version>>>
+          name: kyligence-enterprise-config-<<<version>>>
         - configMap:
             name: yarn-xml
           name: yarn-xml
@@ -55,7 +55,7 @@ spec:
             cp /tmp/kyligence/share/mysql-connector-java-5.1.41-bin.jar /opt/kyligence/spark/jars
             cp /opt/jmx_prometheus_javaagent-0.16.1.jar /opt/jmx-exporter/
       containers:
-      - name: kyligence-enterprise
+      - name: kyligence-enterprise-<<<version>>>
         image: kyligence/kyligence-env:hadoop_2.10.1_hive_1.2.2
         volumeMounts:
           - mountPath: /opt/kyligence

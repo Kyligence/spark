@@ -2,8 +2,8 @@
 #
 
 #说明
-show_usage="args: [-p , -n]\
-                                  [--package_file=, --namespace=]"
+show_usage="args: [-p , -n, -v]\
+                                  [--package_file=, --namespace=, --version=]"
 # 参数 - nfs目录下的文件名
 #
 # 说明：
@@ -17,7 +17,11 @@ opt_package_file=""
 # 说明：k8s中的命名空间
 opt_namespace=""
 
-GETOPT_ARGS=`getopt -o p:n: -al package_file:,namespace: -- "$@"`
+# 参数
+# 说明：ke版本号，注意不能带. 例4.5.8 传入--version=458
+opt_version=""
+
+GETOPT_ARGS=`getopt -o p:n:v: -al package_file:,namespace:,version: -- "$@"`
 eval set -- "$GETOPT_ARGS"
 #获取参数
 while [ -n "$1" ]
@@ -25,12 +29,13 @@ do
         case "$1" in
                 -p|--package_file) opt_package_file=$2; shift 2;;
 				-n|--namespace) opt_namespace=$2; shift 2;;
+				-v|--version) opt_version=$2; shift 2;;
                 --) break ;;
                 *) echo $1,$2,$show_usage; break ;;
         esac
 done
 
-if [[ -z $opt_package_file || -z $opt_namespace ]]; then
+if [[ -z $opt_package_file || -z $opt_namespace || -z $opt_version ]]; then
         echo $show_usage
         exit -1
 fi
@@ -38,6 +43,14 @@ fi
 grep -rl '<<<namespace>>>' ./ | grep -v 'install.sh' | xargs sed -i "s|<<<namespace>>>|$opt_namespace|"
 
 sed -i "s|<<<package_file>>>|$opt_package_file|" ./kyligence-enterprise/kyligence-enterprise-deploy.yaml
+
+sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-deploy.yaml
+
+sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-service.yaml
+
+sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-ingress.yaml
+
+sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-configmap.yaml
 #
 #
 #
