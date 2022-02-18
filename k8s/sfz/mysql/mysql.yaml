@@ -5,7 +5,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  namespace: test
+  namespace: <<<namespace>>>
   name: mysql
 type: Opaque
 data:
@@ -14,7 +14,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: test
+  namespace: <<<namespace>>>
   name: mysql
   labels:
     app: mysql
@@ -194,7 +194,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: test
+  namespace: <<<namespace>>>
   name: mysql
   labels:
     app: mysql
@@ -210,19 +210,19 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  namespace: test
+  namespace: <<<namespace>>>
   name: mysql-pvc
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:
     requests:
       storage: 5Gi
-  storageClassName: local-path
+  storageClassName: rbd-dynamic
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: test
+  namespace: <<<namespace>>>
   name: mysql
 spec:
   selector:
