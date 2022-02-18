@@ -208,9 +208,21 @@ echo "[OK]部署 Kyligence Enterprise"
 #
 #
 
-echo "[12/13]导入SSB数据"
+echo "[12/12]导入SSB数据"
 pod=$(kubectl get pods -l app=kyligence-enterprise -n $opt_namespace --no-headers | awk '{print $1}')
+
+if [ $? -eq 1 ]
+then
+	echo "[FAILED]导入SSB数据" && exit 1
+fi
+
 kubectl exec -it $pod -c kyligence-enterprise -n $opt_namespace -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
+
+if [ $? -eq 1 ]
+then
+	echo "[FAILED]导入SSB数据" && exit 1
+fi
+
 echo "[OK]导入SSB数据"
 
 cat ./banner.txt
