@@ -12,7 +12,6 @@ def call() {
             "src/server"], [])
     def ut2 = testForModules(
             'UTest-Stage-2', [
-            "src/yinglong-enterprise-core-metadata",
             "src/license-service",
             "src/spark-project/engine-spark",
             "src/spark-project/source-jdbc",
@@ -26,10 +25,29 @@ def call() {
             "src/second-storage/core",
             "src/second-storage/core-ui",
             "src/second-storage/clickhouse-it"], [])
+      def ut3 = testForModules(
+            'UTest-Stage-3', [
+            "src/yinglong-build-service",
+            "src/yinglong-common-service",
+            "src/yinglong-data-loading-server",
+            "src/yinglong-datasource-service",
+            "src/yinglong-enterprise-core-metadata",
+            "src/yinglong-enterprise-service",
+            "src/yinglong-integration-service",
+            "src/yinglong-job-service",
+            "src/yinglong-metadata-server",
+            "src/yinglong-modeling-service",
+            "src/yinglong-query-server",
+            "src/yinglong-query-service",
+            "src/yinglong-smart-server",
+            "src/yinglong-smart-service",
+            "src/yinglong-streaming-service",
+            "src/yinglong-systools"], [])
+
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it", "src/core-job" ], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 
-    def allTestStages = ut1 + ut2 + it1 + it2
+    def allTestStages = ut1 + ut2 + ut3 + it1 + it2
 
     echo 'parallel run all tests...'
     parallel allTestStages
