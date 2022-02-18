@@ -26,5 +26,5 @@ spec:
       port: 7070
       targetPort: 7070
     - name: "spark-ui"
-      port: 4040
-      targetPort: 4040
+      port: 4041
+      targetPort: 4041

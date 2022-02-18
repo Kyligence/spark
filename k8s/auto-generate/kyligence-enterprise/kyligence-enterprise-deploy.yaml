@@ -140,7 +140,7 @@ spec:
           - name: http
             containerPort: 7070
           - name: spark-ui
-            containerPort: 4040
+            containerPort: 4041
         livenessProbe:
           initialDelaySeconds: 50
           periodSeconds: 10

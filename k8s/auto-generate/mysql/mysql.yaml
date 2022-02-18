@@ -21,10 +21,7 @@ metadata:
 data:
   mysql.cnf: |
     [mysqld]
-    # set the buffer pool size to 80% of the machine's physical memory size
-    # The total buffer pool size is divided among all the buffer pools
-    # For best efficiency, specify a combination of innodb_buffer_pool_instances and innodb_buffer_pool_size so that each buffer pool instance is at least 1GB.
-    innodb_buffer_pool_size = 1GB
+    innodb_buffer_pool_size = 2GB
     innodb_buffer_pool_instances = 1
 
     innodb_flush_log_at_trx_commit = 1
@@ -37,13 +34,17 @@ data:
     binlog_format = ROW
     innodb_io_capacity = 200
 
-    character_set_server=utf8
-    init_connect='SET NAMES utf8'
-    init_connect='SET collation_connection = utf8_unicode_ci'
-    collation_server=utf8_unicode_ci
+    character_set_client_handshake=FALSE
+    character_set_server=utf8mb4
+    init_connect='SET NAMES utf8mb4'
+    init_connect='SET collation_connection = utf8mb4_unicode_ci'
+    collation_server=utf8mb4_unicode_ci
 
     [client]
-    default_character_set=utf8
+    default_character_set=utf8mb4
+
+    [mysql]
+    default_character_set=utf8mb4
   mysql-init.sql: |
     CREATE DATABASE hive DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
     create user 'hive'@'%' identified by 'hive';
@@ -249,7 +250,6 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /var/lib/mysql
-          subPath: mysql
         - name: config
           mountPath: /etc/mysql/conf.d/mysql.cnf
           subPath: mysql.cnf
