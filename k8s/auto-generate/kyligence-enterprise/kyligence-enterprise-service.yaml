@@ -2,12 +2,12 @@ apiVersion: v1
 kind: Service
 metadata:
   namespace: <<<namespace>>>
-  name: kyligence-enterprise
+  name: kyligence-enterprise-<<<version>>>
   labels:
     metrics-exporter: prometheus
 spec:
   selector:
-    app: kyligence-enterprise
+    app: kyligence-enterprise-<<<version>>>
   clusterIP: None
   ports:
   - port: 8080
@@ -17,10 +17,10 @@ apiVersion: v1
 kind: Service
 metadata:
   namespace: <<<namespace>>>
-  name: kyligence-enterprise-ui
+  name: kyligence-enterprise-ui-<<<version>>>
 spec:
   selector:
-    app: kyligence-enterprise
+    app: kyligence-enterprise-<<<version>>>
   ports:
     - name: "http"
       port: 7070
