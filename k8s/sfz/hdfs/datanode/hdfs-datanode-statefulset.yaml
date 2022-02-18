@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    io.kompose.service: hdfs-datanode
+  name: hdfs-datanode
+  namespace: <<<namespace>>>
+spec:
+  serviceName: hdfs-datanode
+  replicas: 3
+  selector:
+    matchLabels:
+      io.kompose.service: hdfs-datanode
+  template:
+    metadata:
+      labels:
+        io.kompose.service: hdfs-datanode
+    spec:
+      volumes:
+      - name: exporter-dir
+        emptyDir: {}
+      - name: jmx-config
+        configMap:
+          name: jmx-exporter-config
+      initContainers:
+      - name: jmx-exporter
+        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
+        volumeMounts:
+        - name: exporter-dir
+          mountPath: /opt/jmx-exporter/
+        command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
+      containers:
+      - name: hdfs-datanode
+        image: kyligence/hadoop:2.10.1
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50075
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50075
+        ports:
+          - containerPort: 50075
+        volumeMounts:
+          - mountPath: /hadoop/dfs/data
+            name: hdfs-datanode-claim0
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 1
+            memory: 1Gi
+        envFrom:
+        - configMapRef:
+            name: hdfs-env
+        env:
+        - name: HADOOP_MODE
+          value: datanode
+        - name: HADOOP_WEBHDFS_PORT
+          value: "50070"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+        - name: HADOOP_OPTS
+          value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+  volumeClaimTemplates:
+  - metadata:
+      name: hdfs-datanode-claim0
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: rbd-dynamic
+      resources:
+        requests:
+          storage: 10Gi

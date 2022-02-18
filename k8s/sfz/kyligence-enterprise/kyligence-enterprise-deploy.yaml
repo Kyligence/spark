@@ -1,0 +1,182 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyligence-enterprise-<<<version>>>
+  namespace: <<<namespace>>>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyligence-enterprise-<<<version>>>
+  template:
+    metadata:
+      labels:
+        app: kyligence-enterprise-<<<version>>>
+    spec:
+      hostname: kyligence-enterprise-<<<version>>>
+      volumes:
+        - name: nfs
+          persistentVolumeClaim:
+            claimName: nfs-share-pvc
+        - name: share
+          emptyDir: {}
+        - configMap:
+            name: kyligence-enterprise-config-<<<version>>>
+          name: kyligence-enterprise-config-<<<version>>>
+        - configMap:
+            name: yarn-xml
+          name: yarn-xml
+        - name: exporter-dir
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: jmx-exporter-config
+      initContainers:
+      - name: jmx-exporter
+        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
+        volumeMounts:
+          - mountPath: /opt/kyligence
+            name: share
+          - mountPath: /tmp/kyligence
+            name: nfs
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+        command:
+          - sh
+          - "-c"
+          - |
+            set -x
+            if [ ! -f "/tmp/kyligence/<<<package_file>>>" ];then
+             echo "<<<package_file>>> 文件不存在"
+             exit -1
+            fi
+
+            tar -zxvf /tmp/kyligence/<<<package_file>>> -C /opt/kyligence --strip-components 1
+            cp /tmp/kyligence/share/mysql-connector-java-5.1.41-bin.jar /opt/kyligence/spark/jars
+            cp /opt/jmx_prometheus_javaagent-0.16.1.jar /opt/jmx-exporter/
+      containers:
+      - name: kyligence-enterprise-<<<version>>>
+        image: kyligence/kyligence-env:hadoop_2.10.1_hive_1.2.2
+        volumeMounts:
+          - mountPath: /opt/kyligence
+            name: share
+          - mountPath: /opt/kyligence/conf/kylin.properties
+            name: kyligence-enterprise-config
+            subPath: kylin.properties
+          - mountPath: /opt/kyligence/conf/fairscheduler.xml
+            name: kyligence-enterprise-config
+            subPath: fairscheduler.xml
+          - mountPath: /opt/kyligence/hadoop_conf/core-site.xml
+            name: yarn-xml
+            subPath: core-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hive-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hiveserver2-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hivemetastore-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hdfs-site.xml
+            name: yarn-xml
+            subPath: hdfs-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/yarn-site.xml
+            name: yarn-xml
+            subPath: yarn-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/fair-scheduler.xml
+            name: yarn-xml
+            subPath: fair-scheduler.xml
+          - mountPath: /etc/hadoop/conf/core-site.xml
+            name: yarn-xml
+            subPath: core-site.xml
+          - mountPath: /etc/hadoop/conf/hdfs-site.xml
+            name: yarn-xml
+            subPath: hdfs-site.xml
+          - mountPath: /etc/hadoop/conf/yarn-site.xml
+            name: yarn-xml
+            subPath: yarn-site.xml
+          - mountPath: /etc/hive/conf/hive-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /etc/hadoop/conf/fair-scheduler.xml
+            name: yarn-xml
+            subPath: fair-scheduler.xml
+          - mountPath: /opt/kyligence/bin/check-env-bypass
+            name: kyligence-enterprise-config
+            readOnly: false
+            subPath: check-env-bypass
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml
+        env:
+          - name: JAVA_VM_XMS
+            value: 1g
+          - name: JAVA_VM_XMX
+            value: 4g
+          - name: JAVA_VM_TOOL_XMS
+            value: 1g
+          - name: JAVA_VM_TOOL_XMX
+            value: 4g
+          - name: KYLIN_HOME
+            value: /opt/kyligence
+          - name: HADOOP_CONF_DIR
+            value: /etc/hadoop/conf
+          - name: HIVE_CONF_DIR
+            value: /etc/hive/conf
+          - name: KYLIN_MODE
+            value: all
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+          - name: KYLIN_JVM_SETTINGS
+            value: -server -Xms$(JAVA_VM_XMS) -Xmx$(JAVA_VM_XMX) -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+PrintFlagsFinal -XX:+PrintReferenceGC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintAdaptiveSizePolicy -XX:+UnlockDiagnosticVMOptions -XX:+G1SummarizeConcMark  -Xloggc:$(KYLIN_HOME)/logs/kylin.gc.%p  -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=64M -XX:-OmitStackTraceInFastThrow -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=8192 -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+        resources:
+          requests:
+            cpu: 1
+            memory: 4Gi
+        ports:
+          - name: http
+            containerPort: 7070
+          - name: spark-ui
+            containerPort: 4041
+        livenessProbe:
+          initialDelaySeconds: 50
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 20
+          httpGet:
+            path: /kylin
+            port: http
+        readinessProbe:
+          initialDelaySeconds: 50
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 20
+          httpGet:
+            path: /kylin
+            port: http
+        command:
+          - bash
+          - "-c"
+          - |
+            set -x
+            bash $KYLIN_HOME/bin/kylin.sh start
+            if [ -f $KYLIN_HOME/logs/kylin.log ]
+            then
+              tail -300f $KYLIN_HOME/logs/kylin.log
+            else
+              tail -300f $KYLIN_HOME/logs/shell.stderr
+            fi
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - bash
+                - "-cx"
+                - |
+                  bash $KYLIN_HOME/bin/kylin.sh stop
+        

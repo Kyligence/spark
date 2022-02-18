@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    io.kompose.service: yarn-nodemanager
+  name: yarn-nodemanager
+  namespace: <<<namespace>>>
+spec:
+  serviceName: yarn-nodemanager
+  replicas: 2
+  selector:
+    matchLabels:
+      io.kompose.service: yarn-nodemanager
+  template:
+    metadata:
+      labels:
+        io.kompose.service: yarn-nodemanager
+    spec:
+      volumes:
+      - name: exporter-dir
+        emptyDir: {}
+      - name: jmx-config
+        configMap:
+          name: jmx-exporter-config
+      initContainers:
+      - name: jmx-exporter
+        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
+        volumeMounts:
+        - name: exporter-dir
+          mountPath: /opt/jmx-exporter/
+        command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
+      containers:
+      - name: yarn-nodemanager
+        image: kyligence/hadoop:2.10.1
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 8042
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 8042
+        ports:
+          - containerPort: 8042
+        # 结合 yarn-env-configmap 中的资源配置调整
+        resources:
+          limits:
+            cpu: 4
+            memory: 8Gi
+          requests:
+            cpu: 1
+            memory: 2Gi
+        envFrom:
+        - configMapRef:
+            name: yarn-env
+        env:
+        - name: HADOOP_MODE
+          value: nodemanager
+        - name: HADOOP_WEBHDFS_PORT
+          value: "50070"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+        - name: SERVICE_PRECONDITION
+          value: hdfs-namenode:50070 hdfs-datanode-0.hdfs-datanode:50075 hdfs-datanode-1.hdfs-datanode:50075 hdfs-datanode-2.hdfs-datanode:50075 yarn-resourcemanager:8088
+        - name: YARN_OPTS
+          value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+        volumeMounts:
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml

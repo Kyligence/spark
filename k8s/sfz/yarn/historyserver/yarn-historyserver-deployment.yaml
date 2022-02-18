@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: yarn-historyserver
+  name: yarn-historyserver
+  namespace: <<<namespace>>>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: yarn-historyserver
+  template:
+    metadata:
+      labels:
+        io.kompose.service: yarn-historyserver
+    spec:
+      initContainers:
+      - name: jmx-exporter
+        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
+        volumeMounts:
+        - name: exporter-dir
+          mountPath: /opt/jmx-exporter/
+        command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
+      containers:
+      - name: yarn-historyserver
+        image: kyligence/hadoop:2.10.1
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 8188
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 8188
+        ports:
+          - containerPort: 8188
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 1
+            memory: 1Gi
+        volumeMounts:
+          - mountPath: /hadoop/yarn/timeline
+            name: yarn-historyserver-claim0
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml
+        envFrom:
+        - configMapRef:
+            name: yarn-env
+        env:
+        - name: HADOOP_MODE
+          value: historyserver
+        - name: HADOOP_WEBHDFS_PORT
+          value: "50070"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+        - name: YARN_OPTS
+          value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+      volumes:
+        - name: yarn-historyserver-claim0
+          persistentVolumeClaim:
+            claimName: yarn-historyserver-claim0
+        - name: exporter-dir
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: jmx-exporter-config

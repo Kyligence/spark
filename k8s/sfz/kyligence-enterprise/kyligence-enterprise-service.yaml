@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: <<<namespace>>>
+  name: kyligence-enterprise-<<<version>>>
+  labels:
+    metrics-exporter: prometheus
+spec:
+  selector:
+    app: kyligence-enterprise-<<<version>>>
+  clusterIP: None
+  ports:
+  - port: 8080
+    name: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: <<<namespace>>>
+  name: kyligence-enterprise-ui-<<<version>>>
+spec:
+  selector:
+    app: kyligence-enterprise-<<<version>>>
+  ports:
+    - name: "http"
+      port: 7070
+      targetPort: 7070
+    - name: "spark-ui"
+      port: 4041
+      targetPort: 4041
