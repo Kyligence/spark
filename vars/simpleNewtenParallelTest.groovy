@@ -2,7 +2,6 @@ def call() {
     def ut1 = testForModules(
             'UTest-Stage-1', [
             "src/core-common",
-            "src/core-job",
             "src/core-storage",
             "src/core-metadata",
             "src/query",
@@ -16,19 +15,18 @@ def call() {
             "src/yinglong-enterprise-core-metadata",
             "src/license-service",
             "src/spark-project/engine-spark",
-            "src/spark-project/kylin-user-session",
-            "src/spark-project/kylin-user-session-dep",
             "src/spark-project/source-jdbc",
             "src/spark-project/sparder",
             "src/spark-project/spark-common",
             "src/spark-project/spark-it",
             "src/tool",
             "src/datasource-sdk",
+            "src/external-catalog/external-catalog-sdk",
             "src/second-storage/clickhouse",
             "src/second-storage/core",
             "src/second-storage/core-ui",
             "src/second-storage/clickhouse-it"], [])
-    def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
+    def it1 = testForModules('ITest-Stage-1', ["src/kap-it", "src/core-job" ], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 
     def allTestStages = ut1 + ut2 + it1 + it2
@@ -45,7 +43,7 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
             def willTestModules = modules.join(",")
             def willTestCases = tests.join(",")
 
-            retry(3){
+            // retry(3){
                 sh script: """
                     if [ ! -d ${stage} ]; then
                         mkdir ${stage} && cp -arf ./sourcecode/* ./${stage}/
@@ -55,9 +53,13 @@ def testForModules(String stage, List<String> modules, List<String> tests) {
                     -pl ${willTestModules} \
                     -Dtest='${willTestCases}' \
                     -DfailIfNoTests=false \
-                    -Duser.timezone=GMT+8
+                    -Duser.timezone=GMT+8 ${defaultJvmArgs()}
                 """
-            }
+            // }
         }
     }]
+}
+
+def defaultJvmArgs() {
+    return params.args.isEmpty() ? '-DskipBuild=true' : params.args
 }

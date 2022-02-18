@@ -9,11 +9,11 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-package-agent-aws.yaml'
+            yamlFile 'pipelines/aws/sfz-cd/jenkins-agent.yaml'
         }
     }
-   
-     triggers {
+    
+    triggers {
         pollSCM ('*/1 * * * *')
     }
 

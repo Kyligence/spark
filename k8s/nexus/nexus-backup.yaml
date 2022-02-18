@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ops
+  name: nexus3-rbd-backup
+  labels:
+    app: nexus3-rbd-backup
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nexus3-rbd-backup
+  template:
+    metadata:
+      labels:
+        app: nexus3-rbd-backup
+    spec:
+      nodeName: kubernetes-work01
+      containers:
+      - name: nexusdata-busybox
+        image: busybox:1.34.1
+        imagePullPolicy: IfNotPresent
+        command: [ "/bin/sh","-c", "tail -f /dev/null" ]
+        args: [ "chown -R 200:200 /nexus-data" ]
+        volumeMounts:
+          - name: nexus-data-rbd
+            mountPath: /nexus-data
+          - name: nexus-data
+            mountPath: /nexus-data-nfs
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+          requests:
+            memory: "1Gi"
+            cpu: "800m"
+      volumes:
+        - name: nexus-data-rbd
+          persistentVolumeClaim:
+            claimName: nexus-data-rbd-pvc
+        - name: nexus-data
+          persistentVolumeClaim:
+            claimName: nexus-data-pvc

@@ -16,6 +16,7 @@ pipeline {
     parameters {
         string(name: 'repo', defaultValue: '', description: 'Kap repo?')
         string(name: 'branch', defaultValue: '', description: 'Kap branch?')
+        string(name: 'args', defaultValue: '', description: 'Extra JVM options for maven test')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
     }
 
@@ -29,6 +30,7 @@ pipeline {
                                 githubCheckout 'KAP', null, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*'
                             }
                         }
+                        s3Archive('download')
                     }
                 }
             }
@@ -56,6 +58,7 @@ pipeline {
                     timestamps {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
+                    s3Archive('upload')
                 }
             }
         }
