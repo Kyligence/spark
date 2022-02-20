@@ -26,6 +26,7 @@ def call() {
             "src/spark-project/spark-it",
             "src/tool",
             "src/datasource-sdk",
+            "src/yinglong-enterprise-core-metadata",
             "src/second-storage/clickhouse-it"], [])
 
     
