@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib') _
+@Library('devopslib@devops-0221') _
 
 pipeline {
     options {
@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/aws/Daily-CI/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
         }
     }
 
@@ -40,10 +40,14 @@ pipeline {
             steps {
                 container("maven") {
                     dir("sourcecode") {
-                        sh script: """
-                            mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
-                            mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
-                        """
+                        script {
+                            def modules = sh(script:'''mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
+                                ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
+                            sh script: """
+                                mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
+                                mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
+                            """
+                        }
                     }
                 }
             }
@@ -51,12 +55,7 @@ pipeline {
         stage('Testing') {
             steps {
                 container('maven') {
-                    dir("sourcecode") {
-                        sh script: """mvn clean test \
-                            -DfailIfNoTests=false \
-                            -Duser.timezone=GMT+8 ${params.args}
-                            """
-                    }
+                    dynamicNewtenParallelTest()
                 }
             }
             post {
@@ -81,8 +80,8 @@ pipeline {
                                 -Dsonar.host.url=https://sonarcloud.io \
                                 -Dsonar.organization=kyligence \
                                 -Dsonar.projectKey=Kyligence_KAP \
-                                -Dsonar.branch.name=${params.branch}
-                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/**/*jacoco.xml
+                                -Dsonar.branch.name=${params.branch} \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/*worker*/**/*jacoco.xml
                             """
                         }
                     }
