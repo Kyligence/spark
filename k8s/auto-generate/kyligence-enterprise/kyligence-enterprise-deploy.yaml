@@ -22,8 +22,7 @@ spec:
           emptyDir: {}
         - configMap:
             name: kyligence-enterprise-config-<<<version>>>
-          name: kyligence-enterprise-config-<<<version>>>
-        - configMap:
+          name: kyligence-enterprise-config
             name: yarn-xml
           name: yarn-xml
         - name: exporter-dir
