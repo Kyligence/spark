@@ -28,10 +28,32 @@ def call() {
             "src/second-storage/core",
             "src/second-storage/core-ui",
             "src/second-storage/clickhouse-it"], [])
+
+       def ut3 = testForModules(
+            'UTest-Stage-3', [
+            "src/ke-build-service",
+            "src/ke-common-service",
+            "src/ke-data-loading-server",
+            "src/ke-datasource-service",
+            "src/ke-enterprise-service",
+            "src/ke-integration-service",
+            "src/ke-job-service",
+            "src/ke-metadata-server",
+            "src/ke-modeling-service",
+            "src/ke-query-server",
+            "src/ke-query-service",
+            "src/ke-smart-server",
+            "src/ke-smart-service",
+            "src/ke-streaming-service",
+            "src/ke-systools"
+            "src/second-storage/clickhouse-it"], [])
+
+
+
     def it1 = testForModules('ITest-Stage-1', ["src/kap-it"], ["!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
     def it2 = testForModules('ITest-Stage-2', ["src/kap-it"], ["io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest#testAllQueries"])
 
-    def allTestStages = ut1 + ut2 + it1 + it2
+    def allTestStages = ut1 + ut2 + ut3  + it1 + it2
 
     echo 'parallel run all tests...'
     parallel allTestStages
