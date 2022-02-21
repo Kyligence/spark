@@ -210,7 +210,7 @@ echo "[OK]部署 Hive Server2"
 #
 echo "[11/12]部署 Kyligence Enterprise"
 kubectl apply -f ./kyligence-enterprise \
-	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/kyligence-enterprise --timeout=-1s
+	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/kyligence-enterprise-$opt_version --timeout=-1s
 
 if [ $? -eq 1 ]
 then
@@ -222,14 +222,14 @@ echo "[OK]部署 Kyligence Enterprise"
 #
 
 echo "[12/12]导入SSB数据"
-pod=$(kubectl get pods -l app=kyligence-enterprise -n $opt_namespace --no-headers | awk '{print $1}')
+pod=$(kubectl get pods -l app=kyligence-enterprise-$opt_version -n $opt_namespace --no-headers | awk '{print $1}')
 
 if [ $? -eq 1 ]
 then
 	echo "[FAILED]导入SSB数据" && exit 1
 fi
 
-kubectl exec -it $pod -c kyligence-enterprise -n $opt_namespace -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
+kubectl exec -it $pod -c kyligence-enterprise-$opt_version -n $opt_namespace -- sh -c 'sh $KYLIN_HOME/bin/sample.sh'
 
 if [ $? -eq 1 ]
 then
