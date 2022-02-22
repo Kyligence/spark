@@ -166,8 +166,8 @@ private case object MySQLDialect extends JdbcDialect with SQLConfHelper {
       indexName: String,
       tableName: String,
       columns: Array[NamedReference],
-      columnsProperties: Array[util.Map[NamedReference, util.Properties]],
-      properties: util.Properties): String = {
+      columnsProperties: util.Map[NamedReference, util.Map[String, String]],
+      properties: util.Map[String, String]): String = {
     val columnList = columns.map(col => quoteIdentifier(col.fieldNames.head))
     val (indexType, indexPropertyList) = JdbcUtils.processIndexProperties(properties, "mysql")
 

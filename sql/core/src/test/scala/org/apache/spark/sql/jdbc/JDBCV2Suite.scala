@@ -418,6 +418,13 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
     checkAnswer(df, Seq(Row(10000, 1100.0), Row(12000, 1250.0), Row(12000, 1200.0)))
   }
 
+  private def checkFiltersRemoved(df: DataFrame): Unit = {
+    val filters = df.queryExecution.optimizedPlan.collect {
+      case f: Filter => f
+    }
+    assert(filters.isEmpty)
+  }
+
   test("scan with aggregate push-down: MAX AVG with filter without group by") {
     val df = sql("select MAX(ID), AVG(ID) FROM h2.test.people where id > 0")
     val filters = df.queryExecution.optimizedPlan.collect {

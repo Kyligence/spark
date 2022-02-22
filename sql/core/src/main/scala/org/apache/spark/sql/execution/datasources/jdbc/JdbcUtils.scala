@@ -1035,15 +1035,14 @@ object JdbcUtils extends Logging {
   def createIndex(
       conn: Connection,
       indexName: String,
-      indexType: String,
       tableName: String,
       columns: Array[NamedReference],
-      columnsProperties: Array[util.Map[NamedReference, util.Properties]],
-      properties: util.Properties,
+      columnsProperties: util.Map[NamedReference, util.Map[String, String]],
+      properties: util.Map[String, String],
       options: JDBCOptions): Unit = {
     val dialect = JdbcDialects.get(options.url)
     executeStatement(conn, options,
-      dialect.createIndex(indexName, indexType, tableName, columns, columnsProperties, properties))
+      dialect.createIndex(indexName, tableName, columns, columnsProperties, properties))
   }
 
   /**
