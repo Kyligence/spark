@@ -45,8 +45,7 @@ def call() {
             "src/ke-smart-server",
             "src/ke-smart-service",
             "src/ke-streaming-service",
-            "src/ke-systools"
-            "src/second-storage/clickhouse-it"], [])
+            "src/ke-systools"], [])
 
 
 
