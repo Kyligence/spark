@@ -41,8 +41,6 @@ pipeline {
                 container("maven") {
                     dir("sourcecode") {
                         script {
-                            def modules = sh(script:'''mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
-                                ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
                             sh script: """
                                 mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
                                 mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
@@ -61,7 +59,7 @@ pipeline {
             post {
                 always {
                     timestamps {
-                        junit skipPublishingChecks: true, testResults: '**/target/surefire-reports/*.xml'
+                        junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
                     container('maven') {
                         s3Archive('upload')
@@ -81,7 +79,7 @@ pipeline {
                                 -Dsonar.organization=kyligence \
                                 -Dsonar.projectKey=Kyligence_KAP \
                                 -Dsonar.branch.name=${params.branch} \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/*worker*/**/*jacoco.xml
+                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/*Test-Stage-*/**/*jacoco.xml
                             """
                         }
                     }

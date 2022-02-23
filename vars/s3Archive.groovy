@@ -12,9 +12,15 @@ def uploadArchive() {
             // Upload reports for analyze
             sh script: """
                 mkdir -p ${BUILD_NUMBER}/report
+                mkdir -p ${BUILD_NUMBER}/site
                 outputs=\$(find "\$(pwd)" -path '*surefire-reports/*.xml' | sed 's/.*/&/')
                 for out in \$outputs; do
-                    cp \$out ${BUILD_NUMBER}/
+                    cp \$out ${BUILD_NUMBER}/report/
+                done
+                outputs=\$(find "\$(pwd)" -path '*target*site' | sed 's/.*/&/')
+                for out in \$outputs; do
+                    target_out=\$(echo \$out | rev |cut -d/ -f 3 | rev)
+                    cp -r \$out ${BUILD_NUMBER}/site/\$target_out
                 done
                 tar czf ${BUILD_NUMBER}.tar.gz ${BUILD_NUMBER}/
             """

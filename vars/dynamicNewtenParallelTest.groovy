@@ -17,10 +17,14 @@ def call() {
         }
     }
 
-    def worker1 = createWorker("worker1", taskQueue)
-    def worker2 = createWorker("worker2", taskQueue)
-    def worker3 = createWorker("worker3", taskQueue)
-    def worker4 = createWorker("worker4", taskQueue)
+    taskQueue.each {
+        echo "found modele " + it
+    }
+
+    def worker1 = createWorker("UTest-Stage-1", taskQueue)
+    def worker2 = createWorker("UTest-Stage-2", taskQueue)
+    def worker3 = createWorker("UTest-Stage-3", taskQueue)
+    def worker4 = createWorker("UTest-Stage-4", taskQueue)
 
     def allTestStages = worker1 + worker2 + worker3 + worker4
     parallel allTestStages
