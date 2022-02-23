@@ -3197,4 +3197,6 @@ class FakeLocalFsFileSystem extends RawLocalFileSystem {
   override def setAcl(path: Path, aclSpec: java.util.List[AclEntry]): Unit = {
     aclStatus = new AclStatus.Builder().addEntries(aclSpec).build()
   }
+
+  override def getScheme: String = ""
 }
