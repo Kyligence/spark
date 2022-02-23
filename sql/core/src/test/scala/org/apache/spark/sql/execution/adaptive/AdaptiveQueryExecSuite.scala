@@ -1522,7 +1522,7 @@ class AdaptiveQueryExecSuite
           .repartition( 15, $"id")
           .sortWithinPartitions($"id")
         dfRepartition
-          .write.mode(SaveMode.Overwrite).parquet("/Users/mingming.ge/Documents/parquet/11")
+          .write.mode(SaveMode.Overwrite).parquet(sys.props("spark.test.home") + "/parquet/11")
         val plan = dfRepartition.queryExecution.executedPlan
         assert(hasRepartitionShuffle(plan))
       }
