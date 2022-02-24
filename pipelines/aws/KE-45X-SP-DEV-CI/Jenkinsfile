@@ -48,7 +48,7 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    dynamicNewtenParallelTest()
+                    simpleKe45xSpDevParallelTest()
                 }
             }
             post {
