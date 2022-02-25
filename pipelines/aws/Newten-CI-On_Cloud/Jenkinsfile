@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib@sonar') _
+@Library('devopslib') _
 
 pipeline {
     options {
