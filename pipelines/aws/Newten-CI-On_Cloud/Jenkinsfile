@@ -70,9 +70,7 @@ pipeline {
                         withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
                             // You can override the credential to be used
                             sh script: """
-                                ls -l ${WORKSPACE}/*Test-Stage-*/**/*jacoco.xml
-
-                                mvn sonar:sonar \
+                                mvn sonar:sonar -T 4C \
                                 -Dsonar.pullrequest.base=${ghprbTargetBranch} \
                                 -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
                                 -Dsonar.pullrequest.key=${ghprbPullId} \
