@@ -14,11 +14,11 @@ spec:
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "800Mi"
-          cpu: "500m"
+          memory: "2000Mi"
+          cpu: "1500m"
         requests:
-          memory: "500Mi"
-          cpu: "300m"
+          memory: "1000Mi"
+          cpu: "1000m"
 
     - name: "maven"
       tty: true
@@ -60,10 +60,10 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "800Mi"
-          cpu: "800m"
+          memory: "2000Mi"
+          cpu: "1000m"
         requests:
-          memory: "500Mi"
+          memory: "1000Mi"
           cpu: "500m"
 
   volumes:
