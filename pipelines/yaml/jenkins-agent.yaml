@@ -15,10 +15,10 @@ spec:
       resources:
         limits:
           memory: "2000Mi"
-          cpu: "1500m"
+          cpu: "2000m"
         requests:
-          memory: "1000Mi"
-          cpu: "1000m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
     - name: "maven"
       tty: true
@@ -61,10 +61,10 @@ spec:
       resources:
         limits:
           memory: "2000Mi"
-          cpu: "1000m"
+          cpu: "2000m"
         requests:
-          memory: "1000Mi"
-          cpu: "500m"
+          memory: "2000Mi"
+          cpu: "2000m"
 
   volumes:
     - name: "jenkins-common"
