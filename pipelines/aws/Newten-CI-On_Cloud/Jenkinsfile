@@ -50,8 +50,8 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    simpleNewtenParallelTest()
-                    // dynamicNewtenParallelTest()
+                    // simpleNewtenParallelTest()
+                    dynamicNewtenParallelTest()
                 }
             }
             post {
@@ -65,7 +65,9 @@ pipeline {
         }
         stage('SonarCloud') {
             steps {
-                sonarClud()
+                sonarAnalyze("""-Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                -Dsonar.pullrequest.key=${ghprbPullId} """)
             }
         }
     }

@@ -48,11 +48,15 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         mvn clean test --fail-at-end \
                         -pl ${item} \
                         -DfailIfNoTests=false \
-                        -Duser.timezone=GMT+8  ${params.args}
+                        -Duser.timezone=GMT+8 ${defaultJvmArgs()}
                     """
                     item = taskQueue.poll()
                 }
             }
         }
     }]
+}
+
+def defaultJvmArgs() {
+    return params.args.isEmpty() ? '-DskipBuild=true' : params.args
 }

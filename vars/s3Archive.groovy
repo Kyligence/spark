@@ -92,11 +92,12 @@ def defaultJvmArgs() {
 }
 
 def targetBranch() {
-    if (binding.variables.containsKey('ghprbTargetBranch')) {
+    try {
         return ghprbTargetBranch
+    } catch (Exception err) {
+        if (!params.branch.isEmpty()) {
+            return params.branch
+        }
+        return 'newten-dev'
     }
-    if (!params.branch.isEmpty()) {
-        return params.branch
-    }
-    return 'newten-dev'
 }
