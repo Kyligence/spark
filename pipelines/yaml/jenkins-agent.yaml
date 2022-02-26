@@ -38,11 +38,11 @@ spec:
           name: "dockersock"
       resources:
         limits:
-          memory: "16000Mi"
-          cpu: "8000m"
+          memory: "56000Mi"
+          cpu: "16000m"
         requests:
-          memory: "8000Mi"
-          cpu: "4000m"
+          memory: "56000Mi"
+          cpu: "16000m"
 
     - name: "sonar-cloud"
       tty: true
