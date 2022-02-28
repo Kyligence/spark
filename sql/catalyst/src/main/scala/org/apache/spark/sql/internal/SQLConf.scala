@@ -801,7 +801,7 @@ object SQLConf {
 
   val PARQUET_COLUMN_NAME_CHECK_ENABLED = buildConf("spark.sql.parquet.columnNameCheck.enabled")
     .doc("Parquet Column Name Check.")
-    .version("2.3.0")
+    .version("3.1.1")
     .booleanConf
     .createWithDefault(true)
 
