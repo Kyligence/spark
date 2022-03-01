@@ -14,11 +14,11 @@ spec:
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "2000Mi"
+          memory: "3000Mi"
           cpu: "2000m"
         requests:
           memory: "2000Mi"
-          cpu: "2000m"
+          cpu: "1000m"
 
     - name: "maven"
       tty: true
@@ -38,11 +38,11 @@ spec:
           name: "dockersock"
       resources:
         limits:
-          memory: "56000Mi"
-          cpu: "16000m"
+          memory: "24000Mi"
+          cpu: "10000m"
         requests:
-          memory: "56000Mi"
-          cpu: "16000m"
+          memory: "16000Mi"
+          cpu: "8000m"
 
     - name: "sonar-cloud"
       tty: true
