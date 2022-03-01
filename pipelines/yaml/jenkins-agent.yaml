@@ -14,11 +14,11 @@ spec:
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "3000Mi"
-          cpu: "2000m"
+          memory: "3Gi"
+          cpu: "1500m"
         requests:
-          memory: "2000Mi"
-          cpu: "1000m"
+          memory: "2Gi"
+          cpu: "800m"
 
     - name: "maven"
       tty: true
@@ -38,11 +38,11 @@ spec:
           name: "dockersock"
       resources:
         limits:
-          memory: "24000Mi"
-          cpu: "10000m"
+          memory: "16Gi"
+          cpu: "8"
         requests:
-          memory: "16000Mi"
-          cpu: "8000m"
+          memory: "10Gi"
+          cpu: "4"
 
     - name: "sonar-cloud"
       tty: true
@@ -60,11 +60,11 @@ spec:
           subPath: "settings.xml"
       resources:
         limits:
-          memory: "2000Mi"
-          cpu: "2000m"
+          memory: "2Gi"
+          cpu: "2"
         requests:
-          memory: "2000Mi"
-          cpu: "2000m"
+          memory: "1Gi"
+          cpu: "1"
 
   volumes:
     - name: "jenkins-common"
