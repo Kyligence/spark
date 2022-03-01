@@ -38,7 +38,7 @@ spec:
           name: "dockersock"
       resources:
         limits:
-          memory: "36Gi"
+          memory: "56Gi"
           cpu: "16"
         requests:
           memory: "24Gi"
