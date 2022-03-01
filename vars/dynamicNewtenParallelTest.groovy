@@ -6,20 +6,16 @@ def call() {
                 cd sourcecode
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
             ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
-        def blacklistModules = ['src/kap-it', 'src/server-base', 'src/second-storage/clickhouse-it']
+        def blacklistModules = ['src/kap-it', 'src/server-base', 'src/spark-project/engine-spark']
         def taskQueue = [
             "src/kap-it -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
             "src/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
             "src/server-base",
-            "src/second-storage/clickhouse-it"] as LinkedBlockingQueue
+            "src/spark-project/engine-spark"] as LinkedBlockingQueue
         modules.each { m ->
             if (!blacklistModules.contains(m)) {
                 taskQueue.add(m)
             }
-        }
-
-        taskQueue.each {
-            echo "found modele " + it
         }
 
         def worker1 = createWorker("UTest-Stage-1", taskQueue)
