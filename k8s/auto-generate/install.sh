@@ -40,17 +40,17 @@ if [[ -z $opt_package_file || -z $opt_namespace || -z $opt_version ]]; then
         exit -1
 fi
 
-grep -rl '<<<namespace>>>' ./ | grep -v 'install.sh' | xargs sed -i "s|<<<namespace>>>|$opt_namespace|"
+grep -rl '<<<namespace>>>' ./ | grep -v 'install.sh' | xargs sed -i "s|<<<namespace>>>|$opt_namespace|g"
 
-sed -i "s|<<<package_file>>>|$opt_package_file|" ./kyligence-enterprise/kyligence-enterprise-deploy.yaml
+sed -i "s|<<<package_file>>>|$opt_package_file|g" ./kyligence-enterprise/kyligence-enterprise-deploy.yaml
 
-sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-deploy.yaml
+sed -i "s|<<<version>>>|$opt_version|g" ./kyligence-enterprise/kyligence-enterprise-deploy.yaml
 
-sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-service.yaml
+sed -i "s|<<<version>>>|$opt_version|g" ./kyligence-enterprise/kyligence-enterprise-service.yaml
 
-sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-ingress.yaml
+sed -i "s|<<<version>>>|$opt_version|g" ./kyligence-enterprise/kyligence-enterprise-ingress.yaml
 
-sed -i "s|<<<version>>>|$opt_version|" ./kyligence-enterprise/kyligence-enterprise-configmap.yaml
+sed -i "s|<<<version>>>|$opt_version|g" ./kyligence-enterprise/kyligence-enterprise-configmap.yaml
 #
 #
 #
@@ -240,4 +240,4 @@ echo "[OK]导入SSB数据"
 
 cat ./banner.txt
 
-echo http://${opt_namespace}.uat.kylincorp.com/kylin
+echo http://${opt_namespace}.${opt_version}.uat.kylincorp.com/kylin

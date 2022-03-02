@@ -71,7 +71,7 @@ spec:
           value: "true"
         - name: HADOOP_OPTS
           value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           initialDelaySeconds: 40
           periodSeconds: 10

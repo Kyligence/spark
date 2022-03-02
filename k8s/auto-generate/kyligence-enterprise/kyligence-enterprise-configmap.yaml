@@ -41,11 +41,11 @@ data:
       kylin.query.cache-enabled=false
       kylin.query.calcite.extras-props.conformance=LENIENT
       #---------------元数据----------------
-      kylin.metadata.url=ke_metadata-<<<version>>>@jdbc,driverClassName=com.mysql.jdbc.Driver,url=jdbc:mysql://mysql:3306/ke_metadata-<<<version>>>?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8,username=kylin,password=kylin,maxTotal=50,maxIdle=8
+      kylin.metadata.url=ke_metadata_<<<version>>>@jdbc,driverClassName=com.mysql.jdbc.Driver,url=jdbc:mysql://mysql:3306/ke_metadata_<<<version>>>?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8,username=root,password=kyligence,maxTotal=50,maxIdle=8
       #---------------zookeeper地址---------
       kylin.env.zookeeper-connect-string=zk-cs:2181
       #---------------查询------------------
-      kylin.storage.columnar.file-system=hdfs://hdfs-namenode:8020/kyligence
+      kylin.storage.columnar.file-system=hdfs://hdfs-namenode:8020/kyligence/<<<version>>>
       kylin.storage.columnar.spark-conf.spark.master=yarn
       kylin.storage.columnar.spark-conf.spark.driver.host=kyligence-enterprise-<<<version>>>
       kylin.storage.columnar.spark-conf.spark.driver.memory=1024m
@@ -56,11 +56,11 @@ data:
       kylin.storage.columnar.spark-conf.spark.executor.instances=1
       kylin.storage.columnar.spark-conf.mapreduce.input.fileinputformat.input.dir.recursive=true
       #---------------构建------------------
-      kylin.env.hdfs-working-dir=hdfs://hdfs-namenode:8020/kyligence
+      kylin.env.hdfs-working-dir=hdfs://hdfs-namenode:8020/kyligence/<<<version>>>
       kylin.engine.spark-conf.spark.master=yarn
       kylin.engine.spark-conf.spark.hadoop.mapreduce.input.fileinputformat.input.dir.recursive=true
-      kylin.engine.spark-conf.spark.history.fs.logDirectory=hdfs://hdfs-namenode:8020/kyligence/spark-history
-      kylin.engine.spark-conf.spark.eventLog.dir=hdfs://hdfs-namenode:8020/kyligence/spark-history
+      kylin.engine.spark-conf.spark.history.fs.logDirectory=hdfs://hdfs-namenode:8020/kyligence/<<<version>>>/spark-history
+      kylin.engine.spark-conf.spark.eventLog.dir=hdfs://hdfs-namenode:8020/kyligence/<<<version>>>/spark-history
       kylin.engine.spark-conf.spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version=2
       kylin.engine.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=${kylin.env.hdfs-working-dir} -Dkap.metadata.identifier=${kylin.metadata.url.identifier} -Dkap.spark.category=job -Dkap.spark.project=${job.project} -Dkap.spark.identifier=${job.id} -Dkap.spark.jobName=${job.stepId} -Duser.timezone=${user.timezone}
       kylin.engine.spark-conf.spark.driver.host=kyligence-enterprise
