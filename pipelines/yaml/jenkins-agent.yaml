@@ -41,8 +41,8 @@ spec:
           memory: "56Gi"
           cpu: "16"
         requests:
-          memory: "24Gi"
-          cpu: "8"
+          memory: "56Gi"
+          cpu: "16"
 
     - name: "sonar-cloud"
       tty: true
