@@ -534,7 +534,7 @@ class SessionCatalog(
     val t = getTableRawMetadata(name)
     val l = conf.getConf(SQLConf.HIVE_SPECIFIC_FS_LOCATION)
     t.copy(schema = CharVarcharUtils.replaceCharVarcharWithStringInSchema(t.schema),
-      storage = FSNamespaceUtils.replaceLocationWithSpecialPrefix(l, t.storage))
+      storage = FSNamespaceUtils.replaceLocWithSpecPrefix(l, t.storage))
   }
 
   /**
