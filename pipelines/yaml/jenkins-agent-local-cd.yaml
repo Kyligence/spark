@@ -1,0 +1,39 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+  - name: "build"
+    image: "10.1.9.11:5000/newten-build:latest"
+    imagePullPolicy: "IfNotPresent"
+    tty: true
+    command:
+      - "cat"
+    resources:
+        request:
+          memory: "2000Mi"
+          cpu: "500m"
+        limits:
+          memory: "4000Mi"
+          cpu: "2000m"
+    volumeMounts:
+    ##
+    - name: "jenkins-common"
+      mountPath: "/root/.m2"
+      subPath: "maven3"
+    ##
+    - name: "kyligence-repo"
+      mountPath: /root/.m2/repository/io/kyligence
+    ##
+    - name: "jenkins-common"
+      mountPath: "/var/cicd"
+      subPath: "newten-cicd"
+      
+  volumes:
+    ##
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    ##
+    - name: "kyligence-repo"
+      emptyDir: { }

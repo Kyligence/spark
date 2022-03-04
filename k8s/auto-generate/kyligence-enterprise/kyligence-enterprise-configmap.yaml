@@ -63,7 +63,7 @@ data:
       kylin.engine.spark-conf.spark.eventLog.dir=hdfs://hdfs-namenode:8020/kyligence/<<<version>>>/spark-history
       kylin.engine.spark-conf.spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version=2
       kylin.engine.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=${kylin.env.hdfs-working-dir} -Dkap.metadata.identifier=${kylin.metadata.url.identifier} -Dkap.spark.category=job -Dkap.spark.project=${job.project} -Dkap.spark.identifier=${job.id} -Dkap.spark.jobName=${job.stepId} -Duser.timezone=${user.timezone}
-      kylin.engine.spark-conf.spark.driver.host=kyligence-enterprise
+      kylin.engine.spark-conf.spark.driver.host=kyligence-enterprise-<<<version>>>
       kylin.engine.spark-conf.spark.driver.memory=1024m
       kylin.engine.spark-conf.spark.executor.cores=1
       kylin.engine.spark-conf.spark.executor.memory=1024m
