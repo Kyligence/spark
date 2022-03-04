@@ -65,7 +65,6 @@ pipeline {
                 sonarAnalyze("""-Dsonar.pullrequest.base=${ghprbTargetBranch} \
                                 -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
                                 -Dsonar.pullrequest.key=${ghprbPullId} """)
-                }
             }
         }
     }
