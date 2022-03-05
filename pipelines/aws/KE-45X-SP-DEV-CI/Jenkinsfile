@@ -30,6 +30,7 @@ pipeline {
                                 githubCheckout 'KAP', null, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/*'
                             }
                         }
+                        s3Archive('download')
                     }
                 }
             }
@@ -58,6 +59,7 @@ pipeline {
                     timestamps {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
+                    s3Archive('upload')
                 }
             }
         }
