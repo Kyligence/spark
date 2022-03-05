@@ -42,7 +42,6 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             sh script: """
-                                mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
                                 mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
                             """
                         }
