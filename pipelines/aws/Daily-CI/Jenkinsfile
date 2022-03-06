@@ -1,10 +1,10 @@
 #!groovy
 
-@Library('devopslib@devops-0226') _
+@Library('devopslib') _
 
 pipeline {
     options {
-        timeout(time: 6, unit: 'HOURS')
+        timeout(time: 2, unit: 'HOURS')
     }
 
     agent {
@@ -68,6 +68,13 @@ pipeline {
             steps {
                 sonarAnalyze("-Dsonar.branch.name=${params.branch}")
             }
+        }
+    }
+    post {
+        always {
+            sh 'pwd'
+            sh 'ls -al'
+            echo "causes: ${currentBuild.getBuildCauses}, duration: ${currentBuild.duration}"
         }
     }
 }
