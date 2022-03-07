@@ -61,7 +61,7 @@ spec:
         resources:
           requests:
             memory: 1Gi
-            cpu: 1
+            cpu: 100m
         env:
         - name: HADOOP_HEAPSIZE
           value: "1024"
