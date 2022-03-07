@@ -39,10 +39,11 @@ pipeline {
             steps {
                 container("maven") {
                     dir("sourcecode") {
-                        sh script: """
-                            mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests
-                            mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
-                        """
+                        def external_version = sh script: 'mvn help:evaluate -Dexpression=external.version  -q -DforceStdout',returnStdout:true
+                        if (!external_version){
+                            sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                        }
+                        sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
                     }
                 }
             }
