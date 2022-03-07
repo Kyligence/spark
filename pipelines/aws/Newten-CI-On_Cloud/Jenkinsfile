@@ -39,11 +39,13 @@ pipeline {
             steps {
                 container("maven") {
                     dir("sourcecode") {
-                        def external_version = sh script: 'mvn help:evaluate -Dexpression=external.version  -q -DforceStdout',returnStdout:true
-                        if (external_version && external_version!="4.5.9"){
-                            sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                        script {
+                            def external_version = sh script: 'mvn help:evaluate -Dexpression=external.version  -q -DforceStdout',returnStdout:true
+                            if (external_version && external_version!="4.5.9"){
+                                sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                            }
+                            sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
                         }
-                        sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
                     }
                 }
             }
