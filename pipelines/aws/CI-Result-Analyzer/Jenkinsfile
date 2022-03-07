@@ -1,0 +1,143 @@
+#!groovy
+import java.net.URLEncoder
+
+@NonCPS
+def encodeURL(String text) {
+    return URLEncoder.encode(text, 'UTF-8')
+}
+
+def mergeFile(String text, String originText) {
+    def buildIds = []
+    originText.split("\n").each { line ->
+        buildIds.add(line.split('\\|')[0])
+    }
+    echo "${buildIds}"
+    def outputText = '' 
+    text.split("\n").each { line ->
+        if (!buildIds.contains(line.split('\\|')[0])) {
+            outputText += "$line\n"
+        }
+    }
+    outputText += originText
+    return outputText
+}
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent-aws.yaml'
+        }
+    }
+
+    triggers {
+        cron('0 * * * *')
+    }
+
+    stages {
+        stage('Prepare') {
+            steps {
+                container('build') {
+                    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                        s3Download(file: 'junit-xml2csv.jar', bucket: 'k8s-bucket-devops', path: "ke-ci/junit-xml2csv.jar", force: true)
+                        s3Download(file: 'build_result/build_result_origin.csv', bucket: 'k8s-bucket-devops', path: "ke-ci-analyze/ci_build_result/build_result.csv", force: true)
+                        sh "mkdir analyze_tmp"
+                        sh "mkdir junit_result"
+                        script {
+                            def analyzedFiles = s3FindFiles(bucket: 'k8s-bucket-devops', path: 'ke-ci-analyze/ci_test_result/')
+                            def maxId = 0
+                            analyzedFiles.each { file -> 
+                                def buildId = Integer.parseInt(file.name.split("\\.")[0]) 
+                                maxId = maxId > buildId ? maxId : buildId
+                            }
+                            echo "maxId: $maxId"
+                            def files = s3FindFiles(bucket: 'k8s-bucket-devops', path: "ke-ci-result/KE4/Newten-CI-On_Cloud/")
+                            def count=0
+                            files.each { file ->
+                                def buildId = Integer.parseInt(file.name.split("\\.")[0]) 
+                                if (buildId > maxId && count < 10) {
+                                    s3Download(bucket: 'k8s-bucket-devops', path: "ke-ci-result/KE4/Newten-CI-On_Cloud/${file.name}", file:"origin/${file.name}")
+                                }
+                                count++
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Analyze job') {
+            steps {
+                container('build') {
+                    dir('build_result') {
+                        script {
+                            def root = "http://devops-jenkins:8080/job/KE4/job/Newten-CI-On_Cloud"
+                            def buildText = ''
+
+                            def options = """/api/json?tree=${encodeURL("builds[actions[parameters[name,value],waitingTimeMillis],number,duration,result]")}"""
+                            def text = sh(script:""" curl -X GET '${root}${options}' --user enweijiao:11d42c33ad589aa2db179a67fd69c49fa7 """, returnStdout: true).trim()
+                            def jsonResult = readJSON text: text
+                            jsonResult['builds'].each { buildsdata -> 
+                                def buildResult = buildsdata['result'] 
+                                echo "build result $buildResult"
+                                if (buildResult == null || buildResult == 'null') {
+                                    return
+                                }
+                                def line = "${buildsdata['number']}|"
+                                buildsdata["actions"].each { actions ->
+                                    if (actions["_class"].equals("org.jenkinsci.plugins.ghprb.GhprbParametersAction")) {
+                                        actions["parameters"].each { param ->
+                                            line += "${param['value']}|"
+                                        }
+                                    }
+                                }
+                                line += "${buildsdata['result']}"
+                                buildText += "${line}\n"
+                            }
+                            def data = readFile(file:'build_result_origin.csv')
+                            def outputText = mergeFile(buildText, data)
+                            writeFile file: 'build_result.csv', text: outputText
+                        }
+                    }
+                }
+            }
+        }
+        stage('Analyze Junit') {
+            steps {
+                container('build') {
+                    sh script: """
+                        for f in `ls origin`; do
+                            tar zxf ./origin/\$f --directory ./analyze_tmp/
+                        done
+                    """
+                    sh script: """
+                        for f in `ls analyze_tmp`; do
+                            java -jar junit-xml2csv.jar ./analyze_tmp/\$f/report/ junit_result/\$f.csv
+                            tail -n +2 "\f.csv" > "\$f.tmp" && mv "\$f.tmp" "\$f.csv"
+                            sed -i -e 's/^/\$f,/' \$f.csv
+                        done
+                    """
+                }
+            }
+        }
+
+        stage('Upload') {
+            steps {
+                container('build') {
+                    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                        dir('build_result') {
+                            s3Upload(bucket: 'k8s-bucket-devops', path: 'ke-ci-analyze/ci_build_result/', includePathPattern: "*.csv", acl: 'AuthenticatedRead')
+                        }
+                        dir('junit_result') {
+                            s3Upload(bucket: 'k8s-bucket-devops', path: 'ke-ci-analyze/ci_test_result/', includePathPattern: "*.csv", acl: 'AuthenticatedRead')
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

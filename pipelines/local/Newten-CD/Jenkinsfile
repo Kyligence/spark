@@ -2,7 +2,7 @@
 
 @Library('devopslib') _
 
-package_file = ''
+packageFilename = ''
 namespace = 'test'
 
 pipeline {
@@ -21,20 +21,21 @@ pipeline {
         string(name: 'branch', defaultValue: 'newten-dev', description: 'Kap branch?')
         string(name: 'commitid', defaultValue: 'newten-dev', description: 'Kap branch?')
         string(name: 'version', defaultValue: '4.5.9', description: 'Kap version?')
+        string(name: 'remote_workspace', defaultValue: '/data/dev/sdc/test/4.5test', description: 'workspace in remote machine')
         credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
     stages {
-        stage("Checkout Source Code") {
+        stage('Checkout Source Code') {
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         script {
                             retry(3) {
                                 sshCmdWithCredentials(
                                     'bash -c /var/lib/git/pull.sh',
                                     'private_git',
-                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
+                                    ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
                                 githubCheckout 'KAP'
                             }
@@ -43,8 +44,13 @@ pipeline {
                             sh 'rm -rf ./kystudio'
                             dir('kystudio') {
                                 retry(3) {
-                                    githubCheckout 'KAP_Frontend', "${branch ?: params.branch ?: 'newten-qa'}", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                    githubCheckout 'KAP_Frontend'
                                 }
+                                sh """
+                                    rm -f .npmrc
+                                    echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
                             }
                         }
                     }
@@ -53,49 +59,114 @@ pipeline {
         }
         stage('Building Package') {
             steps {
-                container("build") {
-                    sh "cat /root/.m2/settings.xml"
-                    dir("sourcecode") {
+                container('build') {
+                    sh 'cat /root/.m2/settings.xml'
+                    dir('sourcecode') {
                         buildNewten(params.version, false, false)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         script {
                             def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
-                            print commitid
-
-                            package_file=sh(returnStdout:true, script: """
-                            mkdir -p /var/cicd/artifacts/dev/newten
-                            package_name="artifacts/dev/newten/KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
-                            cp dist/*.tar.gz /var/cicd/\$package_name"
-                            echo "newten-cicd/\$package_name"
-                            """).trim()
-                            print package_file
+                            packageFilename = sh(script: """
+                                    mkdir -p /var/cicd/artifacts/dev/newten/
+                                    package_name="KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
+                                    cp dist/*.tar.gz /var/cicd/artifacts/dev/newten/\$package_name
+                                    mkdir -p package
+                                    cp dist/*.tar.gz package/\$package_name
+                                    echo "sourcecode/package/\$package_name"
+                                """, returnStdout:true).trim()
                         }
                     }
                 }
             }
         }
-        stage("Generate ENV") {
+        stage('Deploy Env on Azure') {
             steps {
-                container("kubectl") {
+                container('build') {
+                    script {
+                        def remote = [:]
+                        remote.name = 'azure_test_env'
+                        withCredentials([usernamePassword(credentialsId: 'azure-test',
+                                usernameVariable: 'REMOTE_USERNAME',
+                                passwordVariable: 'REMOTE_PASSWORD')]) {
+                            remote.user = REMOTE_USERNAME
+                            remote.password = REMOTE_PASSWORD
+                        }
+                        remote.host = '52.131.43.135'
+                        remote.allowAnyHosts = true
+                        sshPut remote: remote, from: packageFilename, into: params.remote_workspace
+                        sshCommand remote: remote, command: """
+                            cd ${params.remote_workspace}
+                            package_name=`ls dist/ | grep .tar.gz\$`
+                            newten_dir=`basename \${package_name} .tar.gz`
+                            echo "package name is \${package_name}"
+                            jenkins_workspace=`pwd`
+                            cd ${params.remote_workspace}
 
+                            has_old_ke=false
+                            kylin_home=${params.remote_workspace}/Kyligence-Enterprise-newten-current
+
+                            if ls \${kylin_home} 1> /dev/null 2>&1; then
+                                has_old_ke=true
+                                echo "Kyligence-Enterprise-newten-current exists." 
+                                rm -rf /data/dev/sdc/test/4.5test/*.tar.gz
+                                cd \${kylin_home}
+                                set +e
+                                sh bin/kylin.sh stop
+                                cd ..
+                            else
+                                echo "Kyligence-Enterprise-newten-current does not exists. This is the first time for newten to release on this server."
+                            fi
+
+                            cp -rf \${jenkins_workspace}/dist/\${package_name} ${params.remote_workspace}
+                            set -e
+                            tar -zxf \${package_name}
+
+                            sleep 120
+
+                            if [[ \${has_old_ke} = true ]]; then
+                                    cd \${newten_dir}
+                                    sh bin/upgrade.sh \${kylin_home} --silent
+                            else
+                                mv \${newten_dir} \${kylin_home}
+                                cp -rf ${params.remote_workspace}/properties/kylin.properties  \${kylin_home}/conf/
+                                cp -rf ${params.remote_workspace}/properties/clickhouse.yml  \${kylin_home}/conf/
+                                cp -a ${params.remote_workspace}/component/*.jar \${kylin_home}/lib/ext/
+                                cd \${kylin_home}
+                                mv conf/setenv.sh.template conf/setenv.sh
+                            fi
+                            cd \${kylin_home}
+                            BUILD_ID=dontKillMe
+                            export KYLIN_HOME=\${kylin_home}
+                            #touch bin/check-env-bypass
+
+                            sh bin/kylin.sh start
+                            ps -ef | grep kylin
+                        """
+                    }
+                }
+            }
+        }
+        stage('Generate ENV') {
+            steps {
+                container('kubectl') {
                     withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                        echo "查看 K8S 集群 Pod 列表"
+                        echo '查看 K8S 集群 Pod 列表'
                         sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
-                    
-                    // retry(3) {
+
+                        // retry(3) {
                         script {
-                            result = sh (
+                            result = sh(
                                 returnStatus: true,
                                 script: """#!/bin/sh
                                     set +x
                                     cd ${WORKSPACE}/k8s/auto-generate/
-                                    sh install.sh --package_file=${package_file} --namespace=${namespace}
+                                    sh install.sh --packageFilename=${packageFilename} --namespace=${namespace}
                                 """
                             ).trim()
-                            if(result == 0){
+                            if (result == 0) {
                                 print 'SUCCESS'
-                                currentBuild.result = 'SUCCESS'
-                            }else{
+                               currentBuild.result = 'SUCCESS'
+                            } else {
                                 print 'FAILED'
                                 currentBuild.result = 'FAILED'
                             }

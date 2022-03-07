@@ -70,11 +70,4 @@ pipeline {
             }
         }
     }
-    post {
-        always {
-            sh 'pwd'
-            sh 'ls -al'
-            echo "causes: ${currentBuild.getBuildCauses}, duration: ${currentBuild.duration}"
-        }
-    }
 }
