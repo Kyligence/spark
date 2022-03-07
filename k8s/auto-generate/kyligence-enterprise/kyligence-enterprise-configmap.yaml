@@ -3,8 +3,6 @@ kind: ConfigMap
 metadata:
   namespace: <<<namespace>>>
   name: kyligence-enterprise-config-<<<version>>>
-  labels:
-    app: kyligence-enterprise-<<<version>>>
 data:
   fairscheduler.xml: |
     <?xml version="1.0"?>
