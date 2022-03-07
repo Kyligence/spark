@@ -1,4 +1,5 @@
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.Collections
 
 def call() {
     container('maven') {
@@ -6,17 +7,14 @@ def call() {
                 cd sourcecode
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
             ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
-        def blacklistModules = ['src/kap-it', 'src/server-base', 'src/spark-project/engine-spark']
-        def taskQueue = [
+        modules.removeAll(['src/kap-it'])
+        modules.addAll([ 
             "src/kap-it -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-            "src/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-            "src/server-base",
-            "src/spark-project/engine-spark"] as LinkedBlockingQueue
-        modules.each { m ->
-            if (!blacklistModules.contains(m)) {
-                taskQueue.add(m)
-            }
-        }
+            "src/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'" 
+        ])
+        Collections.reverse(modules)
+
+        def taskQueue = modules as LinkedBlockingQueue
 
         def worker1 = createWorker("UTest-Stage-1", taskQueue)
         def worker2 = createWorker("UTest-Stage-2", taskQueue)
@@ -29,6 +27,7 @@ def call() {
 }
 
 def createWorker(String stage, LinkedBlockingQueue taskQueue) {
+    def jvmArgs = defaultJvmArgs()
     return [(stage): {
         container('maven') {
             script {
@@ -44,7 +43,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         mvn clean test --fail-at-end \
                         -pl ${item} \
                         -DfailIfNoTests=false \
-                        -Duser.timezone=GMT+8 ${defaultJvmArgs()}
+                        -Duser.timezone=GMT+8 ${jvmArgs}
                     """
                     item = taskQueue.poll()
                 }

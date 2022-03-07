@@ -4,7 +4,7 @@
 
 pipeline {
     options {
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS')
     }
 
     agent {
@@ -14,10 +14,9 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: '', description: 'Kap repo?')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
         string(name: 'branch', defaultValue: '', description: 'Kap branch?')
         string(name: 'args', defaultValue: '', description: 'Extra JVM options for maven test')
-        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
     }
 
     stages {
@@ -28,7 +27,7 @@ pipeline {
                         script {
                             currentBuild.description = "${params.branch} ${params.args}"
                             retry(3) {
-                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', params.repo
                             }
                         }
                         s3Archive('download')
@@ -41,9 +40,13 @@ pipeline {
                 container("maven") {
                     dir("sourcecode") {
                         script {
-                            sh script: """
-                                mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests
-                            """
+                            def modules = sh(script:'''
+                                mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
+                            ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
+                            if (modules.contains('src/external')) {
+                                sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                            }
+                            sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
                         }
                     }
                 }
@@ -68,6 +71,37 @@ pipeline {
             steps {
                 sonarAnalyze("-Dsonar.branch.name=${params.branch}")
             }
+        }
+    }
+
+    post {
+        failure {
+            httpRequest(
+                url:"https://open.feishu.cn/open-apis/bot/v2/hook/54fe68e4-e635-414d-b738-002695390743",
+                httpMode: "POST",
+                consoleLogResponseBody: true,
+                contentType: "APPLICATION_JSON",
+                requestBody: groovy.json.JsonOutput.toJson([
+                    'msg_type': 'text',
+                    'content': [
+                        'text': "branch: ${params.branch} CI failed.\nsee: ${env.BUILD_URL}"
+                    ]
+                ])
+            )
+        }
+        aborted {
+            httpRequest(
+                url:"https://open.feishu.cn/open-apis/bot/v2/hook/54fe68e4-e635-414d-b738-002695390743",
+                httpMode: "POST",
+                consoleLogResponseBody: true,
+                contentType: "APPLICATION_JSON",
+                requestBody: groovy.json.JsonOutput.toJson([
+                    'msg_type': 'text',
+                    'content': [
+                        'text': "branch: ${params.branch} CI aborted.\nsee: ${env.BUILD_URL}"
+                    ]
+                ])
+            )
         }
     }
 }
