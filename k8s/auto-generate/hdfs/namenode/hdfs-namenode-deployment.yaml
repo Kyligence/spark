@@ -70,10 +70,10 @@ spec:
             port: 50070
         resources:
           limits:
-            cpu: 1
+            cpu: 100m
             memory: 2Gi
           requests:
-            cpu: 1
+            cpu: 100m
             memory: 2Gi
         volumeMounts:
           - mountPath: /hadoop/dfs/name
