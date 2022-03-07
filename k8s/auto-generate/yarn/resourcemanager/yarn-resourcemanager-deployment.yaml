@@ -69,10 +69,10 @@ spec:
               port: 8088
           resources:
             limits:
-              cpu: 100m
+              cpu: 500m
               memory: 2Gi
             requests:
-              cpu: 100m
+              cpu: 500m
               memory: 2Gi
           envFrom:
           - configMapRef:
