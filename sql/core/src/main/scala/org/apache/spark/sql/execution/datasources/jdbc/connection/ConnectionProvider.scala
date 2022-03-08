@@ -73,3 +73,5 @@ private[jdbc] object ConnectionProvider extends Logging {
     }
   }
 }
+
+private[sql] object ConnectionProvider extends ConnectionProviderBase
