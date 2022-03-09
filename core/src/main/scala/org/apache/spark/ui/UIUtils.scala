@@ -204,6 +204,12 @@ private[spark] object UIUtils extends Logging {
 
   // Yarn has to go through a proxy so the base uri is provided and has to be on all links
   def uiRoot(request: HttpServletRequest): String = {
+
+    // for KE proxy spark ui
+    val kylinProxyPath = request.getHeader("X-Kylin-Proxy-Path")
+    if (kylinProxyPath != null) {
+      kylinProxyPath
+    }
     // Knox uses X-Forwarded-Context to notify the application the base path
     val knoxBasePath = Option(request.getHeader("X-Forwarded-Context"))
     // SPARK-11484 - Use the proxyBase set by the AM, if not found then use env.
