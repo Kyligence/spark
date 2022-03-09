@@ -29,7 +29,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.jdbc.JdbcConnectionProvider
 import org.apache.spark.util.Utils
 
-private[jdbc] object ConnectionProvider extends Logging {
+protected abstract class ConnectionProviderBase extends Logging {
   private val providers = loadProviders()
 
   def loadProviders(): Seq[JdbcConnectionProvider] = {

@@ -20,8 +20,6 @@ package org.apache.spark.sql.connector
 import java.io.File
 import java.util.OptionalLong
 
-import scala.collection.JavaConverters._
-
 import test.org.apache.spark.sql.connector._
 
 import org.apache.spark.SparkException

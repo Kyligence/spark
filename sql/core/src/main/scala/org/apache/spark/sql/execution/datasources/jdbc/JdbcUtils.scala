@@ -53,7 +53,7 @@ import org.apache.spark.util.NextIterator
 /**
  * Util functions for JDBC tables.
  */
-object JdbcUtils extends Logging with SQLConfHelper {
+object JdbcUtils extends Logging {
 
   /**
    * Returns true if the table already exists in the JDBC database.
