@@ -209,7 +209,7 @@ private[spark] object UIUtils extends Logging {
     val kylinProxyPath = request.getHeader("X-Kylin-Proxy-Path")
     if (kylinProxyPath != null) {
       kylinProxyPath
-    }
+    } else {
     // Knox uses X-Forwarded-Context to notify the application the base path
     val knoxBasePath = Option(request.getHeader("X-Forwarded-Context"))
     // SPARK-11484 - Use the proxyBase set by the AM, if not found then use env.
@@ -217,6 +217,7 @@ private[spark] object UIUtils extends Logging {
       .orElse(sys.env.get("APPLICATION_WEB_PROXY_BASE"))
       .orElse(knoxBasePath)
       .getOrElse("")
+    }
   }
 
   def prependBaseUri(
