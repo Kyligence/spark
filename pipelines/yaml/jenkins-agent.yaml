@@ -2,6 +2,11 @@
 kind: "Pod"
 name: "jenkins-agent"
 spec:
+  tolerations:
+  - key: "nodetype"
+    operator: "Equal"
+    value: "ke"
+    effect: "NoSchedule"
   containers:
     - name: "git"
       volumeMounts:
