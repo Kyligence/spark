@@ -1,0 +1,124 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'newten-dev', description: 'Kap branch?')
+        string(name: 'version', defaultValue: '4.5.10', description: 'Kap version?')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            retry(3) {
+                                sshCmdWithCredentials(
+                                    'bash -c /var/lib/git/pull.sh',
+                                    'private_git',
+                                    ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                                )
+                                githubCheckout 'KAP', params.branch
+                            }
+
+                            echo 'checkout KAP_Frontend to kystudio'
+                            sh 'rm -rf ./kystudio'
+                            dir('kystudio') {
+                                retry(3) {
+                                    githubCheckout 'KAP_Frontend', params.branch
+                                }
+                                sh """
+                                    rm -f .npmrc
+                                    echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') { 
+                        script {
+                            if(!version){
+                                error 'version 版本号不能为空'
+                            }
+                            buildNewten(params.version, false, false)
+                            archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                       
+                            if(version.startsWith('4.5.')){
+                                package_path = "artifacts/4.5.x/dev"    
+                            }else if(version.startsWith('4.3.')){
+                                package_path = "artifacts/4.3.x/dev"
+                            }else{
+                                // nothing to do
+                            }
+                            println package_path
+                            
+                            def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                            println commitid
+                            
+                            file_name = sh(returnStdout:true, script: """
+                                echo "KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
+                            """).trim()
+                            println file_name
+                            
+                            packageFilename=sh(script: """
+                                mkdir -p package
+                                cp dist/*.tar.gz package/\$package_name
+                                echo "package/\$package_name"
+                            """, returnStdout:true).trim()
+                            println packageFilename
+                                
+                            package_file=sh(script: """
+                                mkdir -p /var/cicd/${package_path}
+                                mv dist/*.tar.gz dist/${file_name}
+                                cp dist/*.tar.gz /var/cicd/${package_path}
+                                echo "newten-cicd/${package_path}/${file_name}"
+                            """, returnStdout:true).trim()
+                            println package_file
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.Tars to nexus') {
+            steps{
+                container("build") {
+                    dir("sourcecode") {
+                        script{
+                            print package_file
+                            withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                pushRawArtifactsByApi("raw-tars-hosted",package_path,packageFilename,file_name,user,passwd)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

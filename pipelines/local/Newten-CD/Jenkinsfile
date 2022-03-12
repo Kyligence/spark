@@ -37,14 +37,14 @@ pipeline {
                                     'private_git',
                                     ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
                                 )
-                                githubCheckout 'KAP'
+                                githubCheckout 'KAP', params.branch
                             }
 
                             echo 'checkout KAP_Frontend to kystudio'
                             sh 'rm -rf ./kystudio'
                             dir('kystudio') {
                                 retry(3) {
-                                    githubCheckout 'KAP_Frontend'
+                                    githubCheckout 'KAP_Frontend', params.branch
                                 }
                                 sh """
                                     rm -f .npmrc

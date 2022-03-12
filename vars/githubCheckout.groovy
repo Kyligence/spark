@@ -1,11 +1,11 @@
-def call(String project, String branch = null, String schema = 'git', String remoteHost = '10.1.2.192', refspec = '+refs/heads/*:refs/remotes/origin/*') {
+def call(String project, String branch = null, String schema = 'git', String remoteHost = '10.1.2.192', refspec = '+refs/heads/*:refs/remotes/origin/*', repo=null, certificate=null) {
     timestamps {
         checkout([$class           : 'GitSCM',
-                  branches         : [[name: "${branch ?: params.branch ?: sha1}"]],
-                  userRemoteConfigs: [[credentialsId: "${params.certificate ?: 'kyligence-git'}",
+                  branches         : [[name: "${branch ?: sha1}"]],
+                  userRemoteConfigs: [[credentialsId: "${certificate ?: 'kyligence-git'}",
                                        name         : "origin",
                                        refspec      : "${refspec}",
-                                       url          : "${schema}://${remoteHost}/${params.repo ?: 'Kyligence'}/${project}.git"]],
+                                       url          : "${schema ?: 'git'}://${remoteHost ?: '10.1.2.192'}/${repo ?: 'Kyligence'}/${project}.git"]],
                   browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/${project}"],
                   extensions       : [
                           [$class: 'CleanBeforeCheckout'],
