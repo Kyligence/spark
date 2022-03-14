@@ -24,7 +24,6 @@ import scala.collection.JavaConverters._
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.TrueFileFilter
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers._
 
 import org.apache.spark.internal.config.SHUFFLE_MANAGER
@@ -32,7 +31,7 @@ import org.apache.spark.rdd.ShuffledRDD
 import org.apache.spark.serializer.{JavaSerializer, KryoSerializer}
 import org.apache.spark.shuffle.sort.SortShuffleManager
 
-@Ignore
+
 class SortShuffleSuite extends ShuffleSuite with BeforeAndAfterAll {
 
   // This test suite should run all tests in ShuffleSuite with sort-based shuffle.
@@ -66,6 +65,7 @@ class SortShuffleSuite extends ShuffleSuite with BeforeAndAfterAll {
   private def ensureFilesAreCleanedUp(shuffledRdd: ShuffledRDD[_, _, _]): Unit = {
     def getAllFiles: Set[File] =
       FileUtils.listFiles(tempDir, TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE).asScala.toSet
+
     val filesBeforeShuffle = getAllFiles
     // Force the shuffle to be performed
     shuffledRdd.count()
@@ -76,7 +76,7 @@ class SortShuffleSuite extends ShuffleSuite with BeforeAndAfterAll {
     // Check that the cleanup actually removes the files
     sc.env.blockManager.master.removeShuffle(0, blocking = true)
     for (file <- filesCreatedByShuffle) {
-      assert (!file.exists(), s"Shuffle file $file was not cleaned up")
+      assert(!file.exists(), s"Shuffle file $file was not cleaned up")
     }
   }
 }

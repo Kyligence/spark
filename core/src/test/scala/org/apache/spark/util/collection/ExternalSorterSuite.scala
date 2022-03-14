@@ -20,8 +20,6 @@ package org.apache.spark.util.collection
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
-import org.scalatest.Ignore
-
 import org.apache.spark._
 import org.apache.spark.internal.config._
 import org.apache.spark.internal.config.Tests.TEST_MEMORY
@@ -31,7 +29,6 @@ import org.apache.spark.unsafe.array.LongArray
 import org.apache.spark.unsafe.memory.MemoryBlock
 import org.apache.spark.util.collection.unsafe.sort.{PrefixComparators, RecordPointerAndKeyPrefix, UnsafeSortDataFormat}
 
-@Ignore
 class ExternalSorterSuite extends SparkFunSuite with LocalSparkContext {
   import TestUtils.{assertNotSpilled, assertSpilled}
 
