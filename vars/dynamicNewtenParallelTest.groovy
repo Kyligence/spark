@@ -1,4 +1,5 @@
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.Collections
 
 def call() {
     container('maven') {
@@ -6,17 +7,18 @@ def call() {
                 cd sourcecode
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
             ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
-        def blacklistModules = ['src/kap-it', 'src/server-base', 'src/spark-project/engine-spark']
-        def taskQueue = [
+        def blacklistModules = ['src/kap-it']
+        def testSuites = [
             "src/kap-it -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-            "src/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-            "src/server-base",
-            "src/spark-project/engine-spark"] as LinkedBlockingQueue
+            "src/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'" ]
         modules.each { m ->
             if (!blacklistModules.contains(m)) {
-                taskQueue.add(m)
+                testSuites.add(m)
             }
         }
+        Collections.shuffle(testSuites)
+
+        def taskQueue = testSuites as LinkedBlockingQueue
 
         def worker1 = createWorker("UTest-Stage-1", taskQueue)
         def worker2 = createWorker("UTest-Stage-2", taskQueue)
