@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib@devops-0307') _
+@Library('devopslib') _
 
 pipeline {
     options {

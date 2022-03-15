@@ -1,7 +1,5 @@
 #!groovy
 
-@Library('devopslib@devops-0307') _
-
 pipeline {
     options {
         timeout(time: 2, unit: 'HOURS')
@@ -9,7 +7,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-package-agent-large.yaml'
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
         }
     }
 
@@ -54,7 +52,7 @@ pipeline {
                 container("build") {
                     dir("on-perm") {
                         script {
-                            def releaseName = params.release_version.replace("-kylin", "") 
+                            def releaseName = sh(script: "echo ${params.release_version} | sed \"s/-kylin//g\"", returnStdout: true)
                             sh script: """
                                 #1、package kyspark
                                 ./build/mvn versions:set -DnewVersion=${params.release_version}
@@ -67,9 +65,8 @@ pipeline {
                             if (params.with_hive1) {
                                 sh script: """
                                     #3 download hive_1_2_2
-                                    wget -q https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
+                                    wget https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
                                     tar xf hive_1_2_2.tar.gz --directory ./spark-newten-${releaseName}
-                                    ls -al ./spark-newten-${releaseName}
                                     rm ./hive_1_2_2.tar.gz
                                     tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                 """
