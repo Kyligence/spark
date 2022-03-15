@@ -11,6 +11,7 @@ def mergeFile(String text, String originText) {
     originText.split("\n").each { line ->
         buildIds.add(line.split('\\|')[0])
     }
+    echo "${buildIds}"
     def outputText = '' 
     text.split("\n").each { line ->
         if (!buildIds.contains(line.split('\\|')[0])) {
@@ -61,8 +62,8 @@ pipeline {
                                 def buildId = Integer.parseInt(file.name.split("\\.")[0]) 
                                 if (buildId > maxId && count < 10) {
                                     s3Download(bucket: 'k8s-bucket-devops', path: "ke-ci-result/KE4/Newten-CI-On_Cloud/${file.name}", file:"origin/${file.name}")
-                                    count++
                                 }
+                                count++
                             }
                         }
                     }
@@ -77,12 +78,13 @@ pipeline {
                             def root = "http://devops-jenkins:8080/job/KE4/job/Newten-CI-On_Cloud"
                             def buildText = ''
 
-                            def options = """/api/json?tree=${encodeURL("builds[actions[parameters[name,value],waitingTimeMillis],number,duration,result,timestamp]")}"""
+                            def options = """/api/json?tree=${encodeURL("builds[actions[parameters[name,value],waitingTimeMillis],number,duration,result]")}"""
                             def text = sh(script:""" curl -X GET '${root}${options}' --user enweijiao:11d42c33ad589aa2db179a67fd69c49fa7 """, returnStdout: true).trim()
                             def jsonResult = readJSON text: text
                             jsonResult['builds'].each { buildsdata -> 
                                 def buildResult = buildsdata['result'] 
-                                if (!buildResult || "null".equals(buildResult.toString())) {
+                                echo "build result $buildResult"
+                                if (buildResult == null || buildResult == 'null') {
                                     return
                                 }
                                 def line = "${buildsdata['number']}|"
@@ -93,7 +95,7 @@ pipeline {
                                         }
                                     }
                                 }
-                                line += "${buildsdata['result']}|${buildsdata['waitingTimeMillis']}|${buildsdata['duration']}|${buildsdata['timestamp']}"
+                                line += "${buildsdata['result']}"
                                 buildText += "${line}\n"
                             }
                             def data = readFile(file:'build_result_origin.csv')
@@ -115,8 +117,8 @@ pipeline {
                     sh script: """
                         for f in `ls analyze_tmp`; do
                             java -jar junit-xml2csv.jar ./analyze_tmp/\$f/report/ junit_result/\$f.csv
-                            tail -n +2 "junit_result/\$f.csv" > "\$f.tmp" && mv "\$f.tmp" "junit_result/\$f.csv"
-                            sed -i -e s/^/\$f,/ "junit_result/\$f.csv"
+                            tail -n +2 "\f.csv" > "\$f.tmp" && mv "\$f.tmp" "\$f.csv"
+                            sed -i -e 's/^/\$f,/' \$f.csv
                         done
                     """
                 }

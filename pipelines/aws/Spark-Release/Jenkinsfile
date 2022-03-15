@@ -1,0 +1,90 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: '', description: 'Kap repo?')
+        string(name: 'branch', defaultValue: '', description: 'Kap branch?')
+        string(name: 'release_version', defaultValue: '', description: 'spark release version')
+        string(name: 'hadoop_version', defaultValue: '', description: 'hadoop version')
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("git") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                timestamps {
+                                    checkout([$class           : 'GitSCM',
+                                            branches         : [[name: "${params.branch}"]],
+                                            userRemoteConfigs: [[credentialsId: "kyligence-git",
+                                                                name         : "origin",
+                                                                refspec      : "${refspec}",
+                                                                url          : "https://github.com/${params.repo ?: 'Kyligence'}/spark.git"]],
+                                            browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/spark"],
+                                            extensions       : [
+                                                    [$class: 'CleanBeforeCheckout'],
+                                                    [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
+                                            ]
+                                    ])
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Package on-perm') {
+            steps {
+                container("maven") {
+                    sh script: """
+                        #1、package kyspark
+                        mvn versions:set -DnewVersion=${params.release_version}
+                        dev/make-distribution.sh --name ${params.release_version} --pip --tgz  -Phadoop-${params.hadoop_version} -Phive -Phive-thriftserver -Pmesos -Pyarn  -Pkubernetes 
+
+                        #2、rename and repackage
+                        tar xvf spark-${params.release_version}-bin-*
+                        release_spark_name=`echo ${params.release_version}| sed "s/-kylin//g"`
+                        mv spark-${params.release_version}-bin-${params.release_version} spark-newten-\${release_spark_name}
+
+                        #3 download hive_1_2_2
+                        cd spark-newten-\${release_spark_name}
+                        wget --directory-prefix=./ https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
+                        tar -xvf  hive_1_2_2.tar.gz
+                        rm  hive_1_2_2.tar.gz
+                        cd  ..
+                        tar zcvf spark-newten-\${release_spark_name}.tgz spark-newten-\${release_spark_name}
+                    """
+
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                container("maven") {
+                    sh script: """
+                        mvn deploy -Phadoop-${params.hadoop_version} -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes -DskipTests=true
+                        md5sum /root/release-tool/spark-newten-\${release_spark_name}.tgz
+                    """
+                    sh script: """
+                        release_spark_name=`echo ${params.release_version}| sed "s/-kylin//g"`
+                        mv spark-newten-\${release_spark_name}.tgz /root/release-tool/
+                    """
+                }
+            }
+        }
+    }
+}
