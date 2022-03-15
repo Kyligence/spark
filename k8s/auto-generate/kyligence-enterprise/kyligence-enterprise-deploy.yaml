@@ -22,6 +22,7 @@ spec:
           emptyDir: {}
         - configMap:
             name: kyligence-enterprise-config-<<<version>>>
+            defaultMode: 0755
           name: kyligence-enterprise-config
         - configMap:
             name: yarn-xml
@@ -133,8 +134,9 @@ spec:
           - name: KYLIN_JVM_SETTINGS
             value: -server -Xms$(JAVA_VM_XMS) -Xmx$(JAVA_VM_XMX) -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+PrintFlagsFinal -XX:+PrintReferenceGC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintAdaptiveSizePolicy -XX:+UnlockDiagnosticVMOptions -XX:+G1SummarizeConcMark  -Xloggc:$(KYLIN_HOME)/logs/kylin.gc.%p  -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=64M -XX:-OmitStackTraceInFastThrow -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=8192 -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
         resources:
+          limits:
+            memory: 4Gi
           requests:
-            cpu: 500m
             memory: 4Gi
         ports:
           - name: http
@@ -142,18 +144,18 @@ spec:
           - name: spark-ui
             containerPort: 4041
         livenessProbe:
-          initialDelaySeconds: 50
+          initialDelaySeconds: 200
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           successThreshold: 1
           failureThreshold: 20
           httpGet:
             path: /kylin
             port: http
         readinessProbe:
-          initialDelaySeconds: 50
+          initialDelaySeconds: 200
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           successThreshold: 1
           failureThreshold: 20
           httpGet:

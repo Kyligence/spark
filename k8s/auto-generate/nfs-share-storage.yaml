@@ -9,7 +9,7 @@ spec:
     server: 10.1.9.11
     path: /data/jenkins-common
   accessModes:
-    - ReadWriteMany
+    - ReadOnlyMany
   persistentVolumeReclaimPolicy: Retain
   volumeMode: Filesystem
 ---
@@ -20,10 +20,11 @@ metadata:
   namespace: <<<namespace>>>
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadOnlyMany
   resources:
     requests:
       storage: 1Gi
   volumeName: nfs-share-pv-<<<namespace>>>
   volumeMode: Filesystem
   storageClassName: ""
+

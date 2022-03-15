@@ -52,28 +52,21 @@ spec:
             - containerPort: 8080
               name: metrics
           livenessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 10
+            failureThreshold: 20
+            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 10
             httpGet:
               path: /
               port: 8088
           readinessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 10
+            failureThreshold: 20
+            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 10
             httpGet:
               path: /
               port: 8088
-          resources:
-            limits:
-              cpu: 500m
-              memory: 2Gi
-            requests:
-              cpu: 500m
-              memory: 2Gi
           envFrom:
           - configMapRef:
               name: yarn-env

@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib') _
+@Library('devopslib@nexus') _
 
 pipeline {
 
@@ -18,7 +18,6 @@ pipeline {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
         string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
         string(name: 'version', defaultValue: '4.5', description: 'Kap version?')
-        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
     }
 
     stages {
@@ -28,7 +27,7 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'Kyligence-Enterprise-Manual', params.branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'Kyligence-Enterprise-Manual', params.branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git'
                             }
                         }
                     }

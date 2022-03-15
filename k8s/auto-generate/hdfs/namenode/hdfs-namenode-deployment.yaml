@@ -68,13 +68,6 @@ spec:
           httpGet:
             path: /
             port: 50070
-        resources:
-          limits:
-            cpu: 300m
-            memory: 2Gi
-          requests:
-            cpu: 300m
-            memory: 2Gi
         volumeMounts:
           - mountPath: /hadoop/dfs/name
             name: hdfs-namenode-claim0

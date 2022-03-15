@@ -117,13 +117,6 @@ spec:
         - name: config
           mountPath: /docker-entrypoint-initdb.d/mysql-init.sql
           subPath: mysql-init.sql
-        resources:
-          limits:
-            cpu: 300m
-            memory: 3Gi
-          requests:
-            cpu: 300m
-            memory: 3Gi
         livenessProbe:
           exec:
             command:
@@ -150,13 +143,6 @@ spec:
           failureThreshold: 20
       - name: mysql-prometheus-exporter
         image: prom/mysqld-exporter:v0.13.0
-        resources:
-          limits:
-            cpu: 100m
-            memory: 200Mi
-          requests:
-            cpu: 100m
-            memory: 200Mi
         ports:
         - containerPort: 9104
           name: metrics

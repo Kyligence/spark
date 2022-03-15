@@ -60,10 +60,6 @@ spec:
           subPath: config.yaml
         command: ["/opt/apache-hive-1.2.2-bin/bin/hive"]
         args: ["--service", "hiveserver2"]
-        resources:
-          requests:
-            memory: 1Gi
-            cpu: 300m
         env:
         - name: HADOOP_HEAPSIZE
           value: "1024"
@@ -73,15 +69,17 @@ spec:
           value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
         imagePullPolicy: IfNotPresent
         livenessProbe:
-          initialDelaySeconds: 40
+          failureThreshold: 20
+          initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           tcpSocket:
             port: jdbc
         readinessProbe:
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          timeoutSeconds: 1
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
           tcpSocket:
             port: jdbc
       volumes:

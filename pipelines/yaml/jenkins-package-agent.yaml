@@ -2,22 +2,20 @@
 kind: "Pod"
 name: "jenkins-package-agent"
 spec:
-  nodeSelector:
-    kubernetes.io/hostname: "kubernetes-work01"
   containers:
     - name: "build"
-      image: "docker.ops.kylincorp.com/newten-build:latest"
+      image: "10.1.9.11:5000/newten-build:latest"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
         - "cat"
       resources:
         request:
-          memory: "2000Mi"
-          cpu: "500m"
+          memory: "4Gi"
+          cpu: "2"
         limits:
-          memory: "4000Mi"
-          cpu: "2000m"
+          memory: "8Gi"
+          cpu: "4"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -42,8 +40,22 @@ spec:
           cpu: "300m"
           memory: "300Mi"
         limits:
-          cpu: "750m"
-          memory: "750Mi"
+          cpu: "300m"
+          memory: "1024Mi"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+    - name: "busybox"
+      image: "busybox"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        limits:
+          memory: "1Gi"
+          cpu: "300m"
       volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"

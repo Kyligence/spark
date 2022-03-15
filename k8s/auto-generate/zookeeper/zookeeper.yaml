@@ -96,10 +96,6 @@ spec:
           value: "true"
         - name: JVMFLAGS
           value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "300m"
         ports:
         - containerPort: 2181
           name: client

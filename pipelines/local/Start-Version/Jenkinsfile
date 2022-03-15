@@ -1,0 +1,165 @@
+#!groovy
+
+@Library('devopslib@nexus') _
+
+def paramsMap
+
+properties([pipelineTriggers([githubPush()])])
+
+pipeline {
+    
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    // parameters {
+    // }
+
+    // triggers {
+    //     GenericTrigger(
+    //         genericVariables: [
+    //           [key: 'ref', value: '$.ref']
+    //         ],
+    //         token: 'secret' ,
+    //         causeString: ' Triggered on $ref' ,
+    //         printContributedVariables: true,
+    //         printPostContent: true
+    //     )
+    // }
+    
+    stages {
+        /* checkout repo */
+        stage('Checkout SCM') {
+            steps {
+                sh "echo $ref"
+                sh "printenv"
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            githubCheckout 'springboot-helloworld', 'master', 'http', 'github.com', null, '', 'lexmeng'
+                        }
+                    }
+                }
+            }
+        }
+        stage('Do the deployment') {
+            steps {
+                echo ">> Run deploy applications "
+                container('build') {
+                    dir('sourcecode') {
+                        sh 'mvn clean install -DskipTests'
+                    }
+                }
+            }
+        }
+    }
+ 
+    /* Cleanup workspace */
+    post {
+       always {
+           deleteDir()
+       }
+    }
+
+/*
+    stages {
+        stage("0.webhook"){
+
+        }
+        stage("0.test"){
+            steps {
+                script{
+                    def remote = [:];
+                    remote.host = '52.131.43.135'
+                    remote.allowAnyHosts = true
+                    sshCmdWithCredentials("""
+                    """, 'azure-test', remote)
+
+                    sh(script: """
+
+                    """)
+
+                    withCredentials([usernamePassword(credentialsId: 'azure-test', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh """
+                        newten_workspace=/home/devops/test
+                        mkdir -p \$newten_workspace
+
+                        scp  ${USERNAME}@${PASSWORD}${target_ip}:${newten_workspace}/dist/
+                        """
+                    }
+                }
+            }
+        }
+        stage("0.Defined"){
+            steps {
+                script {
+                    paramsMap = input {
+                        message: "请选择要开始的版本?"
+                        ok: "确认！"
+                        parameters {
+                            string(name: 'version', defaultValue: '4.5.9', description: '填写发布版本，如：4.5.9， 4.5.9.1')
+                            choice(name:'bu', choices:'ke\nkc\nkm\nmdx\nzen', description:'请选择产品线' )
+                            string(name: 'anchor', defaultValue: 'newten', description: ' branch / commitid / tag, 可发发起版本的锚点 ')
+                            credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+                        }
+                        submitter:'liming.meng,releaseGroup',
+                        submutterParameter:'APPROVER'
+                    }
+                }
+            }
+        }
+
+        stage("1.Branch") {
+            
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            echo 'pull KAP'
+                            retry(3) {
+                                sshCmdWithCredentials(
+                                    'bash -c /var/lib/git/pull.sh',
+                                    'private_git',
+                                    ['name':'localhost','host':'10.1.2.192', 'allowAnyHosts': true]
+                                )
+                                githubCheckout 'KAP'
+                            }
+                            withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                sh script: """
+                                    git status
+                                    git checkout -b ${bu}-${version}-dev origin/${anchor}
+                                    git status 
+                                    git push https://${user}:${passwd}@github.com/Kyligence/KAP origin ${bu}-${version}-dev
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('2.Code Freeze') {
+            input {
+                message "请选择Code Freeze的产线和发布?"
+                ok "确认！"
+                submitter "limming.meng"
+                parameters {
+                    string(name: 'version', defaultValue: '4.5.9', description: '填写发布版本，如：4.5.9， 4.5.9.1')
+                    choice(name:'bu', choices:'ke\nkc\nkm\nmdx\nzen', description:'请选择产品线' )
+                    string(name: 'anchor', defaultValue: 'newten', description: ' branch / commitid / tag, 可发发起版本的锚点 ')
+                    credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+                }
+            }
+            steps {
+                echo('hello')
+            }
+        }
+    }
+    */
+}

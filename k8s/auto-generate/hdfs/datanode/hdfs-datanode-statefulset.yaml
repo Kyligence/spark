@@ -33,16 +33,16 @@ spec:
       - name: hdfs-datanode
         image: kyligence/hadoop:2.10.1
         livenessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 3
+          failureThreshold: 20
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 10
           httpGet:
             path: /
             port: 50075
         readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 3
+          failureThreshold: 20
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 10
           httpGet:
@@ -58,13 +58,6 @@ spec:
           - name: jmx-config
             mountPath: /opt/jmx-exporter/config.yaml
             subPath: config.yaml
-        resources:
-          limits:
-            cpu: 300m
-            memory: 1Gi
-          requests:
-            cpu: 300m
-            memory: 1Gi
         envFrom:
         - configMapRef:
             name: hdfs-env

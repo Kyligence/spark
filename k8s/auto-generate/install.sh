@@ -75,7 +75,7 @@ fi
 while true
 do
     ready=$(kubectl -n $opt_namespace get statefulset zk -o jsonpath="{.status.readyReplicas}")
-    if [[ $ready -eq 3 ]];then
+    if [[ $ready -eq 1 ]];then
         break
     fi
     sleep 3
@@ -208,6 +208,7 @@ echo "[OK]部署 Hive Server2"
 #
 #
 #
+
 echo "[11/12]部署 Kyligence Enterprise"
 kubectl apply -f ./kyligence-enterprise \
 	&& kubectl -n $opt_namespace wait --for=condition=Available deploy/kyligence-enterprise-$opt_version --timeout=-1s
@@ -240,4 +241,5 @@ echo "[OK]导入SSB数据"
 
 cat ./banner.txt
 
-echo http://${opt_namespace}.${opt_version}.uat.kylincorp.com/kylin
+echo -e "\n================\n"
+echo http://${opt_version}.${opt_namespace}.kylincorp.com/kylin

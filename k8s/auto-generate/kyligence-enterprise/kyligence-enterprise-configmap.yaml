@@ -39,6 +39,7 @@ data:
       kylin.query.cache-enabled=false
       kylin.query.calcite.extras-props.conformance=LENIENT
       #---------------元数据----------------
+      kylin.metadata.random-admin-password.enabled=false
       kylin.metadata.url=ke_metadata_<<<version>>>@jdbc,driverClassName=com.mysql.jdbc.Driver,url=jdbc:mysql://mysql:3306/ke_metadata_<<<version>>>?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8,username=root,password=kyligence,maxTotal=50,maxIdle=8
       #---------------zookeeper地址---------
       kylin.env.zookeeper-connect-string=zk-cs:2181

@@ -10,6 +10,10 @@ def package_file
 def package_path
 // 文件名
 def file_name
+// 上传到nexus文件
+def packageFilename
+
+properties([pipelineTriggers([githubPush()])])
 
 pipeline {
     options {
@@ -33,12 +37,15 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
+                            echo 'Sync the git mirror'
+                            sshCmdWithCredentials(
+                                'bash -c /var/lib/git/pull.sh',
+                                'private_git',
+                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                            )
+
+                            echo 'checkout KAP'
                             retry(3) {
-                                sshCmdWithCredentials(
-                                    'bash -c /var/lib/git/pull.sh',
-                                    'private_git',
-                                    ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                                )
                                 githubCheckout 'KAP', params.branch
                             }
 
@@ -89,8 +96,8 @@ pipeline {
                             
                             packageFilename=sh(script: """
                                 mkdir -p package
-                                cp dist/*.tar.gz package/\$package_name
-                                echo "package/\$package_name"
+                                cp dist/*.tar.gz package/${file_name}
+                                echo "package/${file_name}"
                             """, returnStdout:true).trim()
                             println packageFilename
                                 
@@ -111,7 +118,7 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         script{
-                            print package_file
+                            println package_file
                             withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                 pushRawArtifactsByApi("raw-tars-hosted",package_path,packageFilename,file_name,user,passwd)
                             }

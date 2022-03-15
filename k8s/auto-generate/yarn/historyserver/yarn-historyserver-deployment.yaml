@@ -26,16 +26,16 @@ spec:
       - name: yarn-historyserver
         image: kyligence/hadoop:2.10.1
         livenessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 10
+          failureThreshold: 20
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 10
           httpGet:
             path: /
             port: 8188
         readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 10
+          failureThreshold: 20
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 10
           httpGet:
@@ -43,13 +43,6 @@ spec:
             port: 8188
         ports:
           - containerPort: 8188
-        resources:
-          limits:
-            cpu: 300m
-            memory: 1Gi
-          requests:
-            cpu: 300m
-            memory: 1Gi
         volumeMounts:
           - mountPath: /hadoop/yarn/timeline
             name: yarn-historyserver-claim0

@@ -6,7 +6,7 @@ def call(String project, String branch = null, String schema = 'git', String rem
                                        name         : "origin",
                                        refspec      : "${refspec}",
                                        url          : "${schema ?: 'git'}://${remoteHost ?: '10.1.2.192'}/${repo ?: 'Kyligence'}/${project}.git"]],
-                  browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/${project}"],
+                  browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/${repo ?: 'Kyligence'}/${project}"],
                   extensions       : [
                           [$class: 'CleanBeforeCheckout'],
                           [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]

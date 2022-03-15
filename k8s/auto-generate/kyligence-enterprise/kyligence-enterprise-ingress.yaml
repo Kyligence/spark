@@ -5,7 +5,7 @@ metadata:
   name: kyligence-enterprise-<<<version>>>
 spec:
   rules:
-  - host: "<<<namespace>>>.<<<version>>>.uat.kylincorp.com"
+  - host: "<<<version>>>.<<<namespace>>>.kylincorp.com"
     http:
       paths:
       - path: /kylin
