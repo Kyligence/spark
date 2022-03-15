@@ -17,6 +17,7 @@ pipeline {
         string(name: 'repo', defaultValue: '', description: 'Kap repo?')
         string(name: 'branch', defaultValue: '', description: 'Kap branch?')
         string(name: 'args', defaultValue: '', description: 'Extra JVM options for maven test')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligencegit', required: true)
     }
 
     stages {
@@ -27,7 +28,7 @@ pipeline {
                         script {
                             currentBuild.description = "${params.branch} ${params.args}"
                             retry(3) {
-                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*'
                             }
                         }
                         s3Archive('download')
