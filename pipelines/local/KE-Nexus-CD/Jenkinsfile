@@ -29,6 +29,7 @@ pipeline {
     parameters {
         string(name: 'branch', defaultValue: 'newten-dev', description: 'Kap branch?')
         string(name: 'version', defaultValue: '4.5.10', description: 'Kap version?')
+        choice(name:'stage', choices:'dev\nrc\nga', description:'stage' )
     }
 
     stages {
@@ -78,9 +79,9 @@ pipeline {
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                        
                             if(version.startsWith('4.5.')){
-                                package_path = "artifacts/4.5.x/dev"    
+                                package_path = "artifacts/4.5.x/${params.stage}"    
                             }else if(version.startsWith('4.3.')){
-                                package_path = "artifacts/4.3.x/dev"
+                                package_path = "artifacts/4.3.x/${params.stage}"
                             }else{
                                 // nothing to do
                             }
