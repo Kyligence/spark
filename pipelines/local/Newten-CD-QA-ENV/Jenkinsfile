@@ -124,8 +124,8 @@ pipeline {
                             
                             packageFilename=sh(script: """
                                 mkdir -p package
-                                cp dist/*.tar.gz package/\$package_name
-                                echo "package/\$package_name"
+                                cp dist/*.tar.gz package/${file_name}
+                                echo "package/${file_name}"
                             """, returnStdout:true).trim()
                             println packageFilename
                                 
