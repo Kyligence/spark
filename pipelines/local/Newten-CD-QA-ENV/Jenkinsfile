@@ -212,24 +212,4 @@ pipeline {
             }
         }
     }
-
-
-    post {
-        success {
-            
-        }
-        failure {
-            emailext body:
-                """<p>EXECUTED: Job <b>\ '${env.J0B_NAME}:${env.BUILD_NUMBER})\ '
-                </b></p><p>View console output at "<a href="${env.BUILD_URL}">
-                ${env.JOB_NAME}:${env.BUILD_NUMBER}</a>"</p>
-                <p><i>(Build log is attached .)</i></p>""",
-                compressLog: true,
-                attachLog: true,
-                recipientProviders: [culprits(), developers()，requestor(), brokenBuildSuspects()],
-                replyTo: 'do-not-reply@company.com',
-                subject: "Status: ${currentBuild.result?: 'SUCCESS'} - Job \ '${env. 0B_NANE}: ${env.BUILD_NUMBER}\'",
-                to: "liming.meng@kyligence.io"
-        }
-    }
 }
