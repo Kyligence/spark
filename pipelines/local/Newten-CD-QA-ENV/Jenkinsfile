@@ -34,7 +34,7 @@ pipeline {
         string(name: 'commitId_front', defaultValue: '', description: 'If branch not defined, this is frontend branch or commitid?')
         // string(name: 'repo', defaultValue: 'Kyligence', description: 'Repo name. You can put your fork repo here?')
         string(name: 'version', defaultValue: '4.5.10', description: 'Kap version?')
-        string(name: 'namespace', defaultValue: 'test', description: 'Namespace namespace?')
+        choice(name:'env', choices:'dev\nrc\nga', description:'The test stage' )
         string(name: 'package', defaultValue: '', description: 'Start with exist package, Not need wait to build?')
     }
 
@@ -106,9 +106,9 @@ pipeline {
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                        
                             if(version.startsWith('4.5.')){
-                                package_path = "artifacts/4.5.x/dev"    
+                                package_path = "artifacts/4.5.x/${params.env}"    
                             }else if(version.startsWith('4.3.')){
-                                package_path = "artifacts/4.3.x/dev"
+                                package_path = "artifacts/4.3.x/${params.env}"
                             }else{
                                 // nothing to do
                             }
@@ -181,7 +181,13 @@ pipeline {
                             
                             def env = params.env?:"test"
                             if(!params.env){
-                                echo 'env 参数不能为空，使用默认参数：test'
+                                echo "env 参数不能为空，使用默认参数：test"
+                            }else if(params.env == "dev"){
+                                env = "test"
+                            }else if(params.env == "rc"){
+                                env = "uat"
+                            }else{
+                                echo ""
                             }
                             
                             sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
