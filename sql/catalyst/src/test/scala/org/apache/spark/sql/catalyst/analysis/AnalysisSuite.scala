@@ -587,7 +587,8 @@ class AnalysisSuite extends AnalysisTest with Matchers {
 
   test("SPARK-22614 RepartitionByExpression partitioning") {
     def checkPartitioning[T <: Partitioning : ClassTag](
-                                                         numPartitions: Int, exprs: Expression*): Unit = {
+                                                         numPartitions: Int,
+                                                         exprs: Expression*): Unit = {
       val partitioning = RepartitionByExpression(exprs, testRelation2, numPartitions).partitioning
       val clazz = implicitly[ClassTag[T]].runtimeClass
       assert(clazz.isInstance(partitioning))
