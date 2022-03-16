@@ -116,9 +116,7 @@ pipeline {
                             def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                             println commitid
                             
-                            file_name = sh(returnStdout:true, script: """
-                                echo "KE-${version}-${envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
-                            """).trim()
+                            file_name = "KE-${version}-${params.envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
                             println file_name
                             
                             packageFilename=sh(script: """
