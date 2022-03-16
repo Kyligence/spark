@@ -32,9 +32,8 @@ pipeline {
         string(name: 'branch', defaultValue: 'newten-qa', description: 'If branch inputted the commitId_back/commitId_front not used?')
         string(name: 'commitId_back', defaultValue: '', description: 'If branch not defined, this is backend branch or commitid?')
         string(name: 'commitId_front', defaultValue: '', description: 'If branch not defined, this is frontend branch or commitid?')
-        // string(name: 'repo', defaultValue: 'Kyligence', description: 'Repo name. You can put your fork repo here?')
         string(name: 'version', defaultValue: '4.5.10', description: 'Kap version?')
-        choice(name:'env', choices:'dev\nrc\nga', description:'The test stage' )
+        choice(name: 'envStage', choices:'DEV\nRC\nGA', description:'The test stage' )
         string(name: 'package', defaultValue: '', description: 'Start with exist package, Not need wait to build?')
     }
 
@@ -106,9 +105,9 @@ pipeline {
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                        
                             if(version.startsWith('4.5.')){
-                                package_path = "artifacts/4.5.x/${params.env}"    
+                                package_path = "artifacts/4.5.x/${params.envStage}"    
                             }else if(version.startsWith('4.3.')){
-                                package_path = "artifacts/4.3.x/${params.env}"
+                                package_path = "artifacts/4.3.x/${params.envStage}"
                             }else{
                                 // nothing to do
                             }
@@ -118,7 +117,7 @@ pipeline {
                             println commitid
                             
                             file_name = sh(returnStdout:true, script: """
-                                echo "KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
+                                echo "KE-${version}-${envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
                             """).trim()
                             println file_name
                             
@@ -179,15 +178,15 @@ pipeline {
                                 }
                             }
                             
-                            def env = params.env?:"test"
+                            def env = "test"
                             if(!params.env){
                                 echo "env 参数不能为空，使用默认参数：test"
-                            }else if(params.env == "dev"){
+                            } else if(params.env == "DEV" || params.env == "RC"){
                                 env = "test"
-                            }else if(params.env == "rc"){
+                            }else if(params.env == "GA"){
                                 env = "uat"
                             }else{
-                                echo ""
+                                // nothing to do
                             }
                             
                             sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
@@ -211,6 +210,26 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+
+
+    post {
+        success {
+            
+        }
+        failure {
+            emailext body:
+                """<p>EXECUTED: Job <b>\ '${env.J0B_NAME}:${env.BUILD_NUMBER})\ '
+                </b></p><p>View console output at "<a href="${env.BUILD_URL}">
+                ${env.JOB_NAME}:${env.BUILD_NUMBER}</a>"</p>
+                <p><i>(Build log is attached .)</i></p>""",
+                compressLog: true,
+                attachLog: true,
+                recipientProviders: [culprits(), developers()，requestor(), brokenBuildSuspects()],
+                replyTo: 'do-not-reply@company.com',
+                subject: "Status: ${currentBuild.result?: 'SUCCESS'} - Job \ '${env. 0B_NANE}: ${env.BUILD_NUMBER}\'",
+                to: "liming.meng@kyligence.io"
         }
     }
 }
