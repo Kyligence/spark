@@ -13,8 +13,6 @@ def file_name
 // 上传到nexus文件
 def packageFilename
 
-properties([pipelineTriggers([githubPush()])])
-
 pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -27,40 +25,70 @@ pipeline {
     }
 
     parameters {
-        string(name: 'branch', defaultValue: 'newten-dev', description: 'Kap branch?')
-        string(name: 'version', defaultValue: '4.5.10', description: 'Kap version?')
-        choice(name:'stage', choices:'dev\nrc\nga', description:'stage' )
+        // string(name: 'branch', defaultValue: 'newten-qa', description: '分支：这里填写分支（前后端公用对齐分支）')
+        string(name: 'commitId_back', defaultValue: '', description: '后端分支或者commitid: 填写后端参数（必填）')
+        string(name: 'commitId_front', defaultValue: '', description: '前端分支或者commitid: 填写前端参数，不填不拉取前端repo')
+        string(name: 'version', defaultValue: '4.5.10', description: '填写版本号?')
+        choice(name:'envStage', choices:'DEV\nRC\nGA', description:'打包阶段' )
     }
 
     stages {
-        stage('1.Pull Code') {
+        stage('1.0.Sync the git mirror') {
+            steps {
+                if (!params.commitId_back) {
+                    error('后端分支参数必填')
+                }
+                container('build') {
+                    script {
+                        echo 'Sync the git mirror'
+                        sshCmdWithCredentials(
+                            'bash -c /var/lib/git/pull.sh',
+                            'private_git',
+                            ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                        )
+                    }
+                }
+            }
+        }
+        stage('1.1.Pull Backend') {
+            when {
+                expression {
+                    // 1.填写了包地址，跳过拉代码
+                    return !(params.package)
+                }
+            }
             steps {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            echo 'Sync the git mirror'
-                            sshCmdWithCredentials(
-                                'bash -c /var/lib/git/pull.sh',
-                                'private_git',
-                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                            )
-
                             echo 'checkout KAP'
                             retry(3) {
-                                githubCheckout 'KAP', params.branch
+                                githubCheckout 'KAP', params.commitId_back ?: params.branch
                             }
+                        }
+                    }
+                }
+            }
+        }
 
+        stage('1.2.Pull Frontend') {
+            when {
+                expression {
+                    // 1.填写了包地址，跳过拉代码
+                    // 2.没有前端分支或者commitid指定，跳过拉代码
+                    return !(params.package) || !(params.commitId_front)
+                }
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
                             echo 'checkout KAP_Frontend to kystudio'
                             sh 'rm -rf ./kystudio'
                             dir('kystudio') {
                                 retry(3) {
-                                    githubCheckout 'KAP_Frontend', params.branch
+                                    githubCheckout 'KAP_Frontend', params.commitId_front ?: params.branch
                                 }
-                                sh """
-                                    rm -f .npmrc
-                                    echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
-                                    cat .npmrc
-                                """
                             }
                         }
                     }
@@ -70,38 +98,44 @@ pipeline {
         stage('2.Building Package') {
             steps {
                 container('build') {
-                    dir('sourcecode') { 
+                    dir('sourcecode') {
                         script {
-                            if(!version){
+                            dir('kystudio') {
+                                sh """
+                                    rm -f .npmrc
+                                    echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                            }
+
+                            if (!version) {
                                 error 'version 版本号不能为空'
                             }
                             buildNewten(params.version, false, false)
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                       
-                            if(version.startsWith('4.5.')){
-                                package_path = "artifacts/4.5.x/${params.stage}"    
-                            }else if(version.startsWith('4.3.')){
-                                package_path = "artifacts/4.3.x/${params.stage}"
-                            }else{
+
+                            if (version.startsWith('4.5.')) {
+                                package_path = "artifacts/4.5.x/${params.envStage}"
+                            }else if (version.startsWith('4.3.')) {
+                                package_path = "artifacts/4.3.x/${params.envStage}"
+                            }else {
                                 // nothing to do
                             }
                             println package_path
-                            
+
                             def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                             println commitid
-                            
-                            file_name = sh(returnStdout:true, script: """
-                                echo "KE-${version}-DEV-${BUILD_NUMBER}-${commitid}.tar.gz"
-                            """).trim()
+
+                            ffile_name = "KE-${version}-${params.envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
                             println file_name
-                            
+
                             packageFilename=sh(script: """
                                 mkdir -p package
                                 cp dist/*.tar.gz package/${file_name}
                                 echo "package/${file_name}"
                             """, returnStdout:true).trim()
                             println packageFilename
-                                
+
                             package_file=sh(script: """
                                 mkdir -p /var/cicd/${package_path}
                                 mv dist/*.tar.gz dist/${file_name}
@@ -115,13 +149,13 @@ pipeline {
             }
         }
         stage('3.Tars to nexus') {
-            steps{
-                container("build") {
-                    dir("sourcecode") {
-                        script{
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
                             println package_file
                             withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                pushRawArtifactsByApi("raw-tars-hosted",package_path,packageFilename,file_name,user,passwd)
+                                pushRawArtifactsByApi('raw-tars-hosted', package_path, packageFilename, file_name, user, passwd)
                             }
                         }
                     }
