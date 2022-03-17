@@ -813,9 +813,9 @@ class MasterSuite extends SparkFunSuite
       master.self.askSync[SubmitDriverResponse](RequestSubmitDriver(driver))
 
       // LaunchExecutor message should have been received in worker side
-      assert(worker.launchExecutorReceived.await(60, TimeUnit.SECONDS))
+      assert(worker.launchExecutorReceived.await(10, TimeUnit.SECONDS))
 
-      eventually(timeout(60.seconds)) {
+      eventually(timeout(10.seconds)) {
         val appIds = worker.appIdsToLaunchExecutor
         // Master would continually launch executors until reach MAX_EXECUTOR_RETRIES
         assert(worker.failedCnt == master.conf.get(MAX_EXECUTOR_RETRIES) + 1)
