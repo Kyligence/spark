@@ -248,7 +248,7 @@ abstract class ShuffleSuite extends SparkFunSuite with Matchers with LocalRootDi
     assert(thrown.getMessage.toLowerCase(Locale.ROOT).contains("serializable"))
   }
 
-  ignore("shuffle with different compression settings (SPARK-3426)") {
+  test("shuffle with different compression settings (SPARK-3426)") {
     for (
       shuffleSpillCompress <- Set(true, false);
       shuffleCompress <- Set(true, false)
