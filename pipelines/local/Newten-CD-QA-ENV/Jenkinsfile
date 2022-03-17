@@ -29,23 +29,16 @@ pipeline {
     }
 
     parameters {
-        string(name: 'branch', defaultValue: 'newten-qa', description: 'If branch inputted the commitId_back/commitId_front not used?')
-        string(name: 'commitId_back', defaultValue: '', description: 'If branch not defined, this is backend branch or commitid?')
-        string(name: 'commitId_front', defaultValue: '', description: 'If branch not defined, this is frontend branch or commitid?')
-        string(name: 'version', defaultValue: '4.5.10', description: 'Kap version?')
+        // string(name: 'branch', defaultValue: 'newten-qa', description: '分支：这里填写分支（前后端公用对齐分支）')
+        string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）')
+        string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（不填不拉取和替换KAP中前端repo的代码）')
+        // string(name: 'version', defaultValue: '4.5.10', description: '填写对应的版本，打包会分拣到不同的文件夹路径')
         choice(name: 'envStage', choices:'DEV\nRC\nGA', description:'The test stage' )
         string(name: 'package', defaultValue: '', description: 'Start with exist package, Not need wait to build?')
     }
 
-    
     stages {
         stage('1.Pull Code') {
-            when{
-                expression {
-                    return !(params.package)
-                }
-            }
-
             steps {
                 container('build') {
                     dir('sourcecode') {
@@ -57,31 +50,21 @@ pipeline {
                                 ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
                             )
 
-                            def cidBack = params.commitId_back
-                            def cidFront = params.commitId_front
-                            if(params.branch){
-                                cidBack = params.branch
-                                cidFront = params.branch
-                            }
-
-                            echo "branch: ${params.branch}, cidBack: ${cidBack}, cidFront: ${cidFront}"
-
                             echo 'checkout KAP'
                             retry(3) {
-                                githubCheckout 'KAP', cidBack
+                                githubCheckout 'KAP', params.commitId_back
                             }
 
-                            echo 'checkout KAP_Frontend to kystudio'
-                            sh 'rm -rf ./kystudio'
-                            dir('kystudio') {
-                                retry(3) {
-                                    githubCheckout 'KAP_Frontend', cidFront
+                            if (!params.commitId_front) {
+                                echo 'not checkout KAP_Frontend'
+                            }else {
+                                echo 'checkout KAP_Frontend to kystudio'
+                                sh 'rm -rf ./kystudio'
+                                dir('kystudio') {
+                                    retry(3) {
+                                        githubCheckout 'KAP_Frontend', params.commitId_front
+                                    }
                                 }
-                                sh """
-                                    rm -f .npmrc
-                                    echo "registry = 'http://repo-ofs.kyligence.com:8081/repository/npm-public/'" > .npmrc
-                                    cat .npmrc
-                                """
                             }
                         }
                     }
@@ -89,43 +72,51 @@ pipeline {
             }
         }
         stage('2.Building Package') {
-            when{
+            when {
                 expression {
                     return !(params.package)
                 }
             }
             steps {
                 container('build') {
-                    dir('sourcecode') { 
+                    dir('sourcecode') {
                         script {
-                            if(!version){
+                            dir('kystudio') {
+                                sh """
+                                    rm -f .npmrc
+                                    echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                            }
+
+                            if (!version) {
                                 error 'version 版本号不能为空'
                             }
                             buildNewten(params.version, false, false)
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                       
-                            if(version.startsWith('4.5.')){
-                                package_path = "artifacts/4.5.x/${params.envStage}"    
-                            }else if(version.startsWith('4.3.')){
+
+                            if (version.startsWith('4.5.')) {
+                                package_path = "artifacts/4.5.x/${params.envStage}"
+                            }else if (version.startsWith('4.3.')) {
                                 package_path = "artifacts/4.3.x/${params.envStage}"
-                            }else{
-                                // nothing to do
+                            }else {
+                            // nothing to do
                             }
                             println package_path
-                            
+
                             def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                             println commitid
-                            
+
                             file_name = "KE-${version}-${params.envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
                             println file_name
-                            
+
                             packageFilename=sh(script: """
                                 mkdir -p package
                                 cp dist/*.tar.gz package/${file_name}
                                 echo "package/${file_name}"
                             """, returnStdout:true).trim()
                             println packageFilename
-                                
+
                             package_file=sh(script: """
                                 mkdir -p /var/cicd/${package_path}
                                 mv dist/*.tar.gz dist/${file_name}
@@ -139,18 +130,18 @@ pipeline {
             }
         }
         stage('3.Tars to nexus') {
-            when{
+            when {
                 expression {
                     return !(params.package)
                 }
             }
-            steps{
-                container("build") {
-                    dir("sourcecode") {
-                        script{
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
                             print package_file
                             withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                pushRawArtifactsByApi("raw-tars-hosted",package_path,packageFilename,file_name,user,passwd)
+                                pushRawArtifactsByApi('raw-tars-hosted', package_path, packageFilename, file_name, user, passwd)
                             }
                         }
                     }
@@ -158,37 +149,37 @@ pipeline {
             }
         }
         stage('4.Up in K8S') {
-            steps{
-                echo "Up in K8S at office env"
-                container("kubectl") {
+            steps {
+                echo 'Up in K8S at office env'
+                container('kubectl') {
                     withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                         script {
-                            if(!params.version){
+                            if (!params.version) {
                                 error(message: 'version 参数不能为空, 每个version会启动不同的ke实例')
                             }
-                            def kev = params.version.replace(".","")
+                            def kev = params.version.replace('.', '')
 
-                            if(params.package){
-                                package_file=params.package
+                            if (params.package) {
+                                package_file = params.package
                                 def exists = fileExists package_file
-                                if(!exists){
+                                if (!exists) {
                                     echo "input package: ${params.package} not exist"
                                 }
                             }
-                            
-                            def env = "test"
-                            if(!params.env){
-                                echo "env 参数不能为空，使用默认参数：test"
-                            } else if(params.env == "DEV" || params.env == "RC"){
-                                env = "test"
-                            }else if(params.env == "GA"){
-                                env = "uat"
-                            }else{
-                                // nothing to do
+
+                            def env = 'test'
+                            if (!params.env) {
+                                echo 'env 参数不能为空，使用默认参数：test'
+                            } else if (params.env == 'DEV' || params.env == 'RC') {
+                                env = 'test'
+                            }else if (params.env == 'GA') {
+                                env = 'uat'
+                            }else {
+                            // nothing to do
                             }
-                            
+
                             sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
-                            echo "查看 K8S 集群 Pod 列表"
+                            echo '查看 K8S 集群 Pod 列表'
                             sh "kubectl get pod -n ${env}"
 
                             echo "uninstall parmas: --namespace=${env} --version=${kev}"
@@ -198,12 +189,12 @@ pipeline {
                                 sh uninstall.sh --namespace=${env} --version=${kev}
                             """
 
-                            echo "params: --package_file=${package_file} --namespace=${env} --version=${kev}"                                    
+                            echo "params: --package_file=${package_file} --namespace=${env} --version=${kev}"
                             sh script: """#!/bin/sh
                                 set +x
                                 cd ${WORKSPACE}/k8s/auto-generate/
                                 sh install.sh --package_file=${package_file} --namespace=${env} --version=${kev}
-                            """                           
+                            """
                         }
                     }
                 }
