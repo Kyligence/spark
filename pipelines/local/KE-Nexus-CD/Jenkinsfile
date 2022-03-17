@@ -26,68 +26,107 @@ pipeline {
 
     parameters {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '分支：这里填写分支（前后端公用对齐分支）')
-        string(name: 'commitId_back', defaultValue: '', description: '后端分支或者commitid: 填写后端参数（必填）')
-        string(name: 'commitId_front', defaultValue: '', description: '前端分支或者commitid: 填写前端参数，不填不拉取前端repo')
+        string(name: 'commitId_back', defaultValue: '', description: '后端repo(KAP)的branch或者commitid: 填写后端参数（必填）')
+        string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid: 填写前端参数，不填不拉取前端repo的代码')
         string(name: 'version', defaultValue: '4.5.10', description: '填写版本号?')
         choice(name:'envStage', choices:'DEV\nRC\nGA', description:'打包阶段' )
     }
 
     stages {
-        stage('1.0.Sync the git mirror') {
-            steps {
-                container('build') {
-                    script {
-                        if (!params.commitId_back) {
-                            error('后端分支参数必填')
-                        }
-                        echo 'Sync the git mirror'
-                        sshCmdWithCredentials(
-                            'bash -c /var/lib/git/pull.sh',
-                            'private_git',
-                            ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                        )
-                    }
-                }
-            }
-        }
-        stage('1.1.Pull Backend') {
-            when {
-                expression {
-                    // 1.填写了包地址，跳过拉代码
-                    return !(params.package)
-                }
-            }
+        // stage('1.0.Sync the git mirror') {
+        //     steps {
+        //         container('build') {
+        //             script {
+        //                 if (!params.commitId_back) {
+        //                     error('后端分支参数必填')
+        //                 }
+        //                 echo 'Sync the git mirror'
+        //                 sshCmdWithCredentials(
+        //                     'bash -c /var/lib/git/pull.sh',
+        //                     'private_git',
+        //                     ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+        //                 )
+        //             }
+        //         }
+        //     }
+        // }
+        // stage('1.1.Pull Backend') {
+        //     when {
+        //         expression {
+        //             // 1.填写了包地址，跳过拉代码
+        //             return !(params.package)
+        //         }
+        //     }
+        //     steps {
+        //         container('build') {
+        //             dir('sourcecode') {
+        //                 script {
+        //                     echo 'checkout KAP'
+        //                     retry(3) {
+        //                         githubCheckout 'KAP', params.commitId_back ?: params.branch
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        // stage('1.2.Pull Frontend') {
+        //     when {
+        //         expression {
+        //             // 1.填写了包地址，跳过拉代码
+        //             // 2.没有前端分支或者commitid指定，跳过拉代码
+        //             return !(params.package) || !(params.commitId_front)
+        //         }
+        //     }
+        //     steps {
+        //         container('build') {
+        //             dir('sourcecode') {
+        //                 script {
+        //                     echo 'checkout KAP_Frontend to kystudio'
+        //                     sh 'rm -rf ./kystudio'
+        //                     dir('kystudio') {
+        //                         retry(3) {
+        //                             githubCheckout 'KAP_Frontend', params.commitId_front ?: params.branch
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        stage('1.Pull Code') {
             steps {
                 container('build') {
                     dir('sourcecode') {
                         script {
+                            echo 'Sync the git mirror'
+                            sshCmdWithCredentials(
+                                'bash -c /var/lib/git/pull.sh',
+                                'private_git',
+                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                            )
+
                             echo 'checkout KAP'
                             retry(3) {
-                                githubCheckout 'KAP', params.commitId_back ?: params.branch
+                                githubCheckout 'KAP', params.branch
                             }
-                        }
-                    }
-                }
-            }
-        }
 
-        stage('1.2.Pull Frontend') {
-            when {
-                expression {
-                    // 1.填写了包地址，跳过拉代码
-                    // 2.没有前端分支或者commitid指定，跳过拉代码
-                    return !(params.package) || !(params.commitId_front)
-                }
-            }
-            steps {
-                container('build') {
-                    dir('sourcecode') {
-                        script {
-                            echo 'checkout KAP_Frontend to kystudio'
-                            sh 'rm -rf ./kystudio'
-                            dir('kystudio') {
-                                retry(3) {
-                                    githubCheckout 'KAP_Frontend', params.commitId_front ?: params.branch
+                            if(!params.commitId_front){
+                                echo 'not checkout KAP_Frontend'
+                            }else{
+                                echo 'checkout KAP_Frontend to kystudio'
+                                sh 'rm -rf ./kystudio'
+                                dir('kystudio') {
+                                    retry(3) {
+                                        githubCheckout 'KAP_Frontend', params.branch
+                                    }
+                                    sh """
+                                        rm -f .npmrc
+                                        echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
+                                        cat .npmrc
+                                    """
                                 }
                             }
                         }
