@@ -35,11 +35,11 @@ pipeline {
     stages {
         stage('1.0.Sync the git mirror') {
             steps {
-                if (!params.commitId_back) {
-                    error('后端分支参数必填')
-                }
                 container('build') {
                     script {
+                        if (!params.commitId_back) {
+                            error('后端分支参数必填')
+                        }
                         echo 'Sync the git mirror'
                         sshCmdWithCredentials(
                             'bash -c /var/lib/git/pull.sh',
