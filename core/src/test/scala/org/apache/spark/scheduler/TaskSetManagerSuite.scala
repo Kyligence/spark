@@ -221,7 +221,7 @@ class TaskSetManagerSuite
     super.afterEach()
   }
 
-  ignore("TaskSet with no preferences") {
+  test("TaskSet with no preferences") {
     sc = new SparkContext("local", "test")
     sched = new FakeTaskScheduler(sc, ("exec1", "host1"))
     val taskSet = FakeTask.createTaskSet(1)
@@ -241,7 +241,7 @@ class TaskSetManagerSuite
     assert(sched.finishedManagers.contains(manager))
   }
 
-  ignore("multiple offers with no preferences") {
+  test("multiple offers with no preferences") {
     sc = new SparkContext("local", "test")
     sched = new FakeTaskScheduler(sc, ("exec1", "host1"))
     val taskSet = FakeTask.createTaskSet(3)
@@ -817,7 +817,7 @@ class TaskSetManagerSuite
     assert(1 === r.size)
   }
 
-  ignore("[SPARK-13931] taskSetManager should not send Resubmitted tasks after being a zombie") {
+  test("[SPARK-13931] taskSetManager should not send Resubmitted tasks after being a zombie") {
     val conf = new SparkConf().set(config.SPECULATION_ENABLED, true)
     sc = new SparkContext("local", "test", conf)
 
@@ -1320,7 +1320,7 @@ class TaskSetManagerSuite
   }
 
 
-  ignore("SPARK-19868: DagScheduler only notified of taskEnd when state is ready") {
+  test("SPARK-19868: DagScheduler only notified of taskEnd when state is ready") {
     // dagScheduler.taskEnded() is async, so it may *seem* ok to call it before we've set all
     // appropriate state, e.g. isZombie.   However, this sets up a race that could go the wrong way.
     // This is a super-focused regression test which checks the zombie state as soon as
@@ -1650,7 +1650,7 @@ class TaskSetManagerSuite
     new DirectTaskResult[Int](valueSer.serialize(id), accumUpdates, metricPeaks)
   }
 
-  ignore("SPARK-13343 speculative tasks that didn't commit shouldn't be marked as success") {
+  test("SPARK-13343 speculative tasks that didn't commit shouldn't be marked as success") {
     sc = new SparkContext("local", "test")
     sched = new FakeTaskScheduler(sc, ("exec1", "host1"), ("exec2", "host2"))
     val taskSet = FakeTask.createTaskSet(4)
