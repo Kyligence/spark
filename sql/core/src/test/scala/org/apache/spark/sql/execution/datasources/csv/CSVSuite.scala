@@ -1724,9 +1724,7 @@ abstract class CSVSuite
     }
   }
 
-  test("SPARK-23786: Ignor" +
-    "" +
-    "e column name case if spark.sql.caseSensitive is false") {
+  test("SPARK-23786: Ignore column name case if spark.sql.caseSensitive is false") {
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
       withTempPath { path =>
         val oschema = new StructType().add("A", StringType)
@@ -1784,7 +1782,7 @@ abstract class CSVSuite
     assert(exception.getMessage.contains("CSV header does not conform to the schema"))
   }
 
-  ignore("SPARK-23786: warning should be printed if CSV header doesn't conform to schema") {
+  test("SPARK-23786: warning should be printed if CSV header doesn't conform to schema") {
     val testAppender1 = new LogAppender("CSV header matches to schema")
     withLogAppender(testAppender1) {
       val ds = Seq("columnA,columnB", "1.0,1000.0").toDS()
