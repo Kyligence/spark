@@ -28,7 +28,7 @@ pipeline {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '分支：这里填写分支（前后端公用对齐分支）')
         string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）')
         string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（不填不拉取和替换KAP中前端repo的代码）')
-        string(name: 'version', defaultValue: '4.5.10', description: '填写版本号?')
+        string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         choice(name:'envStage', choices:'DEV\nRC\nGA', description:'打包阶段' )
     }
 
@@ -82,6 +82,13 @@ pipeline {
                             if (!version) {
                                 error 'version 版本号不能为空'
                             }
+                            
+                            def external_version = sh script: 'mvn help:evaluate -Dexpression=external.version  -q -DforceStdout',returnStdout:true
+                            println external_version
+                            if (!(external_version && external_version=="4.5.9")){
+                                sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                            }
+
                             buildNewten(params.version, false, false)
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
