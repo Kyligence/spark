@@ -568,19 +568,19 @@ private[spark] class TaskSetManager(
         val broadcastId = taskSet.tasks.head match {
           case resultTask: ResultTask[_, _] =>
             if (resultTask.taskBinary != null) {
-              Option(resultTask.taskBinary.id)
+              Some(resultTask.taskBinary.id)
             } else {
               None
             }
           case shuffleMapTask: ShuffleMapTask =>
             if (shuffleMapTask.taskBinary != null) {
-              Option(shuffleMapTask.taskBinary.id)
+              Some(shuffleMapTask.taskBinary.id)
             } else {
               None
             }
           case _ => None
         }
-        if(broadcastId!=None) {
+        if(broadcastId.isDefined) {
           SparkEnv.get.broadcastManager.unbroadcast(broadcastId.get, true, false)
         }
         healthTracker.foreach(_.updateExcludedForSuccessfulTaskSet(
