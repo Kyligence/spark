@@ -783,7 +783,7 @@ class MasterSuite extends SparkFunSuite
     }
   }
 
-  ignore("SPARK-27510: Master should avoid dead loop while launching executor failed in Worker") {
+  test("SPARK-27510: Master should avoid dead loop while launching executor failed in Worker") {
     val master = makeAliveMaster()
     var worker: MockExecutorLaunchFailWorker = null
     try {
@@ -813,12 +813,12 @@ class MasterSuite extends SparkFunSuite
       master.self.askSync[SubmitDriverResponse](RequestSubmitDriver(driver))
 
       // LaunchExecutor message should have been received in worker side
-      assert(worker.launchExecutorReceived.await(10, TimeUnit.SECONDS))
+      assert(worker.launchExecutorReceived.await(60, TimeUnit.SECONDS))
 
-      eventually(timeout(10.seconds)) {
+      eventually(timeout(60.seconds)) {
         val appIds = worker.appIdsToLaunchExecutor
         // Master would continually launch executors until reach MAX_EXECUTOR_RETRIES
-        assert(worker.failedCnt == master.conf.get(MAX_EXECUTOR_RETRIES))
+        assert(worker.failedCnt == master.conf.get(MAX_EXECUTOR_RETRIES) + 1)
         // Master would remove the app if no executor could be launched for it
         assert(master.idToApp.keySet.intersect(appIds).isEmpty)
       }
