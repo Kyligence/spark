@@ -28,7 +28,7 @@ pipeline {
         string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）')
         string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（不填不拉取和替换KAP中前端repo的代码）')
         string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
-        choice(name:'envStage', choices:'DEV\nRC\nGA', description:'打包阶段' )
+        choice(name: 'envStage', choices:'DEV\nRC\nGA', description:'打包阶段' )
     }
 
     stages {
