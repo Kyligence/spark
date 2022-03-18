@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib@tigger') _
+@Library('devopslib') _
 
 //变量名，用于存储input步骤的返回值
 def approvalMap
@@ -42,7 +42,6 @@ pipeline {
                                 error 'commitId_back 不能为空'
                             }
 
-                            echo '1 - GIT_COMMIT: ${GIT_COMMIT}, GIT_BRANCH: ${GIT_BRANCH}, BRANCH_NAME: ${BRANCH_NAME}'
                             echo 'Sync the git mirror'
                             sshCmdWithCredentials(
                                 'bash -c /var/lib/git/pull.sh',
@@ -55,10 +54,8 @@ pipeline {
                                 githubCheckout 'KAP', params.commitId_back
                             }
 
-                            echo '2 - GIT_COMMIT: ${GIT_COMMIT}, GIT_BRANCH: ${GIT_BRANCH}, BRANCH_NAME: ${BRANCH_NAME}'
-
                             if (!params.commitId_front) {
-                                echo 'not checkout KAP_Frontend'
+                                echo 'Not checkout KAP_Frontend'
                             }else {
                                 echo 'checkout KAP_Frontend to kystudio'
                                 sh 'rm -rf ./kystudio'
@@ -68,8 +65,6 @@ pipeline {
                                     }
                                 }
                             }
-
-                            echo '3 - GIT_COMMIT: ${GIT_COMMIT}, GIT_BRANCH: ${GIT_BRANCH}, BRANCH_NAME: ${BRANCH_NAME}'
                         }
                     }
                 }
