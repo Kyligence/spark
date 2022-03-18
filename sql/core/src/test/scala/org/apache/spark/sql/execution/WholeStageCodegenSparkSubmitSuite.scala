@@ -36,7 +36,7 @@ class WholeStageCodegenSparkSubmitSuite extends SparkSubmitTestUtils
   with BeforeAndAfterEach
   with ResetSystemProperties {
 
-  ignore("Generated code on driver should not embed platform-specific constant") {
+  test("Generated code on driver should not embed platform-specific constant") {
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
 
     // HotSpot JVM specific: Set up a local cluster with the driver/executor using mismatched

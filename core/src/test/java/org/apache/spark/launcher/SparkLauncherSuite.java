@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import static org.junit.Assume.*;
@@ -253,8 +252,8 @@ public class SparkLauncherSuite extends BaseSuite {
       waitForSparkContextShutdown();
     }
   }
-
-  @Ignore
+  
+  @Test
   public void testSparkLauncherGetError() throws Exception {
     SparkAppHandle handle = null;
     try {

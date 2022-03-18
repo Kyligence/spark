@@ -35,7 +35,6 @@ import org.apache.spark.internal.config._
 import org.apache.spark.io.CompressionCodec
 import org.apache.spark.util.Utils
 
-@Ignore
 abstract class EventLogFileWritersSuite extends SparkFunSuite with LocalSparkContext
   with BeforeAndAfter {
 
@@ -140,7 +139,6 @@ abstract class EventLogFileWritersSuite extends SparkFunSuite with LocalSparkCon
       expectedLines: Seq[String] = Seq.empty): Unit
 }
 
-@Ignore
 class SingleEventLogFileWriterSuite extends EventLogFileWritersSuite {
 
   test("Log overwriting") {
