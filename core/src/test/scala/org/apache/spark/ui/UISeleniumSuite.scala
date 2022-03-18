@@ -332,7 +332,7 @@ class UISeleniumSuite extends SparkFunSuite with WebBrowser with Matchers with B
     }
   }
 
-  test("job progress bars should handle stage / task failures") {
+  ignore("job progress bars should handle stage / task failures") {
     withSpark(newSparkContext()) { sc =>
       val data = sc.parallelize(Seq(1, 2, 3), 1).map(identity).groupBy(identity)
       val shuffleHandle =
