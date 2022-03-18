@@ -818,7 +818,7 @@ class MasterSuite extends SparkFunSuite
       eventually(timeout(10.seconds)) {
         val appIds = worker.appIdsToLaunchExecutor
         // Master would continually launch executors until reach MAX_EXECUTOR_RETRIES
-        assert(worker.failedCnt == master.conf.get(MAX_EXECUTOR_RETRIES) + 1)
+        assert(worker.failedCnt == master.conf.get(MAX_EXECUTOR_RETRIES))
         // Master would remove the app if no executor could be launched for it
         assert(master.idToApp.keySet.intersect(appIds).isEmpty)
       }
