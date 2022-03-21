@@ -61,23 +61,6 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
-    - name: "helm"
-      image: "lachlanevenson/k8s-helm:v3.1.1"
-      imagePullPolicy: "IfNotPresent"
-      tty: true
-      command:
-        - "cat"
-      resources:
-        request:
-          cpu: "300m"
-          memory: "500Mi"
-        limits:
-          cpu: "300m"
-          memory: "1Gi"
-      volumeMounts:
-        - mountPath: "/var/cicd"
-          name: "jenkins-common"
-          subPath: "newten-cicd"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
