@@ -337,7 +337,7 @@ object DataSourceStrategy
         l.output.toStructType,
         Set.empty,
         Set.empty,
-        PushedDownOperators(None, None, None, Seq.empty),
+        PushedDownOperators(None, None, None, Seq.empty, Seq.empty),
         toCatalystRDD(l, baseRelation.buildScan()),
         baseRelation,
         None) :: Nil
@@ -411,7 +411,7 @@ object DataSourceStrategy
         requestedColumns.toStructType,
         pushedFilters.toSet,
         handledFilters,
-        PushedDownOperators(None, None, None, Seq.empty),
+        PushedDownOperators(None, None, None, Seq.empty, Seq.empty),
         scanBuilder(requestedColumns, candidatePredicates, pushedFilters),
         relation.relation,
         relation.catalogTable.map(_.identifier))
@@ -434,7 +434,7 @@ object DataSourceStrategy
         requestedColumns.toStructType,
         pushedFilters.toSet,
         handledFilters,
-        PushedDownOperators(None, None, None, Seq.empty),
+        PushedDownOperators(None, None, None, Seq.empty, Seq.empty),
         scanBuilder(requestedColumns, candidatePredicates, pushedFilters),
         relation.relation,
         relation.catalogTable.map(_.identifier))
@@ -858,8 +858,5 @@ object PushableColumnWithoutNestedColumn extends PushableColumnBase {
  * Get the expression of DS V2 to represent catalyst expression that can be pushed down.
  */
 object PushableExpression {
-  def unapply(e: Expression): Option[V2Expression] = e match {
-    case PushableColumnWithoutNestedColumn(name) => Some(FieldReference(name))
-    case _ => new V2ExpressionBuilder(e).build()
-  }
+  def unapply(e: Expression): Option[V2Expression] = new V2ExpressionBuilder(e).build()
 }
