@@ -12,10 +12,10 @@ spec:
       resources:
         request:
           memory: "4Gi"
-          cpu: "2"
+          cpu: "500m"
         limits:
           memory: "8Gi"
-          cpu: "4"
+          cpu: "1000m"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -42,20 +42,6 @@ spec:
         limits:
           cpu: "300m"
           memory: "1024Mi"
-      volumeMounts:
-        - mountPath: "/var/cicd"
-          name: "jenkins-common"
-          subPath: "newten-cicd"
-    - name: "busybox"
-      image: "busybox"
-      imagePullPolicy: "IfNotPresent"
-      tty: true
-      command:
-        - "cat"
-      resources:
-        limits:
-          memory: "1Gi"
-          cpu: "300m"
       volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
