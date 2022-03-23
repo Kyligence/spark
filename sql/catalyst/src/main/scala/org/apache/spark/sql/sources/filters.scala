@@ -376,4 +376,9 @@ object AlwaysFalse extends AlwaysFalse {
 @Evolving
 case class Trivial(value: Boolean) extends Filter {
   override def references: Array[String] = findReferences(value)
+  override def toV2: Predicate = {
+    val literal = Literal(value)
+    new Predicate("TRIVIAL",
+      Array(LiteralValue(literal.value, literal.dataType)))
+  }
 }
