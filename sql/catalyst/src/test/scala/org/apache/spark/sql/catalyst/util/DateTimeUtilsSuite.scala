@@ -40,6 +40,7 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
 
   test("nanoseconds truncation") {
     val tf = TimestampFormatter.getFractionFormatter(ZoneId.systemDefault())
+
     def checkStringToTimestamp(originalTime: String, expectedParsedTime: String): Unit = {
       val parsedTimestampOp = DateTimeUtils.stringToTimestamp(
         UTF8String.fromString(originalTime), defaultZoneId)
@@ -545,6 +546,7 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
       assert(toJavaTimestamp(fromUTCTime(fromJavaTimestamp(Timestamp.valueOf(utc)), tz)).toString
         === expected)
     }
+
     for (tz <- ALL_TIMEZONES) {
       withDefaultTimeZone(tz) {
         test("2011-12-25 09:00:00.123456", "UTC", "2011-12-25 09:00:00.123456")
@@ -612,10 +614,10 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
   }
 
   def testTrunc(
-      level: Int,
-      expected: String,
-      inputTS: Long,
-      zoneId: ZoneId = defaultZoneId): Unit = {
+    level: Int,
+    expected: String,
+    inputTS: Long,
+    zoneId: ZoneId = defaultZoneId): Unit = {
     val truncated = DateTimeUtils.truncTimestamp(inputTS, level, zoneId)
     val expectedTS = toTimestamp(expected, defaultZoneId)
     assert(truncated === expectedTS.get)
@@ -699,10 +701,10 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
   }
 
   test("SPARK-35664: microseconds to LocalDateTime") {
-    assert(microsToLocalDateTime(0) ==  LocalDateTime.parse("1970-01-01T00:00:00"))
-    assert(microsToLocalDateTime(100) ==  LocalDateTime.parse("1970-01-01T00:00:00.0001"))
-    assert(microsToLocalDateTime(100000000) ==  LocalDateTime.parse("1970-01-01T00:01:40"))
-    assert(microsToLocalDateTime(100000000000L) ==  LocalDateTime.parse("1970-01-02T03:46:40"))
+    assert(microsToLocalDateTime(0) == LocalDateTime.parse("1970-01-01T00:00:00"))
+    assert(microsToLocalDateTime(100) == LocalDateTime.parse("1970-01-01T00:00:00.0001"))
+    assert(microsToLocalDateTime(100000000) == LocalDateTime.parse("1970-01-01T00:01:40"))
+    assert(microsToLocalDateTime(100000000000L) == LocalDateTime.parse("1970-01-02T03:46:40"))
     assert(microsToLocalDateTime(253402300799999999L) ==
       LocalDateTime.parse("9999-12-31T23:59:59.999999"))
     assert(microsToLocalDateTime(Long.MinValue) ==
@@ -909,10 +911,10 @@ class DateTimeUtilsSuite extends SparkFunSuite with Matchers with SQLHelper {
 
   test("ceilTimestamp") {
     def testCeil(
-                  level: Int,
-                  expected: String,
-                  inputTS: SQLTimestamp,
-                  zoneId: ZoneId = ZoneId.systemDefault()): Unit = {
+      level: Int,
+      expected: String,
+      inputTS: SQLTimestamp,
+      zoneId: ZoneId = ZoneId.systemDefault()): Unit = {
       val ceilTS =
         DateTimeUtils.ceilTimestamp(inputTS, level, zoneId)
       val expectedTS =

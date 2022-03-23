@@ -447,8 +447,8 @@ class AnalysisSuite extends AnalysisTest with Matchers {
   }
 
   private def assertExpressionType(
-                                    expression: Expression,
-                                    expectedDataType: DataType): Unit = {
+    expression: Expression,
+    expectedDataType: DataType): Unit = {
     val afterAnalyze =
       Project(Seq(Alias(expression, "a")()), OneRowRelation()).analyze.expressions.head
     if (!afterAnalyze.dataType.equals(expectedDataType)) {
@@ -587,8 +587,8 @@ class AnalysisSuite extends AnalysisTest with Matchers {
 
   test("SPARK-22614 RepartitionByExpression partitioning") {
     def checkPartitioning[T <: Partitioning : ClassTag](
-                                                         numPartitions: Int,
-                                                         exprs: Expression*): Unit = {
+      numPartitions: Int,
+      exprs: Expression*): Unit = {
       val partitioning = RepartitionByExpression(exprs, testRelation2, numPartitions).partitioning
       val clazz = implicitly[ClassTag[T]].runtimeClass
       assert(clazz.isInstance(partitioning))
