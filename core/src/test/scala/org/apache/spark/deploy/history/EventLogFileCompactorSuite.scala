@@ -288,10 +288,10 @@ class EventLogFileCompactorSuite extends SparkFunSuite {
   }
 
   private def assertCompaction(
-    fs: FileSystem,
-    originalFiles: Seq[FileStatus],
-    compactRet: CompactionResult,
-    expectedNumOfFilesCompacted: Int): Unit = {
+      fs: FileSystem,
+      originalFiles: Seq[FileStatus],
+      compactRet: CompactionResult,
+      expectedNumOfFilesCompacted: Int): Unit = {
     assert(CompactionResultCode.SUCCESS === compactRet.code)
 
     val expectRetainedFiles = originalFiles.drop(expectedNumOfFilesCompacted)
