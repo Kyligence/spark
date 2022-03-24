@@ -315,10 +315,10 @@ class EventLogFileCompactorSuite extends SparkFunSuite {
   }
 
   private def assertNoCompaction(
-    fs: FileSystem,
-    originalFiles: Seq[FileStatus],
-    compactRet: CompactionResult,
-    expectedCompactRet: CompactionResultCode.Value): Unit = {
+      fs: FileSystem,
+      originalFiles: Seq[FileStatus],
+      compactRet: CompactionResult,
+      expectedCompactRet: CompactionResultCode.Value): Unit = {
     assert(expectedCompactRet === compactRet.code)
     assert(None === compactRet.compactIndex)
     originalFiles.foreach { status => assert(fs.exists(status.getPath)) }
