@@ -19,8 +19,8 @@ spec:
       image: "bitnami/git:latest"
       resources:
         limits:
-          memory: "2Gi"
-          cpu: "1000m"
+          memory: "4Gi"
+          cpu: "2000m"
         requests:
           memory: "2Gi"
           cpu: "800m"
