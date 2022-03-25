@@ -82,7 +82,7 @@ pipeline {
                             dir('kystudio') {
                                 sh """
                                     rm -f .npmrc
-                                    echo "registry = 'http://mvn.ops.kylincorp.com/repository/npm-public/'" > .npmrc
+                                    echo "registry = 'http://10.1.9.200:8081/repository/npm-public/'" > .npmrc
                                     cat .npmrc
                                 """
                             }
