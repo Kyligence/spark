@@ -17,7 +17,7 @@ spec:
           memory: "1Gi"
           cpu: "1000m"
     - name: "build"
-      image: "repo-ofs.kyligence.com:5000/handbook:0.1"
+      image: "repo-ofs.kyligence.tech:5000/handbook:0.1"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
