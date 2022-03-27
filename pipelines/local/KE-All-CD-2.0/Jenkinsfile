@@ -315,11 +315,11 @@ pipeline {
                     }
                 }
             }
-            post {
-                always {
-                    jiraSendBuildInfo site: 'olapio.atlassian.net'
-                }
-            }
+            // post {
+            //     always {
+            //         jiraSendBuildInfo site: 'olapio.atlassian.net'
+            //     }
+            // }
         }
         stage('5.Tag & merge') {
             when {
@@ -334,11 +334,11 @@ pipeline {
                             echo 'push tag'
                             if (params.deloyWay == 'Auto Select') {
                                 def _branch = getBranch(deloyType, envStage)
-                                gitTag(_branch, 'ke-${version}', 'KAP', 'Kyligence', false)
-                                gitTag(_branch, 'ke-${version}', 'KAP_Frontend', 'Kyligence', false)
+                                gitTag(_branch, 'ke-${version}', 'KAP')
+                                gitTag(_branch, 'ke-${version}', 'KAP_Frontend')
                             }else if (params.deloyWay == 'Manual Select') {
-                                gitTag(paramsMap['commitId_back'], 'ke-${version}', 'KAP', 'Kyligence', false)
-                                gitTag(paramsMap['commitId_front'], 'ke-${version}', 'KAP_Frontend', 'Kyligence', false)
+                                gitTag(paramsMap['commitId_back'], 'ke-${version}', 'KAP')
+                                gitTag(paramsMap['commitId_front'], 'ke-${version}', 'KAP_Frontend')
                             } else {
                                 error(message: '请选择足够的信息来确认代码分支')
                             }
