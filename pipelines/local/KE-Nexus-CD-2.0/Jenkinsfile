@@ -1,0 +1,328 @@
+#!groovy
+
+@Library('devopslib') _
+
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+// GA包名
+def ga_name
+
+// 根据发布类型自动获取分支
+def getBranch(deloyType, envStage) {
+    def _result
+    def _branch_release = 'newten'
+    def _branch_qa = 'newten-qa'
+    def _branch_dev = 'newten-dev'
+    def _branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
+
+    switch (deloyType) {
+        case 'Newten':
+            _branch_release = _branchCollection[0]
+            _branch_qa = "${_branch_release}-qa"
+            _branch_dev = "${_branch_release}-dev"
+            break
+        case 'SP-4.5.x':
+            _branch_release = _branchCollection[0]
+            _branch_qa = "${_branchCollection[1]}-qa"
+            _branch_dev = "${_branchCollection[1]}-dev"
+            break
+        case 'KE-4.3.x':
+            _branch_release = _branchCollection[2]
+            _branch_qa = "${_branchCollection[1]}-qa"
+            _branch_dev = "${_branchCollection[1]}-dev"
+            break
+        case 'SP-4.3.x':
+            _branch_release = _branchCollection[3]
+            _branch_qa = "${_branch_release}-qa"
+            _branch_dev = "${_branch_release}-dev"
+            break
+    // case 'Hotfix':
+    //     break
+    }
+
+    switch (envStage) {
+        case 'DEV':
+            _result = _branch_dev
+            break
+        case 'QA':
+            _result = _branch_qa
+            break
+        case 'RC':
+        case 'GA':
+            _result = _branch_release
+            break
+    }
+    echo "getBranch: ${_result}"
+    return _result
+}
+
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name) {
+    dir('sourcecode') {
+        timestamps {
+            println("path: ${path}, ga_name: ${ga_name}")
+            withAWS(region: region, credentials: credentials) {
+                s3Upload(bucket: bucket, path: path, file: ga_name)
+            }
+        }
+    }
+}
+
+// 上传制品包到Nexus制品库
+def uploadNexus(repo, package_path, file_name) {
+    timestamps {
+        container('build') {
+            dir('sourcecode') {
+                script {
+                    println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
+                    // 上传制品库
+                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                        pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// git获取KE代码（预先触发同步git mirror）
+def gitCodeKe(back, front) {
+    container('build') {
+        dir('sourcecode') {
+            script {
+                println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
+                if (!back) {
+                    error 'commitId_back 参数不能为空'
+                }
+
+                echo 'Sync the git mirror'
+                sshCmdWithCredentials(
+                    'bash -c /var/lib/git/pull.sh',
+                    'private_git',
+                    ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                )
+
+                echo 'checkout KAP'
+                retry(3) {
+                    githubCheckout 'KAP', back
+                }
+
+                def _front
+                if (!front) {
+                    echo "Not commitId_front, use the commitId_back: ${back}"
+                    _front = back
+                }else {
+                    echo "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
+                    _front = front
+                }
+
+                sh 'rm -rf ./kystudio'
+                dir('kystudio') {
+                    retry(3) {
+                        githubCheckout 'KAP_Frontend', _front
+                    }
+                }
+            }
+        }
+    }
+}
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    environment {
+        //变量名，用于存储input步骤的返回值
+        paramsMap = ''
+        // K8S启动用包名
+        package_file = ''
+        // 文件路径
+        package_path = ''
+        // 文件名(给测试过程中的名字)
+        file_name = ''
+        // GA包名
+        ga_name = ''
+    }
+
+    parameters {
+        // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
+        choice(name: 'deloyWay', choices:'Auto Select\nManual Select\nHotfix', description:'发布方式: Auto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId; \nHotfix：Hotfix发布必须自己输入分支' )
+        choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x\nHotfix', description:'交付类型' )
+        string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段' )
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                script {
+                    if (params.deloyWay == 'Auto Select') {
+                        def _branch = getBranch(deloyType, envStage)
+                        gitCodeKe(_branch, _branch)
+                    } else if (params.deloyWay == 'Manual Select') {
+                        paramsMap = input (
+                            message: '请选择要开始的版本?',
+                            ok: '确认！',
+                            parameters: [
+                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+                            ]
+                        // submitter:'liming.meng,admin',
+                        // submitterParameter:'APPROVER'
+                        )
+                        gitCodeKe(paramsMap['commitId_back'], paramsMap['commitId_front'])
+                    } else if (params.deloyWay == 'Hotfix') {
+                        paramsMap = input (
+                            message: '请选择要开始的版本?',
+                            ok: '确认！',
+                            parameters: [
+                                string(name: 'version', defaultValue: '', description: '填写Hotfix发布版本，如：4.5.10.1.1， 4.5.11.2.3'),
+                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+                            // string(name: 'anchor', defaultValue: '', description: 'Hotfix专用： branch / commitId / tag, 可发发起版本的锚点')
+                            ]
+                        // submitter:'liming.meng,admin',
+                        // submitterParameter:'APPROVER'
+                        )
+                        gitCodeKe(paramsMap['commitId_back'], paramsMap['commitId_front'])
+                    } else {
+                        error(message: '请选择足够的信息来确认代码位置')
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        timestamps {
+                            script {
+                                dir('kystudio') {
+                                    sh """
+                                    rm -f .npmrc
+                                    echo "registry = 'http://10.1.9.200:8081/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                                }
+
+                                if (!version) {
+                                    error 'version 版本号不能为空'
+                                }
+
+                                buildNewten(params.version, false, false)
+                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+
+                                if (version.startsWith('4.5.')) {
+                                    package_path = "artifacts/4.5.x/${params.envStage}"
+                                }else if (version.startsWith('4.3.')) {
+                                    package_path = "artifacts/4.3.x/${params.envStage}"
+                                }else if (version.startsWith('auto-')) {
+                                    package_path = "artifacts/auto/${params.envStage}"
+                                }else {
+                                    // put in a error_version folder
+                                    package_path = "artifacts/error_versin/${params.envStage}"
+                                }
+                                println "package_path: ${package_path}"
+
+                                def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                                println "commitid: ${commitid}"
+
+                                file_name = "KE-${version}-${params.envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
+                                package_file = "newten-cicd/${package_path}/${file_name}"
+                                ga_name = "Kyligence-Enterprise-${version}-GA.tar.gz"
+
+                                // sh(script: """
+                                //     mkdir -p package
+                                //     cp dist/*.tar.gz package/${file_name}
+                                //     echo "package/${file_name}"
+                                // """, returnStdout:true).trim()
+                                println "file_name: ${file_name}"
+                                println "package_file: ${package_file}"
+
+                                sh script: """
+                                    mkdir -p /var/cicd/${package_path}
+                                    mv dist/*.tar.gz ${file_name}
+                                    cp ${file_name} /var/cicd/${package_path}
+                                    cp ${file_name} ${ga_name}
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.Dev/QA/RC to nexus') {
+            when {
+                expression {
+                    return params.envStage != 'GA'
+                }
+            }
+            steps {
+                uploadNexus('raw-tars-hosted', package_path, file_name)
+            }
+        }
+        stage('4.GA Upload') {
+            when {
+                expression {
+                    return params.envStage == 'GA'
+                }
+            }
+            parallel {
+                stage('4.1.GA AWS CN') {
+                    steps {
+                        println("upload to AWS S3 in CN: ${ga_name}")
+                        // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                    }
+                }
+                stage('4.2.GA AWS Global') {
+                    steps {
+                        println("upload to AWS S3 in Global: ${ga_name}")
+                        // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                    }
+                }
+                stage('4.3.GA Nexus') {
+                    steps {
+                        println("upload to nexus repo-ofs: ${ga_name}")
+                        uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+                    }
+                }
+            }
+            post {
+                always {
+                    jiraSendBuildInfo site: 'olapio.atlassian.net'
+                }
+            }
+        }
+        stage('5.Tag & merge') {
+            when {
+                expression {
+                    return params.envStage == 'GA'
+                }
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            echo 'push tag'
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
