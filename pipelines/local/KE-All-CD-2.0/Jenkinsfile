@@ -3,15 +3,15 @@
 @Library('devopslib') _
 
 // K8S启动用包名
-def package_file
+// def package_file
 // 文件路径
-def package_path
+// def package_path
 // 文件名
-def file_name
+// def file_name
 // 上传到nexus文件
-def packageFilename
+// def packageFilename
 // GA包名
-def ga_name
+// def ga_name
 
 // 根据发布类型自动获取分支
 def getBranch(deloyType, envStage) {
@@ -42,8 +42,6 @@ def getBranch(deloyType, envStage) {
             _branch_qa = "${_branch_release}-qa"
             _branch_dev = "${_branch_release}-dev"
             break
-    // case 'Hotfix':
-    //     break
     }
 
     switch (envStage) {
@@ -133,6 +131,38 @@ def gitCodeKe(back, front) {
     }
 }
 
+def gitInit(base, project='KAP', repo='Kyligence') {
+    sh script:"""
+        git init .
+        git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
+        git fetch ${base}
+        git branch ${base} origin/${base}
+    """
+}
+
+def createBranch(base, branch, project='KAP', repo='Kyligence', isCloned=true) {
+    println "createBranch: base[${base}], branch[${branch}], project[${project}], repo[${repo}]"
+    if (!isCloned) {
+        gitInit(base, project, repo)
+    }
+    sh script:"""
+        git checkout -b ${branch} origin/${base}
+        git push --set-upstream origin ${branch}
+    """
+}
+
+def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
+    println "gitTag: base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
+    if (!isCloned) {
+        gitInit(base, project, repo)
+    }
+    sh script: """
+        git tag ${tag}
+        git push origin --tag
+        git show ${tag}
+    """
+}
+
 pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -155,12 +185,14 @@ pipeline {
         file_name = ''
         // GA包名
         ga_name = ''
+        // github token
+        GIT_JEKNINS_TOKEN = credentials('jenkins-token')
     }
 
     parameters {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
-        choice(name: 'deloyWay', choices:'Auto Select\nManual Select\nHotfix', description:'发布方式: Auto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId; \nHotfix：Hotfix发布必须自己输入分支' )
-        choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x\nHotfix', description:'交付类型' )
+        choice(name: 'deloyWay', choices:'Auto Select\nManual Select', description:'发布方式: Auto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
+        choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付类型' )
         string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段' )
     }
@@ -184,22 +216,8 @@ pipeline {
                         // submitterParameter:'APPROVER'
                         )
                         gitCodeKe(paramsMap['commitId_back'], paramsMap['commitId_front'])
-                    } else if (params.deloyWay == 'Hotfix') {
-                        paramsMap = input (
-                            message: '请选择要开始的版本?',
-                            ok: '确认！',
-                            parameters: [
-                                string(name: 'version', defaultValue: '', description: '填写Hotfix发布版本，如：4.5.10.1.1， 4.5.11.2.3'),
-                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
-                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
-                            // string(name: 'anchor', defaultValue: '', description: 'Hotfix专用： branch / commitId / tag, 可发发起版本的锚点')
-                            ]
-                        // submitter:'liming.meng,admin',
-                        // submitterParameter:'APPROVER'
-                        )
-                        gitCodeKe(paramsMap['commitId_back'], paramsMap['commitId_front'])
                     } else {
-                        error(message: '请选择足够的信息来确认代码位置')
+                        error(message: '请选择足够的信息来确认代码分支')
                     }
                 }
             }
@@ -244,11 +262,6 @@ pipeline {
                                 package_file = "newten-cicd/${package_path}/${file_name}"
                                 ga_name = "Kyligence-Enterprise-${version}-GA.tar.gz"
 
-                                // sh(script: """
-                                //     mkdir -p package
-                                //     cp dist/*.tar.gz package/${file_name}
-                                //     echo "package/${file_name}"
-                                // """, returnStdout:true).trim()
                                 println "file_name: ${file_name}"
                                 println "package_file: ${package_file}"
 
@@ -319,6 +332,16 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             echo 'push tag'
+                            if (params.deloyWay == 'Auto Select') {
+                                def _branch = getBranch(deloyType, envStage)
+                                gitTag(_branch, 'ke-${version}', 'KAP', 'Kyligence', false)
+                                gitTag(_branch, 'ke-${version}', 'KAP_Frontend', 'Kyligence', false)
+                            }else if (params.deloyWay == 'Manual Select') {
+                                gitTag(paramsMap['commitId_back'], 'ke-${version}', 'KAP', 'Kyligence', false)
+                                gitTag(paramsMap['commitId_front'], 'ke-${version}', 'KAP_Frontend', 'Kyligence', false)
+                            } else {
+                                error(message: '请选择足够的信息来确认代码分支')
+                            }
                         }
                     }
                 }
