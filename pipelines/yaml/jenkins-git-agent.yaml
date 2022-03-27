@@ -1,0 +1,28 @@
+---
+kind: "Pod"
+name: "jenkins-git-agent"
+spec:
+  containers:
+    - name: "git"
+      tty: true
+      command:
+        - "cat"
+      image: "bitnami/git:latest"
+      resources:
+        limits:
+          memory: "3Gi"
+          cpu: "1500m"
+        requests:
+          memory: "2Gi"
+          cpu: "800m"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }

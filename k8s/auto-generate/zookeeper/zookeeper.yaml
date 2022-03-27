@@ -80,7 +80,7 @@ spec:
           name: jmx-exporter-config
       initContainers:
       - name: jmx-exporter
-        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
+        image: repo-ofs.kyligence.com:5000/jmx-prometheus-javaagent:0.16.1
         volumeMounts:
         - name: exporter-dir
           mountPath: /opt/jmx-exporter/
@@ -90,7 +90,7 @@ spec:
       containers:
       - name: kubernetes-zookeeper
         imagePullPolicy: IfNotPresent
-        image: "10.1.9.11:31500/kubernetes-zookeeper:1.0-3.4.10"
+        image: "repo-ofs.kyligence.com:5000/kubernetes-zookeeper:1.0-3.4.10"
         env:
         - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
           value: "true"

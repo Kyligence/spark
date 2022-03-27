@@ -33,14 +33,14 @@ spec:
       - name: docker-registry-secret
       initContainers:
       - name: jmx-exporter
-        image: 10.1.9.11:31500/jmx-prometheus-javaagent:0.16.1
+        image: repo-ofs.kyligence.com:5000/jmx-prometheus-javaagent:0.16.1
         volumeMounts:
         - name: exporter-dir
           mountPath: /opt/jmx-exporter/
         command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
       containers:
       - name: hive-metastore
-        image: 10.1.9.11:31500/hive:1.2.2-hadoop-2.10.1
+        image: repo-ofs.kyligence.com:5000/hive:1.2.2-hadoop-2.10.1
         ports:
         - containerPort: 9083
           name: thrift

@@ -4,7 +4,7 @@ name: "jenkins-agent"
 spec:
   containers:
   - name: "build"
-    image: "10.1.9.11:5000/newten-build:latest"
+    image: "repo-ofs.kyligence.com:5000/newten-build:latest"
     imagePullPolicy: "IfNotPresent"
     tty: true
     command:
