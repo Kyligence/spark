@@ -2,17 +2,6 @@
 
 @Library('devopslib') _
 
-// K8S启动用包名
-// def package_file
-// 文件路径
-// def package_path
-// 文件名
-// def file_name
-// 上传到nexus文件
-// def packageFilename
-// GA包名
-// def ga_name
-
 // 根据发布类型自动获取分支
 def getBranch(deloyType, envStage) {
     def _result
@@ -331,14 +320,24 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            echo 'push tag'
+                            def _tag = 'ke-${version}'
+                            def _gitStatus(txt){
+                                sh "echo ${txt} | git status"
+                            }
+                            def _tagPush(back,front){
+                                _gitStatus("backend: KAP by ${back}")
+                                gitTag(paramsMap['commitId_back'], _tag, 'KAP')
+                                dir('kystudio'){
+                                    _gitStatus("frontend: KAP by ${front} in kystudio")
+                                    gitTag(_branch, _tag, 'KAP_Frontend')
+                                }
+                            }
+                            echo "push tag ${_tag}"
                             if (params.deloyWay == 'Auto Select') {
                                 def _branch = getBranch(deloyType, envStage)
-                                gitTag(_branch, 'ke-${version}', 'KAP')
-                                gitTag(_branch, 'ke-${version}', 'KAP_Frontend')
+                                _tagPush(_branch,_branch)
                             }else if (params.deloyWay == 'Manual Select') {
-                                gitTag(paramsMap['commitId_back'], 'ke-${version}', 'KAP')
-                                gitTag(paramsMap['commitId_front'], 'ke-${version}', 'KAP_Frontend')
+                                _tagPush(paramsMap['commitId_back'],paramsMap['commitId_front'])
                             } else {
                                 error(message: '请选择足够的信息来确认代码分支')
                             }
