@@ -333,7 +333,7 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            def _tag = 'ke-${version}'
+                            def _tag = "ke-${version}"
                             echo "push tag ${_tag}"
                             if (params.deloyWay == 'Auto Select') {
                                 def _branch = getBranch(deloyType, envStage)
