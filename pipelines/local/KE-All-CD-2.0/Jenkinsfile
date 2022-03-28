@@ -152,6 +152,19 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     """
 }
 
+def gitStatus(txt){
+    sh "echo ${txt} | git status"
+}
+
+def tagPush(back,front){
+    _gitStatus("backend: KAP by ${back}")
+    gitTag(back, _tag, 'KAP')
+    dir('kystudio'){
+        _gitStatus("frontend: KAP by ${front} in kystudio")
+        gitTag(_branch, _tag, 'KAP_Frontend')
+    }
+}
+
 pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -321,17 +334,6 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             def _tag = 'ke-${version}'
-                            def _gitStatus(txt){
-                                sh "echo ${txt} | git status"
-                            }
-                            def _tagPush(back,front){
-                                _gitStatus("backend: KAP by ${back}")
-                                gitTag(paramsMap['commitId_back'], _tag, 'KAP')
-                                dir('kystudio'){
-                                    _gitStatus("frontend: KAP by ${front} in kystudio")
-                                    gitTag(_branch, _tag, 'KAP_Frontend')
-                                }
-                            }
                             echo "push tag ${_tag}"
                             if (params.deloyWay == 'Auto Select') {
                                 def _branch = getBranch(deloyType, envStage)
