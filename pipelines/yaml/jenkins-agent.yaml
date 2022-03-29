@@ -44,10 +44,10 @@ spec:
       resources:
         limits:
           memory: "56Gi"
-          cpu: "16"
+          cpu: "12"
         requests:
           memory: "56Gi"
-          cpu: "16"
+          cpu: "12"
 
     - name: "sonar-cloud"
       tty: true

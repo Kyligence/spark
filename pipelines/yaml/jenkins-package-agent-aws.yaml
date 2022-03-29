@@ -3,7 +3,6 @@ kind: "Pod"
 name: "jenkins-agent"
 spec:
   containers:
-
     - volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -19,8 +18,6 @@ spec:
       image: "sunfuzhou/newten-build:latest"
       imagePullPolicy: "IfNotPresent"
       name: "build"
-     
-
       
   volumes:
     - name: "jenkins-common"
