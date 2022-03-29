@@ -324,25 +324,27 @@ pipeline {
                         parallel {
                             stage('4.1.GA AWS CN') {
                                 steps {
-                                    println("upload to AWS S3 in CN: ${ga_name}, APPROVER by ${APPROVER}")
+                                    println("upload to AWS S3 in CN: ${ga_name}")
                                     // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
                                     uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
                                 }
                             }
                             stage('4.2.GA AWS Global') {
                                 steps {
-                                    println("upload to AWS S3 in Global: ${ga_name}, APPROVER by ${APPROVER}")
+                                    println("upload to AWS S3 in Global: ${ga_name}")
                                     // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
                                     uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
                                 }
                             }
                             stage('4.3.GA Nexus') {
                                 steps {
-                                    println("upload to nexus repo-ofs: ${ga_name}, APPROVER by ${APPROVER}")
+                                    println("upload to nexus repo-ofs: ${ga_name}")
                                     uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
                                 }
                             }
                         }
+                    } else{
+                        error(message: '测试验证不通过，放弃上传！')
                     }
                 }
             }
