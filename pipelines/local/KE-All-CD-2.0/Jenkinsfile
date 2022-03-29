@@ -334,7 +334,7 @@ pipeline {
             steps {
                 script {
 
-                    if (approvalMap['canBeGA']) {
+                    // if (approvalMap['canBeGA']) {
                         parallel {
                             stage('5.1.GA AWS CN') {
                                 steps {
@@ -357,9 +357,9 @@ pipeline {
                                 }
                             }
                         }
-                    } else {
-                        error(message: '测试验证不通过，放弃上传！')
-                    }
+                    // } else {
+                    //     error(message: '测试验证不通过，放弃上传！')
+                    // }
                 }
             }
         // post {
