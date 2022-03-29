@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "hdfs.fullname" . }}-mysql-pvc
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.mysql.storageSize }}
+  storageClassName: {{ .Values.mysql.storageClassName }}

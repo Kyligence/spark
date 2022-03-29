@@ -1,0 +1,9 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "hdfs.fullname" . }}-zk-pdb
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "hdfs.fullname" . }}-zk
+  maxUnavailable: 1

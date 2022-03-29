@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "hdfs.fullname" . }}-datanode
+  labels:
+    {{- include "hdfs.labels" . | nindent 4 }}
+    io.kompose.service: {{ include "hdfs.fullname" . }}-datanode
+spec:
+  serviceName: {{ include "hdfs.fullname" . }}-datanode
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.datanode.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      io.kompose.service: {{ include "hdfs.fullname" . }}-datanode
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        io.kompose.service: {{ include "hdfs.fullname" . }}-datanode
+    spec:
+      {{- if .Values.jmx.enabled }}
+      volumes:
+      - name: exporter-dir
+        emptyDir: {}
+      - name: jmx-config
+        configMap:
+          name: {{ include "hdfs.fullname" . }}-jmx-exporter-config
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.jmx.enabled }}
+      initContainers:
+        - name: jmx-exporter
+          image: "{{ .Values.jmx.image.repository }}:{{ .Values.jmx.image.tag }}"
+          volumeMounts:
+            - name: exporter-dir
+              mountPath: /opt/jmx-exporter/
+          command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
+      {{- end }}
+      containers:
+        - name: {{ include "hdfs.fullname" . }}-datanode
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.namenode.port }}
+          livenessProbe:
+            failureThreshold: 20
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            httpGet:
+              path: /
+              port: {{ .Values.namenode.port }}
+          readinessProbe:
+            failureThreshold: 20
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            httpGet:
+              path: /
+              port: {{ .Values.namenode.port }}
+          volumeMounts:
+            - mountPath: /hadoop/dfs/data
+              name: {{ include "hdfs.fullname" . }}-datanode-claim0
+            {{- if .Values.jmx.enabled }}
+            - name: exporter-dir
+              mountPath: /opt/jmx-exporter/
+            - name: jmx-config
+              mountPath: /opt/jmx-exporter/config.yaml
+              subPath: config.yaml
+            {{- end }}
+          envFrom:
+          - configMapRef:
+              name: {{ include "hdfs.fullname" . }}-env
+          env:
+            - name: HADOOP_MODE
+              value: datanode
+            - name: HADOOP_WEBHDFS_PORT
+              value: "{{ .Values.datanode.web_hdfs_port }}"
+            - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+              value: "true"
+            # {{- if .Values.jmx.enabled }}
+            # - name: HADOOP_OPTS
+            #   value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+            # {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ include "hdfs.fullname" . }}-datanode-claim0
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.datanode.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.datanode.storageSize }}

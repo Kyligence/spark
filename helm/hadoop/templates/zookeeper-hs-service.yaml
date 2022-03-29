@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hdfs.fullname" . }}-zk-hs
+  labels:
+    app: {{ include "hdfs.fullname" . }}-zk
+spec:
+  ports:
+  - port: 2888
+    name: server
+  - port: 3888
+    name: leader-election
+  clusterIP: None
+  selector:
+    app: {{ include "hdfs.fullname" . }}-zk

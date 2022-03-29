@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hdfs.fullname" . }}-mysql
+  labels:
+    {{- include "hdfs.labels" . | nindent 4 }}
+    app: {{ include "hdfs.fullname" . }}-mysql
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.mysql.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "hdfs.fullname" . }}-mysql
+  strategy:
+    type: {{ .Values.namenode.strategy }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "hdfs.fullname" . }}-mysql
+    spec:
+      containers:
+      - name: {{ include "hdfs.fullname" . }}-mysql
+        image: "{{ .Values.mysql.image.repository }}:{{ .Values.mysql.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "hdfs.fullname" . }}-mysql
+              key: password
+        ports:
+        - name: mysql
+          containerPort: {{ .Values.mysql.port }}
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+        - name: config
+          mountPath: /etc/mysql/conf.d/mysql.cnf
+          subPath: mysql.cnf
+        - name: config
+          mountPath: /docker-entrypoint-initdb.d/mysql-init.sql
+          subPath: mysql-init.sql
+        livenessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - '-ec'
+              - |
+                mysqladmin status -uroot -p${MYSQL_ROOT_PASSWORD}
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 20
+        readinessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - '-ec'
+              - |
+                mysqladmin status -uroot -p${MYSQL_ROOT_PASSWORD}
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 20
+      - name: mysql-prometheus-exporter
+        image: "{{ .Values.mysql.prometheus.image.repository }}:{{ .Values.mysql.prometheus.image.tag }}"
+        ports:
+        - containerPort: {{ .Values.mysql.prometheus.port }}
+          name: metrics
+        livenessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          httpGet:
+            path: /metrics
+            port: metrics
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          httpGet:
+            path: /metrics
+            port: metrics
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "hdfs.fullname" . }}-mysql
+              key: password
+        - name: DATA_SOURCE_NAME
+          value: root:$(MYSQL_ROOT_PASSWORD)@(localhost:3306)/
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "hdfs.fullname" . }}-mysql
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "hdfs.fullname" . }}-mysql-pvc

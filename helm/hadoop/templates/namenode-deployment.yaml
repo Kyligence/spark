@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hdfs.fullname" . }}-namenode
+  labels:
+    {{- include "hdfs.labels" . | nindent 4 }}
+    io.kompose.service: {{ include "hdfs.fullname" . }}-namenode
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.namenode.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      io.kompose.service: {{ include "hdfs.fullname" . }}-namenode
+  strategy:
+    type: {{ .Values.namenode.strategy }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        io.kompose.service: {{ include "hdfs.fullname" . }}-namenode
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.jmx.enabled }}
+      initContainers:
+        - name: jmx-exporter
+          image: "{{ .Values.jmx.image.repository }}:{{ .Values.jmx.image.tag }}"
+          volumeMounts:
+            - name: exporter-dir
+              mountPath: /opt/jmx-exporter/
+            - mountPath: /hadoop/dfs/name
+              name: {{ include "hdfs.fullname" . }}-namenode-claim0
+          command:
+            - sh
+            - "-c"
+            - |
+              set -x
+              rm -rf /hadoop/dfs/name/lost+found
+              cp /opt/jmx_prometheus_javaagent-0.16.1.jar /opt/jmx-exporter/
+      {{- end }}
+      containers:
+      - name: {{ include "hdfs.fullname" . }}-namenode
+        envFrom:
+        - configMapRef:
+            name: {{ include "hdfs.fullname" . }}-env
+        env:
+          - name: CLUSTER_NAME
+            value: {{ .Values.namenode.cluster_name }}
+          - name: HADOOP_MODE
+            value: namenode
+          - name: HADOOP_WEBHDFS_PORT
+            value: "{{ .Values.namenode.web_hdfs_port }}"
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+          # {{- if .Values.jmx.enabled }}
+          # - name: HADOOP_OPTS
+          #   value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+          # {{- end }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - containerPort: 50070
+          - containerPort: 8020
+        livenessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50070
+        readinessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          httpGet:
+            path: /
+            port: 50070
+        volumeMounts:
+          - mountPath: /hadoop/dfs/name
+            name: {{ include "hdfs.fullname" . }}-namenode-claim0
+          {{- if .Values.jmx.enabled }}
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml
+          {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: {{ include "hdfs.fullname" . }}-namenode-claim0
+          persistentVolumeClaim:
+            claimName: {{ include "hdfs.fullname" . }}-namenode-claim0
+        {{- if .Values.jmx.enabled }}
+        - name: exporter-dir
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: {{ include "hdfs.fullname" . }}-jmx-exporter-config
+        {{- end }}

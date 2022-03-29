@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hdfs.fullname" . }}-zk-cs
+  labels:
+    app: {{ include "hdfs.fullname" . }}-zk
+    metrics-exporter: prometheus
+spec:
+  ports:
+  - port: 2181
+    name: client
+  - port: 8080
+    name: metrics
+  selector:
+    app: {{ include "hdfs.fullname" . }}-zk

@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    {{- include "hdfs.labels" . | nindent 4 }}
+    io.kompose.service: {{ include "hdfs.fullname" . }}-yarn-nodemanager
+  name: {{ include "hdfs.fullname" . }}-yarn-nodemanager
+spec:
+  serviceName: {{ include "hdfs.fullname" . }}-yarn-nodemanager
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.datanode.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      io.kompose.service: {{ include "hdfs.fullname" . }}-yarn-nodemanager
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        io.kompose.service: {{ include "hdfs.fullname" . }}-yarn-nodemanager
+    spec:
+      {{- if .Values.jmx.enabled }}
+      volumes:
+      - name: exporter-dir
+        emptyDir: {}
+      - name: jmx-config
+        configMap:
+          name: {{ include "hdfs.fullname" . }}-jmx-exporter-config
+      {{- end }}
+      {{- if .Values.jmx.enabled }}
+      initContainers:
+        - name: jmx-exporter
+          image: "{{ .Values.jmx.image.repository }}:{{ .Values.jmx.image.tag }}"
+          volumeMounts:
+            - name: exporter-dir
+              mountPath: /opt/jmx-exporter/
+          command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
+      {{- end }}
+      containers:
+        - name: {{ include "hdfs.fullname" . }}-yarn-nodemanager
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          livenessProbe:
+            failureThreshold: 20
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            httpGet:
+              path: /
+              port: 8042
+          readinessProbe:
+            failureThreshold: 20
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            httpGet:
+              path: /
+              port: 8042
+          ports:
+            - containerPort: 8042
+          # 结合 yarn-env-configmap 中的资源配置调整
+          resources:
+            limits:
+              cpu: 4
+              memory: 8Gi
+            requests:
+              cpu: 1
+              memory: 2Gi
+          envFrom:
+          - configMapRef:
+              name: {{ include "hdfs.fullname" . }}-yarn-env
+          env:
+          - name: HADOOP_MODE
+            value: nodemanager
+          - name: HADOOP_WEBHDFS_PORT
+            value: "50070"
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+          - name: SERVICE_PRECONDITION
+            value: {{ include "hdfs.fullname" . }}-namenode:{{ .Values.namenode.web_hdfs_port }} {{ include "hdfs.fullname" . }}-datanode:{{ .Values.namenode.port }} {{ include "hdfs.fullname" . }}-yarn-resourcemanager:8088
+          - name: YARN_OPTS
+            value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+          volumeMounts:
+            - name: exporter-dir
+              mountPath: /opt/jmx-exporter/
+            - name: jmx-config
+              mountPath: /opt/jmx-exporter/config.yaml
+              subPath: config.yaml

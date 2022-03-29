@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "hdfs.fullname" . }}-hive-initschema-job
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      imagePullSecrets:
+      - name: "{{ include "hdfs.fullname" . }}-{{ .Values.hive.imagePullSecrets }}"
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "hdfs.fullname" . }}-yarn-xml
+      initContainers:
+        - name: init-mysql
+          image: busybox:1.31
+          command: ['sh', '-c', "until telnet {{ include "hdfs.fullname" . }}-mysql 3306; do echo waiting for mysql; sleep 20; done;"]
+      containers:
+        - name: {{ include "hdfs.fullname" . }}-hive-initschema-job
+          volumeMounts:
+          - name: config
+            mountPath: /opt/apache-hive-1.2.2-bin/conf/hive-site.xml
+            subPath: hive-site.xml
+          image: "{{ .Values.hive.image.repository }}:{{ .Values.hive.image.tag }}"
+          imagePullPolicy: {{ .Values.hive.image.pullPolicy }}
+          env:
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+          command: ["/opt/apache-hive-1.2.2-bin/bin/schematool"]
+          args: ["-verbose" ,"-initSchema" , "-dbType", "mysql"]
+      restartPolicy: Never

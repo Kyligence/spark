@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hdfs.fullname" . }}-hive-server2
+  labels:
+    metrics-exporter: prometheus
+spec:
+  selector:
+    app: {{ include "hdfs.fullname" . }}-hive-server2
+  ports:
+    - port: {{ .Values.hive_server2.port }}
+      name: jdbc
+    - port: 8080
+      name: metrics

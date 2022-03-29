@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hdfs.fullname" . }}-hive-metastore
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.hive_metastore.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "hdfs.fullname" . }}-hive-metastore
+  strategy:
+    type: {{ .Values.namenode.strategy }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "hdfs.fullname" . }}-hive-metastore
+    spec:
+      imagePullSecrets:
+        - name: "{{ include "hdfs.fullname" . }}-{{ .Values.hive.imagePullSecrets }}"
+      {{- if .Values.jmx.enabled }}
+      initContainers:
+        - name: init-mysql
+          image: busybox:1.31
+          command: ['sh', '-c', "until telnet {{ include "hdfs.fullname" . }}-mysql 3306; do echo waiting for mysql; sleep 20; done;"]
+        - name: jmx-exporter
+          image: "{{ .Values.jmx.image.repository }}:{{ .Values.jmx.image.tag }}"
+          volumeMounts:
+            - name: exporter-dir
+              mountPath: /opt/jmx-exporter/
+          command: ["cp", "/opt/jmx_prometheus_javaagent-0.16.1.jar", "/opt/jmx-exporter/"]
+      {{- end }}
+      containers:
+      - name: {{ include "hdfs.fullname" . }}-hive-metastore
+        image: "{{ .Values.hive.image.repository }}:{{ .Values.hive.image.tag }}"
+        ports:
+        - containerPort: {{ .Values.hive_metastore.port }}
+          name: thrift
+        volumeMounts:
+        - name: config
+          mountPath: /opt/apache-hive-1.2.2-bin/conf/hive-site.xml
+          subPath: hive-site.xml
+        - name: config
+          mountPath: /opt/hadoop-2.10.1/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        - name: exporter-dir
+          mountPath: /opt/jmx-exporter/
+        - name: jmx-config
+          mountPath: /opt/jmx-exporter/config.yaml
+          subPath: config.yaml
+        command: ["/opt/apache-hive-1.2.2-bin/bin/hive"]
+        args: ["--service", "metastore"]
+        env:
+        - name: HADOOP_HEAPSIZE
+          value: "1024"
+        - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+          value: "true"
+        # - name: HADOOP_OPTS
+        #   value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          tcpSocket:
+            port: thrift
+        readinessProbe:
+          failureThreshold: 20
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          tcpSocket:
+            port: thrift
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "hdfs.fullname" . }}-yarn-xml
+        - name: exporter-dir
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: {{ include "hdfs.fullname" . }}-jmx-exporter-config
