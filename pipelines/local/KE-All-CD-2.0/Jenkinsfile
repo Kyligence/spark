@@ -307,11 +307,13 @@ pipeline {
             }
             steps {
                 script {
+                    def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${env.release_version}"
+                    println checkMsg
                     paramsMap = input (
                         message: '请选择要开始的版本?',
                         ok: '确认！',
                         parameters: [
-                            booleanParam(name: 'canBeGA', defaultValue: false, description: "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${env.release_version}"),
+                            booleanParam(name: 'canBeGA', defaultValue: false, description: checkMsg),
                             string(name: 'comments', defaultValue: '', description: '请输入确认信息')
                         ],
                         submitter:'liming.meng,meixiu.chen,enwei.jiao',
