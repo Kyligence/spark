@@ -211,8 +211,8 @@ pipeline {
                 script {
                     if (params.deloyWay == 'Auto Select') {
                         def _branch = getBranch(deloyType, envStage)
-                        release_branch_front = _branch
-                        release_branch_back = _branch
+                        env.release_branch_front = _branch
+                        env.release_branch_back = _branch
                         gitCodeKe(_branch, _branch)
                     } else if (params.deloyWay == 'Manual Select') {
                         paramsMap = input (
@@ -225,9 +225,9 @@ pipeline {
                         // submitter:'liming.meng,admin',
                         // submitterParameter:'APPROVER'
                         )
-                        release_branch_front = paramsMap['commitId_front']
-                        release_branch_back = paramsMap['commitId_back']
-                        gitCodeKe(release_branch_back, release_branch_front)
+                        env.release_branch_front = paramsMap['commitId_front']
+                        env.release_branch_back = paramsMap['commitId_back']
+                        gitCodeKe(env.release_branch_back, env.release_branch_front)
                     } else {
                         error(message: '请选择足够的信息来确认代码分支')
                     }
@@ -307,20 +307,20 @@ pipeline {
             }
             steps {
                 script {
-                    def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${env.release_version}"
+                    def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${params.version}"
                     println checkMsg
                     paramsMap = input (
                         message: '请选择要开始的版本?',
                         ok: '确认！',
                         parameters: [
-                            booleanParam(name: 'canBeGA', defaultValue: false, description: checkMsg),
+                            booleanParam(name: 'canBeGA', defaultValue: false, description: '是否确认GA'),
                             string(name: 'comments', defaultValue: '', description: '请输入确认信息')
                         ],
                         submitter:'liming.meng,meixiu.chen,enwei.jiao',
                         submitterParameter:'APPROVER'
                     )
 
-                    if (params.envStage == 'GA' && paramsMap['canBeGA']) {
+                    if (paramsMap['canBeGA']) {
                         parallel {
                             stage('4.1.GA AWS CN') {
                                 steps {
@@ -343,7 +343,7 @@ pipeline {
                                 }
                             }
                         }
-                    } else{
+                    } else {
                         error(message: '测试验证不通过，放弃上传！')
                     }
                 }
