@@ -305,7 +305,7 @@ pipeline {
                     return params.envStage == 'GA'
                 }
             }
-            setps{
+            steps{
                 script{
                     paramsMap = input (
                         message: '请选择要开始的版本?',
