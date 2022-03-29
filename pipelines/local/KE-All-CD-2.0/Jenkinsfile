@@ -209,6 +209,9 @@ pipeline {
         stage('1.Pull Code') {
             steps {
                 script {
+                     def _branch = getBranch(deloyType, envStage)
+                        release_branch_front = _branch
+                        release_branch_back = _branch
                     def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${env.release_version}"
                     println checkMsg
                     paramsMap = input (
@@ -221,7 +224,7 @@ pipeline {
                         submitter:'liming.meng,meixiu.chen,enwei.jiao',
                         submitterParameter:'APPROVER'
                     )
-                    
+
                     timeout(15) {
                         waitUntil {
                             script {
