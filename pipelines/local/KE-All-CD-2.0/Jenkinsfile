@@ -2,6 +2,9 @@
 
 @Library('devopslib') _
 
+//变量名，用于存储input步骤的返回值
+def approvalMap
+
 // 根据发布类型自动获取分支
 def getBranch(deloyType, envStage) {
     def _result
@@ -299,57 +302,68 @@ pipeline {
                 uploadNexus('raw-tars-hosted', package_path, file_name)
             }
         }
-        stage('4.GA Upload') {
+        stage('4.1.Approve GA'){
             when {
                 expression {
                     return params.envStage == 'GA'
                 }
             }
             steps {
-                script {
-                    def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${params.version}"
-                    println checkMsg
-                    sh 'printenv'
-                    
-                    input (
+                script{
+                    approvalMap = input (
                         message: '请选择要开始的版本?',
                         ok: '确认！',
-                        parameters: {
-                            booleanParam(name: 'canBeGA', defaultValue: false, description: '是否确认GA')
+                        parameters: [
+                            booleanParam(name: 'canBeGA', defaultValue: false, description: '是否确认GA'),
                             string(name: 'comments', defaultValue: '', description: '请输入确认信息')
-                        },
+                        ],
                         submitter:'liming.meng,meixiu.chen,enwei.jiao',
                         submitterParameter:'APPROVER'
                     )
-
-                    if (canBeGA) {
-                        parallel {
-                            stage('4.1.GA AWS CN') {
-                                steps {
-                                    println("upload to AWS S3 in CN: ${ga_name}")
-                                    // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
-                                    uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                                }
-                            }
-                            stage('4.2.GA AWS Global') {
-                                steps {
-                                    println("upload to AWS S3 in Global: ${ga_name}")
-                                    // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                                    uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                                }
-                            }
-                            stage('4.3.GA Nexus') {
-                                steps {
-                                    println("upload to nexus repo-ofs: ${ga_name}")
-                                    uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
-                                }
-                            }
-                        }
-                    } else {
-                        error(message: '测试验证不通过，放弃上传！')
+                }
+            }
+        }
+        stage('4.GA Upload') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && approvalMap['canBeGA']
+                }
+            }
+             parallel {
+                stage('4.1.GA AWS CN') {
+                    steps {
+                        println("upload to AWS S3 in CN: ${ga_name}")
+                        // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                    }
+                }
+                stage('4.2.GA AWS Global') {
+                    steps {
+                        println("upload to AWS S3 in Global: ${ga_name}")
+                        // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                    }
+                }
+                stage('4.3.GA Nexus') {
+                    steps {
+                        println("upload to nexus repo-ofs: ${ga_name}")
+                        uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
                     }
                 }
             }
+            // steps {
+            //     script {
+            //         // def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${params.version}"
+            //         // println checkMsg
+            //         // sh 'printenv'
+
+            //         if (approvalMap['canBeGA']) {
+                       
+            //         } else {
+            //             error(message: '测试验证不通过，放弃上传！')
+            //         }
+            //     }
+            // }
         // post {
         //     always {
         //         jiraSendBuildInfo site: 'olapio.atlassian.net'
