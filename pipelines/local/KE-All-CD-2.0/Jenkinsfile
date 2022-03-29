@@ -200,7 +200,7 @@ pipeline {
     parameters {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
         choice(name: 'deloyWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
-        choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付类型' )
+        choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
         string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段' )
     }
@@ -209,22 +209,6 @@ pipeline {
         stage('1.Pull Code') {
             steps {
                 script {
-                    def b = getBranch(deloyType, envStage)
-                        release_branch_front = b
-                        release_branch_back = b
-                    def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${env.release_version}"
-                    println checkMsg
-                    paramsMap = input (
-                        message: '请选择要开始的版本?',
-                        ok: '确认！',
-                        parameters: [
-                            booleanParam(name: 'canBeGA', defaultValue: false, description: checkMsg),
-                            string(name: 'comments', defaultValue: '', description: '请输入确认信息')
-                        ],
-                        submitter:'liming.meng,meixiu.chen,enwei.jiao',
-                        submitterParameter:'APPROVER'
-                    )
-
                     if (params.deloyWay == 'Auto Select') {
                         def _branch = getBranch(deloyType, envStage)
                         release_branch_front = _branch
@@ -380,9 +364,9 @@ pipeline {
                             echo "push tag ${_tag}"
                             if (params.deloyWay == 'Auto Select') {
                                 def _branch = getBranch(deloyType, envStage)
-                                _tagPush(_branch, _branch)
+                                tagPush(_branch, _branch)
                             }else if (params.deloyWay == 'Manual Select') {
-                                _tagPush(paramsMap['commitId_back'], paramsMap['commitId_front'])
+                                tagPush(paramsMap['commitId_back'], paramsMap['commitId_front'])
                             } else {
                                 error(message: '请选择足够的信息来确认代码分支')
                             }
