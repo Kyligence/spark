@@ -323,47 +323,46 @@ pipeline {
                 }
             }
         }
-        stage('4.GA Upload') {
+        stage('4.2.GA Upload') {
             when {
                 expression {
                     return params.envStage == 'GA' && approvalMap['canBeGA']
                 }
             }
-             parallel {
-                stage('4.1.GA AWS CN') {
-                    steps {
-                        println("upload to AWS S3 in CN: ${ga_name}")
-                        // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                    }
-                }
-                stage('4.2.GA AWS Global') {
-                    steps {
-                        println("upload to AWS S3 in Global: ${ga_name}")
-                        // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                    }
-                }
-                stage('4.3.GA Nexus') {
-                    steps {
-                        println("upload to nexus repo-ofs: ${ga_name}")
-                        uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+            steps {
+                script {
+                    // def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${params.version}"
+                    // println checkMsg
+                    // sh 'printenv'
+
+                    if (approvalMap['canBeGA']) {
+                        parallel {
+                            stage('4.2.1.GA AWS CN') {
+                                steps {
+                                    println("upload to AWS S3 in CN: ${ga_name}")
+                                    // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
+                                    uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                                }
+                            }
+                            stage('4.2.2.GA AWS Global') {
+                                steps {
+                                    println("upload to AWS S3 in Global: ${ga_name}")
+                                    // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                                    uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                                }
+                            }
+                            stage('4.2.3.GA Nexus') {
+                                steps {
+                                    println("upload to nexus repo-ofs: ${ga_name}")
+                                    uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+                                }
+                            }
+                        }
+                    } else {
+                        error(message: '测试验证不通过，放弃上传！')
                     }
                 }
             }
-            // steps {
-            //     script {
-            //         // def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${env.release_branch_front}，后端 ${env.release_branch_back}\n2. 发布版本号：${params.version}"
-            //         // println checkMsg
-            //         // sh 'printenv'
-
-            //         if (approvalMap['canBeGA']) {
-                       
-            //         } else {
-            //             error(message: '测试验证不通过，放弃上传！')
-            //         }
-            //     }
-            // }
         // post {
         //     always {
         //         jiraSendBuildInfo site: 'olapio.atlassian.net'
