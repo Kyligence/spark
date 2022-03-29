@@ -189,6 +189,12 @@ pipeline {
         ga_name = ''
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
+        // 发布分支(前端)
+        release_branch_front = ''
+        // 发布分支(后端)
+        release_branch_back = ''
+        // 发布版本
+        release_version = ''
     }
 
     parameters {
@@ -205,6 +211,8 @@ pipeline {
                 script {
                     if (params.deloyWay == 'Auto Select') {
                         def _branch = getBranch(deloyType, envStage)
+                        release_branch_front = _branch
+                        release_branch_back = _branch
                         gitCodeKe(_branch, _branch)
                     } else if (params.deloyWay == 'Manual Select') {
                         paramsMap = input (
@@ -217,7 +225,9 @@ pipeline {
                         // submitter:'liming.meng,admin',
                         // submitterParameter:'APPROVER'
                         )
-                        gitCodeKe(paramsMap['commitId_back'], paramsMap['commitId_front'])
+                        release_branch_front = paramsMap['commitId_front']
+                        release_branch_back = paramsMap['commitId_back']
+                        gitCodeKe(release_branch_back, release_branch_front)
                     } else {
                         error(message: '请选择足够的信息来确认代码分支')
                     }
@@ -295,8 +305,24 @@ pipeline {
                     return params.envStage == 'GA'
                 }
             }
+            
             parallel {
+                paramsMap = input (
+                    message: '请选择要开始的版本?',
+                    ok: '确认！',
+                    parameters: [
+                        booleanParam(name: 'canBeGA', defaultValue: false, description: "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${release_version}"),
+                        string(name: 'comments', defaultValue: '', description: '请输入确认信息')
+                    ]
+                    submitter:'liming.meng,meixiu.chen,enwei.jiao',
+                    submitterParameter:'APPROVER'
+                )
                 stage('4.1.GA AWS CN') {
+                    when{
+                        expression {
+                            return params.envStage == 'GA' && booleanParam
+                        }
+                    }
                     steps {
                         println("upload to AWS S3 in CN: ${ga_name}")
                         // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
@@ -304,6 +330,11 @@ pipeline {
                     }
                 }
                 stage('4.2.GA AWS Global') {
+                    when{
+                        expression {
+                            return params.envStage == 'GA' && booleanParam
+                        }
+                    }
                     steps {
                         println("upload to AWS S3 in Global: ${ga_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
@@ -311,6 +342,11 @@ pipeline {
                     }
                 }
                 stage('4.3.GA Nexus') {
+                    when{
+                        expression {
+                            return params.envStage == 'GA' && booleanParam
+                        }
+                    }
                     steps {
                         println("upload to nexus repo-ofs: ${ga_name}")
                         uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
