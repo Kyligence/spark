@@ -301,24 +301,20 @@ pipeline {
                 uploadNexus('raw-tars-hosted', package_path, file_name)
             }
         }
-        stage('4.Approve GA'){
+        stage('4.Approve GA') {
             when {
                 expression {
                     return params.envStage == 'GA'
                 }
             }
             steps {
-                script{
-                    def checkMsg = "改版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
+                script {
+                    def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
                     println checkMsg
                     sh 'printenv'
                     approvalMap = input (
-                        message: '请选择要开始的版本?',
+                        message: checkMsg,
                         ok: '确认！',
-                        parameters: [
-                            booleanParam(name: 'canBeGA', defaultValue: false, description: checkMsg),
-                            string(name: 'comments', defaultValue: '', description: '请输入确认信息')
-                        ],
                         submitter:'liming.meng,meixiu.chen,enwei.jiao',
                         submitterParameter:'APPROVER'
                     )
@@ -328,13 +324,12 @@ pipeline {
         stage('5.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA' && approvalMap['canBeGA']
+                    return params.envStage == 'GA'
                 }
             }
             steps {
                 script {
-
-                    // if (approvalMap['canBeGA']) {
+                        // if (approvalMap['canBeGA']) {
                         parallel {
                             stage('5.1.GA AWS CN') {
                                 steps {
@@ -357,9 +352,9 @@ pipeline {
                                 }
                             }
                         }
-                    // } else {
-                    //     error(message: '测试验证不通过，放弃上传！')
-                    // }
+                // } else {
+                //     error(message: '测试验证不通过，放弃上传！')
+                // }
                 }
             }
         // post {
