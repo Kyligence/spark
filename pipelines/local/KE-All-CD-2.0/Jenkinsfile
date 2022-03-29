@@ -166,12 +166,12 @@ def gitStatus(txt) {
     sh "echo ${txt} | git status"
 }
 
-def tagPush(back, front) {
-    _gitStatus("backend: KAP by ${back}")
-    gitTag(back, _tag, 'KAP')
+def tagPush(back, front, tag) {
+    gitStatus("backend: KAP by ${back}")
+    gitTag(back, tag, 'KAP')
     dir('kystudio') {
-        _gitStatus("frontend: KAP by ${front} in kystudio")
-        gitTag(_branch, _tag, 'KAP_Frontend')
+        gitStatus("frontend: KAP by ${front} in kystudio")
+        gitTag(front, tag, 'KAP_Frontend')
     }
 }
 
@@ -301,7 +301,7 @@ pipeline {
                 uploadNexus('raw-tars-hosted', package_path, file_name)
             }
         }
-        stage('4.1.Approve GA'){
+        stage('4.Approve GA'){
             when {
                 expression {
                     return params.envStage == 'GA'
@@ -325,7 +325,7 @@ pipeline {
                 }
             }
         }
-        stage('4.2.GA Upload') {
+        stage('5.GA Upload') {
             when {
                 expression {
                     return params.envStage == 'GA' && approvalMap['canBeGA']
@@ -336,21 +336,21 @@ pipeline {
 
                     if (approvalMap['canBeGA']) {
                         parallel {
-                            stage('4.2.1.GA AWS CN') {
+                            stage('5.1.GA AWS CN') {
                                 steps {
                                     println("upload to AWS S3 in CN: ${ga_name}")
                                     // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
                                     uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
                                 }
                             }
-                            stage('4.2.2.GA AWS Global') {
+                            stage('5.2.GA AWS Global') {
                                 steps {
                                     println("upload to AWS S3 in Global: ${ga_name}")
                                     // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
                                     uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
                                 }
                             }
-                            stage('4.2.3.GA Nexus') {
+                            stage('5.3.GA Nexus') {
                                 steps {
                                     println("upload to nexus repo-ofs: ${ga_name}")
                                     uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
@@ -368,7 +368,7 @@ pipeline {
         //     }
         // }
         }
-        stage('5.Tag & merge') {
+        stage('6.Tag & merge') {
             when {
                 expression {
                     return params.envStage == 'GA'
@@ -382,9 +382,9 @@ pipeline {
                             echo "push tag ${_tag}"
                             if (params.deloyWay == 'Auto Select') {
                                 def _branch = getBranch(deloyType, envStage)
-                                tagPush(_branch, _branch)
+                                tagPush(_branch, _branch, _tag)
                             }else if (params.deloyWay == 'Manual Select') {
-                                tagPush(paramsMap['commitId_back'], paramsMap['commitId_front'])
+                                tagPush(paramsMap['commitId_back'], paramsMap['commitId_front'], _tag)
                             } else {
                                 error(message: '请选择足够的信息来确认代码分支')
                             }
