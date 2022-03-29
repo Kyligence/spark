@@ -225,20 +225,6 @@ pipeline {
                         submitterParameter:'APPROVER'
                     )
 
-                    timeout(15) {
-                        waitUntil {
-                            script {
-                                if (paramsMap['canBeGA'] && paramsMap['comments']) {
-                                    return true
-                                }else {
-                                    println('请勾选确认，并且填写comments')
-                                    return false
-                                }
-                            }
-                        }
-                    }
-
-
                     if (params.deloyWay == 'Auto Select') {
                         def _branch = getBranch(deloyType, envStage)
                         release_branch_front = _branch
@@ -347,19 +333,6 @@ pipeline {
                         submitter:'liming.meng,meixiu.chen,enwei.jiao',
                         submitterParameter:'APPROVER'
                     )
-
-                    timeout(30) {
-                        waitUntil {
-                            script {
-                                if (paramsMap['canBeGA'] && paramsMap['comments']) {
-                                    return true
-                                }else {
-                                    println('请勾选确认，并且填写comments')
-                                    return false
-                                }
-                            }
-                        }
-                    }
 
                     if (params.envStage == 'GA' && paramsMap['canBeGA']) {
                         parallel {
