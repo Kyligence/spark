@@ -199,7 +199,7 @@ pipeline {
 
     parameters {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
-        choice(name: 'deloyWay', choices:'Auto Select\nManual Select', description:'发布方式: Auto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
+        choice(name: 'deloyWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
         choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付类型' )
         string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段' )
