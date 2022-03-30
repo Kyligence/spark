@@ -4,7 +4,6 @@
 
 //变量名，用于存储input步骤的返回值
 def approvalMap
-
 // GA包名
 def ga_name = ''
 // 发布分支(前端)
@@ -162,22 +161,9 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     """
 }
 
-def gitStatus(txt) {
-    sh "echo ${txt} | git status"
-}
-
-def tagPush(back, front, tag) {
-    gitStatus("backend: KAP by ${back}")
-    gitTag(back, tag, 'KAP')
-    dir('kystudio') {
-        gitStatus("frontend: KAP by ${front} in kystudio")
-        gitTag(front, tag, 'KAP_Frontend')
-    }
-}
-
 pipeline {
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 12, unit: 'HOURS')
     }
 
     agent {
@@ -311,7 +297,7 @@ pipeline {
                 script {
                     def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
                     println checkMsg
-                    sh 'printenv'
+                    // sh 'printenv'
                     approvalMap = input (
                         message: checkMsg,
                         ok: '确认！',
@@ -350,15 +336,6 @@ pipeline {
                     }
                 }
             }
-            // steps {
-            //     script {
-            //             // if (approvalMap['canBeGA']) {
-                        
-            //     // } else {
-            //     //     error(message: '测试验证不通过，放弃上传！')
-            //     // }
-            //     }
-            // }
         // post {
         //     always {
         //         jiraSendBuildInfo site: 'olapio.atlassian.net'
@@ -373,18 +350,17 @@ pipeline {
             }
             steps {
                 container('build') {
-                    dir('sourcecode') {
-                        script {
-                            def _tag = "ke-${version}"
-                            echo "push tag ${_tag}"
-                            if (params.deloyWay == 'Auto Select') {
-                                def _branch = getBranch(deloyType, envStage)
-                                tagPush(_branch, _branch, _tag)
-                            }else if (params.deloyWay == 'Manual Select') {
-                                tagPush(paramsMap['commitId_back'], paramsMap['commitId_front'], _tag)
-                            } else {
-                                error(message: '请选择足够的信息来确认代码分支')
-                            }
+                    script {
+                        def _tag = "ke-${version}"
+                        dir('sourcecode') {
+                            echo "ready to push tag: ${_tag}"
+                            sh "echo backend: KAP by ${back} | git status"
+                            sh 'git checkout -- .'
+                            gitTag(front, tag, 'KAP_Frontend')
+                        }
+                        dir('kystudio') {
+                            sh "echo frontend: KAP_Frontend by ${front} in kystudio | git status"
+                            gitTag(front, tag, 'KAP_Frontend', false)
                         }
                     }
                 }
