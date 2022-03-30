@@ -2,14 +2,22 @@
 
 @Library('devopslib') _
 
-//变量名，用于存储input步骤的返回值
-def approvalMap
+import groovy.json.*
+import hudson.model.*
+
 // GA包名
 def ga_name = ''
 // 发布分支(前端)
 def release_branch_front = ''
 // 发布分支(后端)
 def release_branch_back = ''
+
+def release_commitid_front = ''
+def release_commitid_back = ''
+// 包存在
+def exist_package = false
+// 包信息对象
+def package_info =  [:]
 
 // 根据发布类型自动获取分支
 def getBranch(deloyType, envStage) {
@@ -89,6 +97,7 @@ def uploadNexus(repo, package_path, file_name) {
 
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front) {
+    def result = [:]
     container('build') {
         dir('sourcecode') {
             script {
@@ -97,24 +106,28 @@ def gitCodeKe(back, front) {
                     error 'commitId_back 参数不能为空'
                 }
 
-                echo 'Sync the git mirror'
+                println 'Sync the git mirror'
                 sshCmdWithCredentials(
                     'bash -c /var/lib/git/pull.sh',
                     'private_git',
                     ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
                 )
 
-                echo 'checkout KAP'
+                println 'checkout KAP'
                 retry(3) {
                     githubCheckout 'KAP', back
                 }
 
+                release_commitid_back = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                println "release_commitid_back: ${release_commitid_back}"
+                result.release_commitid_back = release_commitid_back
+
                 def _front
                 if (!front) {
-                    echo "Not commitId_front, use the commitId_back: ${back}"
+                    println "No commitId_front, use the commitId_back: ${back}"
                     _front = back
                 }else {
-                    echo "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
+                    println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
                     _front = front
                 }
 
@@ -123,19 +136,38 @@ def gitCodeKe(back, front) {
                     retry(3) {
                         githubCheckout 'KAP_Frontend', _front
                     }
+                    release_commitid_front = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                    println "release_commitid_front: ${release_commitid_front}"
+                    result.release_commitid_front = release_commitid_front
+                    sh """
+                        rm -f .npmrc
+                        echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
+                        cat .npmrc
+                    """
                 }
             }
         }
     }
+    return result
 }
 
 def gitInit(base, project='KAP', repo='Kyligence') {
-    sh script:"""
-        git init .
-        git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
-        git fetch ${base}
-        git branch ${base} origin/${base}
-    """
+    sh "echo '#!/bin/bash' >> credential-helper.sh"
+    sh "echo 'echo username=\$GIT_USERNAME' >> credential-helper.sh"
+    sh "echo 'echo password=\$GIT_PASSWORD' >> credential-helper.sh"
+    sh 'cat credential-helper.sh'
+    withCredentials([usernamePassword(credentialsId: 'kyligence-git',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_PASSWORD')]) {
+        sh script:"""git init .
+            git config credential.helper "/bin/bash credential-helper.sh"
+            git config --global init.defaultBranch ${base}
+            git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
+            git branch -m ${base}
+            git fetch --all
+            git branch ${base} origin/${base}
+        """
+                    }
 }
 
 def createBranch(base, branch, project='KAP', repo='Kyligence', isCloned=true) {
@@ -161,6 +193,50 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     """
 }
 
+def checkPackageExist(version, envStage, commitId) {
+    println "checkPackageExist: version[${version}],envStage[${envStage}],commitId[${commitId}]"
+    def result = false
+    def _packageInfo = getPackageInfo(version, envStage, commitId)
+    sh 'ls -l'
+    dir('/var/cicd') {
+        sh 'ls -l'
+        println "_packageInfo.package_file: ${_packageInfo.package_file}"
+        result = fileExists("${_packageInfo.package_path}/${_packageInfo.file_name}")
+        println "_packageInfo.package_path: /var/cicd/${_packageInfo.package_path}/${_packageInfo.file_name} is ${result}"
+    }
+    return result
+}
+
+def getPackageInfo(version, envStage, cid) {
+    println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}]"
+    if (version.startsWith('4.5.')) {
+        package_path = "artifacts/4.5.x/${envStage}"
+    }else if (version.startsWith('4.3.')) {
+        package_path = "artifacts/4.3.x/${envStage}"
+    }else if (version.startsWith('auto-')) {
+        package_path = "artifacts/auto/${envStage}"
+    }else {
+        // put in a error_version folder
+        package_path = "artifacts/error_versin/${envStage}"
+    }
+    println "package_path: ${package_path}"
+
+    file_name = "KE-${version}-${envStage}-${cid}.tar.gz"
+    package_file = "newten-cicd/${package_path}/${file_name}"
+    ga_name = "Kyligence-Enterprise-${version}-GA.tar.gz"
+
+    println "file_name: ${file_name}"
+    println "package_file: ${package_file}"
+
+    def obj = [:]
+    obj.package_path = package_path
+    obj.package_file = package_file
+    obj.file_name = file_name
+    obj.ga_name = ga_name
+    println obj.toString()
+    return obj
+}
+
 pipeline {
     options {
         timeout(time: 12, unit: 'HOURS')
@@ -175,6 +251,8 @@ pipeline {
     environment {
         //变量名，用于存储input步骤的返回值
         paramsMap = ''
+        // GA过程参数
+        paramsGA = ''
         // K8S启动用包名
         package_file = ''
         // 文件路径
@@ -189,19 +267,29 @@ pipeline {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
         choice(name: 'deloyWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
         choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
-        string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
-        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段' )
+        string(name: 'version', defaultValue: '4.5.10.1', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范')
+        choice(name: 'envStage', choices:'DEV\nQA\nRC', description:'打包阶段，如果要GA，选择RC进行流程' )
+        // booleanParam(name: 'isGA', defaultValue: true, description: '本次GA')
     }
 
     stages {
         stage('1.Pull Code') {
             steps {
                 script {
+                    def reg = /^\d(\.\d+){1,4}$/
+                    if (!version) {
+                        error 'version 版本号不能为空'
+                    }
+                    if (!version.matches(reg)) {
+                        error 'version 版本号格式有误'
+                    }
                     if (params.deloyWay == 'Auto Select') {
                         def _branch = getBranch(deloyType, envStage)
                         release_branch_front = _branch
                         release_branch_back = _branch
-                        gitCodeKe(_branch, _branch)
+                        def cms = gitCodeKe(_branch, _branch)
+                        release_commitid_back = cms.release_commitid_back
+                        release_commitid_front = cms.release_commitid_front
                     } else if (params.deloyWay == 'Manual Select') {
                         paramsMap = input (
                             message: '请选择要开始的版本?',
@@ -209,13 +297,15 @@ pipeline {
                             parameters: [
                                 string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
                                 string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
-                            ]
-                        // submitter:'liming.meng,admin',
-                        // submitterParameter:'APPROVER'
+                            ],
+                            // submitter:'liming.meng,admin',
+                            submitterParameter:'APPROVER'
                         )
                         release_branch_front = paramsMap['commitId_front']
                         release_branch_back = paramsMap['commitId_back']
-                        gitCodeKe(release_branch_back, release_branch_front)
+                        def cms = gitCodeKe(release_branch_back, release_branch_front)
+                        release_commitid_back = cms.release_commitid_back
+                        release_commitid_front = cms.release_commitid_front
                     } else {
                         error(message: '请选择足够的信息来确认代码分支')
                     }
@@ -225,92 +315,97 @@ pipeline {
         stage('2.Building Package') {
             steps {
                 container('build') {
-                    dir('sourcecode') {
-                        timestamps {
-                            script {
-                                dir('kystudio') {
-                                    sh """
-                                    rm -f .npmrc
-                                    echo "registry = 'http://10.1.9.200:8081/repository/npm-public/'" > .npmrc
-                                    cat .npmrc
-                                """
+                    timestamps {
+                        script {
+                            dir('sourcecode') {
+                                package_info = getPackageInfo(params.version, params.envStage, release_commitid_back)
+
+                                // exist_package = checkPackageExist(version, envStage, release_commitid_back)
+                                try {
+                                    def rc = "${package_info.package_path}/${package_info.file_name}"
+                                    sh script: """
+                                        ls -l /var/cicd/${package_info.package_path}
+                                        cp /var/cicd/${rc} ${package_info.file_name}
+                                    """
+
+                                    sh 'ls -l'
+                                    println "package_info.package_file: ${package_info.package_file}"
+                                    exist_package = fileExists(package_info.file_name)
+                                    println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
+                                } catch (Exception err) {
+                                    echo err.getMessage()
                                 }
 
-                                if (!version) {
-                                    error 'version 版本号不能为空'
+                                if (!exist_package) {
+                                    buildNewten(params.version, false, false)
+                                    archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+
+                                    sh script: """
+                                        mkdir -p /var/cicd/${package_info.package_path}
+                                        mv dist/*.tar.gz ${package_info.file_name}
+                                        cp ${package_info.file_name} /var/cicd/${package_info.package_path}
+                                    """
+                                // cp ${package_info.file_name} ${package_info.ga_name}
+                                } else {
+                                    println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
                                 }
-
-                                buildNewten(params.version, false, false)
-                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-
-                                if (version.startsWith('4.5.')) {
-                                    package_path = "artifacts/4.5.x/${params.envStage}"
-                                }else if (version.startsWith('4.3.')) {
-                                    package_path = "artifacts/4.3.x/${params.envStage}"
-                                }else if (version.startsWith('auto-')) {
-                                    package_path = "artifacts/auto/${params.envStage}"
-                                }else {
-                                    // put in a error_version folder
-                                    package_path = "artifacts/error_versin/${params.envStage}"
-                                }
-                                println "package_path: ${package_path}"
-
-                                def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
-                                println "commitid: ${commitid}"
-
-                                file_name = "KE-${version}-${params.envStage}-${BUILD_NUMBER}-${commitid}.tar.gz"
-                                package_file = "newten-cicd/${package_path}/${file_name}"
-                                ga_name = "Kyligence-Enterprise-${version}-GA.tar.gz"
-
-                                println "file_name: ${file_name}"
-                                println "package_file: ${package_file}"
-
-                                sh script: """
-                                    mkdir -p /var/cicd/${package_path}
-                                    mv dist/*.tar.gz ${file_name}
-                                    cp ${file_name} /var/cicd/${package_path}
-                                    cp ${file_name} ${ga_name}
-                                """
                             }
                         }
                     }
                 }
             }
         }
-        stage('3.Dev/QA/RC to nexus') {
+        stage('3.Dev/QA to Nexus') {
             when {
                 expression {
-                    return params.envStage != 'GA'
+                    return params.envStage in ['DEV', 'QA'] && !exist_package
                 }
             }
             steps {
                 uploadNexus('raw-tars-hosted', package_path, file_name)
             }
         }
-        stage('4.Approve GA') {
+        stage('4.Approve RC -> GA') {
             when {
                 expression {
-                    return params.envStage == 'GA'
+                    return params.envStage == 'RC' && exist_package
                 }
             }
             steps {
-                script {
-                    def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
-                    println checkMsg
-                    // sh 'printenv'
-                    approvalMap = input (
-                        message: checkMsg,
-                        ok: '确认！',
-                        submitter:'liming.meng,meixiu.chen,enwei.jiao',
-                        submitterParameter:'APPROVER'
-                    )
+                container('build') {
+                    script {
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
+                        println checkMsg
+                        // sh 'printenv'
+                        paramsGA = input (
+                            message: checkMsg,
+                            ok: '确认！',
+                            submitter:'liming.meng,meixiu.chen,enwei.jiao',
+                            submitterParameter:'APPROVER',
+                            parameters:[
+                                booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传（用于只打tag）')
+                            ]
+                        )
+                        dir('sourcecode') {
+                            // rename RC包 为 GA包
+                            def rc = package_info.file_name
+                            def gaInfo = getPackageInfo(params.version, 'GA', release_commitid_back)
+
+                            sh "mkdir -p /var/cicd/${gaInfo.package_path}"
+                            sh "cp ${rc} /var/cicd/${gaInfo.package_path}"
+                            sh "cp ${rc} ${gaInfo.ga_name}"
+                            ga_name = gaInfo.ga_name
+
+                            sh "ls -al /var/cicd/${gaInfo.package_path}"
+                        }
+                    }
                 }
             }
         }
         stage('5.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA'
+                    return params.envStage == 'RC' && exist_package && !paramsGA['skipUpload']
                 }
             }
             failFast true
@@ -331,7 +426,7 @@ pipeline {
                 }
                 stage('5.3.GA Nexus') {
                     steps {
-                        println("upload to nexus repo-ofs: ${ga_name}")
+                        println("upload to Nexus repo-ofs: ${ga_name}")
                         uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
                     }
                 }
@@ -345,23 +440,24 @@ pipeline {
         stage('6.Tag & merge') {
             when {
                 expression {
-                    return params.envStage == 'GA'
+                    return params.envStage == 'RC' && exist_package
                 }
             }
             steps {
                 container('build') {
                     script {
                         def _tag = "ke-${version}"
-                        dir('sourcecode') {
-                            echo "ready to push tag: ${_tag}"
-                            sh "echo backend: KAP by ${back} | git status"
-                            sh 'git checkout -- .'
-                            gitTag(front, tag, 'KAP_Frontend')
+                        dir('kap') {
+                            println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in kap folder"
+                            gitTag(release_branch_back, _tag, 'KAP', 'Kyligence', false)
+                            sh 'git status'
                         }
                         dir('kystudio') {
-                            sh "echo frontend: KAP_Frontend by ${front} in kystudio | git status"
-                            gitTag(front, tag, 'KAP_Frontend', false)
+                            println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
+                            gitTag(release_branch_front, _tag, 'KAP_Frontend', 'Kyligence', false)
+                            sh 'git status'
                         }
+                        sh 'ls -al'
                     }
                 }
             }
