@@ -392,8 +392,8 @@ pipeline {
                             def gaInfo = getPackageInfo(params.version, 'GA', release_commitid_back)
 
                             sh "mkdir -p /var/cicd/${gaInfo.package_path}"
-                            sh "cp ${rc} /var/cicd/${gaInfo.package_path}"
                             sh "cp ${rc} ${gaInfo.ga_name}"
+                            sh "cp ${gaInfo.ga_name} /var/cicd/${gaInfo.package_path}"
                             ga_name = gaInfo.ga_name
 
                             sh "ls -al /var/cicd/${gaInfo.package_path}"
