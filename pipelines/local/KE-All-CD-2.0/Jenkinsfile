@@ -187,7 +187,6 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
         gitInit(base, project, repo)
     }
     sh script: """
-        git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
         git tag ${tag}
         git push origin ${tag}
         git show ${tag}
