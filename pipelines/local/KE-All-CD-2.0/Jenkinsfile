@@ -187,8 +187,9 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
         gitInit(base, project, repo)
     }
     sh script: """
+        git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
         git tag ${tag}
-        git push origin --tag
+        git push origin ${tag}
         git show ${tag}
     """
 }
@@ -447,17 +448,28 @@ pipeline {
                 container('build') {
                     script {
                         def _tag = "ke-${version}"
-                        dir('kap') {
-                            println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in kap folder"
-                            gitTag(release_branch_back, _tag, 'KAP', 'Kyligence', false)
+                        dir('sourcecode') {
+                            println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
+                            gitTag(release_branch_back, _tag, 'KAP')
                             sh 'git status'
+
+                            dir('kystudio') {
+                                println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
+                                gitTag(release_branch_front, _tag, 'KAP_Frontend')
+                                sh 'git status'
+                            }
                         }
-                        dir('kystudio') {
-                            println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
-                            gitTag(release_branch_front, _tag, 'KAP_Frontend', 'Kyligence', false)
-                            sh 'git status'
-                        }
-                        sh 'ls -al'
+                        // dir('kap') {
+                        //     println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in kap folder"
+                        //     gitTag(release_branch_back, _tag, 'KAP', 'Kyligence', false)
+                        //     sh 'git status'
+                        // }
+                        // dir('kystudio') {
+                        //     println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
+                        //     gitTag(release_branch_front, _tag, 'KAP_Frontend', 'Kyligence', false)
+                        //     sh 'git status'
+                        // }
+                        // sh 'ls -al'
                     }
                 }
             }
