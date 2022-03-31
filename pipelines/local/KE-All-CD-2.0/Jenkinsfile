@@ -360,7 +360,7 @@ pipeline {
         stage('3.Dev/QA to Nexus') {
             when {
                 expression {
-                    return params.envStage in ['DEV', 'QA'] && !exist_package
+                    return params.envStage in ['DEV', 'QA']
                 }
             }
             steps {
