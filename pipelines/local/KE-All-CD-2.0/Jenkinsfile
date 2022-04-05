@@ -351,6 +351,7 @@ pipeline {
                                         mv dist/*.tar.gz ${package_info.file_name}
                                         cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                                     """
+                                    exist_package = true
                                 // cp ${package_info.file_name} ${package_info.ga_name}
                                 } else {
                                     println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
