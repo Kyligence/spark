@@ -465,17 +465,6 @@ pipeline {
                                 sh 'git status'
                             }
                         }
-                        // dir('kap') {
-                        //     println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in kap folder"
-                        //     gitTag(release_branch_back, _tag, 'KAP', 'Kyligence', false)
-                        //     sh 'git status'
-                        // }
-                        // dir('kystudio') {
-                        //     println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
-                        //     gitTag(release_branch_front, _tag, 'KAP_Frontend', 'Kyligence', false)
-                        //     sh 'git status'
-                        // }
-                        // sh 'ls -al'
                     }
                 }
             }
