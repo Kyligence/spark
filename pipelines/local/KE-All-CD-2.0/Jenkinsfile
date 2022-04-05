@@ -36,7 +36,7 @@ def getBranch(deloyType, envStage) {
             break
         case 'SP-4.5.x':
             _branch_release = _branchCollection[0]
-            _branch_qa = "${_branchCollection[1]}-qa"
+            _branch_qa = "${_branchCollection[1]}-dev"
             _branch_dev = "${_branchCollection[1]}-dev"
             package_path = "artifacts/4.5.x/${envStage}"
             break
@@ -48,7 +48,7 @@ def getBranch(deloyType, envStage) {
             break
         case 'SP-4.3.x':
             _branch_release = _branchCollection[3]
-            _branch_qa = "${_branch_release}-qa"
+            _branch_qa = "${_branch_release}-dev"
             _branch_dev = "${_branch_release}-dev"
             package_path = "artifacts/4.3.x/${envStage}"
             break
