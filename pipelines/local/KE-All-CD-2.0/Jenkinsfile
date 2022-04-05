@@ -32,21 +32,25 @@ def getBranch(deloyType, envStage) {
             _branch_release = _branchCollection[0]
             _branch_qa = "${_branch_release}-qa"
             _branch_dev = "${_branch_release}-dev"
+            package_path = "artifacts/4.5.x/${envStage}"
             break
         case 'SP-4.5.x':
             _branch_release = _branchCollection[0]
             _branch_qa = "${_branchCollection[1]}-qa"
             _branch_dev = "${_branchCollection[1]}-dev"
+            package_path = "artifacts/4.5.x/${envStage}"
             break
         case 'KE-4.3.x':
             _branch_release = _branchCollection[2]
             _branch_qa = "${_branchCollection[1]}-qa"
             _branch_dev = "${_branchCollection[1]}-dev"
+            package_path = "artifacts/4.3.x/${envStage}"
             break
         case 'SP-4.3.x':
             _branch_release = _branchCollection[3]
             _branch_qa = "${_branch_release}-qa"
             _branch_dev = "${_branch_release}-dev"
+            package_path = "artifacts/4.3.x/${envStage}"
             break
     }
 
@@ -211,16 +215,16 @@ def checkPackageExist(version, envStage, commitId) {
 
 def getPackageInfo(version, envStage, cid) {
     println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}]"
-    if (version.startsWith('4.5.')) {
-        package_path = "artifacts/4.5.x/${envStage}"
-    }else if (version.startsWith('4.3.')) {
-        package_path = "artifacts/4.3.x/${envStage}"
-    }else if (version.startsWith('auto-')) {
-        package_path = "artifacts/auto/${envStage}"
-    }else {
-        // put in a error_version folder
-        package_path = "artifacts/error_versin/${envStage}"
-    }
+    // if (version.startsWith('4.5.')) {
+    //     package_path = "artifacts/4.5.x/${envStage}"
+    // }else if (version.startsWith('4.3.')) {
+    //     package_path = "artifacts/4.3.x/${envStage}"
+    // }else if (version.startsWith('auto-')) {
+    //     package_path = "artifacts/auto/${envStage}"
+    // }else {
+    //     // put in a error_version folder
+    //     package_path = "artifacts/error_versin/${envStage}"
+    // }
     println "package_path: ${package_path}"
 
     file_name = "KE-${version}-${envStage}-${cid}.tar.gz"
