@@ -19,38 +19,35 @@ def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
+def _branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
+
 // 根据发布类型自动获取分支
-def getBranch(deloyType, envStage) {
+def getBranch(deployType, envStage) {
     def _result
     def _branch_release = 'newten'
     def _branch_qa = 'newten-qa'
     def _branch_dev = 'newten-dev'
-    def _branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
 
-    switch (deloyType) {
+    switch (deployType) {
         case 'Newten':
             _branch_release = _branchCollection[0]
             _branch_qa = "${_branch_release}-qa"
             _branch_dev = "${_branch_release}-dev"
-            package_path = "artifacts/4.5.x/${envStage}"
             break
         case 'SP-4.5.x':
             _branch_release = _branchCollection[0]
             _branch_qa = "${_branchCollection[1]}-dev"
             _branch_dev = "${_branchCollection[1]}-dev"
-            package_path = "artifacts/4.5.x/${envStage}"
             break
         case 'KE-4.3.x':
             _branch_release = _branchCollection[2]
             _branch_qa = "${_branchCollection[1]}-qa"
             _branch_dev = "${_branchCollection[1]}-dev"
-            package_path = "artifacts/4.3.x/${envStage}"
             break
         case 'SP-4.3.x':
             _branch_release = _branchCollection[3]
             _branch_qa = "${_branch_release}-dev"
             _branch_dev = "${_branch_release}-dev"
-            package_path = "artifacts/4.3.x/${envStage}"
             break
     }
 
@@ -215,16 +212,20 @@ def checkPackageExist(version, envStage, commitId) {
 
 def getPackageInfo(version, envStage, cid) {
     println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}]"
-    // if (version.startsWith('4.5.')) {
-    //     package_path = "artifacts/4.5.x/${envStage}"
-    // }else if (version.startsWith('4.3.')) {
-    //     package_path = "artifacts/4.3.x/${envStage}"
-    // }else if (version.startsWith('auto-')) {
-    //     package_path = "artifacts/auto/${envStage}"
-    // }else {
-    //     // put in a error_version folder
-    //     package_path = "artifacts/error_versin/${envStage}"
-    // }
+    switch (deployType) {
+    case 'Newten':
+        package_path = "artifacts/${_branchCollection[0]}/${envStage}"
+        break
+    case 'SP-4.5.x':
+        package_path = "artifacts/${_branchCollection[1]}/${envStage}"
+        break
+    case 'KE-4.3.x':
+        package_path = "artifacts/${_branchCollection[2]}/${envStage}"
+        break
+    case 'SP-4.3.x':
+        package_path = "artifacts/${_branchCollection[3]}/${envStage}"
+        break
+    }
     println "package_path: ${package_path}"
 
     file_name = "KE-${version}-${envStage}-${cid}.tar.gz"
@@ -246,6 +247,7 @@ def getPackageInfo(version, envStage, cid) {
 pipeline {
     options {
         timeout(time: 12, unit: 'HOURS')
+        ansiColor('xterm')
     }
 
     agent {
@@ -444,7 +446,7 @@ pipeline {
         //     }
         // }
         }
-        stage('6.Tag & merge') {
+        stage('6.Tag') {
             when {
                 expression {
                     return params.envStage == 'RC' && exist_package
@@ -457,12 +459,12 @@ pipeline {
                         dir('sourcecode') {
                             println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
                             gitTag(release_branch_back, _tag, 'KAP')
-                            sh 'git status'
+                            echo "backend [KAP] commitId: `git rev-parse HEAD`"
 
                             dir('kystudio') {
                                 println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
                                 gitTag(release_branch_front, _tag, 'KAP_Frontend')
-                                sh 'git status'
+                                echo "frontend [KAP_Frontend] commitId: `git rev-parse HEAD`"
                             }
                         }
                     }
