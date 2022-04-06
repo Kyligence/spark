@@ -1,0 +1,61 @@
+# Default values for resource-manager.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+limitRange:
+  default:
+    memory: 4Gi
+    cpu: 2
+  defaultRequest:
+    memory: 256Mi
+    cpu: 0.5
+  max:
+    memory: 16Gi
+    cpu: 8
+  min:
+    memory: 50Mi
+    cpu: 0.5
+  type: Container
+
+
+resourceQuota:
+  cpu: 32
+  memory: 200Gi
+  pods: 0
+
+  limits:
+    cpu: 32
+    memory: 200Gi
+  requests:
+    storage: 0Gi
+
+  high:
+    cpu: 32
+    memory: 200Gi
+    pods: 0
+
+    limits:
+      cpu: 32
+      memory: 200Gi
+    requests:
+      storage: 0Gi
+  medium:
+    cpu: 8
+    memory: 32Gi
+    pods: 0
+
+    limits:
+      cpu: 8
+      memory: 32Gi
+    requests:
+      storage: 0Gi
+  low:
+    cpu: 2
+    memory: 8Gi
+    pods: 0
+
+    limits:
+      cpu: 2
+      memory: 8Gi
+    requests:
+      storage: 0Gi

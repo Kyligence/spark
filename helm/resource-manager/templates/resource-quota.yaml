@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-default-{{ .Release.Namespace }}
+  spec:
+    hard:
+      cpu: "{{ .Values.resourceQuota.cpu }}"
+      memory: "{{ .Values.resourceQuota.memory }}"
+      {{- if gt .Values.resourceQuota.pods 0.0 }}
+      pods: "{{ .Values.resourceQuota.pods }}"
+      {{- end }}
+      {{- if ne .Values.resourceQuota.requests.storage "0Gi"  }}
+      requests.storage: "{{ .Values.resourceQuota.requests.storage }}"
+      {{- end }}
+      limits.cpu:  {{ .Values.resourceQuota.limits.cpu }}
+      limits.memory: {{ .Values.resourceQuota.limits.memory }}
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-high-{{ .Release.Namespace }}
+  spec:
+    hard:
+      cpu: "{{ .Values.resourceQuota.high.cpu }}"
+      memory: "{{ .Values.resourceQuota.high.memory }}"
+      {{- if gt .Values.resourceQuota.high.pods 0.0 }}
+      pods: "{{ .Values.resourceQuota.high.pods }}"
+      {{- end }}
+      limits.cpu:  {{ .Values.resourceQuota.high.limits.cpu }}
+      limits.memory: {{ .Values.resourceQuota.high.limits.memory }}
+    scopeSelector:
+      matchExpressions:
+      - operator : In
+        scopeName: PriorityClass
+        values: ["high"]
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-medium-{{ .Release.Namespace }}
+  spec:
+    hard:
+      cpu: "{{ .Values.resourceQuota.medium.cpu }}"
+      memory: "{{ .Values.resourceQuota.medium.memory }}"
+      {{- if gt .Values.resourceQuota.medium.pods 0.0 }}
+      pods: "{{ .Values.resourceQuota.medium.pods }}"
+      {{- end }}
+      limits.cpu:  {{ .Values.resourceQuota.medium.limits.cpu }}
+      limits.memory: {{ .Values.resourceQuota.medium.limits.memory }}
+    scopeSelector:
+      matchExpressions:
+      - operator : In
+        scopeName: PriorityClass
+        values: ["medium"]
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-low-{{ .Release.Namespace }}
+  spec:
+    hard:
+      cpu: "{{ .Values.resourceQuota.low.cpu }}"
+      memory: "{{ .Values.resourceQuota.low.memory }}"
+      {{- if gt .Values.resourceQuota.low.pods 0.0 }}
+      pods: "{{ .Values.resourceQuota.low.pods }}"
+      {{- end }}
+      limits.cpu:  {{ .Values.resourceQuota.low.limits.cpu }}
+      limits.memory: {{ .Values.resourceQuota.low.limits.memory }}
+    scopeSelector:
+      matchExpressions:
+      - operator : In
+        scopeName: PriorityClass
+        values: ["low"]
