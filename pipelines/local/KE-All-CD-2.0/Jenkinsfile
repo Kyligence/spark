@@ -198,7 +198,7 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
 def getPackageInfo(version, envStage, cid, deployType) {
     println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
 
-    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
+    def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
     switch (deployType) {
         case 'Newten':
             package_path = "artifacts/${branchCollection[0]}/${envStage}"
