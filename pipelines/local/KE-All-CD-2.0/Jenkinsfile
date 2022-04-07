@@ -95,6 +95,39 @@ def uploadNexus(repo, package_path, file_name) {
     }
 }
 
+def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
+    script {
+        def remote = [:]
+        remote.name = 'azure_test_env'
+        withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
+                usernameVariable: 'REMOTE_USERNAME',
+                passwordVariable: 'REMOTE_PASSWORD')]) {
+            remote.user = REMOTE_USERNAME
+            remote.password = REMOTE_PASSWORD
+        }
+        remote.host = '159.27.120.141'
+        remote.allowAnyHosts = true
+        dir('sourcecode') {
+            sshPut remote: remote, from: package_info.file_name, into: remote_path
+        }
+        sshCommand remote: remote, command: """
+            ls -lh ${remote_path}
+        """
+    }
+}
+
+def sendEmail(subject,to,from,body) {
+    emailext (
+        subject: subject ?."SUCCESSFUL to Upload the Tar into the Azure CN server'",
+        to: to ?. "${env.BUILD_USER_EMAIL}",
+        from: from ?."devops_support@kyligence.io",
+        //定义html 模版
+        body: body ?. """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+            <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
+            <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
+    )
+}
+
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front) {
     def result = [:]
@@ -355,35 +388,17 @@ pipeline {
             //     }
             // }
         }
-        stage('3.Dev/QA to Nexus') {
+        stage('3.Dev/QA Upload') {
             when {
                 expression {
-                    return params.envStage in ['DEV', 'QA']
+                    return params.envStage in ['DEV', 'QA', 'RC', 'GA']
                 }
             }
             failFast true
             parallel {
                 stage('3.1.Upload to Azure CN') {
                     steps {
-                        script {
-                            def remote = [:]
-                            remote.name = 'azure_test_env'
-                            withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
-                                    usernameVariable: 'REMOTE_USERNAME',
-                                    passwordVariable: 'REMOTE_PASSWORD')]) {
-                                remote.user = REMOTE_USERNAME
-                                remote.password = REMOTE_PASSWORD
-                            }
-                            remote.host = '159.27.120.141'
-                            remote.allowAnyHosts = true
-                            dir('sourcecode') {    
-                                sshPut remote: remote, from: package_info.file_name, into: '/home/4xuser/data/devops'
-                            }
-                            sshCommand remote: remote, command: """
-                                ls -lh /home/4xuser/data/devops
-                            """
-                            printenv
-                        }
+                        uplaodAzure(package_info)
                     }
                     post {
                         success {
@@ -396,7 +411,6 @@ pipeline {
                                     <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
                                     <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
                             )
-
                         }
                     }
                 }
