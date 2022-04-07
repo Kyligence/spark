@@ -19,14 +19,13 @@ def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
-def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
-
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage) {
     def _result
     def _branch_release = 'newten'
     def _branch_qa = 'newten-qa'
     def _branch_dev = 'newten-dev'
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
 
     switch (deployType) {
         case 'Newten':
@@ -198,6 +197,8 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
 
 def getPackageInfo(version, envStage, cid, deployType) {
     println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
+
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
     switch (deployType) {
         case 'Newten':
             package_path = "artifacts/${branchCollection[0]}/${envStage}"
