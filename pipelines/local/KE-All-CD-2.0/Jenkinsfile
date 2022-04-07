@@ -379,6 +379,9 @@ pipeline {
                             dir('sourcecode') {    
                                 sshPut remote: remote, from: package_info.file_name, into: '/home/4xuser/data/devops'
                             }
+                            sshCommand remote: remote, command: """
+                                ls -lh /home/4xuser/data/devops
+                            """
                         }
                     }
                     post {
