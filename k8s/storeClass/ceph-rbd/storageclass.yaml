@@ -6,12 +6,12 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: kubernetes.io/rbd
 parameters:
-  monitors: 10.1.9.21:6789,10.1.9.22:6789,10.1.9.23:6789
+  monitors: 10.1.9.101:6789,10.1.9.102:6789,10.1.9.103:6789
   adminId: admin
   adminSecretName: ceph-admin-secret
   adminSecretNamespace: kube-system
-  pool: k8s
-  userId: k8s
+  pool: k8s-rbd
+  userId: k8s-rbd
   userSecretName: ceph-user-secret
   userSecretNamespace: default
   fsType: ext4
@@ -28,12 +28,12 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 provisioner: kubernetes.io/rbd
 parameters:
-  monitors: 10.1.9.21:6789,10.1.9.22:6789,10.1.9.23:6789
+  monitors: 10.1.9.101:6789,10.1.9.102:6789,10.1.9.103:6789
   adminId: admin
   adminSecretName: ceph-admin-secret
   adminSecretNamespace: kube-system
-  pool: k8s
-  userId: k8s
+  pool: k8s-rbd
+  userId: k8s-rbd
   userSecretName: ceph-user-secret
   userSecretNamespace: default
   fsType: ext4
