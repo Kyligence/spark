@@ -376,7 +376,9 @@ pipeline {
                             }
                             remote.host = '159.27.120.141'
                             remote.allowAnyHosts = true
-                            sshPut remote: remote, from: package_info.file_name, into: '/home/4xuser/data/devops'
+                            dir('sourcecode') {    
+                                sshPut remote: remote, from: package_info.file_name, into: '/home/4xuser/data/devops'
+                            }
                         }
                     }
                     post {
@@ -396,7 +398,7 @@ pipeline {
                 }
                 stage('3.2.Upload to Nexus') {
                     steps {
-                        uploadNexus('raw-tars-hosted', package_path, file_name)
+                        uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
                     }
                 }
             }
