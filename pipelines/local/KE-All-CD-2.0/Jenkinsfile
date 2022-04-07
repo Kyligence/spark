@@ -349,11 +349,11 @@ pipeline {
                     }
                 }
             }
-            post {
-                success {
-                    jiraSendBuildInfo()
-                }
-            }
+            // post {
+            //     success {
+            //         jiraSendBuildInfo()
+            //     }
+            // }
         }
         stage('3.Dev/QA to Nexus') {
             when {
