@@ -19,7 +19,7 @@ def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
-def _branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
+def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage) {
@@ -30,22 +30,22 @@ def getBranch(deployType, envStage) {
 
     switch (deployType) {
         case 'Newten':
-            _branch_release = _branchCollection[0]
+            _branch_release = branchCollection[0]
             _branch_qa = "${_branch_release}-qa"
             _branch_dev = "${_branch_release}-dev"
             break
         case 'SP-4.5.x':
-            _branch_release = _branchCollection[0]
-            _branch_qa = "${_branchCollection[1]}-dev"
-            _branch_dev = "${_branchCollection[1]}-dev"
+            _branch_release = branchCollection[0]
+            _branch_qa = "${branchCollection[1]}-dev"
+            _branch_dev = "${branchCollection[1]}-dev"
             break
         case 'KE-4.3.x':
-            _branch_release = _branchCollection[2]
-            _branch_qa = "${_branchCollection[1]}-qa"
-            _branch_dev = "${_branchCollection[1]}-dev"
+            _branch_release = branchCollection[2]
+            _branch_qa = "${branchCollection[1]}-qa"
+            _branch_dev = "${branchCollection[1]}-dev"
             break
         case 'SP-4.3.x':
-            _branch_release = _branchCollection[3]
+            _branch_release = branchCollection[3]
             _branch_qa = "${_branch_release}-dev"
             _branch_dev = "${_branch_release}-dev"
             break
@@ -200,16 +200,16 @@ def getPackageInfo(version, envStage, cid, deployType) {
     println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
     switch (deployType) {
         case 'Newten':
-            package_path = "artifacts/${_branchCollection[0]}/${envStage}"
+            package_path = "artifacts/${branchCollection[0]}/${envStage}"
             break
         case 'SP-4.5.x':
-            package_path = "artifacts/${_branchCollection[1]}/${envStage}"
+            package_path = "artifacts/${branchCollection[1]}/${envStage}"
             break
         case 'KE-4.3.x':
-            package_path = "artifacts/${_branchCollection[2]}/${envStage}"
+            package_path = "artifacts/${branchCollection[2]}/${envStage}"
             break
         case 'SP-4.3.x':
-            package_path = "artifacts/${_branchCollection[3]}/${envStage}"
+            package_path = "artifacts/${branchCollection[3]}/${envStage}"
             break
     }
     println "package_path: ${package_path}"
