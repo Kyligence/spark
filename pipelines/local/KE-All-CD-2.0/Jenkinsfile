@@ -196,35 +196,21 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     """
 }
 
-def checkPackageExist(version, envStage, commitId) {
-    println "checkPackageExist: version[${version}],envStage[${envStage}],commitId[${commitId}]"
-    def result = false
-    def _packageInfo = getPackageInfo(version, envStage, commitId)
-    sh 'ls -l'
-    dir('/var/cicd') {
-        sh 'ls -l'
-        println "_packageInfo.package_file: ${_packageInfo.package_file}"
-        result = fileExists("${_packageInfo.package_path}/${_packageInfo.file_name}")
-        println "_packageInfo.package_path: /var/cicd/${_packageInfo.package_path}/${_packageInfo.file_name} is ${result}"
-    }
-    return result
-}
-
-def getPackageInfo(version, envStage, cid) {
-    println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}]"
+def getPackageInfo(version, envStage, cid, deployType) {
+    println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
     switch (deployType) {
-    case 'Newten':
-        package_path = "artifacts/${_branchCollection[0]}/${envStage}"
-        break
-    case 'SP-4.5.x':
-        package_path = "artifacts/${_branchCollection[1]}/${envStage}"
-        break
-    case 'KE-4.3.x':
-        package_path = "artifacts/${_branchCollection[2]}/${envStage}"
-        break
-    case 'SP-4.3.x':
-        package_path = "artifacts/${_branchCollection[3]}/${envStage}"
-        break
+        case 'Newten':
+            package_path = "artifacts/${_branchCollection[0]}/${envStage}"
+            break
+        case 'SP-4.5.x':
+            package_path = "artifacts/${_branchCollection[1]}/${envStage}"
+            break
+        case 'KE-4.3.x':
+            package_path = "artifacts/${_branchCollection[2]}/${envStage}"
+            break
+        case 'SP-4.3.x':
+            package_path = "artifacts/${_branchCollection[3]}/${envStage}"
+            break
     }
     println "package_path: ${package_path}"
 
@@ -273,8 +259,8 @@ pipeline {
 
     parameters {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
-        choice(name: 'deloyWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
-        choice(name: 'deloyType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
+        choice(name: 'deployWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
+        choice(name: 'deployType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
         string(name: 'version', defaultValue: '4.5.10.1', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC', description:'打包阶段，如果要GA，选择RC进行流程' )
         // booleanParam(name: 'isGA', defaultValue: true, description: '本次GA')
@@ -291,14 +277,14 @@ pipeline {
                     if (!version.matches(reg)) {
                         error 'version 版本号格式有误'
                     }
-                    if (params.deloyWay == 'Auto Select') {
-                        def _branch = getBranch(deloyType, envStage)
+                    if (params.deployWay == 'Auto Select') {
+                        def _branch = getBranch(deployType, envStage)
                         release_branch_front = _branch
                         release_branch_back = _branch
                         def cms = gitCodeKe(_branch, _branch)
                         release_commitid_back = cms.release_commitid_back
                         release_commitid_front = cms.release_commitid_front
-                    } else if (params.deloyWay == 'Manual Select') {
+                    } else if (params.deployWay == 'Manual Select') {
                         paramsMap = input (
                             message: '请选择要开始的版本?',
                             ok: '确认！',
@@ -326,9 +312,8 @@ pipeline {
                     timestamps {
                         script {
                             dir('sourcecode') {
-                                package_info = getPackageInfo(params.version, params.envStage, release_commitid_back)
+                                package_info = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType)
 
-                                // exist_package = checkPackageExist(version, envStage, release_commitid_back)
                                 try {
                                     def rc = "${package_info.package_path}/${package_info.file_name}"
                                     sh script: """
@@ -361,6 +346,11 @@ pipeline {
                             }
                         }
                     }
+                }
+            }
+            post {
+                success {
+                    jiraSendBuildInfo site: 'olapio.atlassian.net'
                 }
             }
         }
@@ -398,7 +388,7 @@ pipeline {
                         dir('sourcecode') {
                             // rename RC包 为 GA包
                             def rc = package_info.file_name
-                            def gaInfo = getPackageInfo(params.version, 'GA', release_commitid_back)
+                            def gaInfo = getPackageInfo(params.version, 'GA', release_commitid_back, params.deployType)
 
                             sh "mkdir -p /var/cicd/${gaInfo.package_path}"
                             sh "cp ${rc} ${gaInfo.ga_name}"
@@ -440,11 +430,6 @@ pipeline {
                     }
                 }
             }
-        // post {
-        //     always {
-        //         jiraSendBuildInfo site: 'olapio.atlassian.net'
-        //     }
-        // }
         }
         stage('6.Tag') {
             when {
