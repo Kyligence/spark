@@ -54,8 +54,8 @@ spec:
         env:
         - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
           value: "true"
-        - name: JVMFLAGS
-          value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+        # - name: JVMFLAGS
+        #   value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
         ports:
         - containerPort: 2181
           name: client

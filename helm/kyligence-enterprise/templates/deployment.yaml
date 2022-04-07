@@ -1,0 +1,197 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ print (include "kyligence-enterprise.fullname" . ) "-" .Values.version }}
+  labels:
+    {{- include "kyligence-enterprise.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kyligence-enterprise.selectorLabels" . | nindent 6 }}
+      app: {{ print (include "kyligence-enterprise.fullname" . ) "-" .Values.version }}
+  template:
+    metadata:
+      labels:
+        {{- include "kyligence-enterprise.selectorLabels" . | nindent 8 }}
+        app: {{ print (include "kyligence-enterprise.fullname" . ) "-" .Values.version }}
+    spec:
+      volumes:
+        - name: nfs
+          persistentVolumeClaim:
+            claimName: {{ include "kyligence-enterprise.fullname" . }}-nfs-share-pvc
+        - name: share
+          emptyDir: {}
+        - configMap:
+            name: {{ print (include "kyligence-enterprise.fullname" . ) "-" .Values.version }}
+            defaultMode: 0755
+          name: kyligence-enterprise-config
+        - configMap:
+            name: {{ printf "%s-%s" .Values.hadoop_prefix "yarn-xml" }}
+          name: yarn-xml
+        - name: exporter-dir
+          emptyDir: {}
+        - name: jmx-config
+          configMap:
+            name: {{ printf "%s-%s" .Values.hadoop_prefix "jmx-exporter-config"}}
+      initContainers:
+      - name: jmx-exporter
+        image: "{{ .Values.jmx.image.repository }}:{{ .Values.jmx.image.tag }}"
+        volumeMounts:
+          - mountPath: /opt/kyligence
+            name: share
+          - mountPath: /tmp/kyligence
+            name: nfs
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        command:
+          - sh
+          - "-c"
+          - |
+            set -x
+            if [ ! -f "/tmp/kyligence/{{ .Values.package_file }}" ];then
+             echo "{{ .Values.package_file }} 文件不存在"
+             exit -1
+            fi
+
+            tar -zxvf /tmp/kyligence/{{ .Values.package_file }} -C /opt/kyligence --strip-components 1
+            cp /tmp/kyligence/share/mysql-connector-java-5.1.41-bin.jar /opt/kyligence/spark/jars
+            echo "$(POD_IP)"
+            touch /opt/kyligence/conf/kylin.properties.override
+            echo "kylin.storage.columnar.spark-conf.spark.driver.host=$(POD_IP)" >> /opt/kyligence/conf/kylin.properties.override
+            echo "kylin.engine.spark-conf.spark.driver.host=$(POD_IP)" >> /opt/kyligence/conf/kylin.properties.override
+
+            cp /opt/jmx_prometheus_javaagent-0.16.1.jar /opt/jmx-exporter/
+      containers:
+      - name: {{ print (include "kyligence-enterprise.fullname" . ) "-" .Values.version }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        volumeMounts:
+          - mountPath: /opt/kyligence
+            name: share
+          - mountPath: /opt/kyligence/conf/kylin.properties
+            name: kyligence-enterprise-config
+            subPath: kylin.properties
+          - mountPath: /opt/kyligence/conf/fairscheduler.xml
+            name: kyligence-enterprise-config
+            subPath: fairscheduler.xml
+          - mountPath: /opt/kyligence/hadoop_conf/core-site.xml
+            name: yarn-xml
+            subPath: core-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hive-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hiveserver2-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hivemetastore-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/hdfs-site.xml
+            name: yarn-xml
+            subPath: hdfs-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/yarn-site.xml
+            name: yarn-xml
+            subPath: yarn-site.xml
+          - mountPath: /opt/kyligence/hadoop_conf/fair-scheduler.xml
+            name: yarn-xml
+            subPath: fair-scheduler.xml
+          - mountPath: /etc/hadoop/conf/core-site.xml
+            name: yarn-xml
+            subPath: core-site.xml
+          - mountPath: /etc/hadoop/conf/hdfs-site.xml
+            name: yarn-xml
+            subPath: hdfs-site.xml
+          - mountPath: /etc/hadoop/conf/yarn-site.xml
+            name: yarn-xml
+            subPath: yarn-site.xml
+          - mountPath: /etc/hive/conf/hive-site.xml
+            name: yarn-xml
+            subPath: hive-site.xml
+          - mountPath: /etc/hadoop/conf/fair-scheduler.xml
+            name: yarn-xml
+            subPath: fair-scheduler.xml
+          - mountPath: /opt/kyligence/bin/check-env-bypass
+            name: kyligence-enterprise-config
+            readOnly: false
+            subPath: check-env-bypass
+          - name: exporter-dir
+            mountPath: /opt/jmx-exporter/
+          - name: jmx-config
+            mountPath: /opt/jmx-exporter/config.yaml
+            subPath: config.yaml
+        env:
+          - name: JAVA_VM_XMS
+            value: 1g
+          - name: JAVA_VM_XMX
+            value: 4g
+          - name: JAVA_VM_TOOL_XMS
+            value: 1g
+          - name: JAVA_VM_TOOL_XMX
+            value: 4g
+          - name: KYLIN_HOME
+            value: /opt/kyligence
+          - name: HADOOP_CONF_DIR
+            value: /etc/hadoop/conf
+          - name: HIVE_CONF_DIR
+            value: /etc/hive/conf
+          - name: KYLIN_MODE
+            value: all
+          - name: FORMAT_MESSAGES_PATTERN_DISABLE_LOOKUPS
+            value: "true"
+          - name: KYLIN_JVM_SETTINGS
+            value: -server -Xms$(JAVA_VM_XMS) -Xmx$(JAVA_VM_XMX) -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+PrintFlagsFinal -XX:+PrintReferenceGC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintAdaptiveSizePolicy -XX:+UnlockDiagnosticVMOptions -XX:+G1SummarizeConcMark  -Xloggc:$(KYLIN_HOME)/logs/kylin.gc.%p  -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=64M -XX:-OmitStackTraceInFastThrow -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=8192 -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+        resources:
+          limits:
+            memory: 4Gi
+          requests:
+            memory: 4Gi
+        ports:
+          - name: http
+            containerPort: 7070
+          - name: spark-ui
+            containerPort: 4041
+        livenessProbe:
+          initialDelaySeconds: 200
+          periodSeconds: 10
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 20
+          httpGet:
+            path: /kylin
+            port: http
+        readinessProbe:
+          initialDelaySeconds: 200
+          periodSeconds: 10
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 20
+          httpGet:
+            path: /kylin
+            port: http
+        command:
+          - bash
+          - "-c"
+          - |
+            set -x
+            bash $KYLIN_HOME/bin/kylin.sh start
+            if [ -f $KYLIN_HOME/logs/kylin.log ]
+            then
+              tail -300f $KYLIN_HOME/logs/kylin.log
+            else
+              tail -300f $KYLIN_HOME/logs/shell.stderr
+            fi
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - bash
+                - "-cx"
+                - |
+                  bash $KYLIN_HOME/bin/kylin.sh stop

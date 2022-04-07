@@ -82,8 +82,8 @@ spec:
             value: "true"
           - name: SERVICE_PRECONDITION
             value: {{ include "hdfs.fullname" . }}-namenode:{{ .Values.namenode.web_hdfs_port }} {{ include "hdfs.fullname" . }}-datanode:{{ .Values.namenode.port }} {{ include "hdfs.fullname" . }}-yarn-resourcemanager:8088
-          - name: YARN_OPTS
-            value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
+          # - name: YARN_OPTS
+          #   value: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=8080:/opt/jmx-exporter/config.yaml
           volumeMounts:
             - name: exporter-dir
               mountPath: /opt/jmx-exporter/

@@ -17,12 +17,12 @@ data:
       <property><name>yarn.resourcemanager.system-metrics-publisher.enabled</name><value>true</value></property>
       <property><name>yarn.nodemanager.remote-app-log-dir</name><value>/app-logs</value></property>
       <property><name>yarn.nodemanager.aux-services</name><value>mapreduce_shuffle</value></property>
-      <property><name>yarn.resourcemanager.resource_tracker.address</name><value>yarn-resourcemanager:8031</value></property>
-      <property><name>yarn.resourcemanager.hostname</name><value>yarn-resourcemanager</value></property>
+      <property><name>yarn.resourcemanager.resource_tracker.address</name><value>{{ include "hdfs.fullname" . }}-yarn-resourcemanager:8031</value></property>
+      <property><name>yarn.resourcemanager.hostname</name><value>{{ include "hdfs.fullname" . }}-yarn-resourcemanager</value></property>
       <property><name>yarn.timeline-service.hostname</name><value>yarn-historyserver</value></property>
       <property><name>yarn.log.server.url</name><value>http://yarn-historyserver:8188/applicationhistory/logs/</value></property>
-      <property><name>yarn.resourcemanager.scheduler.address</name><value>yarn-resourcemanager:8030</value></property>
-      <property><name>yarn.resourcemanager.address</name><value>yarn-resourcemanager:8032</value></property>
+      <property><name>yarn.resourcemanager.scheduler.address</name><value>{{ include "hdfs.fullname" . }}-yarn-resourcemanager:8030</value></property>
+      <property><name>yarn.resourcemanager.address</name><value>{{ include "hdfs.fullname" . }}-yarn-resourcemanager:8032</value></property>
       <property><name>yarn.nodemanager.disk-health-checker.max-disk-utilization-per-disk-percentage</name><value>98.5</value></property>
       <property><name>yarn.resourcemanager.bind-host</name><value>0.0.0.0</value></property>
       <property><name>yarn.nodemanager.bind-host</name><value>0.0.0.0</value></property>
