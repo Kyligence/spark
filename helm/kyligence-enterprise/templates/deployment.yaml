@@ -19,9 +19,9 @@ spec:
         app: {{ print (include "kyligence-enterprise.fullname" . ) "-" .Values.version }}
     spec:
       volumes:
-        - name: nfs
+        - name: cephfs
           persistentVolumeClaim:
-            claimName: {{ include "kyligence-enterprise.fullname" . }}-nfs-share-pvc
+            claimName: {{ include "kyligence-enterprise.fullname" . }}-cephfs-share-pvc
         - name: share
           emptyDir: {}
         - configMap:
@@ -43,7 +43,7 @@ spec:
           - mountPath: /opt/kyligence
             name: share
           - mountPath: /tmp/kyligence
-            name: nfs
+            name: cephfs
           - name: exporter-dir
             mountPath: /opt/jmx-exporter/
         env:

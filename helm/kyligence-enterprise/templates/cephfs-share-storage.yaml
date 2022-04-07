@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "kyligence-enterprise.fullname" . }}-cephfs-share-pv-{{ .Release.Namespace }}
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  cephfs:
+    monitors:
+    - 10.1.9.101:6789
+    - 10.1.9.102:6789
+    - 10.1.9.103:6789
+    path: /cicd/jenkins-common
+    user: admin
+    secretRef:
+      name: ceph-secret
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "kyligence-enterprise.fullname" . }}-cephfs-share-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: {{ include "kyligence-enterprise.fullname" . }}-cephfs-share-pv-{{ .Release.Namespace }}
+  volumeMode: Filesystem
+  storageClassName: ""
+
