@@ -382,13 +382,14 @@ pipeline {
                             sshCommand remote: remote, command: """
                                 ls -lh /home/4xuser/data/devops
                             """
+                            printenv
                         }
                     }
                     post {
                         success {
                             emailext (
                                 subject: "SUCCESSFUL to Upload the Tar into the Azure CN server'",
-                                to: "tong.zheng@kyligence.io;liming.meng@kyligence.io",
+                                to: "${env.BUILD_USER_EMAIL}",
                                 from: "devops_support@kyligence.io",
                                 //定义html 模版
                                 body: """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
