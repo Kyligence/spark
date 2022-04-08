@@ -458,7 +458,7 @@ pipeline {
         stage('5.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'RC' && exist_package && !paramsGA['skipUpload']
+                    return params.envStage == 'GA' && exist_package && !paramsGA['skipUpload']
                 }
             }
             failFast true
