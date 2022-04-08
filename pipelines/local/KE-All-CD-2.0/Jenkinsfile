@@ -437,10 +437,10 @@ pipeline {
                             message: checkMsg,
                             ok: '确认！',
                             submitter:'liming.meng,meixiu.chen,enwei.jiao,chenqing.zhu',
-                            submitterParameter:'APPROVER',
-                            parameters:[
-                                booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
-                            ]
+                            submitterParameter:'APPROVER'
+                            // parameters:[
+                            //     booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
+                            // ]
                         )
                         dir('sourcecode') {
                             def gaInfo = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType)
@@ -458,7 +458,7 @@ pipeline {
         stage('5.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package && !paramsGA['skipUpload']
+                    return params.envStage == 'GA' && exist_package
                 }
             }
             failFast true
