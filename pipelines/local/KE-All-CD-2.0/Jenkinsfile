@@ -116,15 +116,13 @@ def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
     }
 }
 
-def sendEmail(subject,to,from,body) {
+def sendEmail(subject,to,body,from) {
     emailext (
-        subject: subject ?."SUCCESSFUL to Upload the Tar into the Azure CN server'",
-        to: to ?. "${env.BUILD_USER_EMAIL}",
+        subject: subject,
+        to: to,
         from: from ?."devops_support@kyligence.io",
         //定义html 模版
-        body: body ?. """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-            <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
-            <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
+        body: body
     )
 }
 
@@ -289,6 +287,11 @@ pipeline {
         file_name = ''
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
+        // tester emails
+        tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
+        fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io'''
+        // product emails
+        product_emails = 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;kaiqi.xue@kyligence.io;lina.liu@kyligence.io;xinxing.wu@kyligence.io;zhao.han@kyligence.io;yang.li@kyligence.io'
     }
 
     parameters {
@@ -402,14 +405,12 @@ pipeline {
                     }
                     post {
                         success {
-                            emailext (
-                                subject: "SUCCESSFUL to Upload the Tar into the Azure CN server'",
-                                to: "${env.BUILD_USER_EMAIL}",
-                                from: "devops_support@kyligence.io",
-                                //定义html 模版
+                            sendEmail(
+                                "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
+                                tester_emails, 
                                 body: """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                    <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
-                                    <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
+                                <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
+                                <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
                             )
                         }
                     }
@@ -495,16 +496,28 @@ pipeline {
                 container('build') {
                     script {
                         def _tag = "ke-${version}"
+                        def bcid = ''
+                        def fcid = ''
                         dir('sourcecode') {
                             println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
                             gitTag(release_branch_back, _tag, 'KAP')
-                            echo "backend [KAP] commitId: `git rev-parse HEAD`"
+                            bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                            println "backend [KAP] commitId: ${bcid}"
 
                             dir('kystudio') {
                                 println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
                                 gitTag(release_branch_front, _tag, 'KAP_Frontend')
-                                echo "frontend [KAP_Frontend] commitId: `git rev-parse HEAD`"
+                                fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                println "frontend [KAP_Frontend] commitId: ${fcid}"
                             }
+
+                            sendEmail(
+                                "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
+                                product_emails, 
+                                body: """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                                <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
+                            )
                         }
                     }
                 }
