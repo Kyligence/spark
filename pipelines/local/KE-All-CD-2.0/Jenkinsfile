@@ -116,7 +116,7 @@ def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
     }
 }
 
-def sendEmail(subject,to,body,from) {
+def sendEmail(subject,to,body,from='devops_support@kyligence.io') {
     emailext (
         subject: subject,
         to: to,
@@ -437,9 +437,9 @@ pipeline {
                     post {
                         success {
                             sendEmail(
-                                "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
-                                tester_emails, 
-                                body: """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                "SUCCESSFUL to Upload the Tar into the Azure CN server'",
+                                tester_emails,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
                                 <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
                             )
@@ -544,8 +544,8 @@ pipeline {
 
                             sendEmail(
                                 "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
-                                product_emails, 
-                                body: """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                product_emails,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Backend repo of [KAP] commitId: ${bcid}</p>
                                 <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
                             )
