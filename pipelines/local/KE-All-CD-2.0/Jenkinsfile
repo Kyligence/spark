@@ -274,9 +274,9 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
 
     def withoutSpark = noSpark ? "-NoSpark" : ""
 
-    file_name = "KE-${version}-${envStage}-${cid}${noSpark}.tar.gz"
+    file_name = "KE-${version}-${envStage}-${cid}${withoutSpark}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
-    ga_name = "Kyligence-Enterprise-${version}-GA${noSpark}.tar.gz"
+    ga_name = "Kyligence-Enterprise-${version}-GA${withoutSpark}.tar.gz"
 
     println "file_name: ${file_name}"
     println "package_file: ${package_file}"
