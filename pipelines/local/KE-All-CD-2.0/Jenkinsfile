@@ -70,7 +70,7 @@ def getBranch(deployType, envStage) {
 def uploadAwsS3(region, credentials, bucket, path, ga_name) {
     dir('sourcecode') {
         timestamps {
-            println("path: ${path}, ga_name: ${ga_name}")
+            println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
             withAWS(region: region, credentials: credentials) {
                 s3Upload(bucket: bucket, path: path, file: ga_name)
             }
@@ -457,7 +457,7 @@ pipeline {
                     steps {
                         println("upload to AWS S3 in Global: ${package_info.file_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
+                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
                     }
                 }
             }
