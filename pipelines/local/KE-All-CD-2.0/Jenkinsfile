@@ -380,12 +380,6 @@ pipeline {
                                 package_info = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType)
 
                                 try {
-                                    // def rc = "${package_info.package_path}/${package_info.file_name}"
-                                    // sh script: """
-                                    //     ls -l /var/cicd/${package_info.package_path}
-                                    //     cp /var/cicd/${rc} ${package_info.file_name}
-                                    // """
-
                                     if(params.envStage=='GA'){
                                         package_info.file_name = package_info.ga_name
                                     }
@@ -440,7 +434,8 @@ pipeline {
                         success {
                             sendEmail(
                                 "SUCCESSFUL to Upload the Tar into the Azure CN server'",
-                                tester_emails,
+                                "liming.meng@kyligence.io",
+                                // tester_emails,
                                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
                                 <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
@@ -488,15 +483,16 @@ pipeline {
                             //     booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
                             // ]
                         )
-                        dir('sourcecode') {
-                            def gaInfo = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType)
+                        ga_name = package_info.file_name
+                        // dir('sourcecode') {
+                            // def gaInfo = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType)
 
                             // sh "mkdir -p /var/cicd/${gaInfo.package_path}"
-                            sh "cp ${gaInfo.file_name} ${gaInfo.ga_name}"
-                            ga_name = gaInfo.ga_name
+                            // sh "cp ${package_info.file_name} ${gaInfo.ga_name}"
+                            // ga_name = gaInfo.ga_name
 
-                            sh "ls -al /var/cicd/${gaInfo.package_path}"
-                        }
+                            // sh "ls -al /var/cicd/${gaInfo.package_path}"
+                        // }
                     }
                 }
             }
@@ -558,7 +554,8 @@ pipeline {
 
                             sendEmail(
                                 "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
-                                product_emails,
+                                "liming.meng@kyligence.io",
+                                // product_emails,
                                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Backend repo of [KAP] commitId: ${bcid}</p>
                                 <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
