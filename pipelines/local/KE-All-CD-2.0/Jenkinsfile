@@ -147,7 +147,7 @@ def gitCodeKe(back, front) {
                 println 'checkout KAP'
                 retry(3) {
                     // githubCheckout 'KAP', back
-                    githubCheckout 'KAP', back, 'git', 'github.com'
+                    githubCheckout 'KAP', back, 'https', 'github.com'
                 }
 
                 release_commitid_back = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
@@ -167,7 +167,7 @@ def gitCodeKe(back, front) {
                 dir('kystudio') {
                     retry(3) {
                         // githubCheckout 'KAP_Frontend', _front
-                        githubCheckout 'KAP_Frontend', _front, 'git', 'github.com'
+                        githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
                     }
                     release_commitid_front = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                     println "release_commitid_front: ${release_commitid_front}"
