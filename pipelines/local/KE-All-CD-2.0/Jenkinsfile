@@ -120,7 +120,7 @@ def sendEmail(subject,to,body,from='devops_support@kyligence.io') {
     emailext (
         subject: subject,
         to: to,
-        from: from ?."devops_support@kyligence.io",
+        from: from,
         //定义html 模版
         body: body
     )
