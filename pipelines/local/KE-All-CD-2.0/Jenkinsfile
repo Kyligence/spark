@@ -378,11 +378,15 @@ pipeline {
                                 package_info = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType)
 
                                 try {
-                                    def rc = "${package_info.package_path}/${package_info.file_name}"
-                                    sh script: """
-                                        ls -l /var/cicd/${package_info.package_path}
-                                        cp /var/cicd/${rc} ${package_info.file_name}
-                                    """
+                                    // def rc = "${package_info.package_path}/${package_info.file_name}"
+                                    // sh script: """
+                                    //     ls -l /var/cicd/${package_info.package_path}
+                                    //     cp /var/cicd/${rc} ${package_info.file_name}
+                                    // """
+
+                                    if(params.envStage=='GA'){
+                                        package_info.file_name = package_info.ga_name
+                                    }
 
                                     sh 'ls -l'
                                     println "package_info.package_file: ${package_info.package_file}"
@@ -401,6 +405,7 @@ pipeline {
                                         mv dist/*.tar.gz ${package_info.file_name}
                                         cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                                     """
+
                                     exist_package = true
                                 // cp ${package_info.file_name} ${package_info.ga_name}
                                 } else {
