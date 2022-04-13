@@ -252,7 +252,7 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     """
 }
 
-def getPackageInfo(version, envStage, cid, deployType) {
+def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
     println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
 
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
@@ -272,9 +272,11 @@ def getPackageInfo(version, envStage, cid, deployType) {
     }
     println "package_path: ${package_path}"
 
-    file_name = "KE-${version}-${envStage}-${cid}.tar.gz"
+    def withoutSpark = noSpark ? "-NoSpark" : ""
+
+    file_name = "KE-${version}-${envStage}-${cid}${noSpark}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
-    ga_name = "Kyligence-Enterprise-${version}-GA.tar.gz"
+    ga_name = "Kyligence-Enterprise-${version}-GA${noSpark}.tar.gz"
 
     println "file_name: ${file_name}"
     println "package_file: ${package_file}"
@@ -326,7 +328,7 @@ pipeline {
         choice(name: 'deployType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
         string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-        // booleanParam(name: 'isGA', defaultValue: true, description: '本次GA')
+        booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的包')
     }
 
     stages {
@@ -397,7 +399,7 @@ pipeline {
                                 }
 
                                 if (!exist_package) {
-                                    buildNewten(params.version, false, false)
+                                    buildNewten(params.version, params.noSpark)
                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
                                     sh script: """
@@ -449,6 +451,18 @@ pipeline {
                 stage('3.2.Upload to Nexus') {
                     steps {
                         uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
+                    }
+                }
+                stage('3.3.Upload to AWS Global S3') {
+                    when{
+                        expression {
+                            return params.noSpark == true
+                        }
+                    }
+                    steps {
+                        println("upload to AWS S3 in Global: ${package_info.file_name}")
+                        // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
                     }
                 }
             }

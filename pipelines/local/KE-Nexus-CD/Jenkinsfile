@@ -91,7 +91,7 @@ pipeline {
                                 error 'version 版本号不能为空'
                             }
 
-                            buildNewten(params.version, false, false)
+                            buildNewten(params.version, false)
                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
                             if (version.startsWith('4.5.') || GIT_BRN) {

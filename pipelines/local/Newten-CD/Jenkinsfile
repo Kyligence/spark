@@ -62,7 +62,7 @@ pipeline {
                 container('build') {
                     sh 'cat /root/.m2/settings.xml'
                     dir('sourcecode') {
-                        buildNewten(params.version, false, false)
+                        buildNewten(params.version, false)
                         archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                         script {
                             def commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()

@@ -1,4 +1,4 @@
-def call(String version, boolean skipPatch = true, boolean skipLicense = true) {
+def call(String version, boolean noSpark = false) {
     sh "git apply license.patch"
     sh """
         wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/grafana-6.2.4.linux-amd64.tar.gz --directory-prefix=build/
@@ -17,5 +17,10 @@ def call(String version, boolean skipPatch = true, boolean skipLicense = true) {
         wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
         wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
     """
-    sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
+    if(noSpark) {
+        echo "Package not include Spark"
+        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
+    }else{
+        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
+    }
 }
