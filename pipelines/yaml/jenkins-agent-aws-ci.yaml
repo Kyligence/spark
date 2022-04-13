@@ -16,7 +16,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "bitnami/git:latest"
+      image: "bitnami/git:2.35.1-debian-10-r68"
       resources:
         limits:
           memory: "4Gi"
