@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+  name: jenkins
+  namespace: cicd
+spec:
+  rules:
+  - host: cicd.ops.kylincorp.tech
+    http:
+      paths:
+      - backend:
+          service:
+            name: cicd-jenkins-service
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+status:
+  loadBalancer:
+    ingress:
+    - ip: 10.1.9.200
+    - ip: 10.1.9.50
+    - ip: 10.1.9.51
+    - ip: 10.1.9.52

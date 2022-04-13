@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: jenkins-common
+  namespace: cicd
+spec:
+  accessModes:
+      - ReadWriteMany
+  resources:
+      requests:
+        storage: 512Gi

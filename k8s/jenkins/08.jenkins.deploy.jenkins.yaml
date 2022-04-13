@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+#kind: StatefulSet
+metadata:
+  name: jenkins-deploy
+  namespace: cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: cicd-jenkins-pod
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: cicd-jenkins-pod
+    spec:
+      serviceAccountName: cicd-jenkins-sa
+      containers:
+      - image: jenkins/jenkins
+        env:
+          - name: TZ
+            value: Asia/Shanghai
+      #- image: jenkins/jenkins:centos7-jdk8
+        imagePullPolicy: IfNotPresent
+        name: jenkins
+        ports:
+        - containerPort: 8080
+          name: web
+          protocol: TCP
+        - containerPort: 50000
+          name: agent
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 8Gi
+          requests:
+            cpu: "1"
+            memory: 4Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/jenkins_home
+          name: jenkins-home
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins-home

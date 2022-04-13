@@ -212,6 +212,30 @@ def createBranch(base, branch, project='KAP', repo='Kyligence', isCloned=true) {
     """
 }
 
+def createPR(repoURL, base, head) {
+    withCredentials([usernamePassword(credentialsId: 'kyligence-git', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+        print "create a pull request to ${repoURL}"
+        def prScript= """curl -H "Content-Type: application/json" \
+        -H "Accept: application/vnd.github.v3+json" \
+        -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN}" \
+        -X POST \
+        ${repoURL}/pulls \
+        -d '{ \
+            "title": "from ${head} to ${base}", \
+            "head": "${head}", \
+            "base": "${base}" \
+        }'"""
+        print prScript
+        def result = sh(script: prScript, returnStdout: true)
+        def jsonObj = readJSON text: result
+        if (jsonObj['html_url'] != null) {
+            return jsonObj['html_url']
+        } else {
+            return it
+        }
+    }
+}
+
 def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     println "gitTag: base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
     if (!isCloned) {
