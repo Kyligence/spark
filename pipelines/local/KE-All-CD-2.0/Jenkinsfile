@@ -137,16 +137,17 @@ def gitCodeKe(back, front) {
                     error 'commitId_back 参数不能为空'
                 }
 
-                println 'Sync the git mirror'
-                sshCmdWithCredentials(
-                    'bash -c /var/lib/git/pull.sh',
-                    'private_git',
-                    ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                )
+                // println 'Sync the git mirror'
+                // sshCmdWithCredentials(
+                //     'bash -c /var/lib/git/pull.sh',
+                //     'private_git',
+                //     ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                // )
 
                 println 'checkout KAP'
                 retry(3) {
-                    githubCheckout 'KAP', back
+                    // githubCheckout 'KAP', back
+                    githubCheckout 'KAP', back, 'git', 'github.com'
                 }
 
                 release_commitid_back = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
@@ -165,7 +166,8 @@ def gitCodeKe(back, front) {
                 sh 'rm -rf ./kystudio'
                 dir('kystudio') {
                     retry(3) {
-                        githubCheckout 'KAP_Frontend', _front
+                        // githubCheckout 'KAP_Frontend', _front
+                        githubCheckout 'KAP_Frontend', _front, 'git', 'github.com'
                     }
                     release_commitid_front = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                     println "release_commitid_front: ${release_commitid_front}"

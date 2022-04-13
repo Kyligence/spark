@@ -42,16 +42,16 @@ pipeline {
                                 error 'commitId_back 参数不能为空'
                             }
 
-                            echo 'Sync the git mirror'
-                            sshCmdWithCredentials(
-                                'bash -c /var/lib/git/pull.sh',
-                                'private_git',
-                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                            )
+                            // echo 'Sync the git mirror'
+                            // sshCmdWithCredentials(
+                            //     'bash -c /var/lib/git/pull.sh',
+                            //     'private_git',
+                            //     ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                            // )
 
                             echo 'checkout KAP'
                             retry(3) {
-                                githubCheckout 'KAP', params.commitId_back
+                                githubCheckout 'KAP', params.commitId_back, 'git', 'github.com'
                             }
 
                             def front
@@ -66,7 +66,7 @@ pipeline {
                             sh 'rm -rf ./kystudio'
                             dir('kystudio') {
                                 retry(3) {
-                                    githubCheckout 'KAP_Frontend', front
+                                    githubCheckout 'KAP_Frontend', front, 'git', 'github.com'
                                 }
                             }
                         }
