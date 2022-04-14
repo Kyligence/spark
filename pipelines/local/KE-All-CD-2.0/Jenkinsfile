@@ -253,7 +253,7 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
 }
 
 def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
-    println "getPackageInfo: version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
+    println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
 
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
     switch (deployType) {
@@ -378,7 +378,8 @@ pipeline {
                     timestamps {
                         script {
                             dir('sourcecode') {
-                                package_info = getPackageInfo(params.version, params.envStage, release_commitid_back, params.deployType, params.noSpark)
+                                def _version = "${params.version}-${params.envStage}"
+                                package_info = getPackageInfo(_version, params.envStage, release_commitid_back, params.deployType, params.noSpark)
 
                                 try {
                                     if(params.envStage=='GA'){
@@ -404,7 +405,6 @@ pipeline {
                                 }
 
                                 if (!exist_package) {
-                                    def _version = "${params.version}-${params.envStage}"
 
                                     buildNewten(_version, params.noSpark)
                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
