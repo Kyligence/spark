@@ -204,7 +204,7 @@ def gitInit(base, project='KAP', repo='Kyligence') {
 }
 
 def createBranch(base, branch, project='KAP', repo='Kyligence', isCloned=true) {
-    println "createBranch: base[${base}], branch[${branch}], project[${project}], repo[${repo}]"
+    println "createBranch -> base[${base}], branch[${branch}], project[${project}], repo[${repo}]"
     if (!isCloned) {
         gitInit(base, project, repo)
     }
@@ -216,7 +216,7 @@ def createBranch(base, branch, project='KAP', repo='Kyligence', isCloned=true) {
 
 def createPR(repoURL, base, head) {
     withCredentials([usernamePassword(credentialsId: 'kyligence-git', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-        print "create a pull request to ${repoURL}"
+        print "createPR -> repoURL[${repoURL}],base[${base}],head[${head}]"
         def prScript= """curl -H "Content-Type: application/json" \
         -H "Accept: application/vnd.github.v3+json" \
         -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN}" \
@@ -239,7 +239,7 @@ def createPR(repoURL, base, head) {
 }
 
 def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
-    println "gitTag: base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
+    println "gitTag -> base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
     if (!isCloned) {
         gitInit(base, project, repo)
     }
@@ -274,9 +274,9 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
 
     def withoutSpark = noSpark ? "-NoSpark" : ""
 
-    file_name = "KE-${version}-${envStage}-${cid}${withoutSpark}.tar.gz"
+    file_name = "KE-${version}-${cid}${withoutSpark}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
-    ga_name = "Kyligence-Enterprise-${version}-GA${withoutSpark}.tar.gz"
+    ga_name = "Kyligence-Enterprise-${version}${withoutSpark}.tar.gz"
 
     println "file_name: ${file_name}"
     println "package_file: ${package_file}"
@@ -328,7 +328,7 @@ pipeline {
         choice(name: 'deployType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
         string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-        booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的包')
+        booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3')
     }
 
     stages {
@@ -393,7 +393,9 @@ pipeline {
                                 }
 
                                 if (!exist_package) {
-                                    buildNewten(params.version, params.noSpark)
+                                    def _version = "${params.version}-${params.envStage}"
+
+                                    buildNewten(_version, params.noSpark)
                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
                                     sh script: """
