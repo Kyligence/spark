@@ -329,6 +329,7 @@ pipeline {
         string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
         booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3')
+        // booleanParam(name: 'replaceFouse', defaultValue: false, description: '手动强制打新包，覆盖缓存包')
     }
 
     stages {
@@ -384,10 +385,20 @@ pipeline {
                                         package_info.file_name = package_info.ga_name
                                     }
 
+                                    // if(!params.replaceFouse) {
+                                        // 将已存在的包cp到当前目录，避免重新打包
+                                    def existPackage = "${package_info.package_path}/${package_info.file_name}"
+                                    sh script: """
+                                        ls -l /var/cicd/${package_info.package_path}
+                                        cp /var/cicd/${existPackage} ${package_info.file_name}
+                                    """
+                                    // }
+
                                     sh 'ls -l'
                                     println "package_info.package_file: ${package_info.package_file}"
                                     exist_package = fileExists(package_info.file_name)
-                                    println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
+                                    exist_package2 = fileExists("/var/cicd/${package_info.package_path}/${package_info.file_name}")
+                                    println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package} ${exist_package2}"
                                 } catch (Exception err) {
                                     echo err.getMessage()
                                 }
