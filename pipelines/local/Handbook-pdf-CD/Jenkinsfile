@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib@handbook') _
+@Library('devopslib') _
 
 def package_path
 
