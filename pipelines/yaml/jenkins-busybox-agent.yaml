@@ -2,8 +2,6 @@
 kind: "Pod"
 name: "jenkins-busybox-agent"
 spec:
-  # nodeSelector:
-  #   kubernetes.io/hostname: "kubernetes-work01"
   containers:
     - name: "busybox"
       image: "busybox"

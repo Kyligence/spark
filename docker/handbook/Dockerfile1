@@ -6,7 +6,7 @@ COPY ./sources.list /etc/apt/sources.list
 
 RUN DEBIAN_FRONTEND="noninteractive" apt-get update  && \
     DEBIAN_FRONTEND="noninteractive" apt-get install -y calibre-bin nodejs npm  && \
-    npm install -g gitbook-cli && \
-    cd /tmp && gitbook init && rm -f /tmp/*.md
+    npm install -g gitbook-cli markdown-link-check && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /book

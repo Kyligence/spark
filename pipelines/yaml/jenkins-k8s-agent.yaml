@@ -2,8 +2,6 @@
 kind: "Pod"
 name: "jenkins-k8s-agent"
 spec:
-  # nodeSelector:
-  #   kubernetes.io/hostname: "kubernetes-work01"
   containers:
     - name: "kubectl"
       image: "cnych/kubectl"

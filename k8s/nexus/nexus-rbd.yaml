@@ -90,8 +90,6 @@ spec:
         volumeMounts:
           - name: nexus-data-rbd
             mountPath: /nexus-data
-          # - name: nexus-data-rbd-100
-          #   mountPath: /nexus-data-backup
           # - name: nexus-data
           #   mountPath: /nexus-data-old
       containers:
@@ -132,9 +130,6 @@ spec:
         - name: nexus-data-rbd
           persistentVolumeClaim:
             claimName: nexus-data-rbd-pvc
-        # - name: nexus-data-rbd-100
-        #   persistentVolumeClaim:
-        #     claimName: nexus-data-rbd-100-pvc
         # - name: nexus-data
         #   persistentVolumeClaim:
         #     claimName: nexus-data-pvc

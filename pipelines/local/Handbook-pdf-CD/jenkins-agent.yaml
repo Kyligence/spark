@@ -4,7 +4,7 @@ name: "handbook-agent"
 spec:
   containers:
     - name: "git"
-      image: "bitnami/git:latest"
+      image: "bitnami/git:2.35.1-debian-10-r68"
       volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
@@ -17,15 +17,15 @@ spec:
           memory: "1Gi"
           cpu: "1000m"
     - name: "build"
-      image: "repo-ofs.kyligence.tech:5000/handbook:0.1"
+      image: "repo-ofs.kyligence.tech:5000/handbook:1.10"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
         - "cat"
       resources:
         limits:
-          memory: "4Gi"
-          cpu: "2000m"
+          memory: "8Gi"
+          cpu: "4000m"
       volumeMounts:
         - mountPath: "/gitbook"
           name: "jenkins-common"
@@ -33,7 +33,14 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+        - mountPath: "/etc/pem/rsa.pem"
+          name: "handbook-secret"
+          subPath: "rsa.pem"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
+    - name: "handbook-secret"
+      secret:
+        secretName: "handbook-secret"
+        defaultMode: 0400

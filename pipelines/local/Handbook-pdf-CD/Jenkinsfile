@@ -1,11 +1,70 @@
 #!groovy
 
-@Library('devopslib@nexus') _
+@Library('devopslib@handbook') _
+
+def package_path
+
+def file_name
+
+def ga_name
+
+def backup_name
+
+def project
+
+def branch
+
+def commitid
+// 包存在
+def exist_package = false
+// 包信息对象
+def package_info =  [:]
+
+def type_mapping = ['KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master'],
+                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_new', 'path': 'v4.5_new', 'branch': 'master'],
+                    'KE master_new':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_master_new', 'path': 'v4.5_master_new', 'branch': 'master_new'],
+                    'kE 4.3.x_test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3.x_test', 'path': 'v4.3.x_test', 'branch': 'ke-4.3.x-test'],
+                    'KE 4.3':['project': 'Kyligence-Enterprise-Manual','version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x'],
+                    'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2','path': 'v4.2', 'branch': 'ke-4.2'],
+                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4','path': 'v3.4', 'branch': 'master'],
+                    'KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5','path': 'cloud/v4.5', 'branch': 'master',],
+                    'KC Test Drive':['project': 'Cloud_Manual','version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive'],
+                    'KC 4.5 test':['project': 'Cloud_Manual', 'version':'v4.5_test','path': 'cloud/v4.5_test', 'branch': '4.5_test'],
+                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3','path': 'cloud/v4.3', 'branch': 'kc-4.3.x'],
+                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2','path': 'cloud/v3.2', 'branch': 'kc-3.2.x']]
+
+def getPackageInfo(type_mapping, doc_type, cid) {
+    println "getPackageInfo: doc_type[${doc_type}], cid[${cid}]"
+    project = type_mapping.get(doc_type).get('project')
+    package_path = type_mapping.get(doc_type).get('path')
+    version = type_mapping.get(doc_type).get('version')
+    branch = type_mapping.get(doc_type).get('branch')
+    file_name = "${project}-${version}-${cid}.tar.gz"
+    ga_name = "${project}-${version}.tar.gz"
+
+    def obj = [:]
+    obj.file_name=file_name
+    obj.package_path=package_path
+    obj.project=project
+    obj.branch=branch
+    obj.ga_name=ga_name
+    println obj.toString()
+    return obj
+}
+
+def _sendNotify(doc_type,subject,msg){
+    // def emails = ['KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
+    //     'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io']
+    def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
+    def notifyTo = doc_type.indexOf('KE') == 0 ? emails.get('KE') : emails.get('KC')
+    sendNotify('EMAIL',subject,notifyTo,msg)
+}
 
 pipeline {
 
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 4, unit: 'HOURS')
+        ansiColor('xterm')
     }
 
     agent {
@@ -14,124 +73,285 @@ pipeline {
         }
     }
 
+    environment {
+        //变量名，用于存储input步骤的返回值
+        paramsMap = ''
+        // GA过程参数
+        paramsGA = ''
+    }
+
     parameters {
-        string(name: 'repo', defaultValue: 'Kyligence', description: 'Kap repo?')
-        string(name: 'branch', defaultValue: 'master', description: 'Kap branch?')
-        string(name: 'version', defaultValue: '4.5', description: 'Kap version?')
+        choice(name: 'doc_type', choices:'KE 4.5\nKE 4.5 test\nKE master_new\nkE 4.3.x_test\nKE 4.3\nKE 4.2\nKE 3.2\nKC 4.5\nTest Drive\nKC 4.5 test\nKC 4.3\nKC 3.2', description:'选择日志打包类型' )
+        booleanParam(name: 'check_deadlinks', defaultValue: true, description: '是否检查死链（无效链接）?')
+        // string(name: 'version', defaultValue: '4.5', description: '版本号?')
     }
 
     stages {
-        stage("Clone") {
+        stage("1.Pull Code") {
             steps {
                 container("git") {
-                    dir("sourcecode") {
+                    timestamps {
                         script {
-                            retry(3) {
-                                githubCheckout 'Kyligence-Enterprise-Manual', params.branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git'
+                            dir("sourcecode") {
+                                project = type_mapping.get(params.doc_type).get('project')
+                                branch = type_mapping.get(params.doc_type).get('branch')
+                                pullCodeFromGitMirror project, branch, true
+
+                                commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
+                                println "commitid: ${commitid}"
+                                
+                                package_info = getPackageInfo(type_mapping,params.doc_type,commitid)
+                                package_path = package_info.package_path
+                                file_name = package_info.file_name
+                                ga_name = package_info.ga_name
+
+                                try {
+                                    def existPackage = "${package_info.package_path}/${package_info.file_name}"
+                                    sh script: """
+                                        ls -l /var/cicd/handbook/${package_info.package_path}
+                                        cp /var/cicd/handbook/${existPackage} ${package_info.file_name}
+                                    """
+                                    exist_package = fileExists(package_info.file_name)
+                                    println "${package_info.package_path}/${package_info.file_name} is ${exist_package}"
+                                    exist_package2 = fileExists('/var/cicd/handbook/${existPackage}')
+                                    println "/var/cicd/handbook/${package_info.package_path}/${package_info.file_name} is ${exist_package2}"
+                                } catch (Exception err) {
+                                    echo err.getMessage()
+                                }
+                                sh 'ls -lh'
+                                sh """
+                                    rm -f .npmrc
+                                    echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
                             }
                         }
                     }
                 }
             }
         }
-        stage('Deadline Checker') {
+        
+        stage('2.Deadline Checker') {
+            when {
+                expression {
+                    return params.check_deadlinks
+                }
+            }
             steps {
                 container("build") {
-                    // dir("sourcecode") {
+                    dir("sourcecode") {
                         script {
-                            // retry(3) {
-                                // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
-                                def run_status = sh (
-                                    returnStatus: true,
-                                    script: 
-                                    """#!/bin/bash 
+                            sh 'ls -al'
+                            sh 'cat .npmrc'
+                            // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
+                            retry(3) {
+                                sh script: """#!/bin/bash 
                                     set +X
-                                    ls -l ../pipelines/local/Handbook-pdf-CD/script/
-                                    sh ../pipelines/local/Handbook-pdf-CD/script/check_deadlinks.sh  
-                                    """
-                                )
-                                print run_status
-                                // 失败强制退出
-                                if (run_status != 0) {
-                                    print '死链检查失败，请检查！'
-                                    // sh 'exit 1'
-                                }
-                            // }
+                                    sed -ie 's/\"search\"/\"-search\"/g' book.json
+                                    gitbook install
+                                """
+                            }
+                            if(project == 'Kyligence-Enterprise-Manual') {
+                                sh script: """#!/bin/bash 
+                                    set +X
+                                    chmod +x ./check_deadlinks.sh
+                                    /bin/bash -c ./check_deadlinks.sh
+                                """
+                            } else if(project == 'Cloud_Manual'){
+                                sh script: """#!/bin/bash 
+                                    set +X
+                                    chmod +x ./local_check_dead_link.sh
+                                    /bin/bash -c ./local_check_dead_link.sh
+                                """
+                            }else{
+                                println "The project [${project}] not support the deadline check."
+                            }
                         }
-//                         script{
-//                             retry(3){
-//                                 def check_status = sh(script: """#!/bin/bash +x
-// npm install -g markdown-link-check
-// succ=1
-// function check_dead_link(){
-//     for file in `ls \$1`
-//     do
-//         if [ -d \$1"/"\$file ]; then
-//             check_dead_link \$1"/"\$file \$2
-//         elif [ "\${file: 0-3 :3}" == ".md" ]; then
-//             markdown-link-check \$1"/"\$file -c check_dead_link_conf.json || succ=0
-//         fi
-//     done
-// }
-// echo "Start to check dead links."
-// check_dead_link en
-// check_dead_link zh-hans   
-// if [ \$succ -eq 0 ]; then
-//     echo "Found dead links, please find logs above."
-//     exit 1
-// fi || exit 0;
-//                                 """,returnStatus: true)
-//                             }
-//                             echo check_status
-//                             if(check_status == 0){
-//                                 echo "Found dead links, please find logs above."
-//                                 sh("exit 1")
-//                             }else{
-//                                 sh("exit 0")
-//                             }
-//                         }
                     }
-                // }
+                }
             }
         }
-        stage('Build') {
+        
+        stage('3.Build') {
             steps {
                 container("build") {
                     dir("sourcecode") {
                         script{
-                            retry(3){
-                                sh(script:"""
-                                gitbook install 
-                                gitbook build
-                                gitbook pdf
+                            if (!exist_package) {
+                                retry(5) {
+                                    if(!params.check_deadlinks) {
+                                        sh 'gitbook install'
+                                    }
+                                    sh (script:"""
+                                        gitbook build
+                                        echo "\033[33m gitbook build success\033[0m"
+
+                                        export PATH=$PATH:/opt/calibre
+                                        export LC_ALL=en_US.UTF-8
+                                        export LANG=en_US.UTF-8
+                                        
+                                        mv book.json book_tmp.json
+                                        sed -e '/\"star\"/d'  book_tmp.json > book.json
+                                        gitbook pdf
+                                        mv book_tmp.json book.json
+
+                                        echo "\033[36m gitbook pdf success\033[0m"
+                                    """)
+                                }
+
+                                file_name = package_info.file_name
+                                println "file_name: ${file_name}"
+
+                                sh (script:"""
+                                    mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
+                                    rm -rf _book/zh-cn
+                                    mv _book/zh-hans _book/zh-cn
+                                    mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
+
+                                    cd _book/
+                                    tar -zcvf ${file_name} * > /dev/null
                                 """)
+                                archiveArtifacts artifacts: '_book/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                                sh 'ls -al _book/'
+                                println "package_path: ${package_path}"
+
+                                sh script: """
+                                    mkdir -p /var/cicd/handbook/${package_path}
+                                    mv _book/${file_name} ${file_name}
+                                    sh -lh _book/
+                                    sh -lh .
+                                    cp ${file_name} /var/cicd/handbook/${package_path}
+                                """
+                                exist_package = true
+                            }else{
+                                sh "cp /var/cicd/handbook/${package_path}/${file_name} ${file_name}"
+                                println "The package: ${file_name} is exist, Please reuse the it. \n 包已存在，不用重复打包"
                             }
-                            sh (script:"""
-                            mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
-                            rm -rf _book/zh-cn
-                            mv _book/zh-hans _book/zh-cn
-                            mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
-                            """)
 
-                            commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
-                            sh (script:"""
-                            echo ${commitid}
-                            cd _book/
-                            tar -zcvf /var/cicd/handbook/Enterprise_v${version}-${BUILD_NUMBER}-${commitid}.tar.gz * > /dev/null
-                            """)
-
-                            sh("ls -al /var/cicd/handbook/")
+                            sh("ls -lh /var/cicd/handbook/${package_path}")
                         }
                     }
                 }
             }
         }
-        stage('Upload') {
+
+        stage('4.Upload') {
+            when {
+                expression {
+                    return exist_package
+                }
+            }
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        println 'Upload'
-                        sh("ls -al /var/cicd/handbook/")
+                        script {
+                            println "package_path: ${package_path}, file_name: ${file_name}, ga_name: ${ga_name}"
+                            sh "ls -lh /var/cicd/handbook/${package_path}"
+                            sh "mv ${file_name} ${ga_name}"
+                            sh "ls -lh"
+
+                            println '\033[36mUploading... \033[0m'
+                            sh """#!/bin/bash 
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/release/${package_path}/"
+                                scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}/
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/"
+                            """
+                            println '\033[36mUploaded success\033[0m'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('5.Deploy') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${ga_name}] Ready to Deploy", """
+                                <h3>Hi,</h3><br />
+                                <p>Handbook [${ga_name}] Ready to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
+                                <p>Please check it and Confirm on the pipeline stage: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                            """)
+
+                            def checkMsg = "该版本可以发布吗？"
+                            println checkMsg
+                            paramsGA = input (
+                                message: checkMsg,
+                                ok: '确认！',
+                                // submitter:'liming.meng,meixiu.chen,enwei.jiao',
+                                submitterParameter:'APPROVER'
+                                // parameters:[
+                                //     booleanParam(name: "confirmUpload", defaultValue: false, description: '是否确认上传')
+                                // ]
+                            )
+                            // if(paramsGA['confirmUpload']){
+                            // backup last version
+                            backup_name = sh(script:"${project}-`date '+%Y%m%d-%H%M'`", returnStdout: true).trim()
+                            println "backup_name: ${backup_name}"
+                            sh """
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /home/ec2-user/release/${package_path}/ > /dev/null"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -f /home/ec2-user/release/${package_path}/${ga_name}"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/"
+
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p  /home/ec2-user/backup/${backup_name}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /opt/books/${package_path}/ /home/ec2-user/backup/${backup_name}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/${backup_name}/"
+
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /home/ec2-user/release/${package_path}/ /opt/books/${package_path}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                            """
+                            println '\033[36mDeploy last version success\033[0m'
+                            // }
+
+                            _sendNotify(params.doc_type, "Handbook [${ga_name}] Success to Deploy", """
+                                <h3>Hi,</h3><br />
+                                <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
+                                <p>It's APPROVED by ${APPROVER}, the pipeline stage: <a href="${env.BUILD_URL}>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                            """)
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('6.Rollback') {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            def checkMsg = "确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点 Abort 结束流程，整个流程4小时后会自动截止）"
+                            println checkMsg
+                            paramsGA = input (
+                                message: checkMsg,
+                                ok: '确认！',
+                                // submitter:'liming.meng,meixiu.chen,enwei.jiao',
+                                submitterParameter:'APPROVER'
+                            )
+                            println "backup_name: ${backup_name}"
+                            sh """
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /opt/books/${package_path}/ /opt/books/${package_path}-bak/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /home/ec2-user/backup/${backup_name}/ /opt/books/${package_path}/"
+
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}-bak/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -rf /opt/books/${package_path}-bak/"
+                            """
+                            println '\033[36mRollback to last version success\033[0m'
+
+                            _sendNotify(params.doc_type, "Handbook [${ga_name}] Rollback Succes", """
+                                <h3>Hi,</h3><br />
+                                <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>Rollback from backup/${backup_name}.tar.gz to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}.tar.gz</p>
+                                <p>It's APPROVED by ${APPROVER}, the pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
+                            """)
+                        }
                     }
                 }
             }

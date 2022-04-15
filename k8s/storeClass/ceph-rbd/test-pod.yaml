@@ -21,6 +21,13 @@ spec:
   - name: ceph-busybox
     image: busybox
     command: ["sleep", "60000"]
+    resources:
+      request:
+        memory: "50Mi"
+        cpu: "100m"
+      limits:
+        memory: "100Mi"
+        cpu: "200m"
     volumeMounts:
     - name: ceph-vol1
       mountPath: /usr/share/busybox
