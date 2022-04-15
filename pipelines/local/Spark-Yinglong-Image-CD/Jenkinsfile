@@ -1,0 +1,219 @@
+#!groovy
+
+@Library('devopslib') _
+
+
+def origin_spark_folder_name
+
+def image
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='10.1.9.200:5000'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+    }
+
+    parameters {
+        string(name: 'package_path', defaultValue: 'io.kyligence.spark.yinglong')
+        string(name: 'file_name', defaultValue: 'spark-newten-3.2.0-4.x-r60.tgz')
+        string(name: 'tag', defaultValue: '', description: '3.2.0-r60-yinglong-beta1')
+        booleanParam(name: 'push', defaultValue: true, description: '是否推送镜像')
+    }
+
+    stages {
+        stage("Checkout efficiency-automation Source Code") {
+            steps {
+                container("build") {
+                    dir("efficiency") {
+                        retry(3) {
+                            timestamps {
+                                checkout([$class         : 'GitSCM',
+                                          branches         : [[name: "main"]],
+                                          userRemoteConfigs: [[credentialsId: "kyligence-git",
+                                                               name         : "origin",
+                                                               refspec      : "+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*",
+                                                               url          : "https://github.com/Kyligence/efficiency-automation.git"]],
+                                          browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/efficiency-automation"],
+                                          extensions       : [
+                                                  [$class: 'CleanBeforeCheckout'],
+                                                  [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
+                                          ]
+                                ])
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Download dependencies jar") {
+            steps {
+                container('python3') {
+                    timestamps {
+                        dir("efficiency/dependencies") {
+                            script {
+                                sh "pip3 install -r ../jenkins-in-k8s/dockerfiles/ci-tools/requirements.txt"
+                                def run_command = "python3 ../jenkins-in-k8s/dockerfiles/ci-tools/src/version.py --config ../spark3onk8s/pipeline/config.yaml --module newten --s3path packages"
+                                def filelist = sh returnStdout: true ,script: run_command
+                                def filelists = filelist.split("\n")
+                                def files = [:]
+
+                                for (int i = 0; i < filelists.size(); ++i) {
+                                    file = filelists[i].split(" ")
+                                    final path = file[1]
+                                    final name = file[0]
+                                    if (!name.endsWith(".jar")) {
+                                        files[file[0]] = {
+                                            withAWS(region:'us-west-2', credentials:'aws_global_s3_cp') {
+                                                s3Download(file:"$name", bucket:'kyligencecloud-ci', path:"$path", force:true)
+                                            }
+                                        }
+                                    }
+                                }
+                                files["jar"] = {
+                                    withAWS(region:'us-west-2', credentials:'aws_global_s3_cp') {
+                                        for (int i = 0; i < filelists.size(); ++i) {
+                                            file = filelists[i].split(" ")
+                                            final path = file[1]
+                                            final name = file[0]
+                                            if (name.endsWith(".jar")) {
+                                                s3Download(file:"$name", bucket:'kyligencecloud-ci', path:"$path", force:true)
+                                            }
+                                        }
+                                    }
+                                }
+                                parallel files
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Package spark") {
+            steps {
+                container('build') {
+                    timestamps {
+                        script {
+                            sh "echo ${package_path} == ${file_name}"
+                            withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                downloadRawArtifactsByApi('raw-tars-hosted', package_path, file_name, user, passwd)
+                            }
+
+                            origin_spark_folder_name= sh returnStdout: true , script:"tar -tzf $file_name | head -1 | cut -f1 -d\"/\""
+
+                            origin_spark_folder_name=origin_spark_folder_name.trim()
+                            sh """
+                              echo ${origin_spark_folder_name}
+                              tar -zxf $file_name -C ./
+                              rm -rf $file_name
+                              ls -al
+                            """
+                            spark_folder_name="spark"
+                            sh """
+                              rm -rf $spark_folder_name
+                              mv $origin_spark_folder_name $spark_folder_name
+                              # rm -rf $spark_folder_name/lib/spark-examples-*
+                              # rm -rf $spark_folder_name/examples
+                              # rm -rf $spark_folder_name/data
+                              # rm -rf $spark_folder_name/R
+                              # rm -rf $spark_folder_name/jars/xercesImpl-2.9.1.jar
+                            """
+
+                            ["aliyun-java-sdk-core-3.4.0.jar",
+                             "aws-java-sdk-core-1.11.95.jar",
+                             "gcs-connector-hadoop2-latest.jar",
+                             "jmespath-java-1.11.95.jar",
+                             "aliyun-java-sdk-ecs-4.2.0.jar",
+                             "aws-java-sdk-kms-1.11.95.jar",
+                             "gcsio-1.6.3.jar",
+                             "util-1.9.17.jar",
+                             "kap-source*.jar",
+                             "kap-storage*.jar",
+                             "spark-metric-*.jar",
+                             "alluxio*.jar",
+                             "wildfly-openssl-java-1.0.8.Final.jar",
+                             "aliyun-java-sdk-ram-3.0.0.jar",
+                             "aws-java-sdk-s3-1.11.95.jar",
+                             "hadoop-*.jar",
+                             "hadoop-azurebfs-1.0-SNAPSHOT.jar",
+                             "aliyun-java-sdk-sts-3.0.0.jar",
+                             "azure-storage-2.0.0.jar",
+                             "jdom-1.1.jar",
+                             "aliyun-sdk-oss-3.5.0.jar",
+                             "flogger-0.4.jar",
+                             "jettison-1.1.jar",
+                             "hudi*.jar",
+                             "mysql-connector-java-5.1.41.jar",
+                             "mssql-jdbc-7.2.1.jre8.jar",
+                             "snowflake-jdbc-3.8.5.jar"].each{
+                                sh "cp efficiency/dependencies/$it $spark_folder_name/jars"
+                            }
+
+
+                            def packages_exec = [:]
+
+                            packages_exec["SparkPackage"] = {
+                                script {
+                                    def target_spark_tar = file_name
+                                    sh """
+                                rm -f $file_name
+                                cp -rf spark $origin_spark_folder_name
+                                cp $origin_spark_folder_name/kubernetes/dockerfiles/spark/Dockerfile $origin_spark_folder_name/
+                                sed -i 's/procps/& --option=Dpkg::Options::=--force-confdef/' $origin_spark_folder_name/Dockerfile
+                                sed -i 's/185/0/g' $origin_spark_folder_name/Dockerfile
+                               
+                                sed -i '/COPY data \\/opt\\/spark\\/data/a\\RUN mkdir -p \\/kylinstorage\\/kylin\\/spark-history/' $origin_spark_folder_name/Dockerfile
+                                sed -i '/ENV SPARK_HOME \\/opt\\/spark/a\\ENV LD_LIBRARY_PATH \\/lib64/' $origin_spark_folder_name/Dockerfile
+                                cat $origin_spark_folder_name/Dockerfile
+                              """
+                                }
+                            }
+                            parallel packages_exec
+                        }
+                    }
+                }
+            }
+        }
+
+
+        stage('Build docker image') {
+            steps {
+                container('docker') {
+                    dir("$origin_spark_folder_name") {
+                        script {
+                            image = docker.build 'kylin/spark3'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('4.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            image.push("$tag")
+                            image.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

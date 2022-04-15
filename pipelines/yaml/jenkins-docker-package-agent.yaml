@@ -61,6 +61,19 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+    - name: "python3"
+      image: "10.1.9.200:5000/py3:alpine3.15.feishu.v1"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          cpu: "300m"
+          memory: "500Mi"
+        limits:
+          cpu: "300m"
+          memory: "1Gi"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
