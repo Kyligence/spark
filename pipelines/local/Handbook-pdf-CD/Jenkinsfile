@@ -95,7 +95,7 @@ pipeline {
                             dir("sourcecode") {
                                 project = type_mapping.get(params.doc_type).get('project')
                                 branch = type_mapping.get(params.doc_type).get('branch')
-                                pullCodeFromGitMirror project, branch, true
+                                pullCodeFromGitMirror project, branch
 
                                 commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
                                 println "commitid: ${commitid}"
@@ -218,8 +218,8 @@ pipeline {
                                 sh script: """
                                     mkdir -p /var/cicd/handbook/${package_path}
                                     mv _book/${file_name} ${file_name}
-                                    sh -lh _book/
-                                    sh -lh .
+                                    ls -lh _book/
+                                    ls -lh .
                                     cp ${file_name} /var/cicd/handbook/${package_path}
                                 """
                                 exist_package = true

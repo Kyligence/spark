@@ -176,6 +176,7 @@ def gitCodeKe(back, front) {
                         rm -f .npmrc
                         echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
                         cat .npmrc
+                        ls -lh .
                     """
                 }
             }
