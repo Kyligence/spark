@@ -304,8 +304,8 @@ pipeline {
                             """
                             println 'Deploy last version successful'
                             // }
-                            def approver = paramsGA['APPROVER']
-                            println "approver: ${approver}"
+                            // def approver = paramsGA['APPROVER']
+                            // println "approver: ${approver}"
 
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Deploy Successful", """
                                 <h3>Hi,</h3><br />
@@ -341,8 +341,8 @@ pipeline {
                             """
                             println '\033[36mRollback to last version success\033[0m'
 
-                            def approver = paramsGA['APPROVER']
-                            println "approver: ${approver}"
+                            // def approver = paramsGA['APPROVER']
+                            // println "approver: ${approver}"
 
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback Successful", """
                                 <h3>Hi,</h3><br />
