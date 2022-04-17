@@ -304,11 +304,12 @@ pipeline {
                             """
                             println 'Deploy last version successful'
                             // }
+                            def approver = paramsGA['APPROVER']
 
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Deploy Successful", """
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
-                                <p>It is APPROVED by ${paramsGA['APPROVER']}, the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>It is APPROVED by ${approver}, the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
                         }
                     }
@@ -344,11 +345,12 @@ pipeline {
                             """
                             println '\033[36mRollback to last version success\033[0m'
 
-                            _sendNotify(params.doc_type, "Handbook [${project}] Rollback Successful", """
+                            def approver = paramsGA['APPROVER']
+                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback Successful", """
                                 <h3>Hi,</h3><br />
                                 <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>Rollback from backup/${backup_name}.tar.gz to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}.tar.gz</p>
-                                <p>It's APPROVED by ${paramsGA['APPROVER']}, the pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
+                                <p>It's APPROVED by ${approver}, the pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
                             """)
                         }
                     }
