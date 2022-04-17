@@ -82,7 +82,7 @@ pipeline {
 
     parameters {
         choice(name: 'doc_type', choices:'KE 4.5\nKE 4.5 test\nKE master_new\nkE 4.3.x_test\nKE 4.3\nKE 4.2\nKE 3.2\nKC 4.5\nTest Drive\nKC 4.5 test\nKC 4.3\nKC 3.2', description:'选择日志打包类型' )
-        booleanParam(name: 'check_deadlinks', defaultValue: true, description: '是否检查死链（无效链接）?')
+        booleanParam(name: 'check_deadlinks', defaultValue: false, description: '是否检查死链（无效链接）?')
         // string(name: 'version', defaultValue: '4.5', description: '版本号?')
     }
 
@@ -305,10 +305,10 @@ pipeline {
                             println '\033[36mDeploy last version success\033[0m'
                             // }
 
-                            _sendNotify(params.doc_type, "Handbook [${ga_name}] Success to Deploy", """
+                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${ga_name}] Success to Deploy", """
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
-                                <p>It's APPROVED by ${paramsGA['APPROVER']}, the pipeline stage: <a href="${env.BUILD_URL}>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>It's APPROVED by ${paramsGA['APPROVER']}, the pipeline stage: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
                         }
                     }
