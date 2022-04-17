@@ -270,7 +270,7 @@ pipeline {
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Ready to Deploy", """
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Ready to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
-                                <p>Please check it and Confirm on the pipeline stage: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>Please check it and Confirm on the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
 
                             def checkMsg = "该版本可以发布吗？"
@@ -302,13 +302,13 @@ pipeline {
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /home/ec2-user/release/${package_path}/ /opt/books/${package_path}/"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
                             """
-                            println '\033[36mDeploy last version success\033[0m'
+                            println 'Deploy last version successful'
                             // }
 
-                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${ga_name}] Success to Deploy", """
+                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Deploy Successful", """
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
-                                <p>It's APPROVED by ${paramsGA['APPROVER']}, the pipeline stage: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>It is APPROVED by ${paramsGA['APPROVER']}, the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
                         }
                     }
@@ -344,7 +344,7 @@ pipeline {
                             """
                             println '\033[36mRollback to last version success\033[0m'
 
-                            _sendNotify(params.doc_type, "Handbook [${ga_name}] Rollback Succes", """
+                            _sendNotify(params.doc_type, "Handbook [${project}] Rollback Successful", """
                                 <h3>Hi,</h3><br />
                                 <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>Rollback from backup/${backup_name}.tar.gz to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}.tar.gz</p>
@@ -354,6 +354,8 @@ pipeline {
                     }
                 }
             }
+            // TODO 清理文件
+
         }
     }
 }
