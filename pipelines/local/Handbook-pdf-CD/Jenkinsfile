@@ -178,10 +178,10 @@ pipeline {
                     dir("sourcecode") {
                         script{
                             if (!exist_package) {
+                                if(!params.check_deadlinks) {
+                                    sh 'gitbook install'
+                                }
                                 retry(5) {
-                                    if(!params.check_deadlinks) {
-                                        sh 'gitbook install'
-                                    }
                                     sh (script:"""
                                         gitbook build
                                         echo "\033[33m gitbook build success\033[0m"
@@ -271,7 +271,7 @@ pipeline {
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${ga_name}] Ready to Deploy", """
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Ready to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
-                                <p>Please check it and Confirm on the pipeline stage: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>Please check it and Confirm on the pipeline stage: <a href='http://cicd.ops.kyligence.tech'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
 
                             def checkMsg = "该版本可以发布吗？"
@@ -287,7 +287,7 @@ pipeline {
                             )
                             // if(paramsGA['confirmUpload']){
                             // backup last version
-                            backup_name = sh(script:"${project}-`date '+%Y%m%d-%H%M'`", returnStdout: true).trim()
+                            backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`", returnStdout: true).trim()
                             println "backup_name: ${backup_name}"
                             sh """
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /home/ec2-user/release/${package_path}/ > /dev/null"

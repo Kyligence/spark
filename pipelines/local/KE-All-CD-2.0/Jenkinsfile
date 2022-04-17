@@ -20,7 +20,7 @@ def exist_package = false
 def package_info =  [:]
 
 // 根据发布类型自动获取分支
-def getBranch(deployType, envStage) {
+def getBranch(deployType, envStage, version) {
     def _result
     def _branch_release = 'newten'
     def _branch_qa = 'newten-qa'
@@ -30,7 +30,7 @@ def getBranch(deployType, envStage) {
     switch (deployType) {
         case 'Newten':
             _branch_release = branchCollection[0]
-            _branch_qa = "${_branch_release}-qa"
+            _branch_qa = "ke-${version}-qa"
             _branch_dev = "${_branch_release}-dev"
             break
         case 'SP-4.5.x':
@@ -40,7 +40,7 @@ def getBranch(deployType, envStage) {
             break
         case 'KE-4.3.x':
             _branch_release = branchCollection[2]
-            _branch_qa = "${branchCollection[1]}-qa"
+            _branch_qa = "ke-${version}-qa"
             _branch_dev = "${branchCollection[1]}-dev"
             break
         case 'SP-4.3.x':
@@ -327,7 +327,7 @@ pipeline {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
         choice(name: 'deployWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
         choice(name: 'deployType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
-        string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范')
+        string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
         booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3')
         // booleanParam(name: 'replaceFouse', defaultValue: false, description: '手动强制打新包，覆盖缓存包')
@@ -345,7 +345,7 @@ pipeline {
                         error 'version 版本号格式有误'
                     }
                     if (params.deployWay == 'Auto Select') {
-                        def _branch = getBranch(deployType, envStage)
+                        def _branch = getBranch(deployType, envStage, version)
                         release_branch_front = _branch
                         release_branch_back = _branch
                         def cms = gitCodeKe(_branch, _branch)
