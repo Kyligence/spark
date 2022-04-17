@@ -253,6 +253,7 @@ pipeline {
                             println '\033[36mUploading... \033[0m'
                             sh """#!/bin/bash 
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mkdir -p /home/ec2-user/release/${package_path}/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo chmod 766 /home/ec2-user/release/${package_path}/"
                                 scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}/
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/"
                             """
