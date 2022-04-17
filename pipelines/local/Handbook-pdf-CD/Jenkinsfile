@@ -338,11 +338,6 @@ pipeline {
 
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /opt/books/${package_path}/ /opt/books/${package_path}-bak/"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mv /home/ec2-user/backup/${backup_name}/ /opt/books/${package_path}/"
-
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}-bak/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -rf /opt/books/${package_path}-bak/"
                             """
                             println '\033[36mRollback to last version success\033[0m'
 
@@ -363,13 +358,46 @@ pipeline {
             post {
                 always {
                     echo "post condition executed: always ..."
+                    container("build") {
+                        dir("sourcecode") {
+                            script {
+                                println "backup_name: ${backup_name}"
+                                sh """
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                """
+                            }
+                        }
+                    }
                 }
-                changed {
-                    echo "post condition executed: changed ..."
+                success {
+                    echo "post condition executed: success ..."
+                    container("build") {
+                        dir("sourcecode") {
+                            script {
+                                sh """
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}-bak/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -rf /opt/books/${package_path}-bak/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/"
+                                """
+                            }
+                        }
+                    }
                 }
                 aborted {
                     echo "post condition executed: aborted ..."
-
+                    container("build") {
+                        dir("sourcecode") {
+                            script {
+                                println "backup_name: ${backup_name}"
+                                sh """
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/${backup_name}/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -rf /home/ec2-user/backup/${backup_name}/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                """
+                            }
+                        }
+                    }
                 }
             }
         }
