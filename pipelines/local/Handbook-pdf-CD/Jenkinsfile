@@ -95,7 +95,7 @@ pipeline {
                             dir("sourcecode") {
                                 project = type_mapping.get(params.doc_type).get('project')
                                 branch = type_mapping.get(params.doc_type).get('branch')
-                                pullCodeFromGitMirror project, branch, true
+                                pullCodeFromGitMirror project, branch
 
                                 commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
                                 println "commitid: ${commitid}"
