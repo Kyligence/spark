@@ -20,7 +20,11 @@ def sendEmail(subject,to,body,from=null) {
         to: to,
         from: from ?: 'devops_support@kyligence.io',
         //定义html 模版
-        body: body
+        body: """${body}
+            <br />
+            <hr />
+            <p>Devops Jenkins</p>
+        """
     )
 }
 

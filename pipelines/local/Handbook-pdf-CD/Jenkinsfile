@@ -267,7 +267,7 @@ pipeline {
                 container("build") {
                     dir("sourcecode") {
                         script {
-                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${ga_name}] Ready to Deploy", """
+                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Ready to Deploy", """
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Ready to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
                                 <p>Please check it and Confirm on the pipeline stage: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
