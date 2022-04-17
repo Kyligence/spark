@@ -113,8 +113,6 @@ pipeline {
                                     """
                                     exist_package = fileExists(package_info.file_name)
                                     println "${package_info.package_path}/${package_info.file_name} is ${exist_package}"
-                                    exist_package2 = fileExists('/var/cicd/handbook/${existPackage}')
-                                    println "/var/cicd/handbook/${package_info.package_path}/${package_info.file_name} is ${exist_package2}"
                                 } catch (Exception err) {
                                     echo err.getMessage()
                                 }
@@ -251,11 +249,11 @@ pipeline {
                             sh "ls -lh"
 
                             println '\033[36mUploading... \033[0m'
-                            sh """#!/bin/bash 
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mkdir -p /home/ec2-user/release/${package_path}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo chmod 766 /home/ec2-user/release/${package_path}/"
-                                scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}/
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/"
+                            sh """#!/bin/bash
+                                set +X
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo mkdir -p /home/ec2-user/release/${package_path}"
+                                scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}"
                             """
                             println '\033[36mUploaded success\033[0m'
                         }
