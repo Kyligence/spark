@@ -1,5 +1,5 @@
 def call(String project, String branch, Boolean fromRemote=false) {
-    println "param: branch/commit: ${branch}"
+    println "pullCodeFromGitMirror -> params: project: ${project}, branch/commit: ${branch}, fromRemote: ${fromRemote}"
     if (!branch) {
         error 'branch 参数不能为空'
     }

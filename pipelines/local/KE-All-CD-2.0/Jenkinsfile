@@ -136,19 +136,7 @@ def gitCodeKe(back, front) {
                 if (!back) {
                     error 'commitId_back 参数不能为空'
                 }
-
-                // println 'Sync the git mirror'
-                // sshCmdWithCredentials(
-                //     'bash -c /var/lib/git/pull.sh',
-                //     'private_git',
-                //     ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                // )
-
-                println 'checkout KAP'
-                retry(3) {
-                    githubCheckout 'KAP', back
-                    // githubCheckout 'KAP', back, 'https', 'github.com'
-                }
+                pullCodeFromGitMirror 'KAP', back
 
                 release_commitid_back = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                 println "release_commitid_back: ${release_commitid_back}"
@@ -165,10 +153,7 @@ def gitCodeKe(back, front) {
 
                 sh 'rm -rf ./kystudio'
                 dir('kystudio') {
-                    retry(3) {
-                        githubCheckout 'KAP_Frontend', _front
-                        // githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
-                    }
+                    pullCodeFromGitMirror 'KAP_Frontend', _front
                     release_commitid_front = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                     println "release_commitid_front: ${release_commitid_front}"
                     result.release_commitid_front = release_commitid_front
@@ -479,7 +464,7 @@ pipeline {
         stage('4.Approve GA') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package
+                    return params.envStage == 'GA' && exist_package && !params.noSpark
                 }
             }
             steps {
@@ -505,7 +490,7 @@ pipeline {
         stage('5.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package
+                    return params.envStage == 'GA' && exist_package && !params.noSpark
                 }
             }
             failFast true
@@ -535,7 +520,7 @@ pipeline {
         stage('6.Tag') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package
+                    return params.envStage == 'GA' && exist_package && !params.noSpark
                 }
             }
             steps {
