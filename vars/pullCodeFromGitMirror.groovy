@@ -7,7 +7,7 @@ def call(String project, String branch, Boolean fromRemote=false) {
     if(!fromRemote) { // 从本地镜像获取
         println 'Sync the git mirror'
         sshCmdWithCredentials(
-            'sh /var/lib/git/pull.sh',
+            "sh /var/lib/git/pull-repo.sh ${project}",
             'private_git',
             ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
         )
