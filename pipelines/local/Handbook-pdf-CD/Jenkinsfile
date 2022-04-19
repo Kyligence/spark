@@ -255,6 +255,7 @@ pipeline {
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/release/${package_path}"
                                 scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}"
+                                echo '------'
                             """
                             println '\033[36mUploaded success\033[0m'
                         }
@@ -287,23 +288,20 @@ pipeline {
                             )
                             // if(paramsGA['confirmUpload']){
                             // backup last version
-                            backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`", returnStdout: true).trim()
+                            backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`.tar.gz", returnStdout: true).trim()
                             println "backup_name: ${backup_name}"
                             sh """
-                                echo '解压上传的包'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /home/ec2-user/release/${package_path}/${package_path} > /dev/null"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/${package_path}"
-
-                                echo '备份旧版文件夹'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p  /home/ec2-user/backup/${backup_name}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/ /home/ec2-user/backup/${backup_name}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/${backup_name}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/${backup_name}/${package_path}/"
+                                echo '备份旧版'
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "cd /opt/books/${package_path}/ && tar -zcvf ${backup_name} * > /dev/null"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                echo '------'
 
                                 echo '发布上传站点'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /home/ec2-user/release/${package_path}/${package_path} /opt/books/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                echo '------'
                             """
                             println 'Deploy last version successful'
                             // }
@@ -338,14 +336,13 @@ pipeline {
                             sh """
                                 echo '------'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                echo '------'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
                                 echo '------'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p  /home/ec2-user/backup/temp"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/ /home/ec2-user/backup/temp"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /home/ec2-user/backup/${backup_name} /opt/books/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/backup/${backup_name} -C /opt/books/${package_path}/ > /dev/null"
                                 echo '------'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                echo '------'
                             """
                             println '\033[36mRollback to last version success\033[0m'
 
@@ -366,60 +363,50 @@ pipeline {
                 always {
                     // 每次列出来发布后的结果和备份的结果，可以检查
                     echo "post condition executed: always ..."
-                    container("build") {
-                        dir("sourcecode") {
-                            script {
-                                println "backup_name: ${backup_name}"
-                                sh """
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                """
-                            }
-                        }
-                    }
                 }
                 success {
-                    echo "post condition executed: success ..."
-                    // 回滚成功，删除发布的包
+                    echo "回滚成功，删除发布的包，备份包"
+                    // 回滚成功，删除发布的包，备份包
                     container("build") {
                         dir("sourcecode") {
                             script {
                                 sh """
-                                    echo '查看文件夹'
+                                    echo '---查看文件夹---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-
-                                    echo '删除临时文件夹'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -rf /home/ec2-user/backup/temp"
                                     echo '------'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/"
 
-                                    echo '删除上传压缩包'
+                                    echo '---删除上传压缩包---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/release/${package_path}/${ga_name}"
+                                    echo '---删除备份压缩包---'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/backup/${backup_name}"
+                                    
+                             
+                                    echo '---查看文件夹---'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/"
+                                    echo '------'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                    echo '------'
                                 """
                             }
                         }
                     }
                 }
                 aborted {
-                    echo "post condition executed: aborted ..."
+                    echo "发布成功无需回滚，删除发布的包，备份包"
                     container("build") {
                         dir("sourcecode") {
                             script {
-                                println "backup_name: ${backup_name}"
                                 sh """
-                                    echo '删除压缩包'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -f /home/ec2-user/release/${package_path}/${ga_name}"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}/"
-                                    echo '删除备份包'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/${package_path}/"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "sudo rm -rf /home/ec2-user/backup/${package_path}/"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                    echo '---删除上传压缩包---'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/release/${package_path}/${ga_name}"
+                                    echo '---删除备份压缩包---'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/backup/${backup_name}"
                                 """
                             }
                         }
