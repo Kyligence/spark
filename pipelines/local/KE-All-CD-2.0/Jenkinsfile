@@ -117,6 +117,7 @@ def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
     }
 }
 
+// Moved
 def sendEmail(subject,to,body,from='devops_support@kyligence.io') {
     emailext (
         subject: subject,
@@ -171,6 +172,7 @@ def gitCodeKe(back, front) {
     return result
 }
 
+// Moved
 def gitInit(base, project='KAP', repo='Kyligence') {
     sh "echo '#!/bin/bash' >> credential-helper.sh"
     sh "echo 'echo username=\$GIT_USERNAME' >> credential-helper.sh"
@@ -187,46 +189,13 @@ def gitInit(base, project='KAP', repo='Kyligence') {
             git fetch --all
             git branch ${base} origin/${base}
         """
-                    }
-}
-
-def createBranch(base, branch, project='KAP', repo='Kyligence', isCloned=true) {
-    println "createBranch -> base[${base}], branch[${branch}], project[${project}], repo[${repo}]"
-    if (!isCloned) {
-        gitInit(base, project, repo)
-    }
-    sh script:"""
-        git checkout -b ${branch} origin/${base}
-        git push --set-upstream origin ${branch}
-    """
-}
-
-def createPR(repoURL, base, head) {
-    withCredentials([usernamePassword(credentialsId: 'kyligence-git', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-        print "createPR -> repoURL[${repoURL}],base[${base}],head[${head}]"
-        def prScript= """curl -H "Content-Type: application/json" \
-        -H "Accept: application/vnd.github.v3+json" \
-        -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN}" \
-        -X POST \
-        ${repoURL}/pulls \
-        -d '{ \
-            "title": "from ${head} to ${base}", \
-            "head": "${head}", \
-            "base": "${base}" \
-        }'"""
-        print prScript
-        def result = sh(script: prScript, returnStdout: true)
-        def jsonObj = readJSON text: result
-        if (jsonObj['html_url'] != null) {
-            return jsonObj['html_url']
-        } else {
-            return it
-        }
     }
 }
 
+// Moved
 def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     println "gitTag -> base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
+    GIT_JEKNINS_TOKEN = credentials('jenkins-token')
     if (!isCloned) {
         gitInit(base, project, repo)
     }
@@ -305,6 +274,10 @@ pipeline {
         // tester emails
         tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
         fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io'''
+        // dev eamils
+        dev_regular_emails = 'enwei.jiao@kyligence.io;yifan.zhang@kyligence.io'
+        dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
+        dev_front_emails = 'qian.xia@kyligence.io'
         // product emails
         product_emails = 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;kaiqi.xue@kyligence.io;lina.liu@kyligence.io;xinxing.wu@kyligence.io;zhao.han@kyligence.io;yang.li@kyligence.io'
     }
@@ -312,10 +285,10 @@ pipeline {
     parameters {
         // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
         choice(name: 'deployWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
-        choice(name: 'deployType', choices:'Newten\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程' )
+        choice(name: 'deployType', choices:'Regular\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列' )
         string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-        booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3')
+        booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3（不了解请勿勾选）')
         // booleanParam(name: 'replaceFouse', defaultValue: false, description: '手动强制打新包，覆盖缓存包')
     }
 
@@ -412,11 +385,11 @@ pipeline {
                     }
                 }
             }
-            // post {
-            //     success {
-            //         jiraSendBuildInfo()
-            //     }
-            // }
+            post {
+                success {
+                    jiraSendBuildInfo()
+                }
+            }
         }
         stage('3.Dev/QA Upload') {
             when {
@@ -432,7 +405,7 @@ pipeline {
                     }
                     post {
                         success {
-                            sendEmail(
+                            sendNotify('EMAIL',
                                 "SUCCESSFUL to Upload the Tar into the Azure CN server'",
                                 // "liming.meng@kyligence.io",
                                 tester_emails,
@@ -543,7 +516,8 @@ pipeline {
                                 println "frontend [KAP_Frontend] commitId: ${fcid}"
                             }
 
-                            sendEmail(
+                            sendNotify(
+                                'EMAIL',
                                 "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
                                 // "liming.meng@kyligence.io",
                                 product_emails,

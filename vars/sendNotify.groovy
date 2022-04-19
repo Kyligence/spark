@@ -17,7 +17,7 @@ def call(String way,String subject,String to,String body,String from=null) {
 def sendEmail(subject,to,body,from=null) {
     emailext (
         subject: subject,
-        to: to,
+        to: "devops_support@kyligence.io;${to}",
         from: from ?: 'devops_support@kyligence.io',
         //定义html 模版
         body: """${body}

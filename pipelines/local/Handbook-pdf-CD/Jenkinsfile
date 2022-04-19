@@ -2,20 +2,13 @@
 
 @Library('devopslib') _
 
-def package_path
-
+def package_pat
 def file_name
-
 def ga_name
-
 def backup_name
-
 def project
-
 def branch
-
 def commitid
-
 def paramsMap
 // 包存在
 def exist_package = false
@@ -56,9 +49,9 @@ def getPackageInfo(type_mapping, doc_type, cid) {
 }
 
 def _sendNotify(doc_type,subject,msg){
-    // def emails = ['KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
-    //     'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io']
-    def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
+    def emails = ['KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
+        'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io']
+    // def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
     def notifyTo = doc_type.indexOf('KE') == 0 ? emails.get('KE') : emails.get('KC')
     sendNotify('EMAIL',subject,notifyTo,msg)
 }
@@ -313,6 +306,7 @@ pipeline {
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
                                 <p>The pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>https://docs.kyligence.io/books/${package_path}/</p>
                             """)
                         }
                     }
