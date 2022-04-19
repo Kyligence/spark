@@ -21,6 +21,7 @@ def package_info =  [:]
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
+    print "getBranch -> deployType[${deployType}],envStage[${envStage}],version[${version}]"
     def _result
     def _branch_release = 'newten'
     def _branch_qa = 'newten-qa'
@@ -323,14 +324,14 @@ pipeline {
             steps {
                 script {
                     def reg = /^\d(\.\d+){1,4}$/
-                    if (!version) {
+                    if (!params.version) {
                         error 'version 版本号不能为空'
                     }
-                    if (!version.matches(reg)) {
+                    if (!params.version.matches(reg)) {
                         error 'version 版本号格式有误'
                     }
                     if (params.deployWay == 'Auto Select') {
-                        def _branch = getBranch(deployType, envStage, version)
+                        def _branch = getBranch(params.deployType, params.envStage, params.version)
                         release_branch_front = _branch
                         release_branch_back = _branch
                         def cms = gitCodeKe(_branch, _branch)
