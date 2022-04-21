@@ -292,6 +292,7 @@ pipeline {
                             println "backup_name: ${backup_name}"
                             sh """
                                 echo '备份旧版'
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/${package_path}/"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "cd /opt/books/${package_path}/ && tar -zcvf ${backup_name} * > /dev/null"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
