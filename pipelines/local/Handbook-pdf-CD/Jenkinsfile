@@ -15,19 +15,19 @@ def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
-def type_mapping = ['KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master'],
-                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_new', 'path': 'v4.5_new', 'branch': 'master'],
-                    'KE master_new':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_master_new', 'path': 'v4.5_master_new', 'branch': 'master_new'],
-                    'kE 4.3.x_test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3.x_test', 'path': 'v4.3.x_test', 'branch': 'ke-4.3.x-test'],
+def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5','path': 'cloud/v4.5', 'branch': 'master'],
+                    'KC 4.5 test': ['project': 'Cloud_Manual', 'version':'v4.5_test','path': 'cloud/v4.5_test', 'branch': 'master'],
+                    'KC 4.5 dev':['project': 'Cloud_Manual', 'version':'v4.5_dev','path': 'cloud/v4.5_dev', 'branch': '4.5_test'],
+                    'KC Test Drive':['project': 'Cloud_Manual','version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive'],
+                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3','path': 'cloud/v4.3', 'branch': 'kc-4.3.x'],
+                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2','path': 'cloud/v3.2', 'branch': 'kc-3.2.x'],
+                    'KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master'],
+                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master'],
+                    'KE 4.5 dev':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_dev', 'path': 'v4.5_dev', 'branch': 'master_new'],
+                    'kE 4.3 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3_test', 'path': 'v4.3_test', 'branch': 'ke-4.3.x-test'],
                     'KE 4.3':['project': 'Kyligence-Enterprise-Manual','version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x'],
                     'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2','path': 'v4.2', 'branch': 'ke-4.2'],
-                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4','path': 'v3.4', 'branch': 'master'],
-                    'KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5','path': 'cloud/v4.5', 'branch': 'master'],
-                    'KC master_new': ['project': 'Cloud_Manual', 'version':'v4.5_master_new','path': 'cloud/v4.5_master_new', 'branch': 'master_new'],
-                    'KC Test Drive':['project': 'Cloud_Manual','version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive'],
-                    'KC 4.5 test':['project': 'Cloud_Manual', 'version':'v4.5_test','path': 'cloud/v4.5_test', 'branch': '4.5_test'],
-                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3','path': 'cloud/v4.3', 'branch': 'kc-4.3.x'],
-                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2','path': 'cloud/v3.2', 'branch': 'kc-3.2.x']]
+                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4','path': 'v3.4', 'branch': 'master']]
 
 def getPackageInfo(type_mapping, doc_type, cid) {
     println "getPackageInfo: doc_type[${doc_type}], cid[${cid}]"
@@ -75,7 +75,7 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'doc_type', choices:'KE 4.5\nKE 4.5 test\nKE master_new\nkE 4.3.x_test\nKE 4.3\nKE 4.2\nKE 3.2\nKC 4.5\nTest Drive\nKC master_new\nKC 4.5 test\nKC 4.3\nKC 3.2', description:'选择日志打包类型' )
+        choice(name: 'doc_type', choices:'KC 4.5 dev\nKC 4.5 test\nKC 4.5\nTest Drive\nKC 4.3\nKC 3.2\nKE 4.5 dev\nKE 4.5 test\nKE 4.5\nKE 4.3 test\nKE 4.3\nKE 4.2\nKE 3.2', description:'选择日志打包类型' )
         booleanParam(name: 'check_deadlinks', defaultValue: false, description: '是否检查死链（无效链接）?')
         // string(name: 'version', defaultValue: '4.5', description: '版本号?')
     }
@@ -306,7 +306,7 @@ pipeline {
                                 <h3>Hi,</h3><br />
                                 <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
                                 <p>The pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
-                                <p>https://docs.kyligence.io/books/${package_path}/</p>
+                                <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
                             """)
                         }
                     }
@@ -343,13 +343,6 @@ pipeline {
 
                             // def approver = paramsGA['APPROVER']
                             // println "approver: ${approver}"
-
-                            _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback Successful", """
-                                <h3>Hi,</h3><br />
-                                <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                <p>Rollback from backup/${backup_name} to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}</p>
-                                <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
-                            """)
                         }
                     }
                 }
@@ -358,53 +351,32 @@ pipeline {
                 always {
                     // 每次列出来发布后的结果和备份的结果，可以检查
                     echo "post condition executed: always ..."
-                }
-                success {
-                    echo "回滚成功，删除发布的包，备份包"
-                    // 回滚成功，删除发布的包，备份包
                     container("build") {
                         dir("sourcecode") {
                             script {
                                 sh """
-                                    echo '---查看文件夹---'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                    echo '------'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/"
-                                    echo '------'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                    echo '------'
-
                                     echo '---删除上传压缩包---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/release/${package_path}/${ga_name}"
                                     echo '---删除备份压缩包---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/backup/${backup_name}"
-                                    
-                             
-                                    echo '---查看文件夹---'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                    echo '------'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/"
-                                    echo '------'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                    echo '------'
                                 """
                             }
                         }
                     }
                 }
-                aborted {
-                    echo "发布成功无需回滚，删除发布的包，备份包"
-                    container("build") {
-                        dir("sourcecode") {
-                            script {
-                                sh """
-                                    echo '---删除上传压缩包---'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/release/${package_path}/${ga_name}"
-                                    echo '---删除备份压缩包---'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/backup/${backup_name}"
-                                """
-                            }
-                        }
+                success {
+                    echo "回滚成功，删除发布的包，备份包"
+                    // 回滚成功，删除发布的包，备份包
+                    script {
+                        _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback Successful", """
+                            <h3>Hi,</h3><br />
+                            <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                            <p>Rollback from backup/${backup_name} to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}</p>
+                            <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
+                            <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
+                        """)    
+
+                        error(message: '回滚成功，发布失败！')
                     }
                 }
             }
