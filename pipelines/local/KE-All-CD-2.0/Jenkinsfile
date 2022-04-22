@@ -213,7 +213,7 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
     def package_path
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
     switch (deployType) {
-        case 'Newten':
+        case 'Regular':
             package_path = "artifacts/${branchCollection[0]}/${envStage}"
             break
         case 'SP-4.5.x':
