@@ -23,9 +23,9 @@ def package_info =  [:]
 def getBranch(deployType, envStage, version) {
     print "getBranch -> deployType[${deployType}],envStage[${envStage}],version[${version}]"
     def _result
-    def _branch_release = 'newten'
-    def _branch_qa = 'newten-qa'
-    def _branch_dev = 'newten-dev'
+    def _branch_release = ''
+    def _branch_qa = ''
+    def _branch_dev = ''
     def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
 
     switch (deployType) {
