@@ -210,7 +210,7 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
 
 def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
-
+    def package_path
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
     switch (deployType) {
         case 'Newten':
