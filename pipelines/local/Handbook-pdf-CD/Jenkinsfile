@@ -53,6 +53,7 @@ def _sendNotify(doc_type,subject,msg){
         'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io']
     // def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
     def notifyTo = doc_type.indexOf('KE') == 0 ? emails.get('KE') : emails.get('KC')
+    println notifyTo
     sendNotify('EMAIL',subject,notifyTo,msg)
 }
 
@@ -75,7 +76,7 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'doc_type', choices:'KC 4.5 dev\nKC 4.5 test\nKC 4.5\nTest Drive\nKC 4.3\nKC 3.2\nKE 4.5 dev\nKE 4.5 test\nKE 4.5\nKE 4.3 test\nKE 4.3\nKE 4.2\nKE 3.2', description:'选择日志打包类型' )
+        choice(name: 'doc_type', choices:'KC 4.5 dev\nKC 4.5 test\nKC 4.5\nKC Test Drive\nKC 4.3\nKC 3.2\nKE 4.5 dev\nKE 4.5 test\nKE 4.5\nKE 4.3 test\nKE 4.3\nKE 4.2\nKE 3.2', description:'选择日志打包类型' )
         booleanParam(name: 'check_deadlinks', defaultValue: false, description: '是否检查死链（无效链接）?')
         // string(name: 'version', defaultValue: '4.5', description: '版本号?')
     }
