@@ -29,7 +29,7 @@ def getBranch(deployType, envStage, version) {
     def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp']
 
     switch (deployType) {
-        case 'Newten':
+        case 'Regular':
             _branch_release = branchCollection[0]
             _branch_qa = "ke-${version}-qa"
             _branch_dev = "${_branch_release}-dev"
