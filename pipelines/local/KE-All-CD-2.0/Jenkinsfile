@@ -385,11 +385,11 @@ pipeline {
                     }
                 }
             }
-            post {
-                success {
-                    jiraSendBuildInfo()
-                }
-            }
+            // post {
+            //     success {
+            //         jiraSendBuildInfo()
+            //     }
+            // }
         }
         stage('3.Dev/QA Upload') {
             when {
