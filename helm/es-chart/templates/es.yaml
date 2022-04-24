@@ -1,0 +1,47 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearchex    #集群名称
+  namespace: {{ .Values.namespace}}
+spec:
+  version: {{ .Values.version}}
+  http:
+    service:
+      spec:
+        type: {{ .Values.service.type}}  #网络类型使用nodeport,默认集群ip
+    tls:
+      selfSignedCertificate:
+        disabled: true   #关闭ssl验证
+  nodeSets:
+  - name: master    #主节点设置
+    count: {{ .Values.replicaCount}}
+    config:
+      node.master: true
+#      node.voting_only: false
+      node.data: true
+#      node.ingest: true
+#      node.ml: false
+      node.store.allow_mmap: false
+      xpack.security.enabled: false
+      xpack.security.transport.ssl.enabled: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: {{ .Values.env.ES_JAVA_OPTS}}
+          resources:
+            limits:
+              memory: {{ .Values.resources.limits.memory}}
+              cpu: {{ .Values.resources.limits.cpu}}
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storageClass.storage}}
+        storageClassName: {{ .Values.storageClass.name}}
