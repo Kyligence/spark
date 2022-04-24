@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yinglong-frontend-{{ .Release.Namespace }}
+  labels:
+    {{- include "yinglong.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "yinglong.selectorLabels" . | nindent 6 }}
+      app: yinglong-frontend-{{ .Release.Namespace }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "yinglong.selectorLabels" . | nindent 8 }}
+        app: yinglong-frontend-{{ .Release.Namespace }}
+    spec:
+      volumes:
+        - name: default-conf
+          configMap:
+            name: yinglong-frontend-nginx-default-conf-{{ .Release.Namespace }}
+            defaultMode: 420
+      containers:
+        - name: yinglong-frontend
+          image: 10.1.9.200:5000/kyligence/yinglong-frontend:4.5.10-dev
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: default-conf
+              mountPath: /etc/nginx/conf.d/
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  minReadySeconds: 30
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600

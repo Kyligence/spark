@@ -1,0 +1,70 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: yinglong-config-{{ .Release.Namespace }}
+data:
+  fairscheduler.xml: |
+    <?xml version="1.0"?>
+    <allocations>
+        <pool name="query_pushdown">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>1</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="extreme_heavy_tasks">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>3</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="heavy_tasks">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>5</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="lightweight_tasks">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>10</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="vip_tasks">
+            <schedulingMode>FAIR
+            </schedulingMode>
+            <weight>15</weight>
+            <minShare>1</minShare>
+        </pool>
+    </allocations>
+  kylin.properties: |
+    #---------------基本配置--------------
+    kylin.server.mode=all
+    kylin.query.cache-enabled=false
+    kylin.query.calcite.extras-props.conformance=LENIENT
+    #---------------元数据----------------
+    kylin.metadata.random-admin-password.enabled=false
+    kylin.metadata.url={{ .Values.metadata.identifierPrefix }}_{{ .Release.Namespace }}@jdbc,driverClassName=com.mysql.jdbc.Driver,url=jdbc:mysql://{{ .Values.hadoopPrefix }}-mysql:3306/{{ .Values.metadata.database }}?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8,username={{ .Values.metadata.user }},password={{ .Values.metadata.password }},maxTotal=50,maxIdle=8
+    #---------------zookeeper地址---------
+    kylin.env.zookeeper-connect-string={{ .Values.hadoopPrefix }}-zk-cs:2181
+    #---------------查询------------------
+    kylin.storage.columnar.file-system=hdfs://{{ .Values.hadoopPrefix }}-namenode:8020/kyligence/{{ .Values.metadata.identifierPrefix }}_{{ .Release.Namespace }}
+    kylin.storage.columnar.spark-conf.spark.master=yarn
+    kylin.storage.columnar.spark-conf.spark.driver.memory=1024m
+    kylin.storage.columnar.spark-conf.spark.executor.memory=1024m
+    kylin.storage.columnar.spark-conf.spark.executor.memoryOverhead=1024m
+    kylin.storage.columnar.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=${kylin.env.hdfs-working-dir} -Dkap.metadata.identifier=${kylin.metadata.url.identifier} -Dkap.spark.category=sparder -Dkap.spark.project=${job.project} -XX:MaxDirectMemorySize=512M
+    kylin.storage.columnar.spark-conf.spark.executor.cores=1
+    kylin.storage.columnar.spark-conf.spark.executor.instances=1
+    kylin.storage.columnar.spark-conf.mapreduce.input.fileinputformat.input.dir.recursive=true
+    #---------------构建------------------
+    kylin.env.hdfs-working-dir=hdfs://{{ .Values.hadoopPrefix }}-namenode:8020/kyligence/{{ .Values.metadata.identifierPrefix }}_{{ .Release.Namespace }}
+    kylin.engine.spark-conf.spark.master=yarn
+    kylin.engine.spark-conf.spark.hadoop.mapreduce.input.fileinputformat.input.dir.recursive=true
+    kylin.engine.spark-conf.spark.history.fs.logDirectory=hdfs://{{ .Values.hadoopPrefix }}-namenode:8020/kyligence/{{ .Values.metadata.identifierPrefix }}_{{ .Release.Namespace }}/spark-history
+    kylin.engine.spark-conf.spark.eventLog.dir=hdfs://{{ .Values.hadoopPrefix }}-namenode:8020/kyligence/{{ .Values.metadata.identifierPrefix }}_{{ .Release.Namespace }}/spark-history
+    kylin.engine.spark-conf.spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version=2
+    kylin.engine.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=${kylin.env.hdfs-working-dir} -Dkap.metadata.identifier=${kylin.metadata.url.identifier} -Dkap.spark.category=job -Dkap.spark.project=${job.project} -Dkap.spark.identifier=${job.id} -Dkap.spark.jobName=${job.stepId} -Duser.timezone=${user.timezone}
+    kylin.engine.spark-conf.spark.driver.memory=1024m
+    kylin.engine.spark-conf.spark.executor.cores=1
+    kylin.engine.spark-conf.spark.executor.memory=1024m
+    kylin.engine.spark-conf.spark.executor.memoryOverhead=1024m
+    kylin.engine.spark-conf.spark.executor.instances=1
+    kylin.engine.log.local-working-directory=file:///opt/kyligence/data/kylinstorage
+  check-env-bypass: ''

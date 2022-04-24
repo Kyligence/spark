@@ -1,0 +1,137 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='10.1.9.200:5000'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        frontend = ''
+    }
+
+    parameters {
+        // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
+        string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'tag', defaultValue: '4.5.10-dev', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.commitId_back) {
+                                error 'commitId_back 参数不能为空'
+                            }
+
+                            echo 'Sync the git mirror'
+                            sshCmdWithCredentials(
+                                'bash -c /var/lib/git/pull.sh',
+                                'private_git',
+                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                            )
+
+                            echo 'checkout KAP'
+                            retry(3) {
+                                githubCheckout 'KAP', params.commitId_back
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.build docker image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        script {
+                            dir('kystudio') {
+                                sh 'pwd'
+                                sh 'ls -lt'
+                                frontend = docker.build 'kyligence/yinglong-frontend'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            common.push("$tag")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        // stage('4.deploy') {
+        //     when {
+        //         environment name: 'deploy', value: 'true'
+        //     }
+        //     steps {
+        //         echo 'Up in K8S at office env'
+        //         container('kubectl') {
+        //             dir('sourcecode') {
+        //                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+        //                     script {
+        //                         dir('src/yinglong-common-booter') {
+        //                             sh 'pwd && ls -alt'
+        //                             sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+        //                             try {
+        //                                 sh returnStatus: true , script: '''
+        //                                     kubectl delete -n dev -f ./yinglong-common.yaml
+        //                                 '''
+        //                             } catch(Exception err) {
+        //                                 echo err.getMessage()
+        //                                 echo "delete resource failed, but we will continue."
+        //                             }
+
+
+        //                             sh returnStatus: true , script: '''
+        //                                 echo "replace image"
+        //                                 image="${repo}/kyligence/yinglong-common:${tag}"
+        //                                 sed -i "s#image: kyligence/yinglong-common#image: ${image}#" ./yinglong-common.yaml
+
+
+        //                                 cat ./yinglong-common.yaml
+        //                                 kubectl create -n dev -f ./yinglong-common.yaml
+        //                             '''
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+    }
+}

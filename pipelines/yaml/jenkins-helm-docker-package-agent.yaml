@@ -1,0 +1,98 @@
+---
+kind: "Pod"
+name: "jenkins-package-agent"
+spec:
+  containers:
+    - name: "build"
+      image: "10.1.9.11:5000/newten-build:latest"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          memory: "2Gi"
+          cpu: "1000m"
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+    - name: "docker"
+      tty: true
+      command:
+        - "cat"
+      image: "docker"
+      imagePullPolicy: "Always"
+      volumeMounts:
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
+      resources:
+        limits:
+          memory: "2Gi"
+          cpu: "500m"
+    - name: "kubectl"
+      image: "cnych/kubectl"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          cpu: "300m"
+          memory: "500Mi"
+        limits:
+          cpu: "300m"
+          memory: "1Gi"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+    - name: "helm"
+      image: "lachlanevenson/k8s-helm:v3.1.1"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          cpu: "300m"
+          memory: "500Mi"
+        limits:
+          cpu: "300m"
+          memory: "1Gi"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name:  "kube-config"
+      hostPath:
+        path:  "/home/jenkins/.kube"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "lex-mvn-settings"
+      name: "lex-mvn-settings"
+
+    - name: "dockersock"
+      hostPath:
+        path: "/var/run/docker.sock"

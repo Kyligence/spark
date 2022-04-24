@@ -1,0 +1,256 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='10.1.9.200:5000'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        common = ''
+        data_loading = ''
+        query = ''
+        smart = ''
+        frontend=''
+    }
+
+    parameters {
+        string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'commitId_front', defaultValue: 'newten-qa', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+        string(name: 'tag', defaultValue: '4.5.10-dev', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+        booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
+        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
+        string(name: 'hadoop_prefix', defaultValue: 'my-hadoop-2', description: 'hadoop environment')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.commitId_back) {
+                                error 'commitId_back 参数不能为空'
+                            }
+
+                            echo 'Sync the git mirror'
+                            sshCmdWithCredentials(
+                                'bash -c /var/lib/git/pull.sh',
+                                'private_git',
+                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                            )
+
+                            echo 'checkout KAP'
+                            retry(3) {
+                                githubCheckout 'KAP', params.commitId_back
+                            }
+
+                            def front
+                            if (!params.commitId_front) {
+                                echo 'Not commitId_front, use the commitId_back: ${params.commitId_back}'
+                                front=params.commitId_back
+                            }else {
+                                echo 'checkout KAP_Frontend to kystudio, use the commitid: ${params.commitId_front}'
+                                front=params.commitId_front
+                            }
+
+                            sh 'rm -rf ./kystudio'
+                            dir('kystudio') {
+                                retry(3) {
+                                    githubCheckout 'KAP_Frontend', front
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!tag) {
+                                error 'tag 版本号不能为空'
+                            }
+
+                            sh """
+                                wget http://repo-ofs.kyligence.com:8081/repository/raw-tars-hosted/io.kyligence.spark/spark-newten-3.2.0-4.x-r56.tgz --directory-prefix=build/
+                                cd build && tar -xvf spark-newten-3.2.0-4.x-r56.tgz && mv spark-newten-3.2.0-4.x-r56 spark && cd ..
+                                echo "build yinglong xx booter"
+                                mvn clean install -DskipTests -Pkubernetes -T1C
+                            """
+                            dir("src/yinglong-common-booter") {
+                                sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/yinglong-common*.tar.gz"
+                                    package_name="yinglong-common"
+                                    cp ../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+                            dir("src/yinglong-data-loading-booter") {
+                                sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/yinglong-data-loading*.tar.gz"
+                                    package_name="yinglong-data-loading"
+                                    cp ../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+
+                            dir("src/yinglong-query-booter") {
+                               sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/yinglong-query*.tar.gz"
+                                    package_name="yinglong-query"
+                                    cp ../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+
+                            dir("src/yinglong-smart-booter") {
+                               sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/yinglong-smart*.tar.gz"
+                                    package_name="yinglong-smart"
+                                    cp ../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.build docker image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        dir("src/yinglong-common-booter") {
+                            script {
+                                common = docker.build 'kyligence/yinglong-common'
+                            }
+                        }
+                        dir("src/yinglong-data-loading-booter") {
+                            script {
+                                data_loading = docker.build 'kyligence/yinglong-data-loading'
+                            }
+                        }
+
+                        dir("src/yinglong-query-booter") {
+                            script {
+                                query = docker.build 'kyligence/yinglong-query'
+                            }
+                        }
+                        dir("src/yinglong-smart-booter") {
+                            script {
+                                smart = docker.build 'kyligence/yinglong-smart'
+                            }
+                        }
+                        script {
+                            dir('kystudio') {
+                                sh 'pwd'
+                                sh 'ls -lt'
+                                frontend = docker.build("kyligence/yinglong-frontend", "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            common.push("$tag")
+                            common.push('latest')
+
+                            data_loading.push("$tag")
+                            data_loading.push('latest')
+
+                            query.push("$tag")
+                            query.push('latest')
+
+                            smart.push("$tag")
+                            smart.push('latest')
+
+                            frontend.push("$tag")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        stage('5.deploy') {
+            when {
+                environment name: 'deploy', value: 'true'
+            }
+            steps {
+                echo 'Up in K8S at office env'
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        script {
+                            sh 'pwd && ls -alt'
+                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+                            try {
+                                sh returnStatus: true , script: '''
+                                    helm -n ${namespace} list
+                                    helm -n ${namespace} uninstall yinglong-${namespace}
+                                '''
+                            } catch(Exception err) {
+                                echo err.getMessage()
+                                echo "delete resource failed, but we will continue."
+                            }
+
+
+                            sh returnStatus: true , script: '''
+                                helm -n ${namespace} install yinglong-${namespace} ./helm/yinglong --set yinglongCommon.image.tag=${tag} --set yinglongDataLoading.image.tag=${tag} --set yinglongQuery.image.tag=${tag} --set yinglongCommon.image.tag=${tag}  --set frontend.image.tag=${tag}
+                                helm -n ${namespace} list
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

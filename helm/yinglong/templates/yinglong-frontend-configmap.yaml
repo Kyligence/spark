@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yinglong-frontend-nginx-default-conf-{{ .Release.Namespace }}
+data:
+  default.conf: |-
+    server {
+      listen       80;
+      listen  [::]:80;
+      server_name  localhost;
+
+      # Gateway
+        location /kylin/api {
+        proxy_pass http://{{ .Values.gateway.serverAddr }};
+      }
+
+        location /kylin {
+        rewrite ^/kylin(.*)$ $1 break;
+        root  /usr/share/nginx/html;
+        index  index.html;
+        try_files $uri /index.html;
+      }
+
+        location / {
+        root  /usr/share/nginx/html;
+        index  index.html;
+        try_files $uri /index.html;
+      }
+    }

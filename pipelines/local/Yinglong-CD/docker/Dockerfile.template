@@ -1,0 +1,8 @@
+FROM openjdk:8u312-jdk-bullseye
+RUN mkdir -p /opt && apt-get update && apt-get install -y apt-utils tini net-tools vim-tiny
+ADD replace_package /opt/
+RUN mv /opt/replace_dir-* /opt/kyligence
+RUN mkdir -p /opt/kyligence/hadoop_conf
+RUN touch /opt/kyligence/bin/check-env-bypass && touch /opt/kyligence/spark/jars/replace-jars-bypass
+RUN cd /bin && rm -f sh && ln -s /bin/bash sh
+ENTRYPOINT ["bash", "/opt/kyligence/bin/kylin.sh", "start"]
