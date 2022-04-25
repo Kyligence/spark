@@ -2,6 +2,16 @@
 
 @Library('devopslib') _
 
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name) {
+    timestamps {
+        println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
+        withAWS(region: region, credentials: credentials) {
+            s3Upload(bucket: bucket, path: path, file: ga_name)
+        }
+    }
+}
+
 pipeline {
     options {
         timeout(time: 2, unit: 'HOURS')
@@ -44,6 +54,8 @@ pipeline {
                     sh script: """
                         wget http://repo-ofs.kyligence.tech:8081/repository/raw-public/io.kyligence.spark/depedencies.tar.gz
                         tar zxf depedencies.tar.gz
+                        wget  https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
+                        tar zxf hive_1_2_2.tar.gz
                     """
                 }
             }
@@ -83,13 +95,16 @@ pipeline {
                                     def releaseName = params.release_version.replace("-kylin", "")
                                     sh script: """
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-2.7 -Phive -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly
-                                        mv dist spark-newten-${releaseName}
-                                        tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}
+                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-2.7 -Phive -Phive-thriftserver -Pyarn -Pkubernetes
+                                        cp ../depedencies/log4j/*.jar dist/jars/
+                                        mv dist spark-newten-${releaseName}-hadoop2
+                                        tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}-hadoop2
+                                        md5sum spark-newten-${releaseName}-hadoop2.tgz
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-hadoop2.tgz", "spark-newten-${releaseName}-hadoop2.tgz", user, passwd)
                                     }
+                                    uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "kyspark/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}-hadoop2.tgz")
                                 }
                             }
                         }
@@ -105,12 +120,15 @@ pipeline {
                                         sleep 10
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
                                         dev/make-distribution.sh --name ${params.release_version} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly
+                                        cp ../depedencies/log4j/*.jar dist/jars/
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
                                     }
+                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz")
+
                                 }
                             }
                         }
@@ -121,18 +139,25 @@ pipeline {
                         container("build") {
                             dir("cloud-hadoop3") {
                                 script {
-                                    def releaseName = params.release_version.replace("-kylin", "") 
+                                    def releaseName = params.release_version.replace("-kylin", "")
                                     sh script: """
                                         sleep 20
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
                                         dev/make-distribution.sh --name ${params.release_version} -Phadoop-3.2 -Phive-thriftserver -pl assembly
+                                        cp ../depedencies/log4j/*.jar dist/jars/
+                                        cp ../depedencies/cloud_log4j/*.jar dist/jars/
+                                        rm  dist/jars/log4j-1.2-api-*.jar
                                         cp ../depedencies/hadoop3/* dist/jars/
-                                        mv dist spark-newten-${releaseName}
-                                        tar czf spark-newten-${releaseName}-cloud-hadoop3.tgz spark-newten-${releaseName}
+                                        cp -r ../hive_1_2_2  dist/
+                                        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
+                                        mv dist spark-newten-${releaseName}-cloud-hadoop3
+                                        tar czf spark-newten-${releaseName}-cloud-hadoop3.tgz spark-newten-${releaseName}-cloud-hadoop3
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-cloud-hadoop3.tgz", "spark-newten-${releaseName}-cloud-hadoop3.tgz", user, passwd)
                                     }
+                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-cloud-hadoop3.tgz", "spark-newten-${releaseName}-cloud-hadoop3.tgz")
+
                                 }
                             }
                         }
@@ -148,13 +173,19 @@ pipeline {
                                         sleep 30
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
                                         dev/make-distribution.sh --name ${params.release_version} -Phadoop-3.2 -Phive-thriftserver -pl assembly
+                                        cp ../depedencies/log4j/*.jar dist/jars/
+                                        cp ../depedencies/cloud_log4j/*.jar dist/jars/
+                                        rm  dist/jars/log4j-1.2-api-*.jar
                                         cp ../depedencies/gcp/* dist/jars/
-                                        mv dist spark-newten-${releaseName}
-                                        tar czf spark-newten-${releaseName}-cloud-gcp.tgz spark-newten-${releaseName}
+                                        cp -r ../hive_1_2_2  dist/
+                                        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
+                                        mv dist spark-newten-${releaseName}-cloud-gcp
+                                        tar czf spark-newten-${releaseName}-cloud-gcp.tgz spark-newten-${releaseName}-cloud-gcp
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-cloud-gcp.tgz", "spark-newten-${releaseName}-cloud-gcp.tgz", user, passwd)
                                     }
+                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-cloud-gcp.tgz", "spark-newten-${releaseName}-cloud-gcp.tgz")
                                 }
                             }
                         }
@@ -170,13 +201,19 @@ pipeline {
                                         sleep 40
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
                                         dev/make-distribution.sh --name ${params.release_version} -Phadoop-3.2 -Phive-thriftserver -pl assembly
+                                        cp ../depedencies/log4j/*.jar dist/jars/
+                                        cp ../depedencies/cloud_log4j/*.jar dist/jars/
+                                        rm  dist/jars/log4j-1.2-api-*.jar
+                                        cp -r ../hive_1_2_2  dist/
                                         cp ../depedencies/huawei/* dist/jars/
-                                        mv dist spark-newten-${releaseName}
-                                        tar czf spark-newten-${releaseName}-cloud-huawei.tgz spark-newten-${releaseName}
+                                        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
+                                        mv dist spark-newten-${releaseName}-cloud-huawei
+                                        tar czf spark-newten-${releaseName}-cloud-huawei.tgz spark-newten-${releaseName}-cloud-huawei
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-cloud-huawei.tgz", "spark-newten-${releaseName}-cloud-huawei.tgz", user, passwd)
                                     }
+                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-cloud-huawei.tgz", "spark-newten-${releaseName}-cloud-huawei.tgz")
                                 }
                             }
                         }
