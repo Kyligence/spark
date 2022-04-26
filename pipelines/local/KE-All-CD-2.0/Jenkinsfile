@@ -161,42 +161,6 @@ def gitCodeKe(back, front) {
     return result
 }
 
-// Moved
-def gitInit(base, project='KAP', repo='Kyligence') {
-    sh "echo '#!/bin/bash' >> credential-helper.sh"
-    sh "echo 'echo username=\$GIT_USERNAME' >> credential-helper.sh"
-    sh "echo 'echo password=\$GIT_PASSWORD' >> credential-helper.sh"
-    sh 'cat credential-helper.sh'
-    withCredentials([usernamePassword(credentialsId: 'kyligence-git',
-                    usernameVariable: 'GIT_USERNAME',
-                    passwordVariable: 'GIT_PASSWORD')]) {
-        sh script:"""git init .
-            git config credential.helper "/bin/bash credential-helper.sh"
-            git config --global init.defaultBranch ${base}
-            git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
-            git branch -m ${base}
-            git fetch --all
-            git branch ${base} origin/${base}
-        """
-    }
-}
-
-// Moved
-def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
-    println "gitTag -> base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
-    GIT_JEKNINS_TOKEN = credentials('jenkins-token')
-    if (!isCloned) {
-        gitInit(base, project, repo)
-    }
-    sh script: """
-        git remote remove origin
-        git remote add origin https://${GIT_JEKNINS_TOKEN}@github.com/${repo}/${project}.git
-        git tag ${tag}
-        git push origin ${tag}
-        git show ${tag}
-    """
-}
-
 def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
     def package_path
@@ -494,20 +458,20 @@ pipeline {
                         def fcid = ''
                         dir('sourcecode') {
                             println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
-                            gitTag(release_branch_back, _tag, 'KAP')
+                            githubHelper 'TAG', branch, 'KAP', tag
                             bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                             println "backend [KAP] commitId: ${bcid}"
 
                             dir('kystudio') {
                                 println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
-                                gitTag(release_branch_front, _tag, 'KAP_Frontend')
+                                githubHelper 'TAG', branch, 'KAP_Frontend', tag
                                 fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                                 println "frontend [KAP_Frontend] commitId: ${fcid}"
                             }
 
                             sendNotify(
                                 'EMAIL',
-                                "SUCCESSFUL to Upload the Tar into the Azure CN server'", 
+                                "SUCCESSFUL to Deploy the ${_tag}", 
                                 // "liming.meng@kyligence.io",
                                 product_emails,
                                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
