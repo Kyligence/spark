@@ -117,17 +117,6 @@ def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
     }
 }
 
-// Moved
-def sendEmail(subject,to,body,from='devops_support@kyligence.io') {
-    emailext (
-        subject: subject,
-        to: to,
-        from: from,
-        //定义html 模版
-        body: body
-    )
-}
-
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front) {
     def result = [:]
@@ -385,11 +374,11 @@ pipeline {
                     }
                 }
             }
-            // post {
-            //     success {
-            //         jiraSendBuildInfo()
-            //     }
-            // }
+            post {
+                success {
+                    jiraSendBuildInfo()
+                }
+            }
         }
         stage('3.Dev/QA Upload') {
             when {

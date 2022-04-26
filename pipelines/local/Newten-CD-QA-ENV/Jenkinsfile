@@ -1,6 +1,17 @@
 #!groovy
 
-@Library('devopslib') _
+@Library('devopslib@nexus') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
 
 //变量名，用于存储input步骤的返回值
 def approvalMap
@@ -37,6 +48,7 @@ pipeline {
         string(name: 'package', defaultValue: '', description: 'Start with exist package, Not need wait to build?')
     }
 
+    
     stages {
         stage('1.Pull Code') {
             steps {
@@ -116,7 +128,6 @@ pipeline {
                                 echo "package/${file_name}"
                             """, returnStdout:true).trim()
                             println packageFilename
-
                             package_file=sh(script: """
                                 mkdir -p /var/cicd/${package_path}
                                 mv dist/*.tar.gz dist/${file_name}

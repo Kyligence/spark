@@ -4,10 +4,9 @@
 
 def paramsMap
 
-properties([pipelineTriggers([githubPush()])])
+// properties([pipelineTriggers([githubPush()])])
 
 pipeline {
-    
     options {
         timeout(time: 1, unit: 'HOURS')
     }
@@ -17,9 +16,6 @@ pipeline {
             yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
         }
     }
-
-    // parameters {
-    // }
 
     // triggers {
     //     GenericTrigger(
@@ -32,13 +28,61 @@ pipeline {
     //         printPostContent: true
     //     )
     // }
-    
+
     stages {
+        stage('Test tag') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            def branch = 'newten'
+                            def tag = 'ke-4.5.11.2'
+                            def bcid = ''
+                            def fcid = ''
+                            pullCodeFromGitMirror 'KAP', branch
+                            githubHelper 'TAG', branch, 'KAP', tag
+                            bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                            dir('kystudio') {
+                                pullCodeFromGitMirror 'KAP_Frontend', branch
+                                githubHelper 'TAG', branch, 'KAP_Frontend', tag
+                                fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                            }
+                            sendNotify(
+                                'EMAIL',
+                                "Test SUCCESSFUL GA",
+                                'liming.meng@kyligence.io',
+                                // product_emails,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                                <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
+                                <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>"""
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        stage('Test Notify') {
+            steps {
+                script {
+                    def msg =  """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                       <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>"""
+                    sendNotify(
+                        'EMAIL',
+                        "Test SUCCESSFUL GA",
+                        'liming.meng@kyligence.io',
+                        // product_emails,
+                        msg
+                    )
+                    
+                }
+            }
+        }
         /* checkout repo */
         stage('Checkout SCM') {
             steps {
                 sh "echo $ref"
-                sh "printenv"
+                sh 'printenv'
                 container('build') {
                     dir('sourcecode') {
                         script {
@@ -50,7 +94,7 @@ pipeline {
         }
         stage('Do the deployment') {
             steps {
-                echo ">> Run deploy applications "
+                echo '>> Run deploy applications '
                 container('build') {
                     dir('sourcecode') {
                         sh 'mvn clean install -DskipTests'
@@ -59,12 +103,12 @@ pipeline {
             }
         }
     }
- 
+
     /* Cleanup workspace */
     post {
-       always {
-           deleteDir()
-       }
+        always {
+            deleteDir()
+        }
     }
 
 /*
@@ -116,7 +160,7 @@ pipeline {
         }
 
         stage("1.Branch") {
-            
+
             steps {
                 container("build") {
                     dir("sourcecode") {
@@ -134,7 +178,7 @@ pipeline {
                                 sh script: """
                                     git status
                                     git checkout -b ${bu}-${version}-dev origin/${anchor}
-                                    git status 
+                                    git status
                                     git push https://${user}:${passwd}@github.com/Kyligence/KAP origin ${bu}-${version}-dev
                                 """
                             }
