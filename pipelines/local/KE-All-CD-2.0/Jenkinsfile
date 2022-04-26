@@ -338,11 +338,11 @@ pipeline {
                     }
                 }
             }
-            post {
-                success {
-                    jiraSendBuildInfo()
-                }
-            }
+            // post {
+            //     success {
+            //         jiraSendBuildInfo()
+            //     }
+            // }
         }
         stage('3.Dev/QA Upload') {
             when {
@@ -471,7 +471,7 @@ pipeline {
 
                             sendNotify(
                                 'EMAIL',
-                                "SUCCESSFUL to Deploy the ${_tag}", 
+                                "KE ${version} SUCCESSFUL GA", 
                                 // "liming.meng@kyligence.io",
                                 product_emails,
                                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
