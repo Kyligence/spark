@@ -30,7 +30,7 @@ spec:
       command:
         - "cat"
       image: "maven:3.8.3-openjdk-8"
-      imagePullPolicy: "Always"
+      imagePullPolicy: "IfNotPresent"
       volumeMounts:
         - name: "kyligence-repo"
           mountPath: /jenkins-common/.kem2/repository
@@ -54,7 +54,12 @@ spec:
       command:
         - "cat"
       image: "maven:3.8.3-openjdk-11"
-      imagePullPolicy: "Always"
+      imagePullPolicy: "IfNotPresent"
+      env:
+        - name: HTTP_PROXY
+          value: null
+        - name: HTTPS_PROXY
+          value: null
       volumeMounts:
         - name: "kyligence-repo"
           mountPath: /jenkins-common/.kem2/repository
