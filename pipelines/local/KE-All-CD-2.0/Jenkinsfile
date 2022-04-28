@@ -404,7 +404,7 @@ pipeline {
                             message: checkMsg,
                             ok: '确认！',
                             submitter:'liming.meng,meixiu.chen,enwei.jiao,chenqing.zhu',
-                            submitterParameter:'APPROVER'
+                            submitterParameter:'APPROVER',
                             parameters:[
                                 booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
                             ]
