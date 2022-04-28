@@ -405,9 +405,9 @@ pipeline {
                             ok: '确认！',
                             submitter:'liming.meng,meixiu.chen,enwei.jiao,chenqing.zhu',
                             submitterParameter:'APPROVER'
-                            // parameters:[
-                            //     booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
-                            // ]
+                            parameters:[
+                                booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
+                            ]
                         )
                         ga_name = package_info.file_name
                     }
@@ -417,7 +417,7 @@ pipeline {
         stage('5.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package && !params.noSpark
+                    return params.envStage == 'GA' && exist_package && !params.noSpark && !paramsGA['skipUpload']
                 }
             }
             failFast true
@@ -458,13 +458,13 @@ pipeline {
                         def fcid = ''
                         dir('sourcecode') {
                             println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
-                            githubHelper 'TAG', branch, 'KAP', tag
+                            githubHelper 'TAG', release_branch_back, 'KAP', tag
                             bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                             println "backend [KAP] commitId: ${bcid}"
 
                             dir('kystudio') {
                                 println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
-                                githubHelper 'TAG', branch, 'KAP_Frontend', tag
+                                githubHelper 'TAG', release_branch_front, 'KAP_Frontend', tag
                                 fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                                 println "frontend [KAP_Frontend] commitId: ${fcid}"
                             }

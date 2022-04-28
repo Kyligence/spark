@@ -17,6 +17,7 @@ spec:
       command:
         - "cat"
       image: "bitnami/git:2.35.1-debian-10-r68"
+      imagePullPolicy: "IfNotPresent"
       resources:
         limits:
           memory: "4Gi"
