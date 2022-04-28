@@ -295,10 +295,6 @@ pipeline {
                                 package_info = getPackageInfo(_version, params.envStage, release_commitid_back, params.deployType, params.noSpark)
 
                                 try {
-                                    if(params.envStage=='GA'){
-                                        package_info.file_name = package_info.ga_name
-                                    }
-
                                     // if(!params.replaceFouse) {
                                         // 将已存在的包cp到当前目录，避免重新打包
                                     def existPackage = "${package_info.package_path}/${package_info.file_name}"
@@ -311,8 +307,7 @@ pipeline {
                                     sh 'ls -l'
                                     println "package_info.package_file: ${package_info.package_file}"
                                     exist_package = fileExists(package_info.file_name)
-                                    exist_package2 = fileExists("/var/cicd/${package_info.package_path}/${package_info.file_name}")
-                                    println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package} ${exist_package2}"
+                                    println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
                                 } catch (Exception err) {
                                     echo err.getMessage()
                                 }
@@ -321,15 +316,24 @@ pipeline {
 
                                     buildNewten(_version, params.noSpark)
                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-
+                                    
                                     sh script: """
                                         mkdir -p /var/cicd/${package_info.package_path}
                                         mv dist/*.tar.gz ${package_info.file_name}
-                                        cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                                     """
-
                                     exist_package = true
-                                // cp ${package_info.file_name} ${package_info.ga_name}
+                                    
+                                    if(params.envStage!='GA'){
+                                        sh script: """
+                                            cp ${package_info.file_name} /var/cicd/${package_info.package_path}
+                                        """
+                                    }else{
+                                        // package_info.file_name = package_info.ga_name
+                                        sh script: """
+                                            cp ${package_info.file_name} ${package_info.ga_name}
+                                            cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
+                                        """
+                                    }
                                 } else {
                                     println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
                                 }
@@ -350,7 +354,6 @@ pipeline {
                     return params.envStage in ['DEV', 'QA', 'RC', 'GA']
                 }
             }
-            failFast true
             parallel {
                 stage('3.1.Upload to Azure CN') {
                     steps {
@@ -409,7 +412,7 @@ pipeline {
                                 booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
                             ]
                         )
-                        ga_name = package_info.file_name
+                        ga_name = package_info.ga_name
                     }
                 }
             }
@@ -420,7 +423,6 @@ pipeline {
                     return params.envStage == 'GA' && exist_package && !params.noSpark && !paramsGA['skipUpload']
                 }
             }
-            failFast true
             parallel {
                 stage('5.1.GA AWS CN') {
                     steps {
@@ -444,41 +446,63 @@ pipeline {
                 }
             }
         }
-        stage('6.Tag') {
+        stage('6.Released') {
             when {
                 expression {
                     return params.envStage == 'GA' && exist_package && !params.noSpark
                 }
             }
-            steps {
-                container('build') {
-                    script {
-                        def _tag = "ke-${version}"
-                        def bcid = ''
-                        def fcid = ''
-                        dir('sourcecode') {
-                            println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
-                            githubHelper 'TAG', release_branch_back, 'KAP', _tag
-                            bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
-                            println "backend [KAP] commitId: ${bcid}"
+            parallel {
+                stage('6.1.Tag') {
+                    steps {
+                        container('build') {
+                            script {
+                                def _tag = "ke-${version}"
+                                def bcid = ''
+                                def fcid = ''
+                                try{
+                                    dir('sourcecode') {
+                                        println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
+                                        githubHelper 'TAG', release_branch_back, 'KAP', _tag
+                                        bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                        println "backend [KAP] commitId: ${bcid}"
 
-                            dir('kystudio') {
-                                println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
-                                githubHelper 'TAG', release_branch_front, 'KAP_Frontend', _tag
-                                fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
-                                println "frontend [KAP_Frontend] commitId: ${fcid}"
+                                        dir('kystudio') {
+                                            println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
+                                            githubHelper 'TAG', release_branch_front, 'KAP_Frontend', _tag
+                                            fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                            println "frontend [KAP_Frontend] commitId: ${fcid}"
+                                        }
+                                    }
+                                } catch (Exception err) {
+                                    echo err.getMessage()
+                                }
+
+                                sendNotify(
+                                    'EMAIL',
+                                    "KE ${version} SUCCESSFUL GA", 
+                                    // "liming.meng@kyligence.io",
+                                    product_emails,
+                                    """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                    <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                                    <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
+                                )
                             }
                         }
-
-                        sendNotify(
-                            'EMAIL',
-                            "KE ${version} SUCCESSFUL GA", 
-                            // "liming.meng@kyligence.io",
-                            product_emails,
-                            """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                            <p>The Backend repo of [KAP] commitId: ${bcid}</p>
-                            <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
-                        )
+                    }
+                }
+                stage('6.2.Deploy Jar') {
+                    steps {
+                        container('build') {
+                            script {
+                                dir('sourcecode') {
+                                    sh """
+                                    mvn versions:set -DnewVersion=${version}
+                                    mvn deploy -Pdev -DskipTests -T 4C
+                                    """
+                                }
+                            }
+                        }
                     }
                 }
             }
