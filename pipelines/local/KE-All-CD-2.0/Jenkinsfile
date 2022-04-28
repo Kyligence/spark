@@ -458,27 +458,27 @@ pipeline {
                         def fcid = ''
                         dir('sourcecode') {
                             println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
-                            githubHelper 'TAG', release_branch_back, 'KAP', tag
+                            githubHelper 'TAG', release_branch_back, 'KAP', _tag
                             bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                             println "backend [KAP] commitId: ${bcid}"
 
                             dir('kystudio') {
                                 println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
-                                githubHelper 'TAG', release_branch_front, 'KAP_Frontend', tag
+                                githubHelper 'TAG', release_branch_front, 'KAP_Frontend', _tag
                                 fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                                 println "frontend [KAP_Frontend] commitId: ${fcid}"
                             }
-
-                            sendNotify(
-                                'EMAIL',
-                                "KE ${version} SUCCESSFUL GA", 
-                                // "liming.meng@kyligence.io",
-                                product_emails,
-                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                <p>The Backend repo of [KAP] commitId: ${bcid}</p>
-                                <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
-                            )
                         }
+
+                        sendNotify(
+                            'EMAIL',
+                            "KE ${version} SUCCESSFUL GA", 
+                            // "liming.meng@kyligence.io",
+                            product_emails,
+                            """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                            <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                            <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
+                        )
                     }
                 }
             }
