@@ -283,6 +283,18 @@
         <enabled>true</enabled>
       </snapshots>
     </repository>
+    <!-- for log4j 1.2.17-10+deb11u1,  build from https://salsa.debian.org/java-team/apache-log4j1.2 -->
+    <repository>
+      <id>kyoffice</id>
+      <name>local private nexus</name>
+      <url>http://repo-ofs.kyligence.com:8081/repository/maven-public/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
