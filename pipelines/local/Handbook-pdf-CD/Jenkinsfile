@@ -171,6 +171,8 @@ pipeline {
                     dir("sourcecode") {
                         script{
                             if (!exist_package) {
+                                file_name = package_info.file_name
+                                
                                 if(!params.check_deadlinks) {
                                     sh 'gitbook install'
                                 }
@@ -178,7 +180,11 @@ pipeline {
                                     sh (script:"""
                                         gitbook build
                                         echo "\033[33m gitbook build success\033[0m"
+                                    """)
+                                }
 
+                                retry(5) {
+                                    sh (script:"""
                                         export PATH=$PATH:/opt/calibre
                                         export LC_ALL=en_US.UTF-8
                                         export LANG=en_US.UTF-8
@@ -192,12 +198,6 @@ pipeline {
                                     """)
                                 }
 
-                                file_name = package_info.file_name
-                                println "file_name: ${file_name}"
-                                sh(script: """
-                                    
-                                """)
-
                                 sh (script:"""
                                     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/Kyligence_Enterprise_4_5-en.pdf book_en.pdf
                                     rm -rf _book/zh-cn
@@ -206,7 +206,9 @@ pipeline {
 
                                     cd _book/
                                     tar -zcvf ${file_name} * > /dev/null
+                                    echo "\033[36m pdf compress success\033[0m"
                                 """)
+                                
                                 archiveArtifacts artifacts: '_book/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                                 sh 'ls -al _book/'
                                 println "package_path: ${package_path}"
