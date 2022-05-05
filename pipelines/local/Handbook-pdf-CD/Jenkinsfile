@@ -197,12 +197,13 @@ pipeline {
                                         echo "\033[36m gitbook pdf success\033[0m"
                                     """)
                                 }
-
+                                
+                                // 参看pdf压缩说明书.md
                                 sh (script:"""
-                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/Kyligence_Enterprise_4_5-en.pdf book_en.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/Kyligence_Enterprise_4_5-en.pdf book_en.pdf
                                     rm -rf _book/zh-cn
                                     mv _book/zh-hans _book/zh-cn
-                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf book_zh-hans.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf book_zh-hans.pdf
 
                                     cd _book/
                                     tar -zcvf ${file_name} * > /dev/null
