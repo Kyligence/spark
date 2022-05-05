@@ -27,15 +27,15 @@ spec:
           memory: "8Gi"
           cpu: "4000m"
       volumeMounts:
-        - mountPath: "/gitbook"
-          name: "jenkins-common"
-          subPath: "handbook"
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
         - mountPath: "/etc/pem/rsa.pem"
           name: "handbook-secret"
           subPath: "rsa.pem"
+        - mountPath: "/usr/local/lib/node_modules"
+          name: "jenkins-common"
+          subPath: "handbook"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
