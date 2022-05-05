@@ -194,12 +194,15 @@ pipeline {
 
                                 file_name = package_info.file_name
                                 println "file_name: ${file_name}"
+                                sh(script: """
+                                    
+                                """)
 
                                 sh (script:"""
-                                    mv book_en.pdf _book/en/Kyligence_Enterprise_4_5-en.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/Kyligence_Enterprise_4_5-en.pdf book_en.pdf
                                     rm -rf _book/zh-cn
                                     mv _book/zh-hans _book/zh-cn
-                                    mv book_zh-hans.pdf _book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/Kyligence_Enterprise_4_5-zh.pdf book_zh-hans.pdf
 
                                     cd _book/
                                     tar -zcvf ${file_name} * > /dev/null
