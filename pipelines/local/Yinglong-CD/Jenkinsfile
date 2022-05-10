@@ -185,8 +185,14 @@ pipeline {
                         }
                         script {
                             dir('kystudio') {
-                                sh 'pwd'
-                                sh 'ls -lt'
+                                sh """
+                                    pwd
+                                    ls -alt
+                                    cat .npmrc
+                                    rm -f .npmrc
+                                    echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
                                 frontend = docker.build("kyligence/yinglong-frontend", "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
                             }
                         }

@@ -32,9 +32,9 @@ pipeline {
     }
 
     parameters {
-        // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
-        string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'commitId_front', defaultValue: 'newten-qa', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
         string(name: 'tag', defaultValue: '4.5.10-dev', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
     }
 
     stages {
@@ -43,8 +43,8 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            if (!params.commitId_back) {
-                                error 'commitId_back 参数不能为空'
+                            if (!params.commitId_front) {
+                                error 'commitId_front 参数不能为空'
                             }
 
                             echo 'Sync the git mirror'
@@ -56,7 +56,7 @@ pipeline {
 
                             echo 'checkout KAP'
                             retry(3) {
-                                githubCheckout 'KAP', params.commitId_back
+                                githubCheckout 'KAP', params.commitId_front
                             }
                         }
                     }
@@ -69,9 +69,15 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             dir('kystudio') {
-                                sh 'pwd'
-                                sh 'ls -lt'
-                                frontend = docker.build 'kyligence/yinglong-frontend'
+                                sh """
+                                    pwd
+                                    ls -alt
+                                    cat .npmrc
+                                    rm -f .npmrc
+                                    echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                                frontend = docker.build("kyligence/yinglong-frontend", "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
                             }
                         }
                     }
@@ -86,52 +92,12 @@ pipeline {
                 container('docker') {
                     script {
                         docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                            common.push("$tag")
+                            frontend.push("$tag")
                             frontend.push('latest')
                         }
                     }
                 }
             }
         }
-        // stage('4.deploy') {
-        //     when {
-        //         environment name: 'deploy', value: 'true'
-        //     }
-        //     steps {
-        //         echo 'Up in K8S at office env'
-        //         container('kubectl') {
-        //             dir('sourcecode') {
-        //                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-        //                     script {
-        //                         dir('src/yinglong-common-booter') {
-        //                             sh 'pwd && ls -alt'
-        //                             sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
-
-        //                             try {
-        //                                 sh returnStatus: true , script: '''
-        //                                     kubectl delete -n dev -f ./yinglong-common.yaml
-        //                                 '''
-        //                             } catch(Exception err) {
-        //                                 echo err.getMessage()
-        //                                 echo "delete resource failed, but we will continue."
-        //                             }
-
-
-        //                             sh returnStatus: true , script: '''
-        //                                 echo "replace image"
-        //                                 image="${repo}/kyligence/yinglong-common:${tag}"
-        //                                 sed -i "s#image: kyligence/yinglong-common#image: ${image}#" ./yinglong-common.yaml
-
-
-        //                                 cat ./yinglong-common.yaml
-        //                                 kubectl create -n dev -f ./yinglong-common.yaml
-        //                             '''
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
     }
 }
