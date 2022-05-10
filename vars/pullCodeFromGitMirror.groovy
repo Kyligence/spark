@@ -14,7 +14,7 @@ def call(String project, String branch, Boolean fromRemote=false, String repo='K
 
         println "checkout ${project} from git mirror at local, it'll be retry 3 times"
         retry(3) {
-            githubCheckout project, branch
+            githubCheckout project, branch, 'https', 'github.com', refspec, certificate, repo
         }
     } else {
         println "checkout ${project} from github from remote, it'll be retry 3 times"
