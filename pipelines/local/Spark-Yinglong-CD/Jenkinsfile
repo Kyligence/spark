@@ -21,7 +21,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: 'git://10.1.2.192/Kyligence/spark.git', description: 'spark repo')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo')
         string(name: 'branch', defaultValue: '3.2.0-kylin-4.x-r60', description: 'spark branch')
         string(name: 'release_version', defaultValue: '', description: 'spark release version for example: 3.2.0-kylin-4.x-r52')
         string(name: 'hadoop_version', defaultValue: '2.7', description: '2.7')
@@ -35,15 +35,7 @@ pipeline {
                     dir('sourcecode') {
                         retry(3) {
                             timestamps {
-                                checkout([$class           : 'GitSCM',
-                                          branches         : [[name: "${params.branch}"]],
-                                          userRemoteConfigs: [[credentialsId: 'kyligence-git',
-                                                               name         : 'origin',
-                                                               refspec      : '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*',
-                                                               url          : "${repo}"]],
-                                          browser          : [$class: 'GithubWeb', repoUrl: 'https://github.com/Kyligence/spark'],
-                                          extensions       : [[$class: 'CleanBeforeCheckout'],
-                                                              [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]]])
+                                pullCodeFromGitMirror "spark", "${params.branch}", true, "${params.repo}"
                             }
                         }
                     }

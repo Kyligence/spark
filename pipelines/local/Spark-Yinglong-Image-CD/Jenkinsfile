@@ -38,18 +38,7 @@ pipeline {
                     dir("efficiency") {
                         retry(3) {
                             timestamps {
-                                checkout([$class         : 'GitSCM',
-                                          branches         : [[name: "main"]],
-                                          userRemoteConfigs: [[credentialsId: "kyligence-git",
-                                                               name         : "origin",
-                                                               refspec      : "+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*",
-                                                               url          : "https://github.com/Kyligence/efficiency-automation.git"]],
-                                          browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/efficiency-automation"],
-                                          extensions       : [
-                                                  [$class: 'CleanBeforeCheckout'],
-                                                  [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
-                                          ]
-                                ])
+                                pullCodeFromGitMirror "efficiency-automation", "main", true
                             }
                         }
                     }
