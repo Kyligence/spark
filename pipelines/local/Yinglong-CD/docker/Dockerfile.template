@@ -1,7 +1,7 @@
-FROM openjdk:8u312-jdk-bullseye
-RUN mkdir -p /opt && apt-get update && apt-get install -y apt-utils tini net-tools vim-tiny
-ADD replace_package /opt/
-RUN mv /opt/replace_dir-* /opt/kyligence
+FROM 10.1.9.200:5000/kyligence-env:hadoop_2.10.1_hive_1.2.2
+RUN mkdir -p /opt/kyligence
+COPY replace_package /opt/
+RUN tar -xvf /opt/replace_dir*.tar.gz --strip-components 1 -C /opt/kyligence
 RUN mkdir -p /opt/kyligence/hadoop_conf
 RUN touch /opt/kyligence/bin/check-env-bypass && touch /opt/kyligence/spark/jars/replace-jars-bypass
 RUN cd /bin && rm -f sh && ln -s /bin/bash sh

@@ -42,7 +42,7 @@ pipeline {
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
         booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
         string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
-        string(name: 'hadoop_prefix', defaultValue: 'my-hadoop-2', description: 'hadoop environment')
+        string(name: 'hadoop_prefix', defaultValue: 'hadoop-0', description: 'hadoop environment')
     }
 
     stages {
@@ -97,8 +97,9 @@ pipeline {
                             }
 
                             sh """
-                                wget http://repo-ofs.kyligence.com:8081/repository/raw-tars-hosted/io.kyligence.spark/spark-newten-3.2.0-4.x-r56.tgz --directory-prefix=build/
-                                cd build && tar -xvf spark-newten-3.2.0-4.x-r56.tgz && mv spark-newten-3.2.0-4.x-r56 spark && cd ..
+                                # wget http://repo-ofs.kyligence.com:8081/repository/raw-tars-hosted/io.kyligence.spark/spark-newten-3.2.0-4.x-r56.tgz --directory-prefix=build/
+                                # cd build && tar -xvf spark-newten-3.2.0-4.x-r56.tgz && mv spark-newten-3.2.0-4.x-r56 spark && cd ..
+                                sh build/script_newten/download-spark.sh
                                 echo "build yinglong xx booter"
                                 mvn clean install -DskipTests -Pkubernetes -T1C
                             """
@@ -244,7 +245,7 @@ pipeline {
 
 
                             sh returnStatus: true , script: '''
-                                helm -n ${namespace} install yinglong-${namespace} ./helm/yinglong --set yinglongCommon.image.tag=${tag} --set yinglongDataLoading.image.tag=${tag} --set yinglongQuery.image.tag=${tag} --set yinglongCommon.image.tag=${tag}  --set frontend.image.tag=${tag}
+                                helm -n ${namespace} install yinglong-${namespace} ./helm/yinglong --set yinglongCommon.image.tag=${tag} --set yinglongDataLoading.image.tag=${tag} --set yinglongQuery.image.tag=${tag} --set yinglongCommon.image.tag=${tag}  --set frontend.image.tag=${tag} --set hadoopPrefix=${hadoop_prefix}
                                 helm -n ${namespace} list
                             '''
                         }
