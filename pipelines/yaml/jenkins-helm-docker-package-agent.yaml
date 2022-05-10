@@ -38,6 +38,8 @@ spec:
       volumeMounts:
         - mountPath: "/var/run/docker.sock"
           name: "dockersock"
+        - mountPath: "/root/.docker/config.json"
+          name: "docker-config"
       resources:
         limits:
           memory: "2Gi"
@@ -96,3 +98,6 @@ spec:
     - name: "dockersock"
       hostPath:
         path: "/var/run/docker.sock"
+    - hostPath:
+        path: "/root/.docker/config.json"
+      name: "docker-config"
