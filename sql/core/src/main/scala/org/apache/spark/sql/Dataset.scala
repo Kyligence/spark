@@ -1952,9 +1952,6 @@ class Dataset[T] private[sql](
     Limit(Literal(n), logicalPlan)
   }
 
-  def limitRange(start: Int, end: Int): Dataset[T] = withTypedPlan {
-    Limit(Literal(end - start), Offset(Literal(start), logicalPlan))
-  }
   /**
    * Returns a new Dataset by skipping the first `m` rows.
    *
