@@ -1,0 +1,69 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'kyligence config starter repo')
+        string(name: 'branch', defaultValue: 'master', description: 'kyligence config starter repo branch')
+        string(name: 'version', description: 'release version')
+        choice(name: 'profile', choices:'dev\npro', description:'dev or pro' )
+        booleanParam(name: 'deploy', defaultValue:true, description:'推送到仓库')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.branch) {
+                                error 'branch 参数不能为空'
+                            }
+
+                            echo 'checkout kyligence config starter'
+                            retry(3) {
+                                pullCodeFromGitMirror 'kyligence-config-starter', params.branch, true, params.repo
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if(params.version) {
+                                sh "mvn versions:set -DnewVersion=${params.version}"
+                            }
+
+                            if (params.deploy) {
+                                sh """
+                                echo "deploy kyligence config starter"
+                                mvn clean deploy -Dmaven.test.skip=true -P${params.profile}
+                                """
+                            } else {
+                                sh """
+                                echo "build kyligence config starter"
+                                mvn clean package -Dmaven.test.skip=true
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
