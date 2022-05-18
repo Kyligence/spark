@@ -10,7 +10,7 @@ def call(String project, String branch, Boolean fromRemote=false, String repo='K
         error 'branch 参数不能为空'
     }
 
-    if(!fromRemote) { // 从本地镜像获取
+    if(fromRemote) { // 从本地镜像获取
         println 'Sync the git mirror'
         sshCmdWithCredentials(
             "sh /var/lib/git/pull-repo.sh ${project}",
