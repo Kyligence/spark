@@ -294,21 +294,26 @@ pipeline {
                             // backup last version
                             backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`.tar.gz", returnStdout: true).trim()
                             println "backup_name: ${backup_name}"
-                            sh """
-                                echo '备份旧版'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "cd /opt/books/${package_path}/ && tar -zcvf ${backup_name} * > /dev/null"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                echo '------'
+                            try {
+                                sh """
+                                    echo '备份旧版'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "cd /opt/books/${package_path}/ && tar -zcvf ${backup_name} * > /dev/null"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                    echo '------'
 
-                                echo '发布上传站点'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                echo '------'
-                            """
-                            println 'Deploy last version successful'
+                                    echo '发布上传站点'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                    echo '------'
+                                """
+                                println 'Deploy last version successful'
+                            }
+                            catch (exception) {
+                                println "exception: ${exception}"
+                            }
                             // }
                             // def approver = paramsGA['APPROVER']
                             // println "approver: ${approver}"
