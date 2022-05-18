@@ -2,6 +2,7 @@
 
 @Library('devopslib') _
 
+def approvalMap
 def package_pat
 def file_name
 def ga_name
@@ -205,6 +206,8 @@ pipeline {
                                         echo "\033[36m gitbook pdf success\033[0m"
                                     """)
                                 }
+
+                                println "pdf name: ${pdf_zh} | ${pdf_en}"
                                 
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
@@ -286,7 +289,7 @@ pipeline {
 
                             def checkMsg = "该版本可以发布吗？"
                             println checkMsg
-                            paramsGA = input (
+                            approvalMap = input (
                                 message: checkMsg,
                                 ok: '确认！',
                                 // submitter:'liming.meng,meixiu.chen,enwei.jiao',
@@ -343,28 +346,37 @@ pipeline {
                         script {
                             def checkMsg = "确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点 Abort 结束流程，整个流程4小时后会自动截止）"
                             println checkMsg
-                            paramsGA = input (
+                            approvalMap = input (
                                 message: checkMsg,
                                 ok: '确认！',
                                 // submitter:'liming.meng,meixiu.chen,enwei.jiao',
+                                parameters: [
+                                    booleanParam(name: "isRollback", defaultValue: false, description: '是否回滚：勾选回滚会返回到发布前版本，否则确认成功发布！')
+                                    // choice(choices:'dev\ntest\nprod', description:'发布到什么环境？', name:'ENV'),
+                                    // string(defaultValue:'', description:'', name:'myparam')
+                                ],
                                 submitterParameter:'APPROVER'
                             )
-                            println "backup_name: ${backup_name}"
-                            sh """
-                                echo '------'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                echo '------'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                echo '------'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/backup/${backup_name} -C /opt/books/${package_path}/ > /dev/null"
-                                echo '------'
-                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                echo '------'
-                            """
-                            println '\033[36mRollback to last version success\033[0m'
+                            if(approvalMap['isRollback']){
+                                println "backup_name: ${backup_name}"
+                                sh """
+                                    echo '------'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                    echo '------'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+                                    echo '------'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/backup/${backup_name} -C /opt/books/${package_path}/ > /dev/null"
+                                    echo '------'
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                    echo '------'
+                                """
+                                println '\033[36mRollback to last version success\033[0m'
 
-                            // def approver = paramsGA['APPROVER']
-                            // println "approver: ${approver}"
+                                println "approver: ${approvalMap['APPROVER']}"
+                            } else {
+                                println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
+                                println "approver: ${approvalMap['APPROVER']}"
+                            }
                         }
                     }
                 }
