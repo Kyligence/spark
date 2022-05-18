@@ -47,6 +47,8 @@ def getPackageInfo(type_mapping, doc_type, cid) {
     obj.package_path=package_path
     obj.project=project
     obj.branch=branch
+    obj.pdf_zh=pdf_zh
+    obj.pdf_en=pdf_en
     obj.ga_name=ga_name
     println obj.toString()
     return obj
@@ -103,6 +105,8 @@ pipeline {
                                 package_path = package_info.package_path
                                 file_name = package_info.file_name
                                 ga_name = package_info.ga_name
+                                pdf_zh = package_info.pdf_zh
+                                pdf_en = package_info.pdf_en
 
                                 try {
                                     def existPackage = "${package_info.package_path}/${package_info.file_name}"
