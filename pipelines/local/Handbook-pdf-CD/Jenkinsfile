@@ -217,7 +217,8 @@ pipeline {
                                     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/${pdf_zh}.pdf book_zh-hans.pdf
 
                                     cd _book/
-                                    sed -i '' 's/zh-hans/zh-cn/' ./index.html
+                                    ls -lh 
+                                    sed -i 's/zh-hans/zh-cn/g' index.html
                                     tar -zcvf ${file_name} * > /dev/null
                                     echo "\033[36m pdf compress success\033[0m"
                                 """)
