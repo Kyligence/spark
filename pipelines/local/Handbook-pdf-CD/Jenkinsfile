@@ -358,7 +358,10 @@ pipeline {
                                 ],
                                 submitterParameter:'APPROVER'
                             )
-                            if(approvalMap['isRollback']){
+                            if(approvalMap['isRollback']==false){
+                                println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
+                                println "approver: ${approvalMap['APPROVER']}"
+                            } else {
                                 println "backup_name: ${backup_name}"
                                 sh """
                                     echo '------'
@@ -382,9 +385,6 @@ pipeline {
 
                                 error(message: '回滚成功，发布失败！')
 
-                                println "approver: ${approvalMap['APPROVER']}"
-                            } else {
-                                println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
                                 println "approver: ${approvalMap['APPROVER']}"
                             }
                         }
