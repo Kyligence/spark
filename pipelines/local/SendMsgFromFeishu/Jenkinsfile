@@ -1,0 +1,52 @@
+
+@Library('devopslib@sfz') _
+
+//变量名，用于存储input步骤的返回值
+def job_build_user
+
+environment {
+    BUILD_USER_ID = "${env.BUILD_USER_ID}"
+    BUILD_USER = "${env.BUILD_USER}"
+    BUILD_USER_EMAIL = "${env.BUILD_USER_EMAIL}"
+   }
+
+
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-feishu-sendmsg-pod.yaml'
+        }
+    }
+
+    parameters {
+          string(name: 'branch', defaultValue: '9527', description: '前后端同步的branch或者commitid（必填）')
+        //string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        //string(name: 'commitId_front', defaultValue: 'newten-qa', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+        //string(name: 'version', defaultValue: '4.5.10', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        //choice(name: 'envStage', choices:'DEV\nRC\nGA', description:'打包阶段' )
+    }
+
+    stages {
+        stage('1-jenkins-feishu-sendmsg-pod') {
+            steps {
+                container('jenkins-feishu-sendmsg-pod-container') {
+                    dir('sourcecode') {
+                        sh script: """
+                                #!/bin/bash
+                                cp -p /tmp/feishu.robot.py  .
+                                BUILD_USER_EMAIL="sunfuzhou@outlook.com"
+                                python3 feishu.robot.py BUILD_USER_EMAIL 5555
+                             """                 
+                        
+                    }
+                }
+            }
+        }
+    }
+}
