@@ -303,17 +303,18 @@ pipeline {
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
                                     echo '------'
-
-                                    echo '发布上传站点'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                    echo '------'
                                 """
                                 println 'Deploy last version successful'
                             }
                             catch (exception) {
                                 println "exception: ${exception}"
                             }
+                            sh """
+                                echo '发布上传站点'
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
+                                echo '------'
+                            """
                             // }
                             // def approver = paramsGA['APPROVER']
                             // println "approver: ${approver}"
