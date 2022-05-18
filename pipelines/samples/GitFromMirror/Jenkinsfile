@@ -1,0 +1,12 @@
+@Library('devopslib') _
+pipeline { 
+    agent any 
+    
+    stages {
+        stage('Example'){
+            steps {
+                pullCodeFromGitMirror 'KAP', 'newten'
+            }
+        }
+    }
+}
