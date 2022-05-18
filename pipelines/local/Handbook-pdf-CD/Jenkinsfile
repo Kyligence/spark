@@ -10,24 +10,26 @@ def project
 def branch
 def commitid
 def paramsMap
+def pdf_zh
+def pdf_en
 // 包存在
 def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
-def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5','path': 'cloud/v4.5', 'branch': 'master'],
-                    'KC 4.5 test': ['project': 'Cloud_Manual', 'version':'v4.5_test','path': 'cloud/v4.5_test', 'branch': 'master'],
-                    'KC 4.5 dev':['project': 'Cloud_Manual', 'version':'v4.5_dev','path': 'cloud/v4.5_dev', 'branch': '4.5_test'],
-                    'KC Test Drive':['project': 'Cloud_Manual','version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive'],
-                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3','path': 'cloud/v4.3', 'branch': 'kc-4.3.x'],
-                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2','path': 'cloud/v3.2', 'branch': 'kc-3.2.x'],
-                    'KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master'],
-                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master'],
-                    'KE 4.5 dev':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_dev', 'path': 'v4.5_dev', 'branch': 'master_new'],
-                    'kE 4.3 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3_test', 'path': 'v4.3_test', 'branch': 'ke-4.3.x-test'],
-                    'KE 4.3':['project': 'Kyligence-Enterprise-Manual','version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x'],
-                    'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2','path': 'v4.2', 'branch': 'ke-4.2'],
-                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4','path': 'v3.4', 'branch': 'master']]
+def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5','path': 'cloud/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.5 test': ['project': 'Cloud_Manual', 'version':'v4.5_test','path': 'cloud/v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.5 dev':['project': 'Cloud_Manual', 'version':'v4.5_dev','path': 'cloud/v4.5_dev', 'branch': '4.5_test', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC Test Drive':['project': 'Cloud_Manual','version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive', 'pdf_name_zh':'Kyligence_Test_Driver-cn','pdf_name_en':'Kyligence_Test_Driver-en'],
+                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3','path': 'cloud/v4.3', 'branch': 'kc-4.3.x', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2','path': 'cloud/v3.2', 'branch': 'kc-3.2.x', 'pdf_name_zh':'Kyligence_Cloud_3-cn','pdf_name_en':'Kyligence_Cloud_3-en'],
+                    'KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
+                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh','pdf_name_en':'Kyligence_Enterprise_4_5-en'],
+                    'KE 4.5 dev':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_dev', 'path': 'v4.5_dev', 'branch': 'master_new', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh','pdf_name_en':'Kyligence_Enterprise_4_5-en'],
+                    'kE 4.3 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3_test', 'path': 'v4.3_test', 'branch': 'ke-4.3.x-test', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh','pdf_name_en':'Kyligence_Enterprise_4_3-en'],
+                    'KE 4.3':['project': 'Kyligence-Enterprise-Manual','version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh','pdf_name_en':'Kyligence_Enterprise_4_3-en'],
+                    'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2','path': 'v4.2', 'branch': 'ke-4.2', 'pdf_name_zh':'Kyligence_Enterprise_4_2-zh','pdf_name_en':'Kyligence_Enterprise_4_2-en'],
+                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4','path': 'v3.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_3_2-zh','pdf_name_en':'Kyligence_Enterprise_3_2-en']]
 
 def getPackageInfo(type_mapping, doc_type, cid) {
     println "getPackageInfo: doc_type[${doc_type}], cid[${cid}]"
@@ -35,6 +37,8 @@ def getPackageInfo(type_mapping, doc_type, cid) {
     package_path = type_mapping.get(doc_type).get('path')
     version = type_mapping.get(doc_type).get('version')
     branch = type_mapping.get(doc_type).get('branch')
+    pdf_zh = type_mapping.get(doc_type).get('pdf_name_zh')
+    pdf_en = type_mapping.get(doc_type).get('pdf_name_en')
     file_name = "${project}-${version}-${cid}.tar.gz"
     ga_name = "${project}-${version}.tar.gz"
 
@@ -135,7 +139,7 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             sh 'ls -al'
-                            sh 'cat .npmrc'
+                            // sh 'cat .npmrc'
                             // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
                             retry(3) {
                                 sh script: """#!/bin/bash 
@@ -200,10 +204,10 @@ pipeline {
                                 
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
-                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/Kyligence_Enterprise_${version}-en.pdf book_en.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
                                     rm -rf _book/zh-cn
                                     mv _book/zh-hans _book/zh-cn
-                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/Kyligence_Enterprise_${version}-zh.pdf book_zh-hans.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/${pdf_zh}.pdf book_zh-hans.pdf
 
                                     cd _book/
                                     tar -zcvf ${file_name} * > /dev/null
