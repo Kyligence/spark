@@ -269,7 +269,6 @@ pipeline {
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/release/${package_path}"
                                 scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}"
-                                echo '------'
                             """
                             println '\033[36mUploaded success\033[0m'
                         }
@@ -312,7 +311,6 @@ pipeline {
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup"
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
-                                    echo '------'
                                 """
                                 println 'Deploy last version successful'
                             }
@@ -323,7 +321,8 @@ pipeline {
                                 echo '发布上传站点'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                echo '------'
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/zh-cn/"
+                                ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/en/"
                             """
                             // }
                             // def approver = paramsGA['APPROVER']
@@ -334,6 +333,8 @@ pipeline {
                                 <p>Handbook [${ga_name}] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
                                 <p>The pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                                 <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
+                                <p>PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf</p>
+                                <p>PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf</p>
                             """)
                         }
                     }
@@ -361,6 +362,9 @@ pipeline {
                             )
                             if(approvalMap['isRollback']==false){
                                 println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
+                                println "PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf"
+                                println "PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf"
+
                                 println "approver: ${approvalMap['APPROVER']}"
                             } else {
                                 println "backup_name: ${backup_name}"
