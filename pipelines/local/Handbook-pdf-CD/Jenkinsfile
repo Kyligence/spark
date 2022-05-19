@@ -298,17 +298,14 @@ pipeline {
                             // ]
                             )
                             // if(paramsGA['confirmUpload']){
-                            // backup last version  .tar.gz
-                            backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`", returnStdout: true).trim()
+                            // backup last version  
+                            // backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`.tar.gz", returnStdout: true).trim()
 
-                            println "backup_name: ${backup_name}"
+                            // println "backup_name: ${backup_name}"
                             try {
                                 sh """
                                     echo '备份旧版'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
-
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "cd /opt/books/${package_path}/ && tar -zcvf ${backup_name} * > /dev/null"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
 
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup/${package_path}/"
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/* /home/ec2-user/backup/${package_path}/"
@@ -369,23 +366,21 @@ pipeline {
 
                                 println "approver: ${approvalMap['APPROVER']}"
                             } else {
-                                println "backup_name: ${backup_name}"
+                                // println "backup_name: ${backup_name}"
                                 sh """
-                                    echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
                                     echo '------'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/backup/${backup_name} -C /opt/books/${package_path}/ > /dev/null"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -rf /opt/books/${package_path}/*"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /home/ec2-user/backup/${package_path}/* /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
-                                    echo '------'
                                 """
 
                                 _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback", """
                                     <h3>Hi,</h3><br />
                                     <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                    <p>Rollback from backup/${backup_name} to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}</p>
                                     <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
                                     <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
                                 """)
@@ -408,8 +403,7 @@ pipeline {
                                 sh """
                                     echo '---删除上传压缩包---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/release/${package_path}/${ga_name}"
-                                    echo '---删除备份压缩包---'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/backup/${backup_name}"
+                                    echo '---删除备份文件---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -rf /home/ec2-user/backup/${package_path}/"
                                 """
                             }
