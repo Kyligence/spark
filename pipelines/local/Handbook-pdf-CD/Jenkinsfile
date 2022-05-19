@@ -18,19 +18,19 @@ def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
-def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5','path': 'cloud/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC 4.5 test': ['project': 'Cloud_Manual', 'version':'v4.5_test','path': 'cloud/v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC 4.5 dev':['project': 'Cloud_Manual', 'version':'v4.5_dev','path': 'cloud/v4.5_dev', 'branch': '4.5_test', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC Test Drive':['project': 'Cloud_Manual','version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive', 'pdf_name_zh':'Kyligence_Test_Driver-cn','pdf_name_en':'Kyligence_Test_Driver-en'],
-                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3','path': 'cloud/v4.3', 'branch': 'kc-4.3.x', 'pdf_name_zh':'Kyligence_Cloud_4-cn','pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2','path': 'cloud/v3.2', 'branch': 'kc-3.2.x', 'pdf_name_zh':'Kyligence_Cloud_3-cn','pdf_name_en':'Kyligence_Cloud_3-en'],
+def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5', 'path': 'cloud/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.5 test': ['project': 'Cloud_Manual', 'version':'v4.5_test', 'path': 'cloud/v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.5 dev':['project': 'Cloud_Manual', 'version':'v4.5_dev', 'path': 'cloud/v4.5_dev', 'branch': '4.5_test', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC Test Drive':['project': 'Cloud_Manual', 'version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive', 'pdf_name_zh':'Kyligence_Test_Driver-cn', 'pdf_name_en':'Kyligence_Test_Driver-en'],
+                    'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3', 'path': 'cloud/v4.3', 'branch': 'kc-4.3.x', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2', 'path': 'cloud/v3.2', 'branch': 'kc-3.2.x', 'pdf_name_zh':'Kyligence_Cloud_3-cn', 'pdf_name_en':'Kyligence_Cloud_3-en'],
                     'KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
-                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh','pdf_name_en':'Kyligence_Enterprise_4_5-en'],
-                    'KE 4.5 dev':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_dev', 'path': 'v4.5_dev', 'branch': 'master_new', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh','pdf_name_en':'Kyligence_Enterprise_4_5-en'],
-                    'kE 4.3 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3_test', 'path': 'v4.3_test', 'branch': 'ke-4.3.x-test', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh','pdf_name_en':'Kyligence_Enterprise_4_3-en'],
-                    'KE 4.3':['project': 'Kyligence-Enterprise-Manual','version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh','pdf_name_en':'Kyligence_Enterprise_4_3-en'],
-                    'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2','path': 'v4.2', 'branch': 'ke-4.2', 'pdf_name_zh':'Kyligence_Enterprise_4_2-zh','pdf_name_en':'Kyligence_Enterprise_4_2-en'],
-                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4','path': 'v3.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_3_2-zh','pdf_name_en':'Kyligence_Enterprise_3_2-en']]
+                    'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
+                    'KE 4.5 dev':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_dev', 'path': 'v4.5_dev', 'branch': 'master_new', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
+                    'kE 4.3 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3_test', 'path': 'v4.3_test', 'branch': 'ke-4.3.x-test', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh', 'pdf_name_en':'Kyligence_Enterprise_4_3-en'],
+                    'KE 4.3':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh', 'pdf_name_en':'Kyligence_Enterprise_4_3-en'],
+                    'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2', 'path': 'v4.2', 'branch': 'ke-4.2', 'pdf_name_zh':'Kyligence_Enterprise_4_2-zh', 'pdf_name_en':'Kyligence_Enterprise_4_2-en'],
+                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4', 'path': 'v3.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_3_2-zh', 'pdf_name_en':'Kyligence_Enterprise_3_2-en']]
 
 def getPackageInfo(type_mapping, doc_type, cid) {
     println "getPackageInfo: doc_type[${doc_type}], cid[${cid}]"
@@ -44,28 +44,27 @@ def getPackageInfo(type_mapping, doc_type, cid) {
     ga_name = "${project}-${version}.tar.gz"
 
     def obj = [:]
-    obj.file_name=file_name
-    obj.package_path=package_path
-    obj.project=project
-    obj.branch=branch
-    obj.pdf_zh=pdf_zh
-    obj.pdf_en=pdf_en
-    obj.ga_name=ga_name
+    obj.file_name = file_name
+    obj.package_path = package_path
+    obj.project = project
+    obj.branch = branch
+    obj.pdf_zh = pdf_zh
+    obj.pdf_en = pdf_en
+    obj.ga_name = ga_name
     println obj.toString()
     return obj
 }
 
-def _sendNotify(doc_type,subject,msg){
+def _sendNotify(doc_type, subject, msg) {
     def emails = ['KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
         'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io']
     // def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
     def notifyTo = doc_type.indexOf('KE') == 0 ? emails.get('KE') : emails.get('KC')
     println notifyTo
-    sendNotify('EMAIL',subject,notifyTo,msg)
+    sendNotify('EMAIL', subject, notifyTo, msg)
 }
 
 pipeline {
-
     options {
         timeout(time: 4, unit: 'HOURS')
         ansiColor('xterm')
@@ -85,24 +84,24 @@ pipeline {
     parameters {
         choice(name: 'doc_type', choices:'KC 4.5 dev\nKC 4.5 test\nKC 4.5\nKC Test Drive\nKC 4.3\nKC 3.2\nKE 4.5 dev\nKE 4.5 test\nKE 4.5\nKE 4.3 test\nKE 4.3\nKE 4.2\nKE 3.2', description:'选择日志打包类型' )
         booleanParam(name: 'check_deadlinks', defaultValue: false, description: '是否检查死链（无效链接）?')
-        // string(name: 'version', defaultValue: '4.5', description: '版本号?')
+    // string(name: 'version', defaultValue: '4.5', description: '版本号?')
     }
 
     stages {
-        stage("1.Pull Code") {
+        stage('1.Pull Code') {
             steps {
-                container("git") {
+                container('git') {
                     timestamps {
                         script {
-                            dir("sourcecode") {
+                            dir('sourcecode') {
                                 project = type_mapping.get(params.doc_type).get('project')
                                 branch = type_mapping.get(params.doc_type).get('branch')
                                 pullCodeFromGitMirror project, branch
 
-                                commitid = sh(script:"git rev-parse --short HEAD", returnStdout: true).trim()
+                                commitid = sh(script:'git rev-parse --short HEAD', returnStdout: true).trim()
                                 println "commitid: ${commitid}"
-                                
-                                package_info = getPackageInfo(type_mapping,params.doc_type,commitid)
+
+                                package_info = getPackageInfo(type_mapping, params.doc_type, commitid)
                                 package_path = package_info.package_path
                                 file_name = package_info.file_name
                                 ga_name = package_info.ga_name
@@ -132,7 +131,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('2.Deadline Checker') {
             when {
                 expression {
@@ -140,32 +139,32 @@ pipeline {
                 }
             }
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         script {
                             sh 'ls -al'
                             // sh 'cat .npmrc'
                             // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
                             retry(3) {
-                                sh script: """#!/bin/bash 
+                                sh script: """#!/bin/bash
                                     set +X
                                     sed -ie 's/\"search\"/\"-search\"/g' book.json
                                     gitbook install
                                 """
                             }
-                            if(project == 'Kyligence-Enterprise-Manual') {
-                                sh script: """#!/bin/bash 
+                            if (project == 'Kyligence-Enterprise-Manual') {
+                                sh script: '''#!/bin/bash
                                     set +X
                                     chmod +x ./check_deadlinks.sh
                                     /bin/bash -c ./check_deadlinks.sh
-                                """
-                            } else if(project == 'Cloud_Manual'){
-                                sh script: """#!/bin/bash 
+                                '''
+                            } else if (project == 'Cloud_Manual') {
+                                sh script: '''#!/bin/bash
                                     set +X
                                     chmod +x ./local_check_dead_link.sh
                                     /bin/bash -c ./local_check_dead_link.sh
-                                """
-                            }else{
+                                '''
+                            }else {
                                 println "The project [${project}] not support the deadline check."
                             }
                         }
@@ -173,23 +172,23 @@ pipeline {
                 }
             }
         }
-        
+
         stage('3.Build') {
             steps {
-                container("build") {
-                    dir("sourcecode") {
-                        script{
+                container('build') {
+                    dir('sourcecode') {
+                        script {
                             if (!exist_package) {
                                 file_name = package_info.file_name
-                                
-                                if(!params.check_deadlinks) {
+
+                                if (!params.check_deadlinks) {
                                     sh 'gitbook install'
                                 }
                                 retry(5) {
-                                    sh (script:"""
+                                    sh (script:'''
                                         gitbook build
                                         echo "\033[33m gitbook build success\033[0m"
-                                    """)
+                                    ''')
                                 }
 
                                 retry(5) {
@@ -197,7 +196,7 @@ pipeline {
                                         export PATH=$PATH:/opt/calibre
                                         export LC_ALL=en_US.UTF-8
                                         export LANG=en_US.UTF-8
-                                        
+
                                         mv book.json book_tmp.json
                                         sed -e '/\"star\"/d'  book_tmp.json > book.json
                                         gitbook pdf
@@ -208,7 +207,7 @@ pipeline {
                                 }
 
                                 println "pdf name: ${pdf_zh} | ${pdf_en}"
-                                
+
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
                                     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
@@ -223,7 +222,7 @@ pipeline {
                                     tar -zcvf ${file_name} * > /dev/null
                                     echo "\033[36m pdf compress success\033[0m"
                                 """)
-                                
+
                                 archiveArtifacts artifacts: '_book/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
                                 sh 'ls -al _book/'
                                 println "package_path: ${package_path}"
@@ -232,11 +231,10 @@ pipeline {
                                     mkdir -p /var/cicd/handbook/${package_path}
                                     mv _book/${file_name} ${file_name}
                                     ls -lh _book/
-                                    ls -lh .
                                     cp ${file_name} /var/cicd/handbook/${package_path}
                                 """
                                 exist_package = true
-                            }else{
+                            }else {
                                 sh "cp /var/cicd/handbook/${package_path}/${file_name} ${file_name}"
                                 println "The package: ${file_name} is exist, Please reuse the it. \n 包已存在，不用重复打包"
                             }
@@ -255,13 +253,13 @@ pipeline {
                 }
             }
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         script {
                             println "package_path: ${package_path}, file_name: ${file_name}, ga_name: ${ga_name}"
                             sh "ls -lh /var/cicd/handbook/${package_path}"
                             sh "mv ${file_name} ${ga_name}"
-                            sh "ls -lh"
+                            sh 'ls -lh'
 
                             println '\033[36mUploading... \033[0m'
                             sh """#!/bin/bash
@@ -279,8 +277,8 @@ pipeline {
 
         stage('5.Deploy') {
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         script {
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Ready to Deploy", """
                                 <h3>Hi,</h3><br />
@@ -288,29 +286,33 @@ pipeline {
                                 <p>Please check it and Confirm on the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
 
-                            def checkMsg = "该版本可以发布吗？"
+                            def checkMsg = '该版本可以发布吗？'
                             println checkMsg
                             approvalMap = input (
                                 message: checkMsg,
                                 ok: '确认！',
                                 // submitter:'liming.meng,meixiu.chen,enwei.jiao',
                                 submitterParameter:'APPROVER'
-                                // parameters:[
-                                //     booleanParam(name: "confirmUpload", defaultValue: false, description: '是否确认上传')
-                                // ]
+                            // parameters:[
+                            //     booleanParam(name: "confirmUpload", defaultValue: false, description: '是否确认上传')
+                            // ]
                             )
                             // if(paramsGA['confirmUpload']){
-                            // backup last version
-                            backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`.tar.gz", returnStdout: true).trim()
+                            // backup last version  .tar.gz
+                            backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`", returnStdout: true).trim()
+
                             println "backup_name: ${backup_name}"
                             try {
                                 sh """
                                     echo '备份旧版'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
+
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "cd /opt/books/${package_path}/ && tar -zcvf ${backup_name} * > /dev/null"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup"
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/${backup_name} /home/ec2-user/backup"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/"
+
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/backup/${package_path}/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mv /opt/books/${package_path}/* /home/ec2-user/backup/${package_path}/"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/backup/${package_path}/"
                                 """
                                 println 'Deploy last version successful'
                             }
@@ -334,7 +336,7 @@ pipeline {
                                 <p>The pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                                 <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
                                 <p>PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf</p>
-                                <p>PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf</p>
+                                <p>PDF Download zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf</p>
                             """)
                         }
                     }
@@ -344,23 +346,23 @@ pipeline {
 
         stage('6.Rollback') {
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         script {
-                            def checkMsg = "确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点 Abort 结束流程，整个流程4小时后会自动截止）"
+                            def checkMsg = '确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点 Abort 结束流程，整个流程4小时后会自动截止）'
                             println checkMsg
                             approvalMap = input (
                                 message: checkMsg,
                                 ok: '确认！',
                                 // submitter:'liming.meng,meixiu.chen,enwei.jiao',
                                 parameters: [
-                                    booleanParam(name: "isRollback", defaultValue: false, description: '是否回滚：勾选回滚会返回到发布前版本，否则确认成功发布！')
-                                    // choice(choices:'dev\ntest\nprod', description:'发布到什么环境？', name:'ENV'),
-                                    // string(defaultValue:'', description:'', name:'myparam')
+                                    booleanParam(name: 'isRollback', defaultValue: false, description: '是否回滚：勾选回滚会返回到发布前版本，否则确认成功发布！')
+                                // choice(choices:'dev\ntest\nprod', description:'发布到什么环境？', name:'ENV'),
+                                // string(defaultValue:'', description:'', name:'myparam')
                                 ],
                                 submitterParameter:'APPROVER'
                             )
-                            if(approvalMap['isRollback']==false){
+                            if (approvalMap['isRollback'] == false) {
                                 println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
                                 println "PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf"
                                 println "PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf"
@@ -379,14 +381,14 @@ pipeline {
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                 """
-                                
+
                                 _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback", """
                                     <h3>Hi,</h3><br />
                                     <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                     <p>Rollback from backup/${backup_name} to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}</p>
                                     <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
                                     <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
-                                """)    
+                                """)
 
                                 error(message: '回滚成功，发布失败！')
 
@@ -399,15 +401,16 @@ pipeline {
             post {
                 always {
                     // 每次列出来发布后的结果和备份的结果，可以检查
-                    echo "post condition executed: always ..."
-                    container("build") {
-                        dir("sourcecode") {
+                    echo 'post condition executed: always ...'
+                    container('build') {
+                        dir('sourcecode') {
                             script {
                                 sh """
                                     echo '---删除上传压缩包---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/release/${package_path}/${ga_name}"
                                     echo '---删除备份压缩包---'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -f /home/ec2-user/backup/${backup_name}"
+                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "rm -rf /home/ec2-user/backup/${package_path}/"
                                 """
                             }
                         }
@@ -423,11 +426,11 @@ pipeline {
                 //             <p>Rollback from backup/${backup_name} to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}</p>
                 //             <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
                 //             <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
-                //         """)    
+                //         """)
 
-                //         error(message: '回滚成功，发布失败！')
-                //     }
-                // }
+            //         error(message: '回滚成功，发布失败！')
+            //     }
+            // }
             }
         }
     }
