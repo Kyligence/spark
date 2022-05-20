@@ -324,6 +324,7 @@ pipeline {
                                     exist_package = true
                                     
                                     if(params.envStage!='GA'){
+                                        package_info.file_name = package_info.ga_name
                                         sh script: """
                                             cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                                         """
