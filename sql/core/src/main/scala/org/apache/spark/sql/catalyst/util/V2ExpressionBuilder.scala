@@ -195,6 +195,65 @@ class V2ExpressionBuilder(e: Expression, isPredicate: Boolean = false) {
       } else {
         None
       }
+    case substring: Substring =>
+      val children = if (substring.len == Literal(Integer.MAX_VALUE)) {
+        Seq(substring.str, substring.pos)
+      } else {
+        substring.children
+      }
+      val childrenExpressions = children.flatMap(generateExpression(_))
+      if (childrenExpressions.length == children.length) {
+        Some(new GeneralScalarExpression("SUBSTRING",
+          childrenExpressions.toArray[V2Expression]))
+      } else {
+        None
+      }
+    case Upper(child) => generateExpression(child)
+      .map(v => new GeneralScalarExpression("UPPER", Array[V2Expression](v)))
+    case Lower(child) => generateExpression(child)
+      .map(v => new GeneralScalarExpression("LOWER", Array[V2Expression](v)))
+    case translate: StringTranslate =>
+      val childrenExpressions = translate.children.flatMap(generateExpression(_))
+      if (childrenExpressions.length == translate.children.length) {
+        Some(new GeneralScalarExpression("TRANSLATE",
+          childrenExpressions.toArray[V2Expression]))
+      } else {
+        None
+      }
+    case trim: StringTrim =>
+      val childrenExpressions = trim.children.flatMap(generateExpression(_))
+      if (childrenExpressions.length == trim.children.length) {
+        Some(new GeneralScalarExpression("TRIM", childrenExpressions.toArray[V2Expression]))
+      } else {
+        None
+      }
+    case trim: StringTrimLeft =>
+      val childrenExpressions = trim.children.flatMap(generateExpression(_))
+      if (childrenExpressions.length == trim.children.length) {
+        Some(new GeneralScalarExpression("LTRIM", childrenExpressions.toArray[V2Expression]))
+      } else {
+        None
+      }
+    case trim: StringTrimRight =>
+      val childrenExpressions = trim.children.flatMap(generateExpression(_))
+      if (childrenExpressions.length == trim.children.length) {
+        Some(new GeneralScalarExpression("RTRIM", childrenExpressions.toArray[V2Expression]))
+      } else {
+        None
+      }
+    case overlay: Overlay =>
+      val children = if (overlay.len == Literal(-1)) {
+        Seq(overlay.input, overlay.replace, overlay.pos)
+      } else {
+        overlay.children
+      }
+      val childrenExpressions = children.flatMap(generateExpression(_))
+      if (childrenExpressions.length == children.length) {
+        Some(new GeneralScalarExpression("OVERLAY",
+          childrenExpressions.toArray[V2Expression]))
+      } else {
+        None
+      }
     // TODO supports other expressions
     case _ => None
   }
