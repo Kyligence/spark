@@ -4,7 +4,7 @@ def call(ctl, file_name, remote_path, bucket, region='', credentials=null) {
             uploadAwsS3(file_name, remote_path, bucket, region, credentials)
             break
         case 'SERVER':
-            uplaodRemoteServer(file_name, remote_path, bucket, credentials)
+            uplaodServer(file_name, remote_path, bucket, credentials)
             break
         case 'NEXUS':
             uploadNexus(file_name, remote_path, bucket)
@@ -25,7 +25,7 @@ def uploadAwsS3(file_name, remote_path, bucket, region, credentials) {
 }
 
 // 上传包到Azure服务器
-def uplaodRemoteServer(file_name, remote_path, remote_ip, credentials='azure-4xuser') {
+def uplaodServer(file_name, remote_path, remote_ip, credentials='azure-4xuser') {
     dir('sourcecode') {
         timestamps {
             script {
