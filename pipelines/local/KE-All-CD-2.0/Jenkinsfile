@@ -303,7 +303,7 @@ pipeline {
                 stage('3.1.Upload to Azure CN') {
                     steps {
                         // uplaodAzure(package_info)
-                        uploadHelper.uplaodRemoteServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'azure-4xuser')
+                        uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'azure-4xuser')
                     }
                     post {
                         success {
@@ -321,7 +321,7 @@ pipeline {
                 stage('3.2.Upload to Nexus') {
                     steps {
                         // uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
-                        uploadHelper.uploadNexus(package_info.file_name, package_info.package_path, 'raw-tars-hosted')
+                        uploadHelper('NEXUS', package_info.file_name, package_info.package_path, 'raw-tars-hosted')
                     }
                 }
                 stage('3.3.Upload to AWS Global S3') {
@@ -334,7 +334,7 @@ pipeline {
                         println("upload to AWS S3 in Global: ${package_info.file_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
                         // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
-                        uploadHelper.uploadAwsS3(package_info.file_name, "packages/ke-without-spark/${package_info.file_name}", 'kyligencecloud-ci', 'us-west-2', 'aws_global_s3_cp')
+                        uploadHelper('AwsS3', package_info.file_name, "packages/ke-without-spark/${package_info.file_name}", 'kyligencecloud-ci', 'us-west-2', 'aws_global_s3_cp')
                     }
                 }
             }
@@ -377,7 +377,7 @@ pipeline {
                         println("upload to AWS S3 in CN: ${ga_name}")
                         // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
                         // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                        uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                        uploadHelper('AwsS3', ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
                     }
                 }
                 stage('5.2.GA AWS Global') {
@@ -385,14 +385,14 @@ pipeline {
                         println("upload to AWS S3 in Global: ${ga_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
                         // uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                        uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
+                        uploadHelper('AwsS3', ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
                     }
                 }
                 stage('5.3.GA Nexus') {
                     steps {
                         println("upload to Nexus repo-ofs: ${ga_name}")
                         // uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
-                        uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted')
+                        uploadHelper('NEXUS', ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted')
                     }
                 }
             }

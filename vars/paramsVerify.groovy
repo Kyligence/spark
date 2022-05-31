@@ -1,10 +1,10 @@
-// def call(String way, String keyword) {
-//     switch (way) {
-//         case 'VERSION':
-//             versionVerify(keyword)
-//             break
-//     }
-// }
+def call(String way, String keyword) {
+    switch (way) {
+        case 'VERSION':
+            versionVerify(keyword)
+            break
+    }
+}
 
 def version(version) {
     println "versionVerify -> version[${version}]"
