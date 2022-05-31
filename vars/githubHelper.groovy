@@ -1,33 +1,34 @@
-def call(String ctl, String base, String project, String tag=null, 
+def call(String ctl, String base, String project, String tag=null,
         String repo='Kyligence', Boolean isCloned=true, String credentialsId='kyligence-git') {
-     switch(ctl) {
+    switch (ctl) {
         case 'INIT':
-            gitInit(base,project,repo)
-        break
+            gitInit(base, project, repo)
+            break
         case 'TAG':
-            gitTag(base,tag,project,repo,isCloned)
-        break
+            gitTag(base, tag, project, repo, isCloned)
+            break
         case 'PR':
-            createPR(base,project,repo,tag,isCloned)
-        break
+            createPR(base, project, repo, tag, isCloned)
+            break
         case 'BRANCH':
-            createBranch(base,project,repo,tag,isCloned)
-        break
+            createBranch(base, project, repo, tag, isCloned)
+            break
         case 'COMMITID':
-            gitCommitId()
-        break
+            gitCommitId(isShort)
+            break
     }
 }
 
 def gitCommitId(isShort=true) {
+    println "gitCommitId -> isShort[${isShort}]"
     def shortStr = isShort ? '--short' : ''
     return sh(returnStdout:true, script: "git rev-parse ${shortStr} HEAD | sed -e 's/\r//g'").trim()
 }
 
-// git init 
+// git init
 def gitInit(base, project='KAP', repo='Kyligence') {
     println "gitInit -> base[${base}], project[${project}], repo[${repo}]"
-    withCredentials([string(credentialsId: 'jenkins-token', variable: 'TOKEN')]){
+    withCredentials([string(credentialsId: 'jenkins-token', variable: 'TOKEN')]) {
         println "https://${TOKEN}@github.com/${repo}/${project}.git"
         sh "echo '#!/bin/bash' >> credential-helper.sh"
         sh "echo 'echo username=\$GIT_USERNAME' >> credential-helper.sh"
@@ -44,21 +45,21 @@ def gitInit(base, project='KAP', repo='Kyligence') {
                 git fetch --all
                 git branch ${base} origin/${base}
             """
-        }
+                        }
     }
 }
 
 // git tag
 def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     println "gitTag -> base[${base}], tag[${tag}], project[${project}], repo[${repo}]"
-    if(!tag) {
-        error("The tag cannot null")
+    if (!tag) {
+        error('The tag cannot null')
     }
     if (!isCloned) {
         gitInit(base, project, repo)
     }
 
-    withCredentials([string(credentialsId: 'jenkins-token', variable: 'TOKEN')]){
+    withCredentials([string(credentialsId: 'jenkins-token', variable: 'TOKEN')]) {
         println "https://${TOKEN}@github.com/${repo}/${project}.git"
         sh script: """
             git remote remove origin
@@ -71,7 +72,7 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
 }
 
 // not ready
-def createPR(base, head, project='KAP', repo="Kyligence") {
+def createPR(base, head, project='KAP', repo='Kyligence') {
     def repoURL = "https://github.com/${repo}/${projetc}"
     println "createPR -> base[${base}], head[${head}], project[${project}], repo[${repo}], repoURL[${repoURL}]"
     withCredentials([usernamePassword(credentialsId: 'kyligence-git', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {

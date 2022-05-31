@@ -72,7 +72,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/local/Handbook-pdf-CD/jenkins-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-handbook-agent.yaml'
         }
     }
 

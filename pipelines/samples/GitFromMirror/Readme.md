@@ -6,3 +6,8 @@
 
 1. Jira中申请devops工单，将你的github仓库添加到git mirror服务中；
 2. 获取代码是，需要调用 vars/pullCodeFromGitMirror 方法，具体用法可已阅读参数说明，也可以参考示例代码。
+
+### 该方法的功能：
+1. 实时同步一下现有的git mirror仓库；
+2. 从先同步的git mirror仓库获取最新的代码；
+3. 失败重试3次。
