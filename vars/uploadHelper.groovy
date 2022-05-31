@@ -26,37 +26,37 @@ def uploadAwsS3(file_name, remote_path, bucket, region, credentials) {
 
 // 上传包到Azure服务器
 def uplaodRemoteServer(file_name, remote_path, remote_ip, credentials='azure-4xuser') {
-    script {
-        def remote = [:]
-        remote.name = 'azure_test_env'
-        withCredentials([usernamePassword(credentialsId: credentials,
+    dir('sourcecode') {
+        timestamps {
+            script {
+                def remote = [:]
+                remote.name = 'azure_test_env'
+                withCredentials([usernamePassword(credentialsId: credentials,
                 usernameVariable: 'REMOTE_USERNAME',
                 passwordVariable: 'REMOTE_PASSWORD')]) {
-            remote.user = REMOTE_USERNAME
-            remote.password = REMOTE_PASSWORD
+                    remote.user = REMOTE_USERNAME
+                    remote.password = REMOTE_PASSWORD
                 }
-        remote.host = remote_ip
-        remote.allowAnyHosts = true
-        dir('sourcecode') {
-            sshPut remote: remote, from: file_name, into: remote_path
+                remote.host = remote_ip
+                remote.allowAnyHosts = true
+                sshPut remote: remote, from: file_name, into: remote_path
+                sshCommand remote: remote, command: """
+                    ls -lh ${remote_path}
+                """
+            }
         }
-        sshCommand remote: remote, command: """
-            ls -lh ${remote_path}
-        """
     }
 }
 
 // 上传制品包到Nexus制品库
 def uploadNexus(file_name, package_path, repo, credentials='nexus-raw') {
-    timestamps {
-        container('build') {
-            dir('sourcecode') {
-                script {
-                    println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
-                    // 上传制品库
-                    withCredentials([usernamePassword(credentialsId: credentials, passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                        pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
-                    }
+    dir('sourcecode') {
+        timestamps {
+            script {
+                println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
+                // 上传制品库
+                withCredentials([usernamePassword(credentialsId: credentials, passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                    pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
                 }
             }
         }
