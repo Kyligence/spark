@@ -1,16 +1,16 @@
-// def call(ctl, file_name, remote_path, bucket, region='', credentials=null) {
-//     switch (ctl) {
-//         case 'AwsS3':
-//             uploadAwsS3(file_name, remote_path, bucket, region, credentials)
-//             break
-//         case 'SERVER':
-//             uplaodRemoteServer(file_name, remote_path, bucket, credentials)
-//             break
-//         case 'NEXUS':
-//             uploadNexus(file_name, remote_path, bucket)
-//             break
-//     }
-// }
+def call(ctl, file_name, remote_path, bucket, region='', credentials=null) {
+    // switch (ctl) {
+    //     case 'AwsS3':
+    //         uploadAwsS3(file_name, remote_path, bucket, region, credentials)
+    //         break
+    //     case 'SERVER':
+    //         uplaodRemoteServer(file_name, remote_path, bucket, credentials)
+    //         break
+    //     case 'NEXUS':
+    //         uploadNexus(file_name, remote_path, bucket)
+    //         break
+    // }
+}
 
 // 上传制品包到Aws S3存储
 def uploadAwsS3(file_name, remote_path, bucket, region, credentials) {
