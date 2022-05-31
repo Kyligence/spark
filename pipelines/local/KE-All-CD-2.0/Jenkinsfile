@@ -67,6 +67,56 @@ def getBranch(deployType, envStage, version) {
     return _result
 }
 
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name) {
+    dir('sourcecode') {
+        timestamps {
+            println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
+            withAWS(region: region, credentials: credentials) {
+                s3Upload(bucket: bucket, path: path, file: ga_name)
+            }
+        }
+    }
+}
+
+// 上传制品包到Nexus制品库
+def uploadNexus(repo, package_path, file_name) {
+    timestamps {
+        container('build') {
+            dir('sourcecode') {
+                script {
+                    println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
+                    // 上传制品库
+                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                        pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
+                    }
+                }
+            }
+        }
+    }
+}
+
+def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
+    script {
+        def remote = [:]
+        remote.name = 'azure_test_env'
+        withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
+                usernameVariable: 'REMOTE_USERNAME',
+                passwordVariable: 'REMOTE_PASSWORD')]) {
+            remote.user = REMOTE_USERNAME
+            remote.password = REMOTE_PASSWORD
+        }
+        remote.host = '159.27.120.141'
+        remote.allowAnyHosts = true
+        dir('sourcecode') {
+            sshPut remote: remote, from: package_info.file_name, into: remote_path
+        }
+        sshCommand remote: remote, command: """
+            ls -lh ${remote_path}
+        """
+    }
+}
+
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front) {
     def result = [:]
@@ -211,7 +261,7 @@ pipeline {
                         release_commitid_back = cms.release_commitid_back
                         release_commitid_front = cms.release_commitid_front
                     } else if (params.deployWay == 'Manual Select') {
-                        // 2.2 根据手动输入参数设定分支
+                         // 2.2 根据手动输入参数设定分支
                         paramsMap = input (
                             message: '请选择要开始的版本?',
                             ok: '确认！',
@@ -277,7 +327,7 @@ pipeline {
                                             cp ${package_info.file_name} ${package_info.ga_name}
                                             cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
                                         """
-                                        package_info.file_name = package_info.ga_name
+                                        // package_info.file_name = package_info.ga_name
                                     }
                                 } else {
                                     println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
@@ -302,8 +352,7 @@ pipeline {
             parallel {
                 stage('3.1.Upload to Azure CN') {
                     steps {
-                        // uplaodAzure(package_info)
-                        uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'azure-4xuser')
+                        uplaodAzure(package_info)
                     }
                     post {
                         success {
@@ -320,8 +369,7 @@ pipeline {
                 }
                 stage('3.2.Upload to Nexus') {
                     steps {
-                        // uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
-                        uploadHelper.uploadNexus(package_info.file_name, package_info.package_path, 'raw-tars-hosted')
+                        uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
                     }
                 }
                 stage('3.3.Upload to AWS Global S3') {
@@ -333,8 +381,7 @@ pipeline {
                     steps {
                         println("upload to AWS S3 in Global: ${package_info.file_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
-                        uploadHelper.uploadAwsS3(package_info.file_name, "packages/ke-without-spark/${package_info.file_name}", 'kyligencecloud-ci', 'us-west-2', 'aws_global_s3_cp')
+                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
                     }
                 }
             }
@@ -376,23 +423,23 @@ pipeline {
                     steps {
                         println("upload to AWS S3 in CN: ${ga_name}")
                         // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
-                        // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                        uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                        uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
                     }
                 }
                 stage('5.2.GA AWS Global') {
                     steps {
                         println("upload to AWS S3 in Global: ${ga_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        // uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                        uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
+                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
                     }
                 }
                 stage('5.3.GA Nexus') {
                     steps {
                         println("upload to Nexus repo-ofs: ${ga_name}")
-                        // uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
-                        uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted')
+                        uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+                        // uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted')
                     }
                 }
             }
