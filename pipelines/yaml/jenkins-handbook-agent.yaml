@@ -13,6 +13,9 @@ spec:
       command:
         - "cat"
       resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
         limits:
           memory: "1Gi"
           cpu: "1000m"
@@ -23,6 +26,9 @@ spec:
       command:
         - "cat"
       resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
         limits:
           memory: "8Gi"
           cpu: "4000m"
