@@ -292,22 +292,22 @@ pipeline {
                                 def _version = "${params.version}-${params.envStage}"
                                 package_info = getPackageInfo(_version, params.envStage, release_commitid_back, params.deployType, params.noSpark)
 
-                                try {
-                                    def existPackage = "${package_info.package_path}/${package_info.file_name}"
-                                    sh script: """
-                                        ls -l /var/cicd/${package_info.package_path}
-                                        cp /var/cicd/${existPackage} ${package_info.file_name}
-                                    """
+                                // try {
+                                //     def existPackage = "${package_info.package_path}/${package_info.file_name}"
+                                //     sh script: """
+                                //         ls -l /var/cicd/${package_info.package_path}
+                                //         cp /var/cicd/${existPackage} ${package_info.file_name}
+                                //     """
 
-                                    sh 'ls -l'
-                                    println "package_info.package_file: ${package_info.package_file}"
-                                    exist_package = fileExists(package_info.file_name)
-                                    println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
-                                } catch (Exception err) {
-                                    echo err.getMessage()
-                                }
+                                //     sh 'ls -l'
+                                //     println "package_info.package_file: ${package_info.package_file}"
+                                //     exist_package = fileExists(package_info.file_name)
+                                //     println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
+                                // } catch (Exception err) {
+                                //     echo err.getMessage()
+                                // }
 
-                                if (!exist_package) {
+                                // if (!exist_package) {
 
                                     buildNewten(_version, params.noSpark)
                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
@@ -329,9 +329,9 @@ pipeline {
                                         """
                                         // package_info.file_name = package_info.ga_name
                                     }
-                                } else {
-                                    println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
-                                }
+                                // } else {
+                                //     println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
+                                // }
                             }
                         }
                     }
