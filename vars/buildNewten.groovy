@@ -16,6 +16,7 @@ def call(String version, boolean noSpark = false) {
         wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
         wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
     """
+    sh "npm cache verify"
     if(noSpark) {
         echo "Package not include Spark"
         sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
