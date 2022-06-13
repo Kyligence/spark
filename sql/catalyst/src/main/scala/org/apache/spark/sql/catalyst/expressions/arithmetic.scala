@@ -200,7 +200,7 @@ case class Abs(child: Expression, failOnError: Boolean = SQLConf.get.ansiEnabled
 }
 
 abstract class BinaryArithmetic extends BinaryOperator
-  with NullIntolerant with SupportQueryContext {
+  with NullIntolerant {
 
   protected val failOnError: Boolean
 
@@ -244,16 +244,8 @@ abstract class BinaryArithmetic extends BinaryOperator
 
   override lazy val resolved: Boolean = childrenResolved && checkInputDataTypes().isSuccess
 
-  override def initQueryContext(): String = {
-    if (failOnError) {
-      origin.context
-    } else {
-      ""
-    }
-  }
-
   protected def checkDecimalOverflow(value: Decimal, precision: Int, scale: Int): Decimal = {
-    value.toPrecision(precision, scale, Decimal.ROUND_HALF_UP, !failOnError, queryContext)
+    value.toPrecision(precision, scale, Decimal.ROUND_HALF_UP, !failOnError)
   }
 
   /** Name of the function for this expression on a [[Decimal]] type. */
@@ -273,11 +265,6 @@ abstract class BinaryArithmetic extends BinaryOperator
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = dataType match {
     case DecimalType.Fixed(precision, scale) =>
-      val errorContextCode = if (failOnError) {
-        ctx.addReferenceObj("errCtx", queryContext)
-      } else {
-        "\"\""
-      }
       val updateIsNull = if (failOnError) {
         ""
       } else {
@@ -286,7 +273,7 @@ abstract class BinaryArithmetic extends BinaryOperator
       nullSafeCodeGen(ctx, ev, (eval1, eval2) => {
         s"""
            |${ev.value} = $eval1.$decimalMethod($eval2).toPrecision(
-           |  $precision, $scale, Decimal.ROUND_HALF_UP(), ${!failOnError}, $errorContextCode);
+           |  $precision, $scale, Decimal.ROUND_HALF_UP(), ${!failOnError});
            |$updateIsNull
        """.stripMargin
       })
@@ -522,9 +509,9 @@ case class Multiply(
     case DecimalType.Fixed(precision, scale) =>
       checkDecimalOverflow(numeric.times(input1, input2).asInstanceOf[Decimal], precision, scale)
     case _: IntegerType if failOnError =>
-      Math.multiplyExact(input1.asInstanceOf[Int], input2.asInstanceOf[Int], queryContext)
+      Math.multiplyExact(input1.asInstanceOf[Int], input2.asInstanceOf[Int])
     case _: LongType if failOnError =>
-      Math.multiplyExact(input1.asInstanceOf[Long], input2.asInstanceOf[Long], queryContext)
+      Math.multiplyExact(input1.asInstanceOf[Long], input2.asInstanceOf[Long])
     case _ => numeric.times(input1, input2)
   }
 
@@ -586,17 +573,12 @@ trait DivModLike extends BinaryArithmetic {
       s"${eval2.value} == 0"
     }
     val javaType = CodeGenerator.javaType(dataType)
-    val errorContext = if (failOnError) {
-      ctx.addReferenceObj("errCtx", queryContext)
-    } else {
-      "\"\""
-    }
     val operation = super.dataType match {
       case DecimalType.Fixed(precision, scale) =>
         val decimalValue = ctx.freshName("decimalValue")
         s"""
            |Decimal $decimalValue = ${eval1.value}.$decimalMethod(${eval2.value}).toPrecision(
-           |  $precision, $scale, Decimal.ROUND_HALF_UP(), ${!failOnError}, $errorContext);
+           |  $precision, $scale, Decimal.ROUND_HALF_UP(), ${!failOnError});
            |if ($decimalValue != null) {
            |  ${ev.value} = ${decimalToDataTypeCodeGen(s"$decimalValue")};
            |} else {
@@ -955,11 +937,6 @@ case class Pmod(
     }
     val remainder = ctx.freshName("remainder")
     val javaType = CodeGenerator.javaType(dataType)
-    val errorContext = if (failOnError) {
-      ctx.addReferenceObj("errCtx", queryContext)
-    } else {
-      "\"\""
-    }
     val result = dataType match {
       case DecimalType.Fixed(precision, scale) =>
         val decimalAdd = "$plus"
@@ -971,7 +948,7 @@ case class Pmod(
            |  ${ev.value}=$remainder;
            |}
            |${ev.value} = ${ev.value}.toPrecision(
-           |  $precision, $scale, Decimal.ROUND_HALF_UP(), ${!failOnError}, $errorContext);
+           |  $precision, $scale, Decimal.ROUND_HALF_UP(), ${!failOnError});
            |${ev.isNull} = ${ev.value} == null;
            |""".stripMargin
 

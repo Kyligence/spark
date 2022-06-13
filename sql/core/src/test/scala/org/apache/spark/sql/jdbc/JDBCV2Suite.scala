@@ -936,7 +936,7 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
         |PushedAggregates: [SUM(SALARY)],
         |PushedFilters: [],
         |PushedGroupByExpressions:
-        |[CASE WHEN (SALARY > 8000.00) AND (IS_MANAGER = true) THEN SALARY ELSE 0.00 END],
+        |[CASE WHEN (SALARY > 8000.00) AND (IS_MANAGER <> FALSE) THEN SALARY ELSE 0.00 END],
         |""".stripMargin.replaceAll("\n", " "))
     checkAnswer(df6, Seq(Row(0, 21000), Row(10000, 20000), Row(12000, 12000)))
 
@@ -950,7 +950,7 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
         |PushedAggregates: [SUM(SALARY)],
         |PushedFilters: [],
         |PushedGroupByExpressions:
-        |[CASE WHEN (SALARY > 8000.00) OR (IS_MANAGER = true) THEN SALARY ELSE 0.00 END],
+        |[CASE WHEN (SALARY > 8000.00) OR (IS_MANAGER <> FALSE) THEN SALARY ELSE 0.00 END],
         |""".stripMargin.replaceAll("\n", " "))
     checkAnswer(df7, Seq(Row(10000, 20000), Row(12000, 24000), Row(9000, 9000)))
 
@@ -964,7 +964,7 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
         |PushedAggregates: [SUM(SALARY)],
         |PushedFilters: [],
         |PushedGroupByExpressions:
-        |[CASE WHEN NOT (IS_MANAGER = true) THEN SALARY ELSE 0.00 END],
+        |[CASE WHEN IS_MANAGER = FALSE THEN SALARY ELSE 0.00 END],
         |""".stripMargin.replaceAll("\n", " "))
     checkAnswer(df8, Seq(Row(0, 32000), Row(12000, 12000), Row(9000, 9000)))
   }
@@ -1432,10 +1432,10 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
     val e1 = intercept[AnalysisException] {
       checkAnswer(sql("SELECT h2.test.my_avg2(id) FROM h2.test.people"), Seq.empty)
     }
-    assert(e1.getMessage.contains("Undefined function: h2.test.my_avg2"))
+    assert(e1.getMessage.contains("Undefined function: 'my_avg2'"))
     val e2 = intercept[AnalysisException] {
       checkAnswer(sql("SELECT h2.my_avg2(id) FROM h2.test.people"), Seq.empty)
     }
-    assert(e2.getMessage.contains("Undefined function: h2.my_avg2"))
+    assert(e2.getMessage.contains("Undefined function: my_avg2"))
   }
 }

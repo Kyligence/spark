@@ -17,7 +17,6 @@
 package org.apache.spark.sql.catalyst.expressions
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{BinaryType, DataType, IntegerType}
@@ -281,7 +280,8 @@ class SubexpressionEliminationSuite extends SparkFunSuite with ExpressionEvalHel
       }
       val subExprsCode = ctx.evaluateSubExprEliminationState(subExprs.states.values)
 
-      val codeBody = s"""
+      val codeBody =
+        s"""
         public java.lang.Object generate(Object[] references) {
           return new TestCode(references);
         }
@@ -391,20 +391,11 @@ class SubexpressionEliminationSuite extends SparkFunSuite with ExpressionEvalHel
       assert(state.eval.code == EmptyBlock)
     }
   }
+}
 
 case class CodegenFallbackExpression(child: Expression)
   extends UnaryExpression with CodegenFallback {
   override def dataType: DataType = child.dataType
   override protected def withNewChildInternal(newChild: Expression): CodegenFallbackExpression =
-    copy(child = newChild)
-}
-
-case class ProxyExpression(child: Expression) extends UnaryExpression {
-  override lazy val preCanonicalized: Expression = child.preCanonicalized
-  override def dataType: DataType = child.dataType
-  override def eval(input: InternalRow): Any = child.eval(input)
-  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode =
-    child.genCode(ctx)
-  override protected def withNewChildInternal(newChild: Expression): Expression =
     copy(child = newChild)
 }
