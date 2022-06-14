@@ -1,0 +1,3 @@
+FROM openjdk:8u312-jre
+ADD ./target/saas-gateway-1.0.jar /home/saas-gateway.jar
+CMD ["java","-Dloader.path=/app/jars","-Dspring.config.additional-location=/etc/saas-gateway/config.yaml","-jar","/home/saas-gateway.jar"]

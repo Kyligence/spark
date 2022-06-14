@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iam-frontend-nginx-default-conf-{{ .Release.Namespace }}
+data:
+  default.conf: |-
+    server {
+      listen       80;
+      listen  [::]:80;
+      server_name  localhost;
+
+      # Gateway
+        location /ka-iam/api {
+         rewrite ^/ka-iam(.*)$ /saas-kyiam/$1 break;
+         proxy_pass http://saas-gateway-dev:8080;
+      }
+
+      location /ka-iam {
+        rewrite ^/ka-iam(.*)$ $1 break;
+        root  /usr/share/nginx/html;
+        index  index.html;
+        try_files $uri /index.html;
+      }
+
+        location / {
+        root  /usr/share/nginx/html;
+        index  index.html;
+        try_files $uri /index.html;
+      }
+    }

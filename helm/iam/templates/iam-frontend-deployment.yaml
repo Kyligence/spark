@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iam-frontend-{{ .Release.Namespace }}
+  labels:
+    {{- include "iam.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "iam.selectorLabels" . | nindent 6 }}
+      app: iam-frontend-{{ .Release.Namespace }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "iam.selectorLabels" . | nindent 8 }}
+        app: iam-frontend-{{ .Release.Namespace }}
+    spec:
+      volumes:
+        - name: default-conf
+          configMap:
+            name: iam-frontend-nginx-default-conf-{{ .Release.Namespace }}
+            defaultMode: 420
+      containers:
+        - name: iam-frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: default-conf
+              mountPath: /etc/nginx/conf.d/
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  minReadySeconds: 30
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
