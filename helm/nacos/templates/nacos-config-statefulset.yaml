@@ -1,0 +1,166 @@
+{{- if or (eq .Values.function_mode "all") (eq .Values.function_mode "config") }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "nacos.fullname" . }}-config
+  labels:
+    {{- include "nacos.labels" . | nindent 4 }}
+spec:
+  podManagementPolicy: {{ .Values.config.podManagementPolicy }}
+  {{- if not .Values.config.autoscaling.enabled }}
+  replicas: {{ .Values.config.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.config.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "nacos.selectorLabels" . | nindent 6 }}
+      app: {{ include "nacos.fullname" . }}-config
+  serviceName: {{ include "nacos.fullname" . }}-config-headless
+  template:
+    metadata:
+      {{- with .Values.config.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nacos.selectorLabels" . | nindent 8 }}
+        app: {{ include "nacos.fullname" . }}-config
+    spec:
+      {{- with .Values.config.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.config.podSecurityContext | nindent 8 }}
+      {{- if .Values.skyWalking.enabled }}
+      volumes:
+        - name: skywalking-agent
+          emptyDir: { }
+      {{- end }}
+      initContainers:
+      - name: "nacos-naming-init"
+        image: busybox:1.31
+        command: ['sh', '-c', "until telnet ${NACOS_NAMING_SERVER_ADDR//:/ }; do echo waiting for nacos naming; sleep 20; done;"]
+        env:
+          - name: NACOS_NAMING_SERVER_ADDR
+            value: {{ .Values.config.nacos.serverAddr | default (printf "%s-headless:8848" .Release.Name) }}
+      - name: "mysql-init"
+        image: busybox:1.31
+        command: ['sh', '-c', "until telnet $MYSQL_SERVICE_HOST $MYSQL_SERVICE_PORT; do echo waiting for mysql; sleep 20; done;"]
+        env:
+          - name: MYSQL_SERVICE_PORT
+            valueFrom:
+              configMapKeyRef:
+                key: MYSQL_SERVICE_PORT
+                name: {{ include "nacos.fullname" .}}-config-cm
+          - name: MYSQL_SERVICE_HOST
+            valueFrom:
+              configMapKeyRef:
+                key: MYSQL_SERVICE_HOST
+                name: {{ include "nacos.fullname" .}}-config-cm
+      {{- if .Values.skyWalking.enabled }}
+      - name: agent-container
+        image: apache/skywalking-java-agent:8.7.0-alpine
+        volumeMounts:
+          - name: skywalking-agent
+            mountPath: /agent
+        command: [ "/bin/sh" ]
+        args: [ "-c", "cp -R /skywalking/agent /agent/" ]
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-config
+          securityContext:
+            {{- toYaml .Values.config.securityContext | nindent 12 }}
+          image: "{{ .Values.config.image.repository }}:{{ .Values.config.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.config.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.config.service.port }}
+              name: client
+              protocol: TCP
+            - containerPort: {{ .Values.config.service.port | int | add 1000 }}
+              name: client-rpc
+              protocol: TCP
+            - containerPort: {{ .Values.config.service.port | int | add 1001 }}
+              name: raft-rpc
+              protocol: TCP
+            - containerPort: {{ .Values.config.service.port | int | add -1000 }}
+              name: old-raft-rpc
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.config.resources | nindent 12 }}
+          env:
+            - name: NACOS_REPLICAS
+              value: "{{ .Values.config.replicaCount }}"
+            - name: MYSQL_SERVICE_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: MYSQL_SERVICE_DB_NAME
+                  name: {{ include "nacos.fullname" .}}-config-cm
+            - name: MYSQL_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: MYSQL_SERVICE_PORT
+                  name: {{ include "nacos.fullname" .}}-config-cm
+            - name: MYSQL_SERVICE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: MYSQL_SERVICE_HOST
+                  name: {{ include "nacos.fullname" .}}-config-cm
+            - name: MYSQL_SERVICE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.fullname" . }}-config-secret
+                  key: MYSQL_SERVICE_USER
+            - name: MYSQL_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.fullname" . }}-config-secret
+                  key: MYSQL_SERVICE_PASSWORD
+            - name: NACOS_SERVER_PORT
+              value: "{{ .Values.config.service.port }}"
+            - name: NACOS_APPLICATION_PORT
+              value: "{{ .Values.config.service.port }}"
+            - name: PREFER_HOST_MODE
+              value: hostname
+            - name: NACOS_SERVERS
+              value: "{{ include "nacos.nacosConfigServers" . }}"
+            - name: FUNCTION_MODE
+              value: "config"
+            {{- if .Values.skyWalking.enabled }}
+            - name: JAVA_OPT
+              value: {{ print "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group=" (.Values.config.discovery.group | default .Release.Namespace) " -Dsaas.nacos.discovery.public-group=" (.Values.config.discovery.publicGroup | default .Release.Namespace) " -Dsaas.nacos.serverAddr=" (.Values.config.nacos.serverAddr) " -Dspring.application.name=" (.Values.config.name | default "nacos-config") }}
+            - name: SW_AGENT_NAME
+              value: "{{ include "nacos.fullname" . }}-config"
+            - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
+              value: "{{ .Values.skyWalking.backendServerAddr }}"
+              {{- else }}
+            - name: JAVA_OPT
+              value: {{ print "-Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group=" (.Values.config.discovery.group | default .Release.Namespace) " -Dsaas.nacos.discovery.public-group=" (.Values.config.discovery.publicGroup | default .Release.Namespace) " -Dsaas.nacos.serverAddr=" (.Values.config.nacos.serverAddr) " -Dspring.application.name=" (.Values.config.name | default "nacos-config") }}
+              {{- end }}
+          volumeMounts:
+            - name: skywalking-agent
+              mountPath: /skywalking
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+      {{- with .Values.config.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.config.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.config.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

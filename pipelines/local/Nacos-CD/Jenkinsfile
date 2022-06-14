@@ -1,0 +1,157 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='10.1.9.200:5000'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        dockerImage = ''
+    }
+
+    parameters {
+        string(name: 'kynacos_branch', defaultValue: 'kynacos2.0.4', description: 'kynacos branch')
+        string(name: 'nacos_docker_branch', defaultValue: 'master', description: 'nacos docker branch')
+        string(name: 'tag', defaultValue: 'v2.0.5', description: 'tag')
+        choice(name: 'function_mode', choices:'all\nconfig\naming',
+            description: 'nacos 服务模式，all为包含配置中心和注册中心，config为只部署配置中心，naming为只部署注册中心')
+        booleanParam(name: 'build', defaultValue:true, description:'是否构建' )
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+        booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s' )
+        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
+        string(name: 'release_name', defaultValue: 'nacos', description: 'nacos release name')
+        string(name: 'group', defaultValue: 'dev', description: 'nacos config discovery group')
+        string(name: 'public_group', defaultValue: 'dev', description: 'nacos config discovery public group')
+        string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
+    }
+
+    stages {
+        stage('1.pull code') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('build') {
+                    dir('kynacos') {
+                        echo 'checkout kynacos'
+                        pullCodeFromGitMirror 'kynacos', params.kynacos_branch
+                    }
+                    dir('nacos-docker') {
+                        echo 'checkout nacos-docker'
+                        pullCodeFromGitMirror 'nacos-docker', params.nacos_docker_branch, true, "nacos-group"
+                    }
+                }
+            }
+        }
+        stage('2.build code') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('build') {
+                    dir('kynacos') {
+                        script {
+                            echo 'build kynacos'
+                            sh 'mvn -Prelease-nacos -Dmaven.test.skip=true -Drat.skip=true clean install -U -T 1C'
+                        }
+                    }
+
+                    dir('nacos-docker') {
+                        script {
+                            echo 'build nacos docker'
+                            sh "mv ../kynacos/distribution/target/*.tar.gz build/nacos-server-${params.tag}.tar.gz"
+                            sh """
+                                sed -i "s/ARG NACOS_VERSION=.*/ARG NACOS_VERSION=${params.tag}/" build/Dockerfile
+                                sed -i "s/RUN wget.*/COPY  nacos-server-${params.tag}.tar.gz \\/home /" build/Dockerfile
+                                ls -al build/
+                                cat build/Dockerfile
+                                pwd
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.build docker image') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    dir('nacos-docker/build') {
+                        script {
+                            sh 'pwd'
+                            sh 'ls -lt'
+                            dockerImage = docker.build "kyligence/kynacos"
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            dockerImage.push("$tag")
+                            dockerImage.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.deploy') {
+            when {
+                environment name: 'deploy', value: 'true'
+            }
+            steps {
+                echo 'Up in K8S at office env'
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        script {
+                            sh 'pwd && ls -alt'
+                            sh 'ls ../ -alt'
+                            sh 'ls ./kynacos/distribution/conf -alt'
+                            sh "rm ./helm/nacos/nacos-mysql.sql"
+                            sh "cp ./kynacos/distribution/conf/nacos-mysql.sql ./helm/nacos/"
+                            sh 'ls ./helm/nacos/ -alt'
+                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+                            try {
+                                sh returnStatus: true , script: """
+                                helm -n ${namespace} list
+                                helm -n ${namespace} uninstall ${release_name}
+                                """
+                            } catch(Exception err) {
+                                echo err.getMessage()
+                                echo "delete resource failed, but we will continue."
+                            }
+
+
+                        }
+                        
+                        dir("helm/nacos") {
+                            script {
+                                sh returnStatus: true , script: """
+                                helm dependency build
+                                helm -n ${namespace} install ${release_name} ./ --set config.image.tag=${tag} --set naming.image.tag=${tag} --set function_mode=${params.function_mode} --set config.discovery.group=${params.group} --set config.discovery.publicGroup=${params.public_group} --set mysql.host="mysql-${params.release_name}" --set mysql.fullnameOverride="mysql-${params.release_name}" --set mysql.initdbScriptsConfigMap="${params.release_name}-mysql-cm" --set config.nacos.serverAddr="${params.release_name}-naming-svc:8848" ${params.extra_settings} 
+                                helm -n ${namespace} list
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nacos.fullname" .}}-naming-cm
+data:
+  MYSQL_SERVICE_HOST: {{ .Values.config.mysql.host | default .Values.mysql.host }}
+  MYSQL_SERVICE_DB_NAME: {{ .Values.config.mysql.db  | default .Values.mysql.db }}
+  MYSQL_SERVICE_PORT: "{{ .Values.config.mysql.port  | default .Values.mysql.port }}"

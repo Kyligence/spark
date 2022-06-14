@@ -1,0 +1,133 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='10.1.9.200:5000'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        frontend = ''
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'main', description: '前端 branch')
+        string(name: 'tag', defaultValue: '1.0.0', description: 'tag')
+        booleanParam(name: 'build', defaultValue:true, description:'是否构建' )
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+        booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s' )
+        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
+        string(name: 'release_name', defaultValue: 'nacos-frontend', description: 'nacos frontend release name)')
+        string(name: 'gateway_server_addr', defaultValue: 'http://saas-gateway:8080', description: 'gateway server addr(k8s service name)')
+        string(name: 'iam_server_addr', defaultValue: 'https://iam.kyligence.tech', description: 'iam server addr')
+        string(name: 'config_server_addr', defaultValue: 'http://nacos.config.kyligence.tech', description: 'nacos config server addr')
+        string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+
+                            echo 'checkout kynacos_Frontend'
+                            retry(3) {
+                                pullCodeFromGitMirror 'kynacos_Frontend', params.branch
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.build docker image') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        script {
+                            sh """
+                                pwd
+                                ls -alt
+                                cat .npmrc
+                                rm -f .npmrc
+                                echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
+                                cat .npmrc
+                            """
+                            frontend = docker.build("kyligence/kynacos-frontend", "-f ${env.WORKSPACE}/pipelines/local/Nacos-Frontend-CD/Dockerfile .")
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            frontend.push("$tag")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('4.deploy') {
+            when {
+                environment name: 'deploy', value: 'true'
+            }
+            steps {
+                echo 'Up in K8S at office env'
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        script {
+                            sh 'pwd && ls -alt'
+                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+                            try {
+                                sh returnStatus: true , script: """
+                                helm -n ${namespace} list
+                                helm -n ${namespace} uninstall ${release_name}
+                                """
+                            } catch(Exception err) {
+                                echo err.getMessage()
+                                echo "delete resource failed, but we will continue."
+                            }
+
+
+                        }
+                        
+                        dir("helm/nacos-frontend") {
+                            script {
+                                sh returnStatus: true , script: """
+                                helm dependency build
+                                helm -n ${namespace} install ${release_name} ./ --set gateway.serverAddr=${params.gateway_server_addr}  --set iam.serverAddr=${params.iam_server_addr}  --set config.serverAddr=${params.config_server_addr} ${params.extra_settings}
+                                helm -n ${namespace} list
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{{- if .Values.mysql.embedded }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nacos.fullname" . }}-mysql-cm
+data:
+  {{- $files := .Files }}
+  nacos-mysql.sql: |-
+        {{- range .Files.Lines "nacos-mysql.sql" }}
+        {{ . }}{{ end }}
+{{- end }}
