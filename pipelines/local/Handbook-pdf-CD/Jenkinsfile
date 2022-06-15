@@ -24,13 +24,26 @@ def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5', 'pat
                     'KC Test Drive':['project': 'Cloud_Manual', 'version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive', 'pdf_name_zh':'Kyligence_Test_Driver-cn', 'pdf_name_en':'Kyligence_Test_Driver-en'],
                     'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3', 'path': 'cloud/v4.3', 'branch': 'kc-4.3.x', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
                     'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2', 'path': 'cloud/v3.2', 'branch': 'kc-3.2.x', 'pdf_name_zh':'Kyligence_Cloud_3-cn', 'pdf_name_en':'Kyligence_Cloud_3-en'],
+
                     'KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
                     'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
                     'KE 4.5 dev':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_dev', 'path': 'v4.5_dev', 'branch': 'master_new', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
                     'kE 4.3 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3_test', 'path': 'v4.3_test', 'branch': 'ke-4.3.x-test', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh', 'pdf_name_en':'Kyligence_Enterprise_4_3-en'],
                     'KE 4.3':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.3', 'path': 'v4.3', 'branch': 'ke-4.3.x', 'pdf_name_zh':'Kyligence_Enterprise_4_3-zh', 'pdf_name_en':'Kyligence_Enterprise_4_3-en'],
                     'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2', 'path': 'v4.2', 'branch': 'ke-4.2', 'pdf_name_zh':'Kyligence_Enterprise_4_2-zh', 'pdf_name_en':'Kyligence_Enterprise_4_2-en'],
-                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4', 'path': 'v3.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_3_2-zh', 'pdf_name_en':'Kyligence_Enterprise_3_2-en']]
+                    'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4', 'path': 'v3.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_3_2-zh', 'pdf_name_en':'Kyligence_Enterprise_3_2-en'],
+
+                    'KI 1.3':['project': 'Insight-Manual', 'version':'v1.3', 'path': 'ki/v1.3', 'branch': 'master', 'pdf_name_zh':'Kyligence_Insight_1_3-zh-cn', 'pdf_name_en':'Kyligence_Insight_1_3-en'],
+                    'KI 1.2':['project': 'Insight-Manual', 'version':'v1.2', 'path': 'ki/v1.2', 'branch': 'KI-1.2.x', 'pdf_name_zh':'Kyligence_Insight_1_2-zh-cn', 'pdf_name_en':'Kyligence_Insight_1_2-en'],
+
+                    'KM 1.1':['project': 'KM-Manual', 'version':'v1.1', 'path': 'km/v1.1', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_1_1-zh', 'pdf_name_en':'Kyligence_Manager_1_1-en'],
+                    'KM 4.3':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.3', 'path': 'km/v4.3', 'branch': 'km-4.3.x', 'pdf_name_zh':'Kyligence_Manager_4_3-zh', 'pdf_name_en':'Kyligence_Manager_4_3-en'],
+                    'KM 4.5':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.5', 'path': 'km/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_4_5-zh', 'pdf_name_en':'Kyligence_Manager_4_5-en'],
+
+                    'MDX 1.2':['project': 'MDX-Manual', 'version':'v1.2', 'path': 'mdx/v1.2', 'branch': '1.2', 'pdf_name_zh':'Kyligence_mdx_1_2-zh-cn', 'pdf_name_en':'Kyligence_mdx_1_2-en'],
+                    'MDX 1.3':['project': 'MDX-Manual', 'version':'v1.3', 'path': 'mdx/v1.3', 'branch': '1.3', 'pdf_name_zh':'Kyligence_mdx_1_3-zh-cn', 'pdf_name_en':'Kyligence_mdx_1_3-en'],
+                    'MDX 1.4':['project': 'MDX-Manual', 'version':'v1.4', 'path': 'mdx/v1.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_mdx_1_4-zh-cn', 'pdf_name_en':'Kyligence_mdx_1_4-en'],
+                    ]
 
 def getPackageInfo(type_mapping, doc_type, cid) {
     println "getPackageInfo: doc_type[${doc_type}], cid[${cid}]"
@@ -56,13 +69,106 @@ def getPackageInfo(type_mapping, doc_type, cid) {
 }
 
 def _sendNotify(doc_type, subject, msg) {
-    def emails = ['KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
-        'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io']
-    // def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
-    def notifyTo = doc_type.indexOf('KE') == 0 ? emails.get('KE') : emails.get('KC')
-    println notifyTo
+    def notifyTo = _getNotifyTo(doc_type)
     sendNotify('EMAIL', subject, notifyTo, msg)
 }
+
+@NonCPS
+def _getNotifyTo(doc_type) {
+    def emails = [
+        'KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
+        'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
+        'KI': 'na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io;xinxing.wu@kyligence.io',
+        'MDX': 'na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io;xinxing.wu@kyligence.io',
+        'KM': 'na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io;zhao.han@kyligence.io;lina.liu@kyligence.io'
+        ]
+    // def emails = ['KC': 'devops_support@kyligence.io', 'KE': 'liming.meng@kyligence.io']
+    def notifyTo = null
+    switch (doc_type) {
+        case { it.indexOf('KE') == 0 }:
+            notifyTo = emails.get('KE')
+            break
+        case { it.indexOf('KC') == 0 }:
+            notifyTo = emails.get('KC')
+            break
+        case { it.indexOf('KI') == 0 }:
+            notifyTo = emails.get('KI')
+            break
+        case { it.indexOf('KM') == 0 }:
+            notifyTo = emails.get('KM')
+            break
+        case { it.indexOf('MDX') == 0 }:
+            notifyTo = emails.get('MDX')
+            break
+        default:
+            notifyTo = ''
+    }
+    println notifyTo
+}
+
+properties([
+    parameters([
+        [
+            $class: 'ChoiceParameter',
+             choiceType: 'PT_SINGLE_SELECT',
+             description: '选择产品线',
+             filterLength: 1,
+             filterable: false,
+             name: 'product_line',
+             randomName: 'choice-parameter-7173816772330830',
+             script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [],
+                    oldScript: '',
+                    sandbox: true,
+                    script: 'return []'
+                ],
+                script: [
+                    classpath: [],
+                    oldScript: '',
+                    sandbox: true,
+                    script: 'return ["KE", "KC", "KI", "KM", "MDX"]'
+                ]
+             ]
+        ],
+        [
+            $class: 'CascadeChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: '选择打包类型',
+            filterLength: 1,
+            filterable: false,
+            name: 'doc_type',
+            randomName: 'choice-parameter-7173816775125052',
+            referencedParameters: 'product_line',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [],
+                    oldScript: '',
+                    sandbox: true,
+                    script: 'return ["请选择正确的产品！"]'
+                ],
+                script: [
+                    classpath: [],
+                    oldScript: '',
+                    sandbox: true,
+                    script:
+                        '''
+                            def version_mapping = [:]
+                            version_mapping["KE"] = ["KE 4.5 dev", "KE 4.5 test", "KE 4.5", "KE 4.3 test", "KE 4.3", "KE 4.2", "KE 3.2"]
+                            version_mapping["KC"] = ["KC 4.5", "KC 4.5 test", "KC 4.5 dev", "KC Test Drive", "KC 4.3", "KC 3.2"]
+                            version_mapping["KI"] = ["KI 1.3", "KI 1.2"]
+                            version_mapping["KM"] = ["KM 1.1", "KM 4.3", "KM 4.5"]
+                            version_mapping["MDX"] = ["MDX 1.2", "MDX 1.3", "MDX 1.4"]
+                            return version_mapping[product_line]
+                        '''
+                ]
+            ]
+        ],
+        booleanParam(name: 'check_deadlinks', defaultValue: false, description: '是否检查死链（无效链接）?')
+   ])
+])
 
 pipeline {
     options {
@@ -79,12 +185,6 @@ pipeline {
     environment {
         //变量名，用于存储input步骤的返回值
         paramsMap = ''
-    }
-
-    parameters {
-        choice(name: 'doc_type', choices:'KC 4.5 dev\nKC 4.5 test\nKC 4.5\nKC Test Drive\nKC 4.3\nKC 3.2\nKE 4.5 dev\nKE 4.5 test\nKE 4.5\nKE 4.3 test\nKE 4.3\nKE 4.2\nKE 3.2', description:'选择日志打包类型' )
-        booleanParam(name: 'check_deadlinks', defaultValue: false, description: '是否检查死链（无效链接）?')
-    // string(name: 'version', defaultValue: '4.5', description: '版本号?')
     }
 
     stages {
@@ -120,11 +220,11 @@ pipeline {
                                     echo err.getMessage()
                                 }
                                 sh 'ls -lh'
-                                sh """
+                                sh script: '''
                                     rm -f .npmrc
                                     echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
                                     cat .npmrc
-                                """
+                                '''
                             }
                         }
                     }
