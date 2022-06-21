@@ -13,6 +13,7 @@ def commitid
 def paramsMap
 def pdf_zh
 def pdf_en
+def version
 // 包存在
 def exist_package = false
 // 包信息对象
@@ -197,6 +198,8 @@ pipeline {
                             dir('sourcecode') {
                                 project = type_mapping.get(params.doc_type).get('project')
                                 branch = type_mapping.get(params.doc_type).get('branch')
+                                version = type_mapping.get(doc_type).get('version')
+                                println "version: ${version}"
                                 pullCodeFromGitMirror project, branch
 
                                 commitid = sh(script:'git rev-parse --short HEAD', returnStdout: true).trim()
@@ -376,7 +379,51 @@ pipeline {
             }
         }
 
-        stage('5.Deploy') {
+        stage('5.Upload to Nexus') {
+            when {
+                expression {
+                    return exist_package && project == 'Kyligence-Enterprise-Manual' && version >= 'v4.5'
+                }
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            println '\033[36mUpload to Nexus... \033[0m'
+                            sh """#!/bin/bash
+                                mkdir tmp
+                                tar -zxvf ./${ga_name} -C ./tmp > /dev/null
+                                ls -lh ./tmp
+                            """
+                            retry(2) {
+                                withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                    pushRawArtifactsByApi('raw-tars-hosted', "io.kyligence.ke/docs/${version}/latest/en", "./tmp/en/${pdf_en}.pdf", "Kyligence_Enterprise_User_Manual-en.pdf", user, passwd)
+                                }
+                            }
+                            retry(2) {
+                                withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                    pushRawArtifactsByApi('raw-tars-hosted', "io.kyligence.ke/docs/${version}/latest/zh-cn", "./tmp/zh-cn/${pdf_zh}.pdf", "Kyligence_Enterprise_User_Manual-zh.pdf", user, passwd)
+                                }
+                            }
+                            retry(2) {
+                                withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                    pushRawArtifactsByApi('raw-tars-hosted', "io.kyligence.ke/docs/${version}/${commitid}/en", "./tmp/en/${pdf_en}.pdf", "Kyligence_Enterprise_User_Manual-en.pdf", user, passwd)
+                                }
+                            }
+                            retry(2) {
+                                withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                    pushRawArtifactsByApi('raw-tars-hosted', "io.kyligence.ke/docs/${version}/${commitid}/zh-cn", "./tmp/zh-cn/${pdf_zh}.pdf", "Kyligence_Enterprise_User_Manual-zh.pdf", user, passwd)
+                                }
+                            }
+
+                            println '\033[36mUpload to Nexus success\033[0m'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('6.Deploy') {
             steps {
                 container('build') {
                     dir('sourcecode') {
@@ -442,7 +489,7 @@ pipeline {
             }
         }
 
-        stage('6.Rollback') {
+        stage('7.Rollback') {
             steps {
                 container('build') {
                     dir('sourcecode') {
