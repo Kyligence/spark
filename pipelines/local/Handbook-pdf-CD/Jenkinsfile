@@ -104,6 +104,7 @@ def _getNotifyTo(doc_type) {
             notifyTo = ''
     }
     println notifyTo
+    return notifyTo
 }
 
 properties([
