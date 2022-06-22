@@ -83,9 +83,10 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
       conn.prepareStatement(
         "INSERT INTO \"test\".\"employee\" VALUES (6, 'jen', 12000, 1200, true)").executeUpdate()
       conn.prepareStatement(
-        "CREATE TABLE \"test\".\"dept\" (\"dept_id\" INTEGER NOT NULL)").executeUpdate()
-      conn.prepareStatement("INSERT INTO \"test\".\"dept\" VALUES (1)").executeUpdate()
-      conn.prepareStatement("INSERT INTO \"test\".\"dept\" VALUES (2)").executeUpdate()
+        "CREATE TABLE \"test\".\"dept\" (\"dept_id\" INTEGER NOT NULL, \"dept_id1\" INTEGER)")
+        .executeUpdate()
+      conn.prepareStatement("INSERT INTO \"test\".\"dept\" VALUES (1, 1)").executeUpdate()
+      conn.prepareStatement("INSERT INTO \"test\".\"dept\" VALUES (2, 1)").executeUpdate()
 
       // scalastyle:off
       conn.prepareStatement(
@@ -121,10 +122,10 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
     checkAnswer(sql("SELECT name, id FROM h2.test.people"), Seq(Row("fred", 1), Row("mary", 2)))
   }
 
-  private def checkPushedInfo(df: DataFrame, expectedPlanFragment: String): Unit = {
+  private def checkPushedInfo(df: DataFrame, expectedPlanFragment: String*): Unit = {
     df.queryExecution.optimizedPlan.collect {
       case _: DataSourceV2ScanRelation =>
-        checkKeywordsExistsInExplain(df, expectedPlanFragment)
+        checkKeywordsExistsInExplain(df, expectedPlanFragment: _*)
     }
   }
 
@@ -1633,11 +1634,21 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
   }
 
   test("column name with composite field") {
-    checkAnswer(sql("SELECT dept_id FROM h2.test.dept"), Seq(Row(1), Row(2)))
-    val df = sql("SELECT COUNT(dept_id) FROM h2.test.dept")
-    checkAggregateRemoved(df)
-    checkPushedInfo(df, "PushedAggregates: [COUNT(dept_id)]")
-    checkAnswer(df, Seq(Row(2)))
+    checkAnswer(sql("SELECT `dept_id`, `dept_id1` FROM h2.test.dept"), Seq(Row(1, 1), Row(2, 1)))
+
+    val df1 = sql("SELECT COUNT(`dept_id`) FROM h2.test.dept")
+    checkPushedInfo(df1, "PushedAggregates: [COUNT(dept_id)]")
+    checkAnswer(df1, Seq(Row(2)))
+
+    val df2 = sql("SELECT `dept_id1`, COUNT(`dept_id`) FROM h2.test.dept GROUP BY `dept_id1`")
+    checkPushedInfo(df2,
+      "PushedGroupByExpressions: [dept_id1]", "PushedAggregates: [COUNT(dept_id)]")
+    checkAnswer(df2, Seq(Row(1, 2)))
+
+    val df3 = sql("SELECT `dept_id`, COUNT(`dept_id1`) FROM h2.test.dept GROUP BY `dept_id`")
+    checkPushedInfo(df3,
+      "PushedGroupByExpressions: [dept_id]", "PushedAggregates: [COUNT(dept_id1)]")
+    checkAnswer(df3, Seq(Row(1, 1), Row(2, 1)))
   }
 
   test("column name with non-ascii") {
