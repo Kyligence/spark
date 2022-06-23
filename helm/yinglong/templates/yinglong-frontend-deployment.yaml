@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: yinglong-frontend-{{ .Release.Namespace }}
+  name: yinglong-frontend-{{ .Release.Name }}
   labels:
     {{- include "yinglong.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.frontend.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "yinglong.selectorLabels" . | nindent 6 }}
-      app: yinglong-frontend-{{ .Release.Namespace }}
+      app: yinglong-frontend-{{ .Release.Name }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -20,12 +20,12 @@ spec:
       {{- end }}
       labels:
         {{- include "yinglong.selectorLabels" . | nindent 8 }}
-        app: yinglong-frontend-{{ .Release.Namespace }}
+        app: yinglong-frontend-{{ .Release.Name }}
     spec:
       volumes:
         - name: default-conf
           configMap:
-            name: yinglong-frontend-nginx-default-conf-{{ .Release.Namespace }}
+            name: yinglong-frontend-nginx-default-conf-{{ .Release.Name }}
             defaultMode: 420
       containers:
         - name: yinglong-frontend

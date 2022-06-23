@@ -1,7 +1,8 @@
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "yinglong.fullname" . -}}
 {{- $namespace:= .Release.Namespace -}}
-{{- $serviceName := print "yinglong-frontend-service" "-" $namespace -}}
+{{- $releaseName:= .Release.Name -}}
+{{- $serviceName := print "yinglong-frontend-service" "-" $releaseName -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
@@ -40,7 +41,7 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
-    - host: {{ print "yinglong." $namespace "." .host | quote }}
+    - host: {{ print $releaseName "." $namespace "." .host | quote }}
       http:
         paths:
           {{- range .paths }}

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: yinglong-frontend-service-{{ .Release.Namespace }}
+  name: yinglong-frontend-service-{{ .Release.Name }}
 spec:
   ports:
     - name: http
@@ -9,7 +9,7 @@ spec:
       port: 80
       targetPort: 80
   selector:
-    app: yinglong-frontend-{{ .Release.Namespace }}
+    app: yinglong-frontend-{{ .Release.Name }}
   type: ClusterIP
   sessionAffinity: ClientIP
   sessionAffinityConfig:
