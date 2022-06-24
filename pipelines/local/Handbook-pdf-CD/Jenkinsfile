@@ -34,12 +34,12 @@ def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5', 'pat
                     'KE 4.2':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.2', 'path': 'v4.2', 'branch': 'ke-4.2', 'pdf_name_zh':'Kyligence_Enterprise_4_2-zh', 'pdf_name_en':'Kyligence_Enterprise_4_2-en'],
                     'KE 3.2':['project': 'KAP-Manual', 'version':'v3.4', 'path': 'v3.4', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_3_2-zh', 'pdf_name_en':'Kyligence_Enterprise_3_2-en'],
 
-                    'KI 1.3':['project': 'Insight-Manual', 'version':'v1.3', 'path': 'ki/v1.3', 'branch': 'master', 'pdf_name_zh':'Kyligence_Insight_1_3-zh-cn', 'pdf_name_en':'Kyligence_Insight_1_3-en'],
-                    'KI 1.2':['project': 'Insight-Manual', 'version':'v1.2', 'path': 'ki/v1.2', 'branch': 'KI-1.2.x', 'pdf_name_zh':'Kyligence_Insight_1_2-zh-cn', 'pdf_name_en':'Kyligence_Insight_1_2-en'],
+                    'KI 1.3':['project': 'Insight-Manual', 'version':'v1.3', 'path': 'insight/v1.3', 'branch': 'master', 'pdf_name_zh':'Kyligence_Insight_1_3-zh-cn', 'pdf_name_en':'Kyligence_Insight_1_3-en'],
+                    'KI 1.2':['project': 'Insight-Manual', 'version':'v1.2', 'path': 'insight/v1.2', 'branch': 'KI-1.2.x', 'pdf_name_zh':'Kyligence_Insight_1_2-zh-cn', 'pdf_name_en':'Kyligence_Insight_1_2-en'],
 
-                    'KM 1.1':['project': 'KM-Manual', 'version':'v1.1', 'path': 'km/v1.1', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_1_1-zh', 'pdf_name_en':'Kyligence_Manager_1_1-en'],
-                    'KM 4.3':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.3', 'path': 'km/v4.3', 'branch': 'km-4.3.x', 'pdf_name_zh':'Kyligence_Manager_4_3-zh', 'pdf_name_en':'Kyligence_Manager_4_3-en'],
-                    'KM 4.5':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.5', 'path': 'km/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_4_5-zh', 'pdf_name_en':'Kyligence_Manager_4_5-en'],
+                    'KM 1.1':['project': 'KM-Manual', 'version':'v1.1', 'path': 'manager/v1.1', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_1_1-zh', 'pdf_name_en':'Kyligence_Manager_1_1-en'],
+                    'KM 4.3':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.3', 'path': 'manager/v4.3', 'branch': 'km-4.3.x', 'pdf_name_zh':'Kyligence_Manager_4_3-zh', 'pdf_name_en':'Kyligence_Manager_4_3-en'],
+                    'KM 4.5':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.5', 'path': 'manager/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_4_5-zh', 'pdf_name_en':'Kyligence_Manager_4_5-en'],
 
                     'MDX 1.2':['project': 'MDX-Manual', 'version':'v1.2', 'path': 'mdx/v1.2', 'branch': '1.2', 'pdf_name_zh':'Kyligence_mdx_1_2-zh-cn', 'pdf_name_en':'Kyligence_mdx_1_2-en'],
                     'MDX 1.3':['project': 'MDX-Manual', 'version':'v1.3', 'path': 'mdx/v1.3', 'branch': '1.3', 'pdf_name_zh':'Kyligence_mdx_1_3-zh-cn', 'pdf_name_en':'Kyligence_mdx_1_3-en'],
