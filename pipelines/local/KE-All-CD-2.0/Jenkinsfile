@@ -343,7 +343,7 @@ pipeline {
                                     ./run.sh \$ke_pkg_home
                                 """
 
-                                publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: false, reportDir: 'scanapi_workdir/ke-api-inspector-release/report', reportFiles: 'ke_api_inspect_report.html', reportName: 'API 扫描报告', reportTitles: "report from ${BUILD_NUMBER}"])
+                                publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'scanapi_workdir/ke-api-inspector-release/report', reportFiles: 'ke_api_inspect_report.html', reportName: 'API 扫描报告', reportTitles: "report from ${BUILD_NUMBER}"])
                             }
                         }
                     }
