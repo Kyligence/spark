@@ -243,6 +243,7 @@ pipeline {
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
         booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3（不了解请勿勾选）')
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
+        booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         // booleanParam(name: 'replaceFouse', defaultValue: false, description: '手动强制打新包，覆盖缓存包')
     }
 
@@ -293,56 +294,61 @@ pipeline {
                                 def _version = "${params.version}-${params.envStage}"
                                 package_info = getPackageInfo(_version, params.envStage, release_commitid_back, params.deployType, params.noSpark)
 
-                                // try {
-                                //     def existPackage = "${package_info.package_path}/${package_info.file_name}"
-                                //     sh script: """
-                                //         ls -l /var/cicd/${package_info.package_path}
-                                //         cp /var/cicd/${existPackage} ${package_info.file_name}
-                                //     """
+                                buildNewten(_version, params.noSpark, params.docs_commitid)
+                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
-                                //     sh 'ls -l'
-                                //     println "package_info.package_file: ${package_info.package_file}"
-                                //     exist_package = fileExists(package_info.file_name)
-                                //     println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
-                                // } catch (Exception err) {
-                                //     echo err.getMessage()
-                                // }
+                                sh script: """
+                                    mkdir -p /var/cicd/${package_info.package_path}
+                                    mv dist/*.tar.gz ${package_info.file_name}
+                                """
+                                exist_package = true
 
-                                // if (!exist_package) {
-
-                                    buildNewten(_version, params.noSpark, params.docs_commitid)
-                                    archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-                                    
+                                if(params.envStage!='GA'){
                                     sh script: """
-                                        mkdir -p /var/cicd/${package_info.package_path}
-                                        mv dist/*.tar.gz ${package_info.file_name}
+                                        cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                                     """
-                                    exist_package = true
-                                    
-                                    if(params.envStage!='GA'){
-                                        sh script: """
-                                            cp ${package_info.file_name} /var/cicd/${package_info.package_path}
-                                        """
-                                    }else{
-                                        sh script: """
-                                            cp ${package_info.file_name} ${package_info.ga_name}
-                                            cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
-                                        """
-                                        // package_info.file_name = package_info.ga_name
-                                    }
-                                // } else {
-                                //     println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
-                                // }
+                                }else{
+                                    sh script: """
+                                        cp ${package_info.file_name} ${package_info.ga_name}
+                                        cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
+                                    """
+                                }
                             }
                         }
                     }
                 }
             }
-            // post {
-            //     success {
-            //         jiraSendBuildInfo()
-            //     }
-            // }
+        }
+        stage('Scan Public API') {
+            when {
+                expression {
+                    return params.envStage == 'RC' || params.scanApi == true
+                }
+            }
+            steps {
+                container('build') {
+                    timestamps {
+                        script {
+                            dir('sourcecode') {
+                                sh script: """
+                                    ls -lh
+                                    wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/ke-api-inspector-release.tar.gz --directory-prefix=scanapi_workdir/
+                                    tar -zxvf ./${package_info.file_name} -C ./scanapi_workdir > /dev/null
+                                    tar -zxvf scanapi_workdir/ke-api-inspector-release.tar.gz -C ./scanapi_workdir > /dev/null
+
+                                    ls -lh scanapi_workdir
+                                    cd scanapi_workdir
+                                    ke_pkg_home="`pwd`/${package_info.ga_name - '.tar.gz'}"
+                                    cd ke-api-inspector-release
+                                    ./run.sh \$ke_pkg_home
+                                """
+
+                                publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'scanapi_workdir/ke-api-inspector-release/report', reportFiles: 'ke_api_inspect_report.html', reportName: 'API 扫描报告', reportTitles: "report from ${BUILD_NUMBER}"])
+                            }
+                        }
+                    }
+                }
+            }
         }
         stage('3.Dev/QA Upload') {
             when {
