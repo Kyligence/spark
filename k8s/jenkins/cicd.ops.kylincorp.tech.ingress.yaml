@@ -19,7 +19,7 @@ spec:
 status:
   loadBalancer:
     ingress:
-    - ip: 10.1.9.200
+    - ip: repo-ofs.kyligence.tech
     - ip: 10.1.9.50
     - ip: 10.1.9.51
     - ip: 10.1.9.52

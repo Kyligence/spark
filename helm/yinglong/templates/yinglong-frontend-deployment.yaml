@@ -29,7 +29,7 @@ spec:
             defaultMode: 420
       containers:
         - name: yinglong-frontend
-          image: 10.1.9.200:5000/kyligence/yinglong-frontend:4.5.10-dev
+          image: repo-ofs.kyligence.tech:5000/kyligence/yinglong-frontend:4.5.10-dev
           ports:
             - containerPort: 80
               protocol: TCP

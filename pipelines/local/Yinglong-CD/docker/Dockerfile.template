@@ -1,4 +1,4 @@
-FROM 10.1.9.200:5000/kyligence-env:hadoop_2.10.1_hive_1.2.2
+FROM repo-ofs.kyligence.tech:5000/kyligence-env:hadoop_2.10.1_hive_1.2.2
 RUN mkdir -p /opt/kyligence
 COPY replace_package /opt/
 RUN tar -xf /opt/replace_dir*.tar.gz --strip-components 1 -C /opt/kyligence --remove-files

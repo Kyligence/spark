@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: 10.1.9.200:5000/gateway
+  repository: repo-ofs.kyligence.tech:5000/gateway
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: "5.0.0"

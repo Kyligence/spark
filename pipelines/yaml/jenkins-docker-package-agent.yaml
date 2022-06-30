@@ -62,7 +62,7 @@ spec:
           name: "jenkins-common"
           subPath: "newten-cicd"
     - name: "python3"
-      image: "10.1.9.200:5000/py3:alpine3.15.feishu.v1"
+      image: "repo-ofs.kyligence.tech:5000/py3:alpine3.15.feishu.v1"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:

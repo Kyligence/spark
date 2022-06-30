@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: 10.1.9.200:5000/kyligence-env
+  repository: repo-ofs.kyligence.tech:5000/kyligence-env
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "hadoop_2.10.1_hive_1.2.2"
@@ -91,7 +91,7 @@ hadoop_prefix: my-hadoop-2
 jmx:
   enabled: true
   image: 
-    repository: 10.1.9.200:5000/jmx-prometheus-javaagent
+    repository: repo-ofs.kyligence.tech:5000/jmx-prometheus-javaagent
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: "0.16.1"

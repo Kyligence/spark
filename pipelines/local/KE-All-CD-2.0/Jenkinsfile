@@ -415,7 +415,7 @@ pipeline {
                             dir('sourcecode') {
                                 sh script: """
                                     ls -lh
-                                    wget http://10.1.9.200:8081/repository/raw-tars-hosted/io.kyligence.ke/ke-api-inspector-release.tar.gz --directory-prefix=scanapi_workdir/
+                                    wget http://repo-ofs.kyligence.tech:8081/repository/raw-tars-hosted/io.kyligence.ke/ke-api-inspector-release.tar.gz --directory-prefix=scanapi_workdir/
                                     tar -zxvf ./${package_info.file_name} -C ./scanapi_workdir > /dev/null
                                     tar -zxvf scanapi_workdir/ke-api-inspector-release.tar.gz -C ./scanapi_workdir > /dev/null
 

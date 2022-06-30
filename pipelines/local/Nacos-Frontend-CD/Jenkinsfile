@@ -14,7 +14,7 @@ pipeline {
     }
 
     environment {
-        repo='10.1.9.200:5000'
+        repo='repo-ofs.kyligence.tech:5000'
         dockerRegistryUrl = "http://${repo}"
         registryCredential = 'nexus-docker'
         frontend = ''

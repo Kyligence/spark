@@ -93,35 +93,35 @@ metadata:
 yinglongCommon:
   replicaCount: 1
   image:
-    repository: 10.1.9.200:5000/kyligence/yinglong-common
+    repository: repo-ofs.kyligence.tech:5000/kyligence/yinglong-common
     pullPolicy: IfNotPresent
     tag: "4.5.10-beta2"
 
 yinglongDataLoading:
   replicaCount: 1
   image:
-    repository: 10.1.9.200:5000/kyligence/yinglong-data-loading
+    repository: repo-ofs.kyligence.tech:5000/kyligence/yinglong-data-loading
     pullPolicy: IfNotPresent
     tag: "4.5.10-beta2"
 
 yinglongQuery:
   replicaCount: 1
   image:
-    repository: 10.1.9.200:5000/kyligence/yinglong-query
+    repository: repo-ofs.kyligence.tech:5000/kyligence/yinglong-query
     pullPolicy: IfNotPresent
     tag: "4.5.10-beta2"
     
 yinglongSmart:
   replicaCount: 1
   image:
-    repository: 10.1.9.200:5000/kyligence/yinglong-smart
+    repository: repo-ofs.kyligence.tech:5000/kyligence/yinglong-smart
     pullPolicy: IfNotPresent
     tag: "4.5.10-beta2"
 
 frontend:
   replicaCount: 1
   image:
-    repository: 10.1.9.200:5000/kyligence/yinglong-frontend
+    repository: repo-ofs.kyligence.tech:5000/kyligence/yinglong-frontend
     pullPolicy: IfNotPresent
     tag: "4.5.10-dev"
 
