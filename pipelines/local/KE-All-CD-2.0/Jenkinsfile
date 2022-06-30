@@ -331,8 +331,6 @@ pipeline {
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
-        // booleanParam(name: 'replaceFouse', defaultValue: false, description: '手动强制打新包，覆盖缓存包')
-        // booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3（不了解请勿勾选）')
     }
 
     stages {
