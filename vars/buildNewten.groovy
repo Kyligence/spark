@@ -18,6 +18,16 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
     """
     sh "npm cache verify"
 
+    if (noSpark) {
+        echo "Package not include Spark"
+        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
+    } else {
+        insertDocs(version, docs_commitid)
+        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
+    }
+}
+
+def insertDocs(version, docs_commitid) {
     def version_splits = version.split("\\.")
     if (version_splits.length < 3) {
         throw new IllegalArgumentException("version must like major.minor.revision, but is ${version}")
@@ -35,12 +45,5 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
         """
 
         sh "ls -lh build/docs"
-    }
-
-    if (noSpark) {
-        echo "Package not include Spark"
-        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
-    } else {
-        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
     }
 }

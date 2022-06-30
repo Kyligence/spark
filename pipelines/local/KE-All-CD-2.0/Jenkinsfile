@@ -17,7 +17,8 @@ def release_commitid_back = ''
 // 包存在
 def exist_package = false
 // 包信息对象
-def package_info =  [:]
+def package_info = [:]
+def no_spark_package_info = [:]
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
@@ -68,8 +69,8 @@ def getBranch(deployType, envStage, version) {
 }
 
 // 上传制品包到Aws S3存储
-def uploadAwsS3(region, credentials, bucket, path, ga_name) {
-    dir('sourcecode') {
+def uploadAwsS3(region, credentials, bucket, path, ga_name, dir_name = 'sourcecode') {
+    dir(dir_name) {
         timestamps {
             println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
             withAWS(region: region, credentials: credentials) {
@@ -80,10 +81,10 @@ def uploadAwsS3(region, credentials, bucket, path, ga_name) {
 }
 
 // 上传制品包到Nexus制品库
-def uploadNexus(repo, package_path, file_name) {
+def uploadNexus(repo, package_path, file_name, dir_name = 'sourcecode') {
     timestamps {
         container('build') {
-            dir('sourcecode') {
+            dir(dir_name) {
                 script {
                     println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
                     // 上传制品库
@@ -96,7 +97,8 @@ def uploadNexus(repo, package_path, file_name) {
     }
 }
 
-def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
+// 上传制品包到 Azure 服务器
+def uplaodAzure(package_info, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/devops') {
     script {
         def remote = [:]
         remote.name = 'azure_test_env'
@@ -105,10 +107,10 @@ def uplaodAzure(package_info,remote_path='/home/4xuser/data/devops') {
                 passwordVariable: 'REMOTE_PASSWORD')]) {
             remote.user = REMOTE_USERNAME
             remote.password = REMOTE_PASSWORD
-        }
+                }
         remote.host = '159.27.120.141'
         remote.allowAnyHosts = true
-        dir('sourcecode') {
+        dir(dir_name) {
             sshPut remote: remote, from: package_info.file_name, into: remote_path
         }
         sshCommand remote: remote, command: """
@@ -129,7 +131,7 @@ def gitCodeKe(back, front) {
                 }
                 pullCodeFromGitMirror 'KAP', back
 
-                release_commitid_back = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                 println "release_commitid_back: ${release_commitid_back}"
                 result.release_commitid_back = release_commitid_back
 
@@ -137,7 +139,7 @@ def gitCodeKe(back, front) {
                 if (!front) {
                     println "No commitId_front, use the commitId_back: ${back}"
                     _front = back
-                }else {
+                } else {
                     println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
                     _front = front
                 }
@@ -145,7 +147,7 @@ def gitCodeKe(back, front) {
                 sh 'rm -rf ./kystudio'
                 dir('kystudio') {
                     pullCodeFromGitMirror 'KAP_Frontend', _front
-                    release_commitid_front = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                    release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                     println "release_commitid_front: ${release_commitid_front}"
                     result.release_commitid_front = release_commitid_front
                     sh """
@@ -157,11 +159,14 @@ def gitCodeKe(back, front) {
                 }
             }
         }
+        script {
+            sh 'mkdir -p ./nospark && cp -r ./sourcecode/* ./nospark/'
+        }
     }
     return result
 }
 
-def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
+def getPackageInfo(version, envStage, cid, deployType, noSpark = false) {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
     def package_path
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
@@ -181,7 +186,7 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
     }
     println "package_path: ${package_path}"
 
-    def withoutSpark = noSpark ? "-NoSpark" : ""
+    def withoutSpark = noSpark ? '-NoSpark' : ''
 
     file_name = "KE-${version}-${cid}${withoutSpark}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
@@ -199,9 +204,90 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark=false) {
     return obj
 }
 
+def checkCacheExist(pi) {
+    println "checkCacheExist -> package_info[${pi}]"
+    def result = false
+    try {
+        def existPackage = "${pi.package_path}/${pi.file_name}"
+        sh script: """
+            ls -l /var/cicd/${pi.package_path}
+            cp /var/cicd/${existPackage} ${pi.file_name}
+        """
+
+        sh 'ls -l'
+        println "pi.package_file: ${pi.package_file}"
+        result = fileExists(pi.file_name)
+        println "/var/cicd/${pi.package_path}/${pi.file_name} is ${result}"
+    } catch (Exception err) {
+        println "The package [${pi.file_name}] not exsits, the pipeline will make it next."
+        result = false
+        // println err.getMessage()
+    }
+
+    println "checkCacheExist result: ${result}"
+    return result
+}
+
+def buildAndCopy(version, noSpark, package_info, docs_commitid) {
+    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],package_info[${deployType}],docs_commitid[${docs_commitid}]"
+    buildNewten(version, noSpark, docs_commitid)
+
+    sh script: """
+        mkdir -p /var/cicd/${package_info.package_path}
+        mv dist/*.tar.gz ${package_info.file_name}
+    """
+    // exist_package = true
+    archiveArtifacts artifacts: "${package_info.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+
+    if (envStage != 'GA') {
+        sh script: """
+            cp ${package_info.file_name} /var/cicd/${package_info.package_path}
+        """
+    } else {
+        sh script: """
+            cp ${package_info.file_name} ${package_info.ga_name}
+            cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
+        """
+        // package_info.file_name = package_info.ga_name
+    }
+}
+
+// buildPackage(params.version, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
+def buildPackage(version, envStage, deployType, noSpark, docs_commitid) {
+    println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}]"
+    def result = [:]
+    container('build') {
+        timestamps {
+            script {
+                def _version = "${version}-${envStage}"
+                def _cids = "${release_commitid_back}-${release_commitid_front}"
+                if(!noSpark) {
+                    dir('sourcecode') {
+                        package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
+                        if(!checkCacheExist(package_info)) {
+                            buildAndCopy(_version, noSpark, package_info, docs_commitid)
+                        }
+                        result.package_info = package_info
+                    }
+                }else{
+                    dir('nospark'){
+                        no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
+                        if(!checkCacheExist(no_spark_package_info)) {
+                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid)
+                        }
+                        result.no_spark_package_info = no_spark_package_info
+                    }
+                }
+            }
+        }
+    }
+    println "buildPackage result: " + result.toString()
+    return result
+}
+
 pipeline {
     options {
-        timeout(time: 12, unit: 'HOURS')
+        timeout(time: 4, unit: 'HOURS')
         ansiColor('xterm')
     }
 
@@ -224,9 +310,12 @@ pipeline {
         file_name = ''
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
+        no_spark = false
         // tester emails
         tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
         fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io'''
+        nospark_user_eamils = 'yong.fu@kyligence.io'
+        jar_user_eamils = 'yongchao.li@kyligence.io'
         // dev eamils
         dev_regular_emails = 'enwei.jiao@kyligence.io;yifan.zhang@kyligence.io'
         dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
@@ -236,15 +325,14 @@ pipeline {
     }
 
     parameters {
-        // string(name: 'branch', defaultValue: 'newten-qa', description: '前后端同步的branch或者commitid（必填）')
-        choice(name: 'deployWay', choices:'Auto Select\nManual Select', description:'发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;' )
-        choice(name: 'deployType', choices:'Regular\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description:'交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列' )
+        choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
+        choice(name: 'deployType', choices: 'Regular\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description: '交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列')
         string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-        booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3（不了解请勿勾选）')
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         // booleanParam(name: 'replaceFouse', defaultValue: false, description: '手动强制打新包，覆盖缓存包')
+        // booleanParam(name: 'noSpark', defaultValue: false, description: '打不包含Spark的KE包，会自动上传S3（不了解请勿勾选）')
     }
 
     stages {
@@ -263,16 +351,16 @@ pipeline {
                         release_commitid_back = cms.release_commitid_back
                         release_commitid_front = cms.release_commitid_front
                     } else if (params.deployWay == 'Manual Select') {
-                         // 2.2 根据手动输入参数设定分支
-                        paramsMap = input (
+                        // 2.2 根据手动输入参数设定分支
+                        paramsMap = input(
                             message: '请选择要开始的版本?',
                             ok: '确认！',
                             parameters: [
-                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
-                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+                                    string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                    string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
                             ],
                             // submitter:'liming.meng,admin',
-                            submitterParameter:'APPROVER'
+                            submitterParameter: 'APPROVER'
                         )
                         release_branch_front = paramsMap['commitId_front']
                         release_branch_back = paramsMap['commitId_back']
@@ -286,40 +374,35 @@ pipeline {
             }
         }
         stage('2.Building Package') {
-            steps {
-                container('build') {
-                    timestamps {
+            parallel {
+                stage('2.1.Building Normal') {
+                    steps {
                         script {
-                            dir('sourcecode') {
-                                def _version = "${params.version}-${params.envStage}"
-                                package_info = getPackageInfo(_version, params.envStage, release_commitid_back, params.deployType, params.noSpark)
-
-                                buildNewten(_version, params.noSpark, params.docs_commitid)
-                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
-
-                                sh script: """
-                                    mkdir -p /var/cicd/${package_info.package_path}
-                                    mv dist/*.tar.gz ${package_info.file_name}
-                                """
-                                exist_package = true
-
-                                if(params.envStage!='GA'){
-                                    sh script: """
-                                        cp ${package_info.file_name} /var/cicd/${package_info.package_path}
-                                    """
-                                }else{
-                                    sh script: """
-                                        cp ${package_info.file_name} ${package_info.ga_name}
-                                        cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
-                                    """
-                                }
-                            }
+                            no_spark = false
+                            def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
+                            package_info = bp.package_info
+                            println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
+                        }
+                    }
+                }
+                stage('2.2.Building noSpark') {
+                    when {
+                        expression {
+                            return params.envStage in ['QA', 'RC', 'GA']
+                        }
+                    }
+                    steps {
+                        script {
+                            no_spark = true
+                            def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
+                            no_spark_package_info = bpns.no_spark_package_info
+                            println("build noSpark [no_spark_package_info]: ${no_spark_package_info.file_name}, no_spark: ${no_spark}")
                         }
                     }
                 }
             }
         }
-        stage('Scan Public API') {
+        stage('3.Scan Public API') {
             when {
                 expression {
                     return params.envStage == 'RC' || params.scanApi == true
@@ -350,53 +433,90 @@ pipeline {
                 }
             }
         }
-        stage('3.Dev/QA Upload') {
-            when {
-                expression {
-                    return params.envStage in ['DEV', 'QA', 'RC', 'GA']
-                }
-            }
+        stage('4.Dev/QA Upload') {
             parallel {
-                stage('3.1.Upload to Azure CN') {
+                stage('4.1.Upload to Azure CN') {
                     steps {
                         uplaodAzure(package_info)
                     }
                     post {
                         success {
                             sendNotify('EMAIL',
-                                "SUCCESSFUL to Upload the Tar into the Azure CN server'",
-                                // "liming.meng@kyligence.io",
-                                tester_emails,
-                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                    "SUCCESSFUL to Upload the Tar into the Azure CN server'",
+                                    // "liming.meng@kyligence.io",
+                                    tester_emails,
+                                    """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
                                 <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
                             )
                         }
                     }
                 }
-                stage('3.2.Upload to Nexus') {
-                    steps {
-                        uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
-                    }
-                }
-                stage('3.3.Upload to AWS Global S3') {
-                    when{
+                // stage('4.2.Upload to Nexus') {
+                //     steps {
+                //         uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
+                //     }
+                // }
+                stage('4.2.Upload to AWS Global S3') {
+                    when {
                         expression {
-                            return params.noSpark == true
+                            return params.envStage in ['QA', 'RC', 'GA']
                         }
                     }
                     steps {
-                        println("upload to AWS S3 in Global: ${package_info.file_name}")
+                        println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${package_info.file_name}", package_info.file_name)
+                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name, 'nospark')
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                "[KE4] SUCCESSFUL to Upload the NOSPARK Tar to S3'",
+                                nospark_user_eamils,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the package ${no_spark_package_info.file_name} to the S3: bucket [kyligencecloud-ci]</p>
+                                <p>It saved in the path of [/packages/ke-without-spark/], please check it and use! Tks!</p>"""
+                            )
+                        }
+                    }
+                }
+                stage('4.3.Deploy SNAPSHOT Jar') {
+                    when {
+                        expression {
+                            return params.envStage in ['QA', 'RC']
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            script {
+                                dir('sourcecode') {
+                                    sh """
+                                        cat /root/.m2/settings.xml
+                                        mvn versions:set -DnewVersion="${version}-SNAPSHOT"
+                                        mvn deploy -Pdev -DskipTests -T 4C
+                                    """
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                "[KE4][SNAPSHOT JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
+                                jar_user_eamils,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the SNAPSHOT Jars into inner Product Library [repo-ofs]</p>
+                                <p>It saved in the repository of [maven-snapshots], please check it and use! Tks!</p>"""
+                            )
+                        }
                     }
                 }
             }
         }
-        stage('4.Approve GA') {
+        stage('5.Approve GA') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package && !params.noSpark
+                    return params.envStage == 'GA'
                 }
             }
             steps {
@@ -405,13 +525,13 @@ pipeline {
                         def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
                         println checkMsg
                         // sh 'printenv'
-                        paramsGA = input (
+                        paramsGA = input(
                             message: checkMsg,
                             ok: '确认！',
-                            submitter:'liming.meng,meixiu.chen,enwei.jiao,chenqing.zhu',
-                            submitterParameter:'APPROVER',
-                            parameters:[
-                                booleanParam(name: "skipUpload", defaultValue: false, description: '是否跳过上传')
+                            submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
+                            submitterParameter: 'APPROVER',
+                            parameters: [
+                                booleanParam(name: 'skipUpload', defaultValue: false, description: '是否跳过上传')
                             ]
                         )
                         ga_name = package_info.ga_name
@@ -419,22 +539,22 @@ pipeline {
                 }
             }
         }
-        stage('5.GA Upload') {
+        stage('6.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package && !params.noSpark && !paramsGA['skipUpload']
+                    return params.envStage == 'GA' && !paramsGA['skipUpload']
                 }
             }
             parallel {
-                stage('5.1.GA AWS CN') {
+                stage('6.1.GA AWS CN') {
                     steps {
                         println("upload to AWS S3 in CN: ${ga_name}")
                         // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
                         uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                        // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                    // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
                     }
                 }
-                stage('5.2.GA AWS Global') {
+                stage('6.2.GA AWS Global') {
                     steps {
                         println("upload to AWS S3 in Global: ${ga_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
@@ -442,7 +562,7 @@ pipeline {
                         // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
                     }
                 }
-                stage('5.3.GA Nexus') {
+                stage('6.3.GA Nexus') {
                     steps {
                         println("upload to Nexus repo-ofs: ${ga_name}")
                         uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
@@ -451,52 +571,58 @@ pipeline {
                 }
             }
         }
-        stage('6.Released') {
+        stage('7.Released') {
             when {
                 expression {
-                    return params.envStage == 'GA' && exist_package && !params.noSpark
+                    return params.envStage == 'GA'
                 }
             }
             parallel {
-                stage('6.1.Tag') {
+                stage('7.1.Tag') {
                     steps {
                         container('build') {
                             script {
                                 def _tag = "ke-${version}"
                                 def bcid = ''
                                 def fcid = ''
-                                try{
+                                try {
                                     dir('sourcecode') {
                                         println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
                                         githubHelper 'TAG', release_branch_back, 'KAP', _tag
-                                        bcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                        bcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                                         println "backend [KAP] commitId: ${bcid}"
 
                                         dir('kystudio') {
                                             println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
                                             githubHelper 'TAG', release_branch_front, 'KAP_Frontend', _tag
-                                            fcid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                            fcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
                                             println "frontend [KAP_Frontend] commitId: ${fcid}"
                                         }
                                     }
                                 } catch (Exception err) {
                                     echo err.getMessage()
                                 }
-
-                                sendNotify(
-                                    'EMAIL',
-                                    "KE ${version} SUCCESSFUL GA", 
-                                    // "liming.meng@kyligence.io",
-                                    product_emails,
-                                    """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                    <p>The Backend repo of [KAP] commitId: ${bcid}</p>
-                                    <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>"""
-                                )
                             }
                         }
                     }
+                    post {
+                        success {
+                            sendNotify(
+                                'EMAIL',
+                                "[KE4][GA] ${version} SUCCESSFUL GA",
+                                // "liming.meng@kyligence.io",
+                                product_emails,
+                                """
+                                <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                                <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
+                                <p>Automatically tag [ke-${version}] the front and back branches.</p>
+                                """
+                            )
+                        }
+                    }
                 }
-                stage('6.2.Deploy Jar') {
+                stage('7.2.Deploy Jar') {
                     steps {
                         container('build') {
                             script {
@@ -507,6 +633,17 @@ pipeline {
                                     """
                                 }
                             }
+                        }
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                "[KE4][RELEASE JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
+                                jar_user_eamils,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the RELEASE Jars into inner Product Library [repo-ofs]</p>
+                                <p>It saved in the repository of [maven-release], please check it and use! Tks!</p>"""
+                            )
                         }
                     }
                 }
