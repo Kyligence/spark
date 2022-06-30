@@ -56,6 +56,7 @@ object AQEUtils {
           }
         case other => Some(other)
       }
+    case d: DeserializeToObjectExec => getRequiredDistribution(d.child)
     case _ => Some(UnspecifiedDistribution)
   }
 }
