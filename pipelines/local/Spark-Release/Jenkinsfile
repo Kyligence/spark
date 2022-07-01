@@ -2,6 +2,9 @@
 
 @Library('devopslib') _
 
+
+def releaseVersion = '' //最后发布的版本号
+def publishToKC = false //是否发布给KC
 // 上传制品包到Aws S3存储
 def uploadAwsS3(region, credentials, bucket, path, ga_name) {
     timestamps {
@@ -12,9 +15,59 @@ def uploadAwsS3(region, credentials, bucket, path, ga_name) {
     }
 }
 
+def getReleaseVersion(version, deployType) {
+    def _result
+    _result = version
+    switch (deployType) {
+        case 'DEV':
+            _result = _result + '-DEV-SNAPSHOT'
+            break
+        case 'QA':
+            _result = _result + '-SNAPSHOT'
+            break
+    }
+    return _result.trim()
+}
+
+// git获取spark 代码（预先触发同步git mirror）
+def gitSparkCodeKe(repo, branch) {
+    script {
+        if (repo == 'Kyligence') {
+            pullCodeFromGitMirror 'spark', branch
+        } else {
+            githubCheckout 'spark', branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git', repo
+        }
+    }
+
+}
+
+def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
+    def releaseName = releaseVersion.replace("-kylin", "")
+    //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
+    //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
+    sh script: """
+        sleep ${waitTime}
+        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
+        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-3.2 -Phive-thriftserver -pl assembly
+        cp ../depedencies/log4j/*.jar dist/jars/
+        cp ../depedencies/cloud_log4j/*.jar dist/jars/
+        rm  dist/jars/log4j-1.2-api-*.jar
+        cp -r ../hive_1_2_2  dist/
+        cp ../depedencies/${dependencyDir}/* dist/jars/
+        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
+        mv dist spark-newten-${releaseName}-${cloudType}
+        tar czf spark-newten-${releaseName}-${cloudType}.tgz spark-newten-${releaseName}-${cloudType}
+     """
+    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+        pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz", user, passwd)
+    }
+    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz")
+}
+
+
 pipeline {
     options {
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS')
     }
 
     agent {
@@ -24,32 +77,44 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: 'git://10.1.2.192/Kyligence/spark.git', description: 'spark repo')
-        string(name: 'branch', defaultValue: 'kyspark-3.2.x-4.x', description: 'spark branch')
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo  https://github.com/Kyligence/spark.git--> Kyligence\nhttps://github.com/apache/spark.git--> apache')
+        string(name: 'branch', defaultValue: 'kyspark-3.2.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x ')
         string(name: 'release_version', defaultValue: '', description: 'spark release version for example: 3.2.0-kylin-4.x-r52')
+        choice(name: 'deployType', choices: 'DEV\nQA\nRC', description: '研发自测用自己分支打包，选择DEV，会在version后面加上 -DEV-SNAPSHOT，并且不会发包给kc，\n' +
+                '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n RC后基于稳定分支发包，选择RC，version 不做处理')
+        choice(name: 'sparkVersion', choices: 'spark3\nspark2.4', description: 'spark 大版本，spark2.4 发包不会推到云上')
     }
 
+
     stages {
+        stage("approve deploy") {
+            when {
+                expression {
+                    return params.deployType in ['QA', 'RC']
+                }
+            }
+            steps {
+                container("build") {
+                    script {
+                        releaseVersion = getReleaseVersion(params.release_version, params.deployType)
+                        def checkMsg = "确定发布该版本吗？发布repo：${params.repo}, 发布分支：${params.branch}，发布版本号：${releaseVersion}"
+                        println checkMsg
+                        paramsGA = input(
+                                message: checkMsg,
+                                ok: '确认！',
+                                submitter: 'jiawei.li2,chenliang.lu,biaobiao.sun,luoping.zhang',
+                                submitterParameter: 'APPROVER'
+                        )
+                    }
+                }
+            }
+
+        }
         stage("Checkout Source Code") {
             steps {
                 container("build") {
                     dir("sourcecode") {
-                        retry(3) {
-                            timestamps {
-                                checkout([$class         : 'GitSCM',
-                                        branches         : [[name: "${params.branch}"]],
-                                        userRemoteConfigs: [[credentialsId: "kyligence-git",
-                                                            name         : "origin",
-                                                            refspec      : "+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*",
-                                                            url          : "${repo}"]],
-                                        browser          : [$class: 'GithubWeb', repoUrl: "https://github.com/Kyligence/spark"],
-                                        extensions       : [
-                                                [$class: 'CleanBeforeCheckout'],
-                                                [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
-                                        ]
-                                ])
-                            }
-                        }
+                        gitSparkCodeKe(params.repo, params.branch)
                     }
                     sh script: """
                         wget http://repo-ofs.kyligence.tech:8081/repository/raw-public/io.kyligence.spark/depedencies.tar.gz
@@ -65,12 +130,15 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
+                            releaseVersion = getReleaseVersion(params.release_version, params.deployType)
+                            if (params.sparkVersion == 'spark3' && params.deployType in ['QA', 'RC']) {
+                                publishToKC = true
+                            }
                             sh script: """
                                 #1、package kyspark
-                                ./build/mvn versions:set -DnewVersion=${params.release_version}
-
+                                ./build/mvn versions:set -DnewVersion=${releaseVersion}
                                 export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                ./build/mvn deploy -settings /root/.m2/settings.xml -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
+                                ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                                 # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                             """
                         }
@@ -92,13 +160,19 @@ pipeline {
                         container("build") {
                             dir('on-perm-hadoop2') {
                                 script {
-                                    def releaseName = params.release_version.replace("-kylin", "")
+                                    def releaseName = releaseVersion.replace("-kylin", "")
+                                    def hadoopVersion = "hadoop-2.7"
+                                    if (params.sparkVersion == 'spark2.4') {
+                                        hadoopVersion = "hadoop-2.6"
+                                    }
                                     sh script: """
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-2.7 -Phive -Phive-thriftserver -Pyarn -Pkubernetes
-                                        cp ../depedencies/log4j/*.jar dist/jars/
-                                        mv dist spark-newten-${releaseName}-hadoop2
-                                        tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}-hadoop2
+                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn -Pkubernetes 
+                                        if [ 'spark3' = '${params.sparkVersion}' ]; then
+                                            cp ../depedencies/log4j/*.jar dist/jars/
+                                        fi
+                                        mv dist spark-newten-${releaseName}
+                                        tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}
                                         md5sum spark-newten-${releaseName}-hadoop2.tgz
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
@@ -111,109 +185,74 @@ pipeline {
                     }
                 }
                 stage('on-perm-nohadoop') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
                     steps {
                         container("build") {
                             dir("on-perm-nohadoop") {
                                 script {
-                                    def releaseName = params.release_version.replace("-kylin", "")
+                                    def releaseName = releaseVersion.replace("-kylin", "")
                                     sh script: """
                                         sleep 10
                                         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly
-                                        cp ../depedencies/log4j/*.jar dist/jars/
+                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly 
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                     """
                                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
                                     }
-                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz")
-
                                 }
                             }
                         }
                     }
                 }
                 stage('cloud-hadoop3') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
                     steps {
                         container("build") {
                             dir("cloud-hadoop3") {
                                 script {
-                                    def releaseName = params.release_version.replace("-kylin", "")
-                                    sh script: """
-                                        sleep 20
-                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-3.2 -Phive-thriftserver -pl assembly
-                                        cp ../depedencies/log4j/*.jar dist/jars/
-                                        cp ../depedencies/cloud_log4j/*.jar dist/jars/
-                                        rm  dist/jars/log4j-1.2-api-*.jar
-                                        cp ../depedencies/hadoop3/* dist/jars/
-                                        cp -r ../hive_1_2_2  dist/
-                                        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
-                                        mv dist spark-newten-${releaseName}-cloud-hadoop3
-                                        tar czf spark-newten-${releaseName}-cloud-hadoop3.tgz spark-newten-${releaseName}-cloud-hadoop3
-                                    """
-                                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                        pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-cloud-hadoop3.tgz", "spark-newten-${releaseName}-cloud-hadoop3.tgz", user, passwd)
-                                    }
-                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-cloud-hadoop3.tgz", "spark-newten-${releaseName}-cloud-hadoop3.tgz")
-
+                                    generateCloudPackage("20", "cloud-hadoop3", "hadoop3", releaseVersion)
                                 }
                             }
                         }
                     }
                 }
                 stage('cloud-gcp') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
                     steps {
                         container("build") {
                             dir("cloud-gcp") {
                                 script {
-                                    def releaseName = params.release_version.replace("-kylin", "")
-                                    sh script: """
-                                        sleep 30
-                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-3.2 -Phive-thriftserver -pl assembly
-                                        cp ../depedencies/log4j/*.jar dist/jars/
-                                        cp ../depedencies/cloud_log4j/*.jar dist/jars/
-                                        rm  dist/jars/log4j-1.2-api-*.jar
-                                        cp ../depedencies/gcp/* dist/jars/
-                                        cp -r ../hive_1_2_2  dist/
-                                        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
-                                        mv dist spark-newten-${releaseName}-cloud-gcp
-                                        tar czf spark-newten-${releaseName}-cloud-gcp.tgz spark-newten-${releaseName}-cloud-gcp
-                                    """
-                                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                        pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-cloud-gcp.tgz", "spark-newten-${releaseName}-cloud-gcp.tgz", user, passwd)
-                                    }
-                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-cloud-gcp.tgz", "spark-newten-${releaseName}-cloud-gcp.tgz")
+                                    generateCloudPackage("30", "cloud-gcp", "gcp", releaseVersion)
                                 }
                             }
                         }
                     }
                 }
                 stage('cloud-huawei') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
                     steps {
                         container("build") {
                             dir("cloud-huawei") {
                                 script {
-                                    def releaseName = params.release_version.replace("-kylin", "")
-                                    sh script: """
-                                        sleep 40
-                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${params.release_version} -Phadoop-3.2 -Phive-thriftserver -pl assembly
-                                        cp ../depedencies/log4j/*.jar dist/jars/
-                                        cp ../depedencies/cloud_log4j/*.jar dist/jars/
-                                        rm  dist/jars/log4j-1.2-api-*.jar
-                                        cp -r ../hive_1_2_2  dist/
-                                        cp ../depedencies/huawei/* dist/jars/
-                                        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
-                                        mv dist spark-newten-${releaseName}-cloud-huawei
-                                        tar czf spark-newten-${releaseName}-cloud-huawei.tgz spark-newten-${releaseName}-cloud-huawei
-                                    """
-                                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                        pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-cloud-huawei.tgz", "spark-newten-${releaseName}-cloud-huawei.tgz", user, passwd)
-                                    }
-                                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-cloud-huawei.tgz", "spark-newten-${releaseName}-cloud-huawei.tgz")
+                                    generateCloudPackage("40", "cloud-huawei", "huawei", releaseVersion)
                                 }
                             }
                         }
@@ -221,5 +260,21 @@ pipeline {
                 }
             }
         }
+        stage('Tag') {
+            when {
+                expression {
+                    return params.deployType == 'RC'
+                }
+            }
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        githubHelper 'TAG', params.branch, 'spark', releaseVersion
+                    }
+                }
+            }
+
+        }
     }
 }
+    
