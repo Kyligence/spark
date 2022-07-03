@@ -9,13 +9,13 @@ spec:
       tty: true
       command:
         - "cat"
-      resources:
-        request:
-          memory: "2Gi"
-          cpu: "100m"
-        limits:
-          memory: "8Gi"
-          cpu: "2000m"
+      # resources:
+      #   request:
+      #     memory: "2Gi"
+      #     cpu: "100m"
+      #   limits:
+      #     memory: "8Gi"
+      #     cpu: "2000m"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -35,13 +35,13 @@ spec:
       tty: true
       command:
         - "cat"
-      resources:
-        request:
-          cpu: "100m"
-          memory: "200Mi"
-        limits:
-          cpu: "300m"
-          memory: "1024Mi"
+      # resources:
+      #   request:
+      #     cpu: "100m"
+      #     memory: "200Mi"
+      #   limits:
+      #     cpu: "300m"
+      #     memory: "1024Mi"
       volumeMounts:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
