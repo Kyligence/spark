@@ -17,11 +17,6 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
         wget http://repo-ofs.kyligence.tech:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
         wget http://repo-ofs.kyligence.tech:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
         wget http://repo-ofs.kyligence.tech:8081/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
-
-        spark_version_pom=`mvn help:evaluate -Dexpression=spark.version | grep -E '^[0-9]+\\.[0-9]+\\.[0-9]+'`
-        spark_pkg_name=spark-newten-"`echo \$spark_version_pom | sed "s/-kylin//g"`"
-        
-        wget http://repo-ofs.kyligence.tech:8081/repository/raw-tars-hosted/io.kyligence.spark/\$spark_pkg_name.tgz --directory-prefix=build/
     """
     sh "npm cache verify"
 
