@@ -19,12 +19,13 @@ def exist_package = false
 // 包信息对象
 def package_info =  [:]
 
-def type_mapping = ['KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5', 'path': 'cloud/v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC 4.5 test': ['project': 'Cloud_Manual', 'version':'v4.5_test', 'path': 'cloud/v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC 4.5 dev':['project': 'Cloud_Manual', 'version':'v4.5_dev', 'path': 'cloud/v4.5_dev', 'branch': '4.5_test', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
-                    'KC Test Drive':['project': 'Cloud_Manual', 'version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive', 'pdf_name_zh':'Kyligence_Test_Driver-cn', 'pdf_name_en':'Kyligence_Test_Driver-en'],
+def type_mapping = ['KC 4.6': ['project': 'Cloud_Manual', 'version':'v4.6', 'path': 'cloud/v4.6', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.6 test': ['project': 'Cloud_Manual', 'version':'v4.6_test', 'path': 'cloud/v4.6_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.6 dev':['project': 'Cloud_Manual', 'version':'v4.6_dev', 'path': 'cloud/v4.6_dev', 'branch': 'master_new', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
+                    'KC 4.5': ['project': 'Cloud_Manual', 'version':'v4.5', 'path': 'cloud/v4.5', 'branch': 'kc-4.5.x', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
                     'KC 4.3':['project': 'Cloud_Manual', 'version':'v4.3', 'path': 'cloud/v4.3', 'branch': 'kc-4.3.x', 'pdf_name_zh':'Kyligence_Cloud_4-cn', 'pdf_name_en':'Kyligence_Cloud_4-en'],
                     'KC 3.2':['project': 'Cloud_Manual', 'version':'v3.2', 'path': 'cloud/v3.2', 'branch': 'kc-3.2.x', 'pdf_name_zh':'Kyligence_Cloud_3-cn', 'pdf_name_en':'Kyligence_Cloud_3-en'],
+                    'KC Test Drive':['project': 'Cloud_Manual', 'version':'vtest_drive', 'path': 'cloud/test_drive', 'branch': 'test_drive', 'pdf_name_zh':'Kyligence_Test_Driver-cn', 'pdf_name_en':'Kyligence_Test_Driver-en'],
 
                     'KE 4.5':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5', 'path': 'v4.5', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
                     'KE 4.5 test':['project': 'Kyligence-Enterprise-Manual', 'version':'v4.5_test', 'path': 'v4.5_test', 'branch': 'master', 'pdf_name_zh':'Kyligence_Enterprise_4_5-zh', 'pdf_name_en':'Kyligence_Enterprise_4_5-en'],
@@ -159,7 +160,7 @@ properties([
                         '''
                             def version_mapping = [:]
                             version_mapping["KE"] = ["KE 4.5 dev", "KE 4.5 test", "KE 4.5", "KE 4.3 test", "KE 4.3", "KE 4.2", "KE 3.2"]
-                            version_mapping["KC"] = ["KC 4.5", "KC 4.5 test", "KC 4.5 dev", "KC Test Drive", "KC 4.3", "KC 3.2"]
+                            version_mapping["KC"] = ["KC 4.6", "KC 4.6 test", "KC 4.6 dev", "KC 4.5", "KC Test Drive", "KC 4.3", "KC 3.2"]
                             version_mapping["KI"] = ["KI 1.3", "KI 1.2"]
                             version_mapping["KM"] = ["KM 1.1", "KM 4.3", "KM 4.5"]
                             version_mapping["MDX"] = ["MDX 1.2", "MDX 1.3", "MDX 1.4"]
