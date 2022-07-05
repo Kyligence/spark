@@ -20,6 +20,10 @@ def exist_package = false
 def package_info = [:]
 def no_spark_package_info = [:]
 
+// 前后端代码实际 commitid
+def bcid = ''
+def fcid = ''
+
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
     print "getBranch -> deployType[${deployType}],envStage[${envStage}],version[${version}]"
@@ -581,8 +585,6 @@ pipeline {
                         container('build') {
                             script {
                                 def _tag = "ke-${version}"
-                                def bcid = ''
-                                def fcid = ''
                                 try {
                                     dir('sourcecode') {
                                         println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
