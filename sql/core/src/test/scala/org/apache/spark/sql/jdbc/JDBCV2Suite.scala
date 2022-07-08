@@ -30,7 +30,6 @@ import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, GlobalLim
 import org.apache.spark.sql.connector.{IntegralAverage, StrLen}
 import org.apache.spark.sql.connector.catalog.functions.{ScalarFunction, UnboundFunction}
 import org.apache.spark.sql.connector.expressions.Expression
-import org.apache.spark.sql.connector.expressions.aggregate.{AggregateFunc, UserDefinedAggregateFunc}
 import org.apache.spark.sql.execution.datasources.v2.{DataSourceV2ScanRelation, V1ScanWrapper}
 import org.apache.spark.sql.execution.datasources.v2.jdbc.JDBCTableCatalog
 import org.apache.spark.sql.functions.{abs, acos, asin, atan, atan2, avg, ceil, coalesce, cos, cosh, count, count_distinct, degrees, exp, floor, lit, log => logarithm, log10, not, pow, radians, round, signum, sin, sinh, sqrt, sum, tan, tanh, udf, when}
@@ -67,9 +66,9 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
         canonicalName match {
           case "h2.iavg" =>
             if (isDistinct) {
-              s"$funcName(DISTINCT ${inputs.mkString(", ")})"
+              s"AVG(DISTINCT ${inputs.mkString(", ")})"
             } else {
-              s"$funcName(${inputs.mkString(", ")})"
+              s"AVG(${inputs.mkString(", ")})"
             }
           case _ =>
             super.visitUserDefinedAggregateFunction(funcName, canonicalName, isDistinct, inputs)
@@ -86,18 +85,6 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
           logWarning("Error occurs while compiling V2 expression", e)
           None
       }
-    }
-
-    override def compileAggregate(aggFunction: AggregateFunc): Option[String] = {
-      super.compileAggregate(aggFunction).orElse(
-        aggFunction match {
-          case f: UserDefinedAggregateFunc if f.name() == "iavg" =>
-            assert(f.children().length == 1)
-            val distinct = if (f.isDistinct) "DISTINCT " else ""
-            compileExpression(f.children().head).map(v => s"AVG($distinct$v)")
-          case _ => None
-        }
-      )
     }
 
     override def functions: Seq[(String, UnboundFunction)] = H2Dialect.functions
@@ -1724,23 +1711,47 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
   }
 
   test("scan with aggregate push-down: VAR_POP VAR_SAMP with filter and group by") {
-    val df = sql("SELECT VAR_POP(bonus), VAR_SAMP(bonus) FROM h2.test.employee WHERE dept > 0" +
-      " GROUP BY DePt")
+    val df = sql(
+      """
+        |SELECT
+        |  VAR_POP(bonus),
+        |  VAR_POP(DISTINCT bonus),
+        |  VAR_SAMP(bonus),
+        |  VAR_SAMP(DISTINCT bonus)
+        |FROM h2.test.employee WHERE dept > 0 GROUP BY DePt""".stripMargin)
     checkFiltersRemoved(df)
     checkAggregateRemoved(df)
-    checkPushedInfo(df, "PushedAggregates: [VAR_POP(BONUS), VAR_SAMP(BONUS)], " +
-      "PushedFilters: [DEPT IS NOT NULL, DEPT > 0], PushedGroupByExpressions: [DEPT]")
-    checkAnswer(df, Seq(Row(10000d, 20000d), Row(2500d, 5000d), Row(0d, null)))
+    checkPushedInfo(df,
+     """
+       |PushedAggregates: [VAR_POP(BONUS), VAR_POP(DISTINCT BONUS),
+       |VAR_SAMP(BONUS), VAR_SAMP(DISTINCT BONUS)],
+       |PushedFilters: [DEPT IS NOT NULL, DEPT > 0],
+       |PushedGroupByExpressions: [DEPT],
+       |""".stripMargin.replaceAll("\n", " "))
+    checkAnswer(df, Seq(Row(10000d, 10000d, 20000d, 20000d),
+      Row(2500d, 2500d, 5000d, 5000d), Row(0d, 0d, null, null)))
   }
 
   test("scan with aggregate push-down: STDDEV_POP STDDEV_SAMP with filter and group by") {
-    val df = sql("SELECT STDDEV_POP(bonus), STDDEV_SAMP(bonus) FROM h2.test.employee" +
-      " WHERE dept > 0 GROUP BY DePt")
+    val df = sql(
+      """
+        |SELECT
+        |  STDDEV_POP(bonus),
+        |  STDDEV_POP(DISTINCT bonus),
+        |  STDDEV_SAMP(bonus),
+        |  STDDEV_SAMP(DISTINCT bonus)
+        |FROM h2.test.employee WHERE dept > 0 GROUP BY DePt""".stripMargin)
     checkFiltersRemoved(df)
     checkAggregateRemoved(df)
-    checkPushedInfo(df, "PushedAggregates: [STDDEV_POP(BONUS), STDDEV_SAMP(BONUS)], " +
-      "PushedFilters: [DEPT IS NOT NULL, DEPT > 0], PushedGroupByExpressions: [DEPT]")
-    checkAnswer(df, Seq(Row(100d, 141.4213562373095d), Row(50d, 70.71067811865476d), Row(0d, null)))
+    checkPushedInfo(df,
+      """
+        |PushedAggregates: [STDDEV_POP(BONUS), STDDEV_POP(DISTINCT BONUS),
+        |STDDEV_SAMP(BONUS), STDDEV_SAMP(DISTINCT BONUS)],
+        |PushedFilters: [DEPT IS NOT NULL, DEPT > 0],
+        |PushedGroupByExpressions: [DEPT],
+        |""".stripMargin.replaceAll("\n", " "))
+    checkAnswer(df, Seq(Row(100d, 100d, 141.4213562373095d, 141.4213562373095d),
+      Row(50d, 50d, 70.71067811865476d, 70.71067811865476d), Row(0d, 0d, null, null)))
   }
 
   test("scan with aggregate push-down: COVAR_POP COVAR_SAMP with filter and group by") {
