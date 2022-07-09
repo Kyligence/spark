@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: yinglong-frontend-nginx-default-conf-{{ .Release.Name }}
+  name: {{ include "yinglong-frontend.fullname" . }}-default-conf
 data:
   default.conf: |-
     server {
@@ -10,7 +10,7 @@ data:
       server_name  localhost;
 
       # Gateway
-        location /kylin/api {
+        location ~^/(kylin/api|kylin/sparder|kylin/history_server)/ {
         proxy_pass http://{{ .Values.gateway.serverAddr }};
       }
 

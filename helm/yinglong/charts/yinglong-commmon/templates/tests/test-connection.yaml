@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "yinglong-commmon.fullname" . }}-test-connection"
+  labels:
+    {{- include "yinglong-commmon.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "yinglong-commmon.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

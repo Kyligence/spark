@@ -1,8 +1,5 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "yinglong.fullname" . -}}
-{{- $namespace:= .Release.Namespace -}}
-{{- $releaseName:= .Release.Name -}}
-{{- $serviceName := print "yinglong-frontend-service" "-" $releaseName -}}
+{{- $fullName := include "yinglong-data-loading.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
@@ -20,7 +17,7 @@ kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    {{- include "yinglong.labels" . | nindent 4 }}
+    {{- include "yinglong-data-loading.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -41,7 +38,7 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
-    - host: {{ print $releaseName "." $namespace "." .host | quote }}
+    - host: {{ .host | quote }}
       http:
         paths:
           {{- range .paths }}
@@ -52,11 +49,11 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ $serviceName }}
+                name: {{ $fullName }}
                 port:
                   number: {{ $svcPort }}
               {{- else }}
-              serviceName: {{ $serviceName }}
+              serviceName: {{ $fullName }}
               servicePort: {{ $svcPort }}
               {{- end }}
           {{- end }}

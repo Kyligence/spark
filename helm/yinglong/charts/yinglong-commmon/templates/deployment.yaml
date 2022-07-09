@@ -1,0 +1,164 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yinglong-commmon.fullname" . }}
+  labels:
+    {{- include "yinglong-commmon.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "yinglong-commmon.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "yinglong-commmon.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "yinglong-commmon.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: newten-conf
+          configMap:
+            name: {{ include "yinglong-commmon.fullname" . }}-conf
+            defaultMode: 511
+        - configMap:
+            name: {{ .Values.global.hadoopPrefix }}-yarn-xml
+          name: yarn-xml
+      {{- if .Values.skyWalking.enabled }}
+        - name: skywalking-agent
+          emptyDir: { }
+      initContainers:
+        - name: agent-container
+          image: apache/skywalking-java-agent:8.7.0-alpine
+          volumeMounts:
+            - name: skywalking-agent
+              mountPath: /agent
+          command: [ "/bin/sh" ]
+          args: [ "-c", "cp -R /skywalking/agent /agent/" ]
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KYLIN_HOME
+              value: /opt/kyligence
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NACOS_CONFIG_SERVER_ADDR
+              value: {{ .Values.global.nacos.config.serverAddr | default .Values.global.nacos.serverAddr}}
+            - name: NACOS_DISCOVERY_SERVER_ADDR
+              value: {{ .Values.global.nacos.discovery.serverAddr | default .Values.global.nacos.serverAddr}}
+            - name: TENANT_ID
+              value:  {{ .Values.global.tenantId | quote}}
+            - name: SPRING_SESSION_STORE_TYPE
+              value: jdbc
+            - name: KYLIN_ENV_ZOOKEEPER_CONNECT_STRING  
+              value: {{ .Values.global.zookeeper.address | default (printf "%s-zk-cs:2181" .Values.global.hadoopPrefix) }}
+            - name: KYLIN_ENV_HDFS_WORKING_DIR
+              value: {{ .Values.global.hdfs.workingDir | default (printf "/kylin/%s_%s" (.Values.global.metadata.identifierPrefix) (.Release.Namespace)) }}
+            - name: KYLIN_METADATA_URL
+              value: {{ .Values.global.metadata.url | default (printf "%s_%s@jdbc,driverClassName=com.mysql.jdbc.Driver,url=jdbc:mysql://%s-mysql:3306/%s?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8,username=%s,password=%s,maxTotal=50,maxIdle=8" .Values.global.metadata.identifierPrefix  .Release.Namespace  .Values.global.hadoopPrefix .Values.global.metadata.database .Values.global.metadata.user .Values.global.metadata.password ) }}
+            - name: HADOOP_CONF_DIR
+              value: $(KYLIN_HOME)/hadoop_conf
+            {{- if .Values.debug.enabled }}
+            - name: KYLIN_DEBUG_SETTINGS
+              value: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+            {{- end}}
+            {{- if .Values.skyWalking.enabled }}
+            - name: SW_AGENT_NAME
+              value: "{{ include "yinglong-commmon.fullname" . }}"
+            - name: SW_AGENT_NAMESPACE
+              value: "{{ .Release.Namespace }}"
+            - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
+              value: "{{ .Values.skyWalking.backendServerAddr }}"
+            {{- end }}
+          command:
+            - sh
+            - "-c"
+            - |
+              {{- if .Values.skyWalking.enabled }}
+              sed -i 's/nohup java ${KYLIN_KERBEROS_OPTS}/& -javaagent:\/skywalking\/agent\/skywalking-agent.jar/' $(KYLIN_HOME)/sbin/bootstrap.sh
+              {{- end }}
+              $(KYLIN_HOME)/bin/kylin.sh start
+              if [ -f $KYLIN_HOME/logs/kylin.log ]
+              then
+                tail -300f $KYLIN_HOME/logs/kylin.log
+              else
+                tail -300f $KYLIN_HOME/logs/shell.stderr
+              fi
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: debug
+              containerPort: {{ .Values.service.debugPort }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /opt/kyligence/conf/fairscheduler.xml
+              name: newten-conf
+              subPath: fairscheduler.xml
+            - mountPath: /opt/kyligence/bin/check-env-bypass
+              name: newten-conf
+              readOnly: false
+              subPath: check-env-bypass
+            - mountPath: /opt/kyligence/hadoop_conf/core-site.xml
+              name: yarn-xml
+              subPath: core-site.xml
+            - mountPath: /opt/kyligence/hadoop_conf/hive-site.xml
+              name: yarn-xml
+              subPath: hive-site.xml
+            - mountPath: /opt/kyligence/hadoop_conf/hiveserver2-site.xml
+              name: yarn-xml
+              subPath: hive-site.xml
+            - mountPath: /opt/kyligence/hadoop_conf/hivemetastore-site.xml
+              name: yarn-xml
+              subPath: hive-site.xml
+            - mountPath: /opt/kyligence/hadoop_conf/hdfs-site.xml
+              name: yarn-xml
+              subPath: hdfs-site.xml
+            - mountPath: /opt/kyligence/hadoop_conf/yarn-site.xml
+              name: yarn-xml
+              subPath: yarn-site.xml
+            - mountPath: /opt/kyligence/hadoop_conf/fair-scheduler.xml
+              name: yarn-xml
+              subPath: fair-scheduler.xml
+            {{- if .Values.skyWalking.enabled }}
+            - name: skywalking-agent
+              mountPath: /skywalking
+            {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

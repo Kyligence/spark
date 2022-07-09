@@ -1,0 +1,36 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "yinglong-smart.fullname" . }}-conf
+data:
+  fairscheduler.xml: |
+    <?xml version="1.0"?>
+    <allocations>
+        <pool name="query_pushdown">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>1</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="extreme_heavy_tasks">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>3</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="heavy_tasks">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>5</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="lightweight_tasks">
+            <schedulingMode>FAIR</schedulingMode>
+            <weight>10</weight>
+            <minShare>1</minShare>
+        </pool>
+        <pool name="vip_tasks">
+            <schedulingMode>FAIR
+            </schedulingMode>
+            <weight>15</weight>
+            <minShare>1</minShare>
+        </pool>
+    </allocations>
+  check-env-bypass: ''

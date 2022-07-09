@@ -39,14 +39,20 @@ pipeline {
         string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
         string(name: 'commitId_front', defaultValue: 'newten-qa', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
         string(name: 'tag', defaultValue: '4.5.10-dev', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'build', defaultValue:true, description:'是否构建' )
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
         booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
         string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
         string(name: 'hadoop_prefix', defaultValue: 'hadoop-0', description: 'hadoop environment')
+        string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
+        string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
     }
 
     stages {
         stage('1.Pull Code') {
+            when {
+                environment name: 'build', value: 'true'
+            }
             steps {
                 container('build') {
                     dir('sourcecode') {
@@ -55,16 +61,9 @@ pipeline {
                                 error 'commitId_back 参数不能为空'
                             }
 
-                            echo 'Sync the git mirror'
-                            sshCmdWithCredentials(
-                                'bash -c /var/lib/git/pull.sh',
-                                'private_git',
-                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
-                            )
-
                             echo 'checkout KAP'
                             retry(3) {
-                                githubCheckout 'KAP', params.commitId_back
+                                pullCodeFromGitMirror 'KAP', params.commitId_back
                             }
 
                             def front
@@ -79,7 +78,7 @@ pipeline {
                             sh 'rm -rf ./kystudio'
                             dir('kystudio') {
                                 retry(3) {
-                                    githubCheckout 'KAP_Frontend', front
+                                    pullCodeFromGitMirror 'KAP_Frontend', front
                                 }
                             }
                         }
@@ -88,6 +87,9 @@ pipeline {
             }
         }
         stage('2.Building Package') {
+            when {
+                environment name: 'build', value: 'true'
+            }
             steps {
                 container('build') {
                     dir('sourcecode') {
@@ -159,6 +161,9 @@ pipeline {
             }
         }
         stage('3.build docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
             steps {
                 container('docker') {
                     dir('sourcecode') {
@@ -240,20 +245,20 @@ pipeline {
                             sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
 
                             try {
-                                sh returnStatus: true , script: '''
+                                sh returnStatus: true , script: """
                                     helm -n ${namespace} list
-                                    helm -n ${namespace} uninstall yinglong-${namespace}
-                                '''
+                                    helm -n ${namespace} uninstall yinglong
+                                """
                             } catch(Exception err) {
                                 echo err.getMessage()
                                 echo "delete resource failed, but we will continue."
                             }
 
 
-                            sh returnStatus: true , script: '''
-                                helm -n ${namespace} install yinglong-${namespace} ./helm/yinglong --set yinglongCommon.image.tag=${tag} --set yinglongDataLoading.image.tag=${tag} --set yinglongQuery.image.tag=${tag} --set yinglongCommon.image.tag=${tag}  --set frontend.image.tag=${tag} --set hadoopPrefix=${hadoop_prefix}
+                            sh returnStatus: true , script: """
+                                helm -n ${namespace} install yinglong ./helm/yinglong --set yinglong-common.image.tag=${tag} --set yinglong-data-loading.image.tag=${tag} --set yinglong-query.image.tag=${tag} --set yinglong-smart.image.tag=${tag}  --set yinglong-frontend.image.tag=${tag} --set global.hadoopPrefix=${hadoop_prefix} --set global.tenantId=${params.tenant_id} ${params.extra_settings} 
                                 helm -n ${namespace} list
-                            '''
+                            """
                         }
                     }
                 }

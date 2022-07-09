@@ -76,16 +76,16 @@ spec:
           env:
             - name: TENANT_NAME
               value: "{{ .Values.tenantName }}"
-            - name: JAVA_TOOL_OPTIONS
-              value: "-Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group={{ .Values.saas.nacos.discovery.group }} -Dsaas.nacos.discovery.public-group={{ .Values.saas.nacos.discovery.publicGroup }} -Dsaas.nacos.discovery.server-addr={{ .Values.saas.nacos.discovery.serverAddr }}  -Dsaas.nacos.config.server-addr={{ .Values.saas.nacos.config.serverAddr }}"
             {{- if .Values.skyWalking.enabled }}
             - name: JAVA_TOOL_OPTIONS
-              value: "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos"
+              value: "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group={{ .Values.saas.nacos.discovery.group }} -Dsaas.nacos.discovery.public-group={{ .Values.saas.nacos.discovery.publicGroup }} -Dsaas.nacos.discovery.server-addr={{ .Values.saas.nacos.discovery.serverAddr }}  -Dsaas.nacos.config.server-addr={{ .Values.saas.nacos.config.serverAddr }}"
             - name: SW_AGENT_NAME
               value: "Kyligence"
             - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
               value: "{{ .Values.skyWalking.serverAddr }}"
             {{- else }}
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group={{ .Values.saas.nacos.discovery.group }} -Dsaas.nacos.discovery.public-group={{ .Values.saas.nacos.discovery.publicGroup }} -Dsaas.nacos.discovery.server-addr={{ .Values.saas.nacos.discovery.serverAddr }}  -Dsaas.nacos.config.server-addr={{ .Values.saas.nacos.config.serverAddr }}"
             {{- end }}
           volumeMounts:
             - mountPath: "/etc/saas-gateway/config.yaml"
