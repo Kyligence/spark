@@ -38,6 +38,13 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - "-c"
+            - |
+              sed -i 's/SW_AGENT_NAME/yinglong-frontend-{{ .Release.Namespace }}/g' /usr/share/nginx/html/static/js/app*
+              sed -i 's/SW_AGENT_COLLECTOR_BACKEND_SERVICES/{{ .Values.skywalking.oap.rest | replace "/" "\\/" }}/g' /usr/share/nginx/html/static/js/app*
+              nginx -g daemon off;
           ports:
             - name: http
               containerPort: 80

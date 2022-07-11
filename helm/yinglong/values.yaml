@@ -24,3 +24,7 @@ global:
 
   zookeeper: {}
     # address: localhost:2181
+
+skywalking:
+  oap:
+    rest: http://oap.ops.kyligence.tech
