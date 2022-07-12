@@ -1,4 +1,4 @@
-def call(String version, boolean noSpark = false, String docs_commitid = 'latest') {
+def call(String version, boolean noSpark = false, String docs_commitid = 'latest', String customerPkg = 'NORMAL') {
     sh "git apply license.patch"
     sh """
         wget http://repo-ofs.kyligence.tech:8081/repository/raw-tars-hosted/io.kyligence.ke/grafana-6.2.4.linux-amd64.tar.gz --directory-prefix=build/
@@ -22,10 +22,10 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
 
     if (noSpark) {
         echo "Package not include Spark"
-        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
+        sh "export ${customerPkg}=1 && export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
     } else {
         insertDocs(version, docs_commitid)
-        sh "export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
+        sh "export ${customerPkg}=1 && export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
     }
 }
 
