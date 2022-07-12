@@ -1,0 +1,69 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '指定仓库')
+        string(name: 'branch', defaultValue: 'master', description: '指定分支')
+        string(name: 'release_version', defaultValue: 'dev', description: '指定发布版本')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        retry(3) {
+                            timestamps {
+                                pullCodeFromGitMirror "Lightning-client", "${params.branch}", false, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Maven Install') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        retry(3) {
+                            timestamps {
+                                sh "mvn clean install"
+                                sh "ls -lh target"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Upload To Nexus') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                def finalName = sh script: 'mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout', returnStdout:true
+                                echo "final name: ${finalName}"
+                                retry(2) {
+                                    pushRawArtifactsByApi('raw-tars-hosted', "io.kyligence.spark/depedencies/${params.release_version}", "./target/${finalName}.jar", "${finalName}.jar", user, passwd)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
