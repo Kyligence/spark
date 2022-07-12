@@ -36,6 +36,10 @@ def insertDocs(version, docs_commitid) {
     }
     def docs_version = "v${version_splits[0]}.${version_splits[1]}"
 
+    if (docs_commitid.isEmpty()) {
+        throw new IllegalArgumentException("docs commit id not allowed to be empty")
+    }
+
     println("docs_version: ${docs_version}")
     println("docs_commitid: ${docs_commitid}")
 

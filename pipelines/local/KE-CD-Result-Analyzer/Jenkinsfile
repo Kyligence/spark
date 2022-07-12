@@ -1,0 +1,111 @@
+#!groovy
+import java.net.URLEncoder
+
+@NonCPS
+def encodeURL(String text) {
+    return URLEncoder.encode(text, 'UTF-8')
+}
+
+def mergeFile(String text, String originText) {
+    def buildIds = []
+    originText.split("\n").each { line ->
+        buildIds.add(line.split('\\|')[0])
+    }
+    def outputText = '' 
+    text.split("\n").each { line ->
+        if (!buildIds.contains(line.split('\\|')[0])) {
+            outputText += "$line\n"
+        }
+    }
+    outputText += originText
+    return outputText
+}
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent-aws.yaml'
+        }
+    }
+
+    triggers {
+        cron('0 * * * *')
+    }
+
+    stages {
+        stage('Prepare') {
+            steps {
+                container('build') {
+                    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                        script {
+                            def exists = s3FindFiles bucket: 'k8s-bucket-devops', onlyFiles: true, path: 'ke-cd-analyze/cd_build_result/'
+                            if (exists) {
+                                echo "download origin build data"
+                                s3Download(file: 'build_result/build_result_origin.csv', bucket: 'k8s-bucket-devops', path: "ke-cd-analyze/cd_build_result/build_result.csv", force: true)
+                            } else {
+                                echo "no exists data, touch empty build_result_origin.csv"
+                                sh "mkdir build_result && cd \$_ && touch build_result_origin.csv"
+                                sh "chmod -R 777 build_result"
+                            }
+                            sh "ls -lh build_result"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Analyze') {
+            steps {
+                container('build') {
+                    dir('build_result') {
+                        withCredentials([string(credentialsId: 'apitoken', variable: 'TOKEN')]) {
+                            script {
+                                def root = "http://cicd.ops.kyligence.tech/job/KE4/job/KE-All-CD-2.0"
+                                def buildText = ''
+
+                                def options = """/api/json?tree=${encodeURL("builds[actions[parameters[name,value],waitingTimeMillis],number,duration,result,timestamp]")}"""
+                                def text = sh(script:""" curl -X GET '${root}${options}' --user cheng.zuo:${TOKEN} """, returnStdout: true).trim()
+                                def jsonResult = readJSON text: text
+                                jsonResult['builds'].each { buildsdata -> 
+                                    def buildResult = buildsdata['result'] 
+                                    if (!buildResult || "null".equals(buildResult.toString())) {
+                                        return
+                                    }
+                                    def line = "${buildsdata['number']}|"
+                                    buildsdata["actions"].each { actions ->
+                                        if (actions["_class"].equals("hudson.model.ParametersAction")) {
+                                            actions["parameters"].each { param ->
+                                                line += "${param['value']}|"
+                                            }
+                                        }
+                                    }
+                                    line += "${buildsdata['result']}|${buildsdata['duration']}|${buildsdata['timestamp']}"
+                                    buildText += "${line}\n"
+                                }
+                                def data = readFile(file:'build_result_origin.csv')
+                                def outputText = mergeFile(buildText, data)
+                                writeFile file: 'build_result.csv', text: outputText
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Upload') {
+            steps {
+                container('build') {
+                    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                        dir('build_result') {
+                            s3Upload(bucket: 'k8s-bucket-devops', path: 'ke-cd-analyze/cd_build_result/', includePathPattern: "*.csv", acl: 'AuthenticatedRead')
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
