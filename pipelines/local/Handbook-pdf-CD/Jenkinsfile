@@ -175,7 +175,7 @@ properties([
 
 pipeline {
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 24, unit: 'HOURS')
         ansiColor('xterm')
     }
 
