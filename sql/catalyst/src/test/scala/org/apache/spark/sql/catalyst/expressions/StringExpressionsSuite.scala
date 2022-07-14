@@ -18,7 +18,6 @@
 package org.apache.spark.sql.catalyst.expressions
 
 import java.math.{BigDecimal => JavaBigDecimal}
-
 import org.apache.spark.{SPARK_DOC_ROOT, SparkFunSuite, SparkIllegalArgumentException}
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
@@ -28,6 +27,7 @@ import org.apache.spark.sql.catalyst.expressions.Cast._
 import org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.types.UTF8String
 
 class StringExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
 
@@ -678,6 +678,9 @@ class StringExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
   }
 
   test("replace") {
+    val stringReplaceExpression = StringReplace(Literal(""), Literal(""), Literal("vv"))
+    val stringReplaceResult = stringReplaceExpression.eval(null)
+    assert(stringReplaceResult.equals(UTF8String.fromString("vv")))
     checkEvaluation(
       StringReplace(Literal("replace"), Literal("pl"), Literal("123")), "re123ace")
     checkEvaluation(StringReplace(Literal("replace"), Literal("pl"), Literal("")), "reace")
