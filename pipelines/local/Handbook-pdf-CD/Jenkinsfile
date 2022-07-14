@@ -175,7 +175,7 @@ properties([
 
 pipeline {
     options {
-        timeout(time: 24, unit: 'HOURS')
+        timeout(time: 1, unit: 'HOURS')
         ansiColor('xterm')
     }
 
@@ -508,13 +508,7 @@ pipeline {
                                 ],
                                 submitterParameter:'APPROVER'
                             )
-                            if (approvalMap['isRollback'] == false) {
-                                println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
-                                println "PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf"
-                                println "PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf"
-
-                                println "approver: ${approvalMap['APPROVER']}"
-                            } else {
+                            if (approvalMap['isRollback'] == true) {
                                 // println "backup_name: ${backup_name}"
                                 sh """
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
@@ -535,6 +529,12 @@ pipeline {
                                 """)
 
                                 error(message: '回滚成功，发布失败！')
+
+                                println "approver: ${approvalMap['APPROVER']}"
+                            } else {
+                                println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
+                                println "PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf"
+                                println "PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf"
 
                                 println "approver: ${approvalMap['APPROVER']}"
                             }
@@ -559,21 +559,6 @@ pipeline {
                         }
                     }
                 }
-                // success {
-                //     echo "回滚成功，删除发布的包，备份包"
-                //     // 回滚成功，删除发布的包，备份包
-                //     script {
-                //         _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Rollback Successful", """
-                //             <h3>Hi,</h3><br />
-                //             <p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                //             <p>Rollback from backup/${backup_name} to /opt/books/${package_path}/ on the serrvice, and cleanup the backup file: backup/${backup_name}</p>
-                //             <p>The pipeline stage: "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>
-                //             <p>Document URL: https://docs.kyligence.io/books/${package_path}/</p>
-                //         """)
-
-            //         error(message: '回滚成功，发布失败！')
-            //     }
-            // }
             }
         }
     }
