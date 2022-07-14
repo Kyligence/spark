@@ -191,13 +191,15 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark = false) {
     println "package_path: ${package_path}"
 
     def withoutSpark = noSpark ? '-NoSpark' : ''
+    def _customerPkg = params.customerPkg == 'NORMAL' ? '' : "-${params.customerPkg}"
 
-    file_name = "KE-${version}-${cid}${withoutSpark}.tar.gz"
+    file_name = "KE-${version}-${cid}${withoutSpark}${_customerPkg}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
-    ga_name = "Kyligence-Enterprise-${version}${withoutSpark}.tar.gz"
+    ga_name = "Kyligence-Enterprise-${version}${withoutSpark}${_customerPkg}.tar.gz"
 
     println "file_name: ${file_name}"
     println "package_file: ${package_file}"
+    println "ga_name: ${ga_name}"
 
     def obj = [:]
     obj.package_path = package_path
