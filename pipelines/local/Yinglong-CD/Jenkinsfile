@@ -25,21 +25,22 @@ pipeline {
     }
 
     environment {
-        repo='repo-ofs.kyligence.tech:5000'
+        repo = 'repo-ofs.kyligence.tech:5000'
         dockerRegistryUrl = "http://${repo}"
         registryCredential = 'nexus-docker'
         common = ''
         data_loading = ''
         query = ''
         smart = ''
-        frontend=''
+        frontend = ''
     }
 
     parameters {
-        string(name: 'commitId_back', defaultValue: 'newten-qa', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
-        string(name: 'commitId_front', defaultValue: 'newten-qa', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+        string(name: 'commitId_back', defaultValue: 'yinglong', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'commitId_front', defaultValue: 'yinglong', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
         string(name: 'tag', defaultValue: '4.5.10-dev', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建' )
+        string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
         booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
         string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
@@ -69,10 +70,10 @@ pipeline {
                             def front
                             if (!params.commitId_front) {
                                 echo 'Not commitId_front, use the commitId_back: ${params.commitId_back}'
-                                front=params.commitId_back
+                                front = params.commitId_back
                             }else {
                                 echo 'checkout KAP_Frontend to kystudio, use the commitid: ${params.commitId_front}'
-                                front=params.commitId_front
+                                front = params.commitId_front
                             }
 
                             sh 'rm -rf ./kystudio'
@@ -98,14 +99,21 @@ pipeline {
                                 error 'tag 版本号不能为空'
                             }
 
-                            sh """
-                                # wget http://repo-ofs.kyligence.com:8081/repository/raw-tars-hosted/io.kyligence.spark/spark-newten-3.2.0-4.x-r56.tgz --directory-prefix=build/
-                                # cd build && tar -xvf spark-newten-3.2.0-4.x-r56.tgz && mv spark-newten-3.2.0-4.x-r56 spark && cd ..
+                            sh '''
                                 sh build/script_newten/download-spark.sh
-                                echo "build yinglong xx booter"
-                                mvn clean install -DskipTests -Pkubernetes -T1C
-                            """
-                            dir("src/yinglong-common-booter") {
+                            '''
+
+                            if (!profiles) {
+                                sh '''
+                                    mvn clean install -DskipTests -T1C
+                                '''
+                            } else {
+                                sh """
+                                    mvn clean install -DskipTests -P ${profiles} -T1C
+                                """
+                            }
+
+                            dir('src/yinglong-common-booter') {
                                 sh returnStatus: true , script: '''
                                     pwd
                                     ls -al
@@ -117,7 +125,7 @@ pipeline {
                                     cat Dockerfile
                                 '''
                             }
-                            dir("src/yinglong-data-loading-booter") {
+                            dir('src/yinglong-data-loading-booter') {
                                 sh returnStatus: true , script: '''
                                     pwd
                                     ls -al
@@ -130,8 +138,8 @@ pipeline {
                                 '''
                             }
 
-                            dir("src/yinglong-query-booter") {
-                               sh returnStatus: true , script: '''
+                            dir('src/yinglong-query-booter') {
+                                sh returnStatus: true , script: '''
                                     pwd
                                     ls -al
                                     package="target/yinglong-query*.tar.gz"
@@ -143,8 +151,8 @@ pipeline {
                                 '''
                             }
 
-                            dir("src/yinglong-smart-booter") {
-                               sh returnStatus: true , script: '''
+                            dir('src/yinglong-smart-booter') {
+                                sh returnStatus: true , script: '''
                                     pwd
                                     ls -al
                                     package="target/yinglong-smart*.tar.gz"
@@ -167,23 +175,23 @@ pipeline {
             steps {
                 container('docker') {
                     dir('sourcecode') {
-                        dir("src/yinglong-common-booter") {
+                        dir('src/yinglong-common-booter') {
                             script {
                                 common = docker.build 'kyligence/yinglong-common'
                             }
                         }
-                        dir("src/yinglong-data-loading-booter") {
+                        dir('src/yinglong-data-loading-booter') {
                             script {
                                 data_loading = docker.build 'kyligence/yinglong-data-loading'
                             }
                         }
 
-                        dir("src/yinglong-query-booter") {
+                        dir('src/yinglong-query-booter') {
                             script {
                                 query = docker.build 'kyligence/yinglong-query'
                             }
                         }
-                        dir("src/yinglong-smart-booter") {
+                        dir('src/yinglong-smart-booter') {
                             script {
                                 smart = docker.build 'kyligence/yinglong-smart'
                             }
@@ -198,7 +206,7 @@ pipeline {
                                     echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
                                     cat .npmrc
                                 """
-                                frontend = docker.build("kyligence/yinglong-frontend", "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
+                                frontend = docker.build('kyligence/yinglong-frontend', "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
                             }
                         }
                     }
@@ -249,14 +257,13 @@ pipeline {
                                     helm -n ${namespace} list
                                     helm -n ${namespace} uninstall yinglong
                                 """
-                            } catch(Exception err) {
+                            } catch (Exception err) {
                                 echo err.getMessage()
-                                echo "delete resource failed, but we will continue."
+                                echo 'delete resource failed, but we will continue.'
                             }
 
-
                             sh returnStatus: true , script: """
-                                helm -n ${namespace} install yinglong ./helm/yinglong --set yinglong-common.image.tag=${tag} --set yinglong-data-loading.image.tag=${tag} --set yinglong-query.image.tag=${tag} --set yinglong-smart.image.tag=${tag}  --set yinglong-frontend.image.tag=${tag} --set global.hadoopPrefix=${hadoop_prefix} --set global.tenantId=${params.tenant_id} ${params.extra_settings} 
+                                helm -n ${namespace} install yinglong ./helm/yinglong --set yinglong-common.image.tag=${tag} --set yinglong-data-loading.image.tag=${tag} --set yinglong-query.image.tag=${tag} --set yinglong-smart.image.tag=${tag}  --set yinglong-frontend.image.tag=${tag} --set global.hadoopPrefix=${hadoop_prefix} --set global.tenantId=${params.tenant_id} ${params.extra_settings}
                                 helm -n ${namespace} list
                             """
                         }
