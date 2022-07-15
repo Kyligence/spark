@@ -3,16 +3,23 @@ import java.util.Collections
 
 def call() {
     container('maven') {
-        def modules = sh(script:'''
+        def modules = sh(script: '''
                 cd sourcecode
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
             ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") }
-        modules.removeAll(['src/kap-it'])
-        modules.addAll([ 
-            "src/kap-it -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-            "src/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'" 
-        ])
+        println "origin modules: ${modules}"
+
+        def kap_it_module = modules.findAll({ it.contains('src/kap-it') }).getAt(0)
+        if (kap_it_module) {
+            modules.removeAll([kap_it_module])
+            modules.addAll([
+                    "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
+                    "${kap_it_module} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
+            ])
+        }
+
         Collections.reverse(modules)
+        println "final modules: ${modules}"
 
         def taskQueue = modules as LinkedBlockingQueue
 
@@ -37,7 +44,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                     fi
                 """
                 def item = taskQueue.poll()
-                while(item != null) {
+                while (item != null) {
                     sh script: """
                         cd ./${stage}
                         mvn clean test --fail-at-end \
