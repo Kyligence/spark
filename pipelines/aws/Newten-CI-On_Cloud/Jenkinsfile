@@ -63,7 +63,7 @@ pipeline {
                     timestamps {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
-                    s3Archive('upload')
+                    s3Archive('upload-without-build_result')
                 }
             }
         }

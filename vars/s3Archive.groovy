@@ -1,12 +1,14 @@
 def call(String type) {
     if (type == 'upload') {
-        uploadArchive()
+        uploadArchive(false)
+    } else if (type == 'upload-without-build_result') {
+        uploadArchive(true)
     } else if (type == 'download') {
         downloadArchive()
     }
 }
 
-def uploadArchive() {
+def uploadArchive(boolean withoutBuildResult) {
     timestamps {
         try {
             withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
@@ -45,16 +47,18 @@ def uploadArchive() {
                 """
                 s3Upload(file: 'repository.tar.gz', bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz", force: true)
 
-                // Upload Build Result
-                sh script: """
-                    mkdir -p ${targetBranch()}
-                    outputs=\$(find "\$(pwd)" -path '*test_data/*.zip' | sed 's/.*/&/')
-                    for out in \$outputs; do
-                        cp \$out ${targetBranch()}
-                    done
-                """
-                withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
-                    s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci/", includePathPattern: "${targetBranch()}/*")
+                if (!withoutBuildResult) {
+                    // Upload Build Result
+                    sh script: """
+                        mkdir -p ${targetBranch()}
+                        outputs=\$(find "\$(pwd)" -path '*test_data/*.zip' | sed 's/.*/&/')
+                        for out in \$outputs; do
+                            cp \$out ${targetBranch()}
+                        done
+                    """
+                    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                        s3Upload(bucket: 'k8s-bucket-devops', path: "ke-ci/", includePathPattern: "${targetBranch()}/*")
+                    }
                 }
             }
         } catch (Exception err) {
