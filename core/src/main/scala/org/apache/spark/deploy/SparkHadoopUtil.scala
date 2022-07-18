@@ -21,16 +21,18 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, Da
 import java.net.InetAddress
 import java.security.PrivilegedExceptionAction
 import java.text.DateFormat
-import java.util.{Date, Locale}
+import java.util.{Collections, Date, Locale, Objects}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.HashMap
 import scala.language.existentials
 
+import com.google.common.collect.Maps
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 import org.apache.hadoop.hdfs.DistributedFileSystem.HdfsDataOutputStreamBuilder
+import org.apache.hadoop.io.Text
 import org.apache.hadoop.mapred.JobConf
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.security.token.{Token, TokenIdentifier}
@@ -136,7 +138,156 @@ private[spark] class SparkHadoopUtil extends Logging {
   }
 
   def addCurrentUserCredentials(creds: Credentials): Unit = {
-    UserGroupInformation.getCurrentUser.addCredentials(creds)
+    updateCredentials(UserGroupInformation.getCurrentUser, creds)
+  }
+
+  private def backportCredentials(creds: Credentials): Unit = {
+    val fsCache = getFileSystemCache
+    if (fsCache == null) {
+      return
+    }
+    val cacheKeys = getCacheKeys(fsCache)
+    val current = UserGroupInformation.getCurrentUser
+    cacheKeys.map(getUGI) //
+      .filter(Objects.nonNull(_))
+      .filterNot(_.equals(current)) //
+      .foreach(updateCredentials(_, creds))
+  }
+
+  private def updateCredentials(ugi: UserGroupInformation, creds: Credentials): Unit = {
+    try {
+      val tokens = creds.getAllTokens.asScala //
+        .filter(tk => Objects.nonNull(tk.getKind) && Objects.nonNull(tk.getService))
+      // For potential private tokens.
+      updateTokens(ugi, tokens)
+    } catch {
+      case e: Exception =>
+        logWarning("Failed to update tokens, hadoop version not supported.", e)
+    }
+
+    // For tgt & public credentials.
+    ugi.addCredentials(creds)
+  }
+
+  private def getFileSystemCache: Object = {
+    val cacheField = classOf[FileSystem].getDeclaredField("CACHE")
+    cacheField.setAccessible(true)
+    cacheField.get(null)
+  }
+
+  private def getCacheKeys(fsCache: Object): Iterable[Object] = {
+    val mapField = fsCache.getClass.getDeclaredField("map")
+    mapField.setAccessible(true)
+    val cacheMap = mapField.get(fsCache).asInstanceOf[java.util.Map[Object, Object]]
+    if (cacheMap == null || cacheMap.isEmpty) {
+      return Iterable.empty
+    }
+    Collections.unmodifiableSet(cacheMap.keySet()).asScala
+  }
+
+  private def getUGI(key: Object): UserGroupInformation = {
+    val ugiField = key.getClass.getDeclaredField("ugi")
+    ugiField.setAccessible(true)
+    ugiField.get(key).asInstanceOf[UserGroupInformation]
+  }
+
+  private def updateTokens(ugi: UserGroupInformation, //
+                           tokens: Iterable[Token[_ <: TokenIdentifier]]): Unit = {
+    val creds = getCredentialsInternal(ugi)
+    if (creds == null) {
+      return
+    }
+    val oldInternalTokens = getTokenMapInternal(creds)
+    // For potential private tokens.
+    tokens.foreach(token => updateTokensInternal(token, ugi, oldInternalTokens))
+  }
+
+  private def updateTokensInternal(token: Token[_ <: TokenIdentifier], //
+                                   ugi: UserGroupInformation, //
+                                   oldInternalTokens: //
+                                   Map[Text, Token[_ <: TokenIdentifier]]): Unit = {
+    getDelegationTokenIdentifier(token).map(_.getSequenceNumber)
+      .foreach(dtSeq => //
+        oldInternalTokens.foreach { case (key, otk) => //
+          if (!Objects.equals(token.getKind, otk.getKind)) {
+            return
+          }
+          getDelegationTokenIdentifier(otk).map(_.getSequenceNumber)
+            .foreach { odtSeq => //
+              if (odtSeq < dtSeq && isPrivateCloneOf(otk, token.getService)) {
+                privateClone(token, otk.getService).foreach(tk => ugi.addToken(key, tk))
+              }
+            }
+        })
+  }
+
+
+  private def isPrivateCloneOf(token: Token[_ <: TokenIdentifier], service: Text): Boolean = {
+    try {
+      val privateMethod = token.getClass.getDeclaredMethod("isPrivateCloneOf")
+      privateMethod.setAccessible(true)
+      val tkObj = privateMethod.invoke(token, service)
+      if (Objects.isNull(tkObj)) {
+        return false
+      }
+      tkObj.asInstanceOf[Boolean]
+    } catch {
+      case e: NoSuchMethodException =>
+        logDebug(s"Failed to get method 'isPrivateCloneOf', " + //
+          s"hadoop version not supported (since 2.8.2).")
+        false
+    }
+  }
+
+  private def privateClone(token: Token[_ <: TokenIdentifier], //
+                           service: Text): Option[Token[_ <: TokenIdentifier]] = { //
+    try {
+      val cloneMethod = token.getClass.getDeclaredMethod("privateClone")
+      cloneMethod.setAccessible(true)
+      val tkObj = cloneMethod.invoke(token, service)
+      if (Objects.isNull(tkObj)) {
+        return None
+      }
+      Some(tkObj.asInstanceOf[Token[_ <: TokenIdentifier]])
+    } catch {
+      case e: NoSuchMethodException =>
+        logDebug(s"Failed to get method 'privateClone', " + //
+          s"hadoop version not supported (since 2.8.2).")
+        None
+    }
+  }
+
+  private def getCredentialsInternal(ugi: UserGroupInformation): Credentials = {
+    val credsMethod = classOf[UserGroupInformation].getDeclaredMethod("getCredentialsInternal")
+    credsMethod.setAccessible(true)
+    credsMethod.invoke(ugi).asInstanceOf[Credentials]
+  }
+
+  private def getTokenMapInternal(creds: Credentials): Map[Text, Token[_ <: TokenIdentifier]] = {
+    val mapFiled = classOf[Credentials].getDeclaredField("tokenMap")
+    mapFiled.setAccessible(true)
+    val internalTokenMap = mapFiled.get(creds) //
+      .asInstanceOf[java.util.Map[Text, Token[_ <: TokenIdentifier]]]
+    if (internalTokenMap == null) {
+      return Map.empty
+    }
+    val tokenMap = Maps.newHashMap[Text, Token[_ <: TokenIdentifier]](internalTokenMap)
+    tokenMap.asScala.toMap
+  }
+
+  private def getDelegationTokenIdentifier(token: Token[_ <: TokenIdentifier]): //
+  Option[AbstractDelegationTokenIdentifier] = {
+    try {
+      val ti = token.decodeIdentifier()
+      ti match {
+        case dt: AbstractDelegationTokenIdentifier => Some(dt)
+        case _ => None
+      }
+    } catch {
+      case e: IOException =>
+        logDebug(s"Failed to decode $token", e)
+        None
+    }
   }
 
   def loginUserFromKeytab(principalName: String, keytabFilename: String): Unit = {
@@ -163,6 +314,14 @@ private[spark] class SparkHadoopUtil extends Logging {
     logInfo(s"Spark user hashcode : ${user.hashCode()}")
     user.getTokens
       .asScala.map(tokenToString).foreach(token => logInfo(token))
+
+    try {
+      // Potential FileSystem$CACHE non current UGIs.
+      backportCredentials(creds)
+    } catch {
+      case e: Exception =>
+        logWarning(s"Failed to update non current user credentials.", e)
+    }
   }
 
   /**
