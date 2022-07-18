@@ -117,7 +117,7 @@ pipeline {
                         gitSparkCodeKe(params.repo, params.branch)
                     }
                     sh script: """
-                        wget http://repo-ofs.kyligence.tech:8081/repository/raw-public/io.kyligence.spark/depedencies.tar.gz
+                        wget http://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/depedencies.tar.gz
                         tar zxf depedencies.tar.gz
                         wget  https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
                         tar zxf hive_1_2_2.tar.gz

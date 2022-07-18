@@ -1,6 +1,6 @@
 def call(repository,directory,file,filename,user,passwd){
  sh """
-   curl -X POST "http://repo-ofs.kyligence.tech:8081/service/rest/v1/components?repository=${repository}" \
+   curl -X POST "http://repo-ofs.kyligence.com/service/rest/v1/components?repository=${repository}" \
       -H "accept: application/json" \
       -H "Content-Type: multipart/form-data" \
       -F "raw.directory=${directory}" \

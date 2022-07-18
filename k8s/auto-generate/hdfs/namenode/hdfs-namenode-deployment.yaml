@@ -19,7 +19,7 @@ spec:
     spec:
       initContainers:
       - name: jmx-exporter
-        image: repo-ofs.kyligence.tech:5000/jmx-prometheus-javaagent:0.16.1
+        image: repo-ofs.kyligence.com/jmx-prometheus-javaagent:0.16.1
         volumeMounts:
         - name: exporter-dir
           mountPath: /opt/jmx-exporter/

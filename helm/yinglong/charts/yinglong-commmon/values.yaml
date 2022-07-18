@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: repo-ofs.kyligence.tech:5000/kyligence/yinglong-common
+  repository: repo-ofs.kyligence.com/kyligence/yinglong-common
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"

@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: repo-ofs.kyligence.tech:5000/hadoop
+  repository: repo-ofs.kyligence.com/hadoop
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "2.10.1"
@@ -85,7 +85,7 @@ affinity: {}
 jmx:
   enabled: true
   image: 
-    repository: repo-ofs.kyligence.tech:5000/jmx-prometheus-javaagent
+    repository: repo-ofs.kyligence.com/jmx-prometheus-javaagent
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: "0.16.1"
@@ -140,7 +140,7 @@ mysql:
 hive:
   imagePullSecrets: docker-registry-secret
   image: 
-    repository: repo-ofs.kyligence.tech:5000/hive
+    repository: repo-ofs.kyligence.com/hive
     pullPolicy: IfNotPresent
     tag: "1.2.2-hadoop-2.10.1"
 
@@ -194,6 +194,6 @@ zookeeper:
   storageSize: 1Gi
   storageClassName: local-path
   image: 
-    repository: repo-ofs.kyligence.tech:5000/kubernetes-zookeeper
+    repository: repo-ofs.kyligence.com/kubernetes-zookeeper
     pullPolicy: IfNotPresent
     tag: "1.0-3.4.10"

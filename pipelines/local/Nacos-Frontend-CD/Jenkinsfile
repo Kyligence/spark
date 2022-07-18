@@ -14,7 +14,7 @@ pipeline {
     }
 
     environment {
-        repo='repo-ofs.kyligence.tech:5000'
+        repo='repo-ofs.kyligence.com'
         dockerRegistryUrl = "http://${repo}"
         registryCredential = 'nexus-docker'
         frontend = ''
@@ -66,7 +66,7 @@ pipeline {
                                 ls -alt
                                 cat .npmrc
                                 rm -f .npmrc
-                                echo "registry = 'http://repo-ofs.kyligence.tech:8081/repository/npm-public/'" > .npmrc
+                                echo "registry = 'http://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                 cat .npmrc
                             """
                             frontend = docker.build("kyligence/kynacos-frontend", "-f ${env.WORKSPACE}/pipelines/local/Nacos-Frontend-CD/Dockerfile .")
