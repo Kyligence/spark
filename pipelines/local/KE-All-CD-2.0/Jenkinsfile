@@ -156,7 +156,7 @@ def gitCodeKe(back, front) {
                     result.release_commitid_front = release_commitid_front
                     sh """
                         rm -f .npmrc
-                        echo "registry = 'http://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                        echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                         cat .npmrc
                         ls -lh .
                     """
@@ -420,7 +420,7 @@ pipeline {
                             dir('sourcecode') {
                                 sh script: """
                                     ls -lh
-                                    wget http://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/ke-api-inspector-release.tar.gz --directory-prefix=scanapi_workdir/
+                                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/ke-api-inspector-release.tar.gz --directory-prefix=scanapi_workdir/
                                     tar -zxvf ./${package_info.file_name} -C ./scanapi_workdir > /dev/null
                                     tar -zxvf scanapi_workdir/ke-api-inspector-release.tar.gz -C ./scanapi_workdir > /dev/null
 
