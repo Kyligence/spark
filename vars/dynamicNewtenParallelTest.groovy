@@ -63,9 +63,10 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                             echo "ooops - with msg: ${ex.message}"
                             echo "ooops - backtrace: ${ex.stackTrace}"
                             jvmArgs = ''
-                            _count++
+                            _count=_count+1
                         } 
                     }
+                    item = taskQueue.poll()
                 }
             }
         }
