@@ -44,29 +44,31 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                     fi
                 """
                 def item = taskQueue.poll()
+                def _count = 0
                 while (item != null) {
-                    def _count = 0
-                    retry(2){
-                        println "retry [${_count}], jvmArgs: ${jvmArgs}, stage: ${stage}, item: ${item}"
-                        try {
-                            sh script: """
-                                cd ./${stage}
-                                mvn clean test --fail-at-end \
-                                -pl ${item} \
-                                -DfailIfNoTests=false \
-                                -Duser.timezone=GMT+8 ${jvmArgs}
-                            """
-                            item = taskQueue.poll()
-                        } catch(ex) {
-                            echo "Exception: ${ex.toString()}"
-                            echo "ooops - caught: ${ex.class}"
-                            echo "ooops - with msg: ${ex.message}"
-                            echo "ooops - backtrace: ${ex.stackTrace}"
-                            jvmArgs = ''
-                            _count=_count+1
-                        } 
+                    println "retry [${_count}], jvmArgs: ${jvmArgs}, stage: ${stage}, item: ${item}"
+                    try {
+                        sh script: """
+                            cd ./${stage}
+                            mvn clean test --fail-at-end \
+                            -pl ${item} \
+                            -DfailIfNoTests=false \
+                            -Duser.timezone=GMT+8 ${jvmArgs}
+                        """
+                        item = taskQueue.poll()
+                    } catch(ex) {
+                        echo "Exception: ${ex.toString()}"
+                        echo "ooops - caught: ${ex.class}"
+                        echo "ooops - with msg: ${ex.message}"
+                        echo "ooops - backtrace: ${ex.stackTrace}"
+                        jvmArgs = ''
+                        _count += 1
                     }
-                    item = taskQueue.poll()
+                    
+                    println "retry times ${_count}"
+                    if(_count==2){
+                        error 'Retry twice and still fail'
+                    }
                 }
             }
         }
