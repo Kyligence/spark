@@ -56,6 +56,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                                 -DfailIfNoTests=false \
                                 -Duser.timezone=GMT+8 ${jvmArgs}
                             """
+                            item = taskQueue.poll()
                         } catch(ex) {
                             echo "Exception: ${ex.toString()}"
                             echo "ooops - caught: ${ex.class}"
@@ -65,7 +66,6 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                             _count++
                         } 
                     }
-                    item = taskQueue.poll()
                 }
             }
         }
