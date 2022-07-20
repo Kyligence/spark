@@ -45,9 +45,9 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                 """
                 def item = taskQueue.poll()
                 while (item != null) {
-                    def _count = 0
                     retry(2){
                         println "retry [${_count}], jvmArgs: ${jvmArgs}, stage: ${stage}, item: ${item}"
+                        def _count = 0
                         try {
                             sh script: """
                                 cd ./${stage}
