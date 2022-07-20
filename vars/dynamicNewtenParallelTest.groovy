@@ -57,12 +57,12 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                                 -Duser.timezone=GMT+8 ${jvmArgs}
                             """
                         } catch(ex) {
-                            // echo "ooops - caught: ${ex.class}"
-                            // echo "ooops - with msg: ${ex.message}"
-                            // echo "ooops - backtrace: ${ex.stackTrace}"
                             echo "Exception: ${ex.toString()}"
+                            echo "ooops - caught: ${ex.class}"
+                            echo "ooops - with msg: ${ex.message}"
+                            echo "ooops - backtrace: ${ex.stackTrace}"
                             jvmArgs = ''
-                            count++
+                            _count++
                         } 
                     }
                     item = taskQueue.poll()
