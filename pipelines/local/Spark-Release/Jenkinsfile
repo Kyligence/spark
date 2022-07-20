@@ -87,7 +87,7 @@ pipeline {
 
 
     stages {
-        stage("approve deploy") {
+        stage("approve deploy DI") {
             when {
                 expression {
                     return params.deployType in ['QA', 'RC']
@@ -97,12 +97,37 @@ pipeline {
                 container("build") {
                     script {
                         releaseVersion = getReleaseVersion(params.release_version, params.deployType)
-                        def checkMsg = "确定发布该版本吗？发布repo：${params.repo}, 发布分支：${params.branch}，发布版本号：${releaseVersion}"
+                        def checkMsg = "DI部门，确定发布该版本吗？发布repo：${params.repo}, 发布分支：${params.branch}，发布版本号：${releaseVersion}"
                         println checkMsg
                         paramsGA = input(
                                 message: checkMsg,
                                 ok: '确认！',
                                 submitter: 'jiawei.li2,chenliang.lu,biaobiao.sun,luoping.zhang',
+                                submitterParameter: 'APPROVER'
+                        )
+                        
+                    }
+                }
+            }
+
+        }
+
+        stage("approve deploy ADMIN") {
+            when {
+                expression {
+                    return params.deployType  == 'RC'
+                }
+            }
+            steps {
+                container("build") {
+                    script {
+                        releaseVersion = getReleaseVersion(params.release_version, params.deployType)
+                        def checkMsgAdmin = "管理员，确定发布该版本吗？发布repo：${params.repo}, 发布分支：${params.branch}，发布版本号：${releaseVersion}"
+                        println checkMsgAdmin
+                        paramsGA = input(
+                                message: checkMsgAdmin,
+                                ok: '确认！',
+                                submitter: 'lu.cao,meixiu.chen',
                                 submitterParameter: 'APPROVER'
                         )
                     }
@@ -138,7 +163,7 @@ pipeline {
                                 #1、package kyspark
                                 ./build/mvn versions:set -DnewVersion=${releaseVersion}
                                 export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
+                                ./build/mvn deploy -settings /root/.m2/settings.xml -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                                 # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                             """
                         }
