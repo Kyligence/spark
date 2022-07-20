@@ -29,6 +29,7 @@ def call() {
         def worker4 = createWorker("UTest-Stage-4", taskQueue)
 
         def allTestStages = worker1 + worker2 + worker3 + worker4
+        allTestStages.failFast = true
         parallel allTestStages
     }
 }
