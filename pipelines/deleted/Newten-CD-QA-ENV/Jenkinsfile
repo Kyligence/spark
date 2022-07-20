@@ -96,7 +96,7 @@ pipeline {
                             dir('kystudio') {
                                 sh """
                                     rm -f .npmrc
-                                    echo "registry = 'http://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                    echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                     cat .npmrc
                                 """
                             }

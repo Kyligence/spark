@@ -121,7 +121,7 @@ pipeline {
                                 ls -alt
                                 cat .npmrc
                                 rm -f .npmrc
-                                echo "registry = 'http://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                 cat .npmrc
                             """
                             frontend = docker.build("iam-frontend", "-f ${env.WORKSPACE}/pipelines/local/IAM-CD/docker/frontend/Dockerfile .")
