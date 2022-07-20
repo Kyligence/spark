@@ -45,13 +45,26 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                 """
                 def item = taskQueue.poll()
                 while (item != null) {
-                    sh script: """
-                        cd ./${stage}
-                        mvn clean test --fail-at-end \
-                        -pl ${item} \
-                        -DfailIfNoTests=false \
-                        -Duser.timezone=GMT+8 ${jvmArgs}
-                    """
+                    def _count = 0
+                    retry(2){
+                        println "retry [${_count}], jvmArgs: ${jvmArgs}, stage: ${stage}, item: ${item}"
+                        try {
+                            sh script: """
+                                cd ./${stage}
+                                mvn clean test --fail-at-end \
+                                -pl ${item} \
+                                -DfailIfNoTests=false \
+                                -Duser.timezone=GMT+8 ${jvmArgs}
+                            """
+                        } catch(ex) {
+                            // echo "ooops - caught: ${ex.class}"
+                            // echo "ooops - with msg: ${ex.message}"
+                            // echo "ooops - backtrace: ${ex.stackTrace}"
+                            echo "Exception: ${ex.toString()}"
+                            jvmArgs = ''
+                            count++
+                        } 
+                    }
                     item = taskQueue.poll()
                 }
             }
