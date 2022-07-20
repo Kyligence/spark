@@ -57,15 +57,14 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         """
                         item = taskQueue.poll()
                     } catch(ex) {
-                        echo "Exception: ${ex.toString()}"
-                        echo "ooops - caught: ${ex.class}"
-                        echo "ooops - with msg: ${ex.message}"
-                        echo "ooops - backtrace: ${ex.stackTrace}"
+                        echo """Exception: ${ex.toString()}\n \
+                                ooops - caught: ${ex.class}\n \
+                                ooops - with msg: ${ex.message}\n \
+                                ooops - backtrace: ${ex.stackTrace}"""
                         jvmArgs = ''
                         _count += 1
                     }
                     
-                    println "retry times ${_count}"
                     if(_count==2){
                         error 'Retry twice and still fail'
                     }
