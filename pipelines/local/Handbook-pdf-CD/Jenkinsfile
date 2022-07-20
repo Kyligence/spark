@@ -10,7 +10,6 @@ def backup_name
 def project
 def branch
 def commitid
-def paramsMap
 def pdf_zh
 def pdf_en
 def version
@@ -185,11 +184,6 @@ pipeline {
         }
     }
 
-    environment {
-        //变量名，用于存储input步骤的返回值
-        paramsMap = ''
-    }
-
     stages {
         stage('1.Pull Code') {
             steps {
@@ -227,7 +221,7 @@ pipeline {
                                 sh 'ls -lh'
                                 sh script: '''
                                     rm -f .npmrc
-                                    echo "registry = 'http://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                    echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                     cat .npmrc
                                 '''
                             }
@@ -425,6 +419,12 @@ pipeline {
         }
 
         stage('6.Deploy') {
+            input {
+                message '该版本可以发布吗？'
+                ok '确认！'
+                // submitter:'liming.meng,meixiu.chen,enwei.jiao',
+                submitterParameter'APPROVER'
+            }
             steps {
                 container('build') {
                     dir('sourcecode') {
@@ -434,23 +434,6 @@ pipeline {
                                 <p>Handbook [${ga_name}] Ready to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
                                 <p>Please check it and Confirm on the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
-
-                            def checkMsg = '该版本可以发布吗？'
-                            println checkMsg
-                            approvalMap = input (
-                                message: checkMsg,
-                                ok: '确认！',
-                                // submitter:'liming.meng,meixiu.chen,enwei.jiao',
-                                submitterParameter:'APPROVER'
-                            // parameters:[
-                            //     booleanParam(name: "confirmUpload", defaultValue: false, description: '是否确认上传')
-                            // ]
-                            )
-                            // if(paramsGA['confirmUpload']){
-                            // backup last version  
-                            // backup_name = sh(script:"echo ${project}-`date '+%Y%m%d-%H%M'`.tar.gz", returnStdout: true).trim()
-
-                            // println "backup_name: ${backup_name}"
                             try {
                                 sh """
                                     echo '备份旧版'
@@ -491,25 +474,23 @@ pipeline {
         }
 
         stage('7.Rollback') {
+            input {
+                message '确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点点击【确认】完成流程，如果有问题需要回滚，需要勾选【isRollback】后点击确认。整个流程4小时后会自动截止）'
+                ok '确认！'
+                // submitter 'liming.meng,meixiu.chen,enwei.jiao'
+                parameters {
+                    booleanParam(name: 'isRollback', defaultValue: false, description: '是否回滚：勾选回滚会返回到发布前版本，否则确认成功发布！')
+                }
+                submitterParameter 'APPROVER'
+            }
             steps {
+                // timeout(time:1, unit: 'MINUTES') // 临时 debug 用
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            def checkMsg = '确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点 Abort 结束流程，整个流程4小时后会自动截止）'
-                            println checkMsg
-                            approvalMap = input (
-                                message: checkMsg,
-                                ok: '确认！',
-                                // submitter:'liming.meng,meixiu.chen,enwei.jiao',
-                                parameters: [
-                                    booleanParam(name: 'isRollback', defaultValue: false, description: '是否回滚：勾选回滚会返回到发布前版本，否则确认成功发布！')
-                                // choice(choices:'dev\ntest\nprod', description:'发布到什么环境？', name:'ENV'),
-                                // string(defaultValue:'', description:'', name:'myparam')
-                                ],
-                                submitterParameter:'APPROVER'
-                            )
-                            if (approvalMap['isRollback'] == true) {
-                                // println "backup_name: ${backup_name}"
+                            println "isRollback: ${isRollback}"
+                            if (isRollback == true) {
+                                println "backup_name: ${backup_name}"
                                 sh """
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
