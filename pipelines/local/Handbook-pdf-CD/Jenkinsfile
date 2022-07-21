@@ -364,7 +364,7 @@ pipeline {
                             retry(3) {
                                 sh '''#!/bin/bash
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /home/ec2-user/release/${package_path}"
-                                    scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}
+                                    scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ${ga_name} ec2-user@52.82.19.185:/home/ec2-user/release/${package_path}
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /home/ec2-user/release/${package_path}"
                                 '''
                             }
