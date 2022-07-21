@@ -246,7 +246,7 @@ pipeline {
                                 sh script: '''#!/bin/bash
                                     set +X
                                     sed -ie 's/\"search\"/\"-search\"/g' book.json
-                                    gitbook install
+                                    gitbook install -registry=https://repo-ofs.kyligence.com/repository/npm-public/
                                 '''
                             }
                             if (project == 'Kyligence-Enterprise-Manual') {
@@ -281,11 +281,11 @@ pipeline {
                                 file_name = package_info.file_name
 
                                 if (!params.check_deadlinks) {
-                                    sh 'gitbook install'
+                                    sh 'gitbook install  -registry=https://repo-ofs.kyligence.com/repository/npm-public/'
                                 }
                                 retry(5) {
                                     sh (script:'''
-                                        gitbook build
+                                        gitbook build -registry=https://repo-ofs.kyligence.com/repository/npm-public/
                                         echo "\033[33m gitbook build success\033[0m"
                                     ''')
                                 }
@@ -298,7 +298,7 @@ pipeline {
 
                                         mv book.json book_tmp.json
                                         sed -e '/\"star\"/d'  book_tmp.json > book.json
-                                        gitbook pdf
+                                        gitbook pdf -registry=https://repo-ofs.kyligence.com/repository/npm-public/
                                         mv book_tmp.json book.json
 
                                         echo "\033[36m gitbook pdf success\033[0m"
