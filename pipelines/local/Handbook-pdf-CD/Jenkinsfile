@@ -512,13 +512,13 @@ pipeline {
 
                                 error(message: '回滚成功，发布失败！')
 
-                                println "approver: ${approvalMap['APPROVER']}"
+                                // println "approver: ${APPROVER}"
                             } else {
                                 println "发布成功！\n你可以浏览: https://docs.kyligence.io/books/${package_path}/"
                                 println "PDF Download en URL: https://docs.kyligence.io/books/${package_path}/en/${pdf_en}.pdf"
                                 println "PDF Download  zh-cn URL: https://docs.kyligence.io/books/${package_path}/zh-cn/${pdf_zh}.pdf"
 
-                                println "approver: ${approvalMap['APPROVER']}"
+                                // println "approver: ${APPROVER}"
                             }
                         }
                     }
@@ -527,7 +527,7 @@ pipeline {
             post {
                 always {
                     // 每次列出来发布后的结果和备份的结果，可以检查
-                    echo 'post condition executed: always ...'
+                    // echo 'post condition executed: always ...'
                     container('build') {
                         dir('sourcecode') {
                             script {
