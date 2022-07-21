@@ -222,7 +222,6 @@ pipeline {
                                 sh script: '''
                                     rm -f .npmrc
                                     echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
-                                    npm config set registry=https://repo-ofs.kyligence.com/repository/npm-public/
                                 '''
                             }
                         }
@@ -247,7 +246,7 @@ pipeline {
                                 sh script: '''#!/bin/bash
                                     set +X
                                     sed -ie 's/\"search\"/\"-search\"/g' book.json
-                                    gitbook install -registry=https://repo-ofs.kyligence.com/repository/npm-public/
+                                    gitbook install
                                 '''
                             }
                             if (project == 'Kyligence-Enterprise-Manual') {
@@ -282,11 +281,11 @@ pipeline {
                                 file_name = package_info.file_name
 
                                 if (!params.check_deadlinks) {
-                                    sh 'gitbook install  -registry=https://repo-ofs.kyligence.com/repository/npm-public/'
+                                    sh 'gitbook install'
                                 }
                                 retry(5) {
                                     sh (script:'''
-                                        gitbook build -registry=https://repo-ofs.kyligence.com/repository/npm-public/
+                                        gitbook build
                                         echo "\033[33m gitbook build success\033[0m"
                                     ''')
                                 }
@@ -299,7 +298,7 @@ pipeline {
 
                                         mv book.json book_tmp.json
                                         sed -e '/\"star\"/d'  book_tmp.json > book.json
-                                        gitbook pdf -registry=https://repo-ofs.kyligence.com/repository/npm-public/
+                                        gitbook pdf
                                         mv book_tmp.json book.json
 
                                         echo "\033[36m gitbook pdf success\033[0m"
