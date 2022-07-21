@@ -244,18 +244,21 @@ pipeline {
                             sh 'cat .npmrc'
                             // 执行脚本，并获取脚本的exit状态，针对不同状态，做逻辑
                             retry(3) {
-                                sh script: '''
+                                sh script: '''#!/bin/bash
+                                    set +X
                                     sed -ie 's/\"search\"/\"-search\"/g' book.json
                                     gitbook install
                                 '''
                             }
                             if (project == 'Kyligence-Enterprise-Manual') {
-                                sh script: '''
+                                sh script: '''#!/bin/bash
+                                    set +X
                                     chmod +x ./check_deadlinks.sh
                                     /bin/bash -c ./check_deadlinks.sh
                                 '''
                             } else if (project == 'Cloud_Manual') {
-                                sh script: '''
+                                sh script: '''#!/bin/bash
+                                    set +X
                                     chmod +x ./local_check_dead_link.sh
                                     /bin/bash -c ./local_check_dead_link.sh
                                 '''
