@@ -476,7 +476,7 @@ pipeline {
 
         stage('7.Rollback') {
             input {
-                message '确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点点击【确认】完成流程，如果有问题需要回滚，需要勾选【isRollback】后点击确认。整个流程4小时后会自动截止）'
+                message '确认是否回滚吗？（回滚会回到上一个版本，如果确认不用回滚，请点点击【确认】完成流程，如果有问题需要回滚，需要勾选【isRollback】后点击确认。整个流程24小时后会自动截止）'
                 ok '确认！'
                 // submitter 'liming.meng,meixiu.chen,enwei.jiao'
                 parameters {
