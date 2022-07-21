@@ -222,6 +222,7 @@ pipeline {
                                 sh script: '''
                                     rm -f .npmrc
                                     echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                    npm config set registry=https://repo-ofs.kyligence.com/repository/npm-public/
                                 '''
                             }
                         }
@@ -436,7 +437,7 @@ pipeline {
                                 <p>Please check it and Confirm on the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
                             try {
-                                sh """
+                                sh """#!/bin/bash
                                     echo '备份旧版'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "mkdir -p /opt/books/${package_path}/"
 
@@ -449,7 +450,7 @@ pipeline {
                             catch (exception) {
                                 println "exception: ${exception}"
                             }
-                            sh """
+                            sh """#!/bin/bash
                                 echo '发布上传站点'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@52.82.19.185 "ls -lh /opt/books/${package_path}/"

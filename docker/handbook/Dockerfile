@@ -7,11 +7,10 @@ COPY ./nodesource_setup.sh /gitbook/nodesource_setup.sh
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     bash /gitbook/nodesource_setup.sh && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y calibre-bin nodejs && \
-    npm config set registry=https://repo-ofs.kyligence.com/repository/npm-public/ && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y calibre-bin nodejs openssh-client ghostscript && \
     npm install -g gitbook-cli && \
     npm install -g markdown-link-check && \
-    DEBIAN_FRONTEND=noninteractive apt-get clean
+    rm -rf /var/lib/apt/lists/*
 
 ENV BOOKDIR /gitbook
 VOLUME $BOOKDIR
