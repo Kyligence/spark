@@ -243,7 +243,7 @@ def buildAndCopy(version, noSpark, package_info, docs_commitid) {
         mv dist/*.tar.gz ${package_info.file_name}
     """
     // exist_package = true
-    archiveArtifacts artifacts: "${package_info.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+    // archiveArtifacts artifacts: "${package_info.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
     if (envStage != 'GA') {
         sh script: """

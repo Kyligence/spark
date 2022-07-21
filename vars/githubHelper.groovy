@@ -60,10 +60,28 @@ def gitTag(base, tag, project='KAP', repo='Kyligence', isCloned=true) {
     }
 
     withCredentials([string(credentialsId: 'jenkins-token', variable: 'TOKEN')]) {
-        println "https://${TOKEN}@github.com/${repo}/${project}.git"
+        // println "https://${TOKEN}@github.com/${repo}/${project}.git"
         sh script: """
             git remote remove origin
             git remote add origin https://${TOKEN}@github.com/${repo}/${project}.git
+        """
+
+        try{
+            println "尝试删除旧tag:【${tag}】"
+            sh script: """
+                git show ${tag}
+                git tag -d ${tag}
+                git push origin :refs/tags/${tag}
+            """
+            println "成功删除旧tag:【${tag}】"
+        } catch(ex) {
+            echo """Exception: \n ${ex.toString()}\n \
+                    ooops - caught: ${ex.class}\n \
+                    ooops - with msg: ${ex.message}\n \
+                    ooops - backtrace: ${ex.stackTrace}"""
+        }
+
+        sh script: """
             git tag ${tag}
             git push origin ${tag}
             git show ${tag}
