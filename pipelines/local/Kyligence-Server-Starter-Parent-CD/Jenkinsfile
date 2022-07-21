@@ -32,7 +32,7 @@ pipeline {
 
                             echo 'checkout kyligence server starter parent'
                             retry(3) {
-                                githubCheckout 'kyligence-server-starter-parent', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', params.repo
+                                githubCheckout 'kyligence-server-starter-parent', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', params.repo
                             }
                         }
                     }
