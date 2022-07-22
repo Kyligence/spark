@@ -163,16 +163,16 @@ def gitCodeKe(back, front) {
                 }
             }
         }
-        script {
-            sh '''
-                mkdir -p ./nospark && cp -r ./sourcecode/* ./nospark/
-                ls -lh .
-                echo "=========="
-                ls -lh ./sourcecode
-                echo "=========="
-                ls -lh ./nospark
-            '''
-        }
+        // script {
+        //     sh '''
+        //         mkdir -p ./nospark && cp -r ./sourcecode/* ./nospark/
+        //         ls -lh .
+        //         echo "=========="
+        //         ls -lh ./sourcecode
+        //         echo "=========="
+        //         ls -lh ./nospark
+        //     '''
+        // }
     }
     return result
 }
@@ -274,16 +274,15 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid) {
             script {
                 def _version = "${version}-${envStage}"
                 def _cids = "${release_commitid_back}-${release_commitid_front}"
-                if(!noSpark) {
-                    dir('sourcecode') {
+                dir('sourcecode') {
+                    sh "git checkout -- ."
+                    if(!noSpark) {
                         package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
                         if(!checkCacheExist(package_info)) {
                             buildAndCopy(_version, noSpark, package_info, docs_commitid)
                         }
                         result.package_info = package_info
-                    }
-                }else{
-                    dir('nospark'){
+                    }else{
                         no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
                         if(!checkCacheExist(no_spark_package_info)) {
                             buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid)
@@ -385,32 +384,28 @@ pipeline {
                 }
             }
         }
-        stage('2.Building Package') {
-            parallel {
-                stage('2.1.Building Normal') {
-                    steps {
-                        script {
-                            no_spark = false
-                            def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
-                            package_info = bp.package_info
-                            println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
-                        }
-                    }
+        stage('2.1.Building Normal') {
+            steps {
+                script {
+                    no_spark = false
+                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
+                    package_info = bp.package_info
+                    println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
                 }
-                stage('2.2.Building noSpark') {
-                    when {
-                        expression {
-                            return params.envStage in ['QA', 'RC', 'GA']
-                        }
-                    }
-                    steps {
-                        script {
-                            no_spark = true
-                            def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
-                            no_spark_package_info = bpns.no_spark_package_info
-                            println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
-                        }
-                    }
+            }
+        }
+        stage('2.2.Building noSpark') {
+            when {
+                expression {
+                    return params.envStage in ['QA', 'RC', 'GA']
+                }
+            }
+            steps {
+                script {
+                    no_spark = true
+                    def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
+                    no_spark_package_info = bpns.no_spark_package_info
+                    println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
                 }
             }
         }
