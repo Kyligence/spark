@@ -261,7 +261,7 @@ def buildAndCopy(version, noSpark, pi, docs_commitid) {
             cp ${pi.file_name} ${pi.ga_name}
             cp ${pi.ga_name} /var/cicd/${pi.package_path}
         """
-        // pi.file_name = pi.ga_name
+        pi.file_name = pi.ga_name
     }
 }
 
@@ -408,7 +408,7 @@ pipeline {
                             no_spark = true
                             def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
                             no_spark_package_info = bpns.no_spark_package_info
-                            println("build noSpark [no_spark_package_info]: ${no_spark_package_info.file_name}, no_spark: ${no_spark}")
+                            println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
                         }
                     }
                 }
