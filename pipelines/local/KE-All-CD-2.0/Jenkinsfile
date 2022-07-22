@@ -243,6 +243,7 @@ def checkCacheExist(pi) {
 
 def buildAndCopy(version, noSpark, pi, docs_commitid) {
     println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}]"
+    sh "git checkout -- ."
     buildNewten(version, noSpark, docs_commitid, params.customerPkg)
 
     sh script: """
@@ -261,7 +262,8 @@ def buildAndCopy(version, noSpark, pi, docs_commitid) {
             cp ${pi.file_name} ${pi.ga_name}
             cp ${pi.ga_name} /var/cicd/${pi.package_path}
         """
-        pi.file_name = pi.ga_name
+        package_info.file_name = pi.ga_name
+        no_spark_package_info.file_name = pi.ga_name
     }
 }
 
@@ -275,7 +277,6 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid) {
                 def _version = "${version}-${envStage}"
                 def _cids = "${release_commitid_back}-${release_commitid_front}"
                 dir('sourcecode') {
-                    sh "git checkout -- ."
                     if(!noSpark) {
                         package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
                         if(!checkCacheExist(package_info)) {
@@ -344,6 +345,7 @@ pipeline {
         choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n' )
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
+        // booleanParam(name: 'noSpark', defaultValue: false, description: '勾选时，打 NoSpark 包')
     }
 
     stages {
