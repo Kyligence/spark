@@ -102,7 +102,7 @@ def uploadNexus(repo, package_path, file_name, dir_name = 'sourcecode') {
 }
 
 // 上传制品包到 Azure 服务器
-def uplaodAzure(package_info, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/devops') {
+def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/devops') {
     script {
         def remote = [:]
         remote.name = 'azure_test_env'
@@ -115,7 +115,7 @@ def uplaodAzure(package_info, dir_name = 'sourcecode', remote_path = '/home/4xus
         remote.host = '159.27.120.141'
         remote.allowAnyHosts = true
         dir(dir_name) {
-            sshPut remote: remote, from: package_info.file_name, into: remote_path
+            sshPut remote: remote, from: pi.file_name, into: remote_path
         }
         sshCommand remote: remote, command: """
             ls -lh ${remote_path}
@@ -164,7 +164,14 @@ def gitCodeKe(back, front) {
             }
         }
         script {
-            sh 'mkdir -p ./nospark && cp -r ./sourcecode/* ./nospark/'
+            sh '''
+                mkdir -p ./nospark && cp -r ./sourcecode/* ./nospark/
+                ls -lh .
+                echo "=========="
+                ls -lh ./sourcecode
+                echo "=========="
+                ls -lh ./nospark
+            '''
         }
     }
     return result
@@ -234,27 +241,27 @@ def checkCacheExist(pi) {
     return result
 }
 
-def buildAndCopy(version, noSpark, package_info, docs_commitid) {
-    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],package_info[${deployType}],docs_commitid[${docs_commitid}]"
+def buildAndCopy(version, noSpark, pi, docs_commitid) {
+    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}]"
     buildNewten(version, noSpark, docs_commitid, params.customerPkg)
 
     sh script: """
-        mkdir -p /var/cicd/${package_info.package_path}
-        mv dist/*.tar.gz ${package_info.file_name}
+        mkdir -p /var/cicd/${pi.package_path}
+        mv dist/*.tar.gz ${pi.file_name}
     """
     // exist_package = true
-    // archiveArtifacts artifacts: "${package_info.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+    // archiveArtifacts artifacts: "${pi.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
     if (envStage != 'GA') {
         sh script: """
-            cp ${package_info.file_name} /var/cicd/${package_info.package_path}
+            cp ${pi.file_name} /var/cicd/${pi.package_path}
         """
     } else {
         sh script: """
-            cp ${package_info.file_name} ${package_info.ga_name}
-            cp ${package_info.ga_name} /var/cicd/${package_info.package_path}
+            cp ${pi.file_name} ${pi.ga_name}
+            cp ${pi.ga_name} /var/cicd/${pi.package_path}
         """
-        // package_info.file_name = package_info.ga_name
+        // pi.file_name = pi.ga_name
     }
 }
 
