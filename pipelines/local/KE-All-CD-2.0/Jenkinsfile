@@ -115,11 +115,18 @@ def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/de
         remote.host = '159.27.120.141'
         remote.allowAnyHosts = true
         dir(dir_name) {
+            sshCommand remote: remote, command: """
+                ls -lh ${remote_path}
+            """
+            sshRemove remote: remote, path: "${remote_path}/${pi.file_name}"
+            sshCommand remote: remote, command: """
+                ls -lh ${remote_path}
+            """
             sshPut remote: remote, from: pi.file_name, into: remote_path
+            sshCommand remote: remote, command: """
+                ls -lh ${remote_path}
+            """
         }
-        sshCommand remote: remote, command: """
-            ls -lh ${remote_path}
-        """
     }
 }
 
