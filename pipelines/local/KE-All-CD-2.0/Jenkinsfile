@@ -25,7 +25,7 @@ def bcid = ''
 def fcid = ''
 
 //变量名，用于存储input步骤的返回值
-def paramsMap = ''
+def paramsMap = [:]
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
