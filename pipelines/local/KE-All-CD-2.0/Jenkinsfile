@@ -118,7 +118,12 @@ def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/de
             sshCommand remote: remote, command: """
                 ls -lh ${remote_path}
             """
-            sshRemove remote: remote, path: "${remote_path}/${pi.file_name}"
+            try {
+                sshRemove remote: remote, path: "${remote_path}/${pi.file_name}"
+            }catch(e){
+                println 'sshRemove fail'
+            }
+
             sshCommand remote: remote, command: """
                 ls -lh ${remote_path}
             """
