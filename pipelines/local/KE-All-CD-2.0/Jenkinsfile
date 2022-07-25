@@ -124,7 +124,7 @@ def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/de
 }
 
 // git获取KE代码（预先触发同步git mirror）
-def gitCodeKe(back, front) {
+def gitCodeKe(back, front, pMap) {
     def result = [:]
     container('build') {
         dir('sourcecode') {
@@ -133,7 +133,12 @@ def gitCodeKe(back, front) {
                 if (!back) {
                     error 'commitId_back 参数不能为空'
                 }
-                pullCodeFromGitMirror 'KAP', back
+
+                if(pMap['back_remote']) {
+                    githubCheckout 'KAP', back, 'https', 'github.com'
+                }else{
+                    pullCodeFromGitMirror 'KAP', back
+                }
 
                 release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                 println "release_commitid_back: ${release_commitid_back}"
@@ -148,10 +153,16 @@ def gitCodeKe(back, front) {
                     _front = front
                 }
 
-                sh 'rm -rf ./kystudio'
+                sh 'ls -lha'
+                sh 'rm -rf kystudio'
+                sh 'ls -lha'
                 dir('kystudio') {
-                    // pullCodeFromGitMirror 'KAP_Frontend', _front
-                    githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+                    if(pMap['front_remote']) {
+                        githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+                    }else{
+                        pullCodeFromGitMirror 'KAP_Frontend', _front
+                    }
+                    
                     release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
                     println "release_commitid_front: ${release_commitid_front}"
                     result.release_commitid_front = release_commitid_front
@@ -159,7 +170,7 @@ def gitCodeKe(back, front) {
                         rm -f .npmrc
                         echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                         cat .npmrc
-                        ls -lh .
+                        ls -lha .
                     """
                 }
             }
@@ -271,8 +282,8 @@ def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg) {
 }
 
 // buildPackage(params.version, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
-def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customerPkg) {
-    println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}]"
+def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customerPkg, pMap) {
+    println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}],pMap[${pMap}]"
     def result = [:]
     container('build') {
         timestamps {
@@ -282,13 +293,13 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customer
                 dir('sourcecode') {
                     if(!noSpark) {
                         package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                        if(!checkCacheExist(package_info)) {
+                        if(!checkCacheExist(package_info) || pMap['overide']) {
                             buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg)
                         }
                         result.package_info = package_info
                     }else{
                         no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                        if(!checkCacheExist(no_spark_package_info)) {
+                        if(!checkCacheExist(no_spark_package_info) || pMap['overide']) {
                             buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg)
                         }
                         result.no_spark_package_info = no_spark_package_info
@@ -329,7 +340,7 @@ pipeline {
         no_spark = false
         // tester emails
         tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
-        fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io'''
+        fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io;xinxin.li@kyligence.io'''
         nospark_user_eamils = 'yong.fu@kyligence.io'
         jar_user_eamils = 'yongchao.li@kyligence.io'
         // dev eamils
@@ -372,15 +383,18 @@ pipeline {
                             message: '请选择要开始的版本?',
                             ok: '确认！',
                             parameters: [
-                                    string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
-                                    string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）'),
+                                booleanParam(name: 'overide', defaultValue: false, description: '全新打包，覆盖现有同名包'),
+                                booleanParam(name: 'back_remote', defaultValue: false, description: '后端拉取远程分支（绕开 git mirror）'),
+                                booleanParam(name: 'front_remote', defaultValue: false, description: '前端拉取远程分支（绕开 git mirror）')
                             ],
                             // submitter:'liming.meng,admin',
                             submitterParameter: 'APPROVER'
                         )
                         release_branch_front = paramsMap['commitId_front']
                         release_branch_back = paramsMap['commitId_back']
-                        def cms = gitCodeKe(release_branch_back, release_branch_front)
+                        def cms = gitCodeKe(release_branch_back, release_branch_front, paramsMap)
                         release_commitid_back = cms.release_commitid_back
                         release_commitid_front = cms.release_commitid_front
                     } else {
@@ -398,7 +412,7 @@ pipeline {
             steps {
                 script {
                     no_spark = true
-                    def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
+                    def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                     no_spark_package_info = bpns.no_spark_package_info
                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
                 }
@@ -408,7 +422,7 @@ pipeline {
             steps {
                 script {
                     no_spark = false
-                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
+                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                     package_info = bp.package_info
                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
                 }
