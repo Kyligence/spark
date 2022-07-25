@@ -282,7 +282,7 @@ def checkCacheExist(pi) {
 
 def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg) {
     println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}],customerPkg[${customerPkg}]"
-    sh "git checkout -- ."
+    // sh "git checkout -- ."
     buildNewten(version, noSpark, docs_commitid, customerPkg)
 
     sh script: """
@@ -319,6 +319,7 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customer
                             buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg)
                         }
                         result.no_spark_package_info = no_spark_package_info
+                        sh "git checkout -- ."
                     }
                 }
             }
