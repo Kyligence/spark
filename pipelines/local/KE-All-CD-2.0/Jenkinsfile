@@ -476,7 +476,7 @@ pipeline {
                     steps {
                         println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name, 'nospark')
+                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name)
                     }
                     post {
                         success {
