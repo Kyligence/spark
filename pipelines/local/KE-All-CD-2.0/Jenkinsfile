@@ -24,6 +24,9 @@ def no_spark_package_info = [:]
 def bcid = ''
 def fcid = ''
 
+//变量名，用于存储input步骤的返回值
+def paramsMap = ''
+
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
     print "getBranch -> deployType[${deployType}],envStage[${envStage}],version[${version}]"
@@ -123,10 +126,10 @@ def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/de
             }catch(e){
                 println 'sshRemove fail'
             }
-
             sshCommand remote: remote, command: """
                 ls -lh ${remote_path}
             """
+
             sshPut remote: remote, from: pi.file_name, into: remote_path
             sshCommand remote: remote, command: """
                 ls -lh ${remote_path}
@@ -165,10 +168,11 @@ def gitCodeKe(back, front, pMap) {
                     _front = front
                 }
 
-                sh 'ls -lha'
+                sh 'ls -lha && ls -lha kystudio'
                 sh 'rm -rf kystudio'
                 sh 'ls -lha'
                 dir('kystudio') {
+                    sh 'pwd && ls -lha'
                     if(pMap['front_remote']) {
                         githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
                     }else{
@@ -337,8 +341,6 @@ pipeline {
     }
 
     environment {
-        //变量名，用于存储input步骤的返回值
-        paramsMap = ''
         // GA过程参数
         paramsGA = ''
         // K8S启动用包名
@@ -386,7 +388,7 @@ pipeline {
                         def _branch = getBranch(params.deployType, params.envStage, params.version)
                         release_branch_front = _branch
                         release_branch_back = _branch
-                        def cms = gitCodeKe(_branch, _branch)
+                        def cms = gitCodeKe(_branch, _branch, paramsMap)
                         release_commitid_back = cms.release_commitid_back
                         release_commitid_front = cms.release_commitid_front
                     } else if (params.deployWay == 'Manual Select') {
