@@ -177,7 +177,7 @@ def gitCodeKe(back, front) {
     return result
 }
 
-def getPackageInfo(version, envStage, cid, deployType, noSpark = false) {
+def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customerPkg = 'NORMAL') {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
     def package_path
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
@@ -198,7 +198,7 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark = false) {
     println "package_path: ${package_path}"
 
     def withoutSpark = noSpark ? '-NoSpark' : ''
-    def _customerPkg = params.customerPkg == 'NORMAL' ? '' : "-${params.customerPkg}"
+    def _customerPkg = customerPkg == 'NORMAL' ? '' : "-${customerPkg}"
 
     file_name = "KE-${version}-${cid}${withoutSpark}${_customerPkg}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
@@ -260,16 +260,11 @@ def buildAndCopy(version, noSpark, pi, docs_commitid) {
         sh script: """
             cp ${pi.file_name} /var/cicd/${pi.package_path}
         """
-    } else {
-        sh script: """
-            cp ${pi.file_name} ${pi.ga_name}
-            cp ${pi.ga_name} /var/cicd/${pi.package_path}
-        """
     }
 }
 
 // buildPackage(params.version, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
-def buildPackage(version, envStage, deployType, noSpark, docs_commitid) {
+def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customerPkg) {
     println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}]"
     def result = [:]
     container('build') {
@@ -343,7 +338,7 @@ pipeline {
         choice(name: 'deployType', choices: 'Regular\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description: '交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列')
         string(name: 'version', defaultValue: '4.5.10.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-        choice(name: 'customerPkg', choices: ['NORMAL', 'CCB'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CCB：建行\n' )
+        choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n' )
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         // booleanParam(name: 'noSpark', defaultValue: false, description: '勾选时，打 NoSpark 包')
@@ -391,7 +386,7 @@ pipeline {
             steps {
                 script {
                     no_spark = false
-                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
+                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
                     package_info = bp.package_info
                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
                 }
@@ -406,7 +401,7 @@ pipeline {
             steps {
                 script {
                     no_spark = true
-                    def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid)
+                    def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
                     no_spark_package_info = bpns.no_spark_package_info
                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
                 }
