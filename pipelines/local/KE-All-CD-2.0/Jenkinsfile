@@ -487,7 +487,7 @@ pipeline {
                 stage('4.2.Upload to AWS Global S3') {
                     when {
                         expression {
-                            return params.envStage in ['QA', 'RC', 'GA']
+                            return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
                         }
                     }
                     steps {
