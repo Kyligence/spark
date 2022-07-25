@@ -262,8 +262,11 @@ def buildAndCopy(version, noSpark, pi, docs_commitid) {
             cp ${pi.file_name} ${pi.ga_name}
             cp ${pi.ga_name} /var/cicd/${pi.package_path}
         """
-        package_info.file_name = pi.ga_name
-        no_spark_package_info.file_name = pi.ga_name
+        if(!noSpark) {
+            package_info.file_name = pi.ga_name
+        }else{
+            no_spark_package_info.file_name = pi.ga_name
+        }
     }
 }
 
