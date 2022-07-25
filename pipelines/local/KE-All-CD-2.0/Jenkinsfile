@@ -387,7 +387,8 @@ pipeline {
                                 string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）'),
                                 booleanParam(name: 'overide', defaultValue: false, description: '全新打包，覆盖现有同名包'),
                                 booleanParam(name: 'back_remote', defaultValue: false, description: '后端拉取远程分支（绕开 git mirror）'),
-                                booleanParam(name: 'front_remote', defaultValue: false, description: '前端拉取远程分支（绕开 git mirror）')
+                                booleanParam(name: 'front_remote', defaultValue: false, description: '前端拉取远程分支（绕开 git mirror）'),
+                                booleanParam(name: 'skipNoSpark', defaultValue: false, description: '勾选时，跳过打 NoSpark 包')
                             ],
                             // submitter:'liming.meng,admin',
                             submitterParameter: 'APPROVER'
@@ -406,7 +407,7 @@ pipeline {
         stage('2.1.Building noSpark') {
             when {
                 expression {
-                    return params.envStage in ['QA', 'RC', 'GA']
+                    return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
                 }
             }
             steps {
