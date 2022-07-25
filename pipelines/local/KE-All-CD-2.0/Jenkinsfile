@@ -178,7 +178,7 @@ def gitCodeKe(back, front) {
 }
 
 def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customerPkg = 'NORMAL') {
-    println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}]"
+    println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}],customerPkg[${customerPkg}]"
     def package_path
     def branchCollection = ['4.5.x', '4.5.x-sp', '4.3.x', '4.3.x-sp']
     switch (deployType) {
@@ -252,10 +252,10 @@ def checkCacheExist(pi) {
     return result
 }
 
-def buildAndCopy(version, noSpark, pi, docs_commitid) {
-    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}]"
+def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg) {
+    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}],customerPkg[${customerPkg}]"
     sh "git checkout -- ."
-    buildNewten(version, noSpark, docs_commitid, params.customerPkg)
+    buildNewten(version, noSpark, docs_commitid, customerPkg)
 
     sh script: """
         mkdir -p /var/cicd/${pi.package_path}
@@ -264,16 +264,14 @@ def buildAndCopy(version, noSpark, pi, docs_commitid) {
     // exist_package = true
     // archiveArtifacts artifacts: "${pi.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
 
-    if (envStage != 'GA') {
-        sh script: """
-            cp ${pi.file_name} /var/cicd/${pi.package_path}
-        """
-    }
+    sh script: """
+        cp ${pi.file_name} /var/cicd/${pi.package_path}
+    """
 }
 
 // buildPackage(params.version, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
 def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customerPkg) {
-    println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}]"
+    println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}]"
     def result = [:]
     container('build') {
         timestamps {
@@ -282,15 +280,15 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customer
                 def _cids = "${release_commitid_back}-${release_commitid_front}"
                 dir('sourcecode') {
                     if(!noSpark) {
-                        package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
+                        package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
                         if(!checkCacheExist(package_info)) {
-                            buildAndCopy(_version, noSpark, package_info, docs_commitid)
+                            buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg)
                         }
                         result.package_info = package_info
                     }else{
-                        no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark)
+                        no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
                         if(!checkCacheExist(no_spark_package_info)) {
-                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid)
+                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg)
                         }
                         result.no_spark_package_info = no_spark_package_info
                     }
