@@ -389,17 +389,7 @@ pipeline {
                 }
             }
         }
-        stage('2.1.Building Normal') {
-            steps {
-                script {
-                    no_spark = false
-                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
-                    package_info = bp.package_info
-                    println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
-                }
-            }
-        }
-        stage('2.2.Building noSpark') {
+        stage('2.1.Building noSpark') {
             when {
                 expression {
                     return params.envStage in ['QA', 'RC', 'GA']
@@ -411,6 +401,16 @@ pipeline {
                     def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
                     no_spark_package_info = bpns.no_spark_package_info
                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
+                }
+            }
+        }
+        stage('2.2.Building Normal') {
+            steps {
+                script {
+                    no_spark = false
+                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg)
+                    package_info = bp.package_info
+                    println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
                 }
             }
         }
