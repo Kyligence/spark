@@ -198,7 +198,15 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customer
     println "package_path: ${package_path}"
 
     def withoutSpark = noSpark ? '-NoSpark' : ''
-    def _customerPkg = customerPkg == 'NORMAL' ? '' : "-${customerPkg}"
+    def _customerPkg = ''
+    switch(customerPkg {
+        case 'NORMAL':
+            _customerPkg = ''
+            break
+        case 'CUSTOMER_JIANHANG_HDP3':
+            _customerPkg = '-CCB'
+            break
+    }
 
     file_name = "KE-${version}-${cid}${withoutSpark}${_customerPkg}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
