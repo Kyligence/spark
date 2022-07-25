@@ -213,6 +213,9 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark = false) {
     obj.package_file = package_file
     obj.file_name = file_name
     obj.ga_name = ga_name
+    if (envStage == 'GA') {
+        obj.file_name = ga_name
+    }
     println obj.toString()
     return obj
 }
@@ -262,11 +265,6 @@ def buildAndCopy(version, noSpark, pi, docs_commitid) {
             cp ${pi.file_name} ${pi.ga_name}
             cp ${pi.ga_name} /var/cicd/${pi.package_path}
         """
-        if(!noSpark) {
-            package_info.file_name = pi.ga_name
-        }else{
-            no_spark_package_info.file_name = pi.ga_name
-        }
     }
 }
 
