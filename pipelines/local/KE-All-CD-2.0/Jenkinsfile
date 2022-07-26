@@ -550,7 +550,7 @@ pipeline {
         stage('5.Approve GA') {
             when {
                 expression {
-                    return params.envStage == 'GA' && params.customerPkg == 'NORMAL'
+                    return params.envStage == 'GA'
                 }
             }
             steps {
@@ -576,7 +576,7 @@ pipeline {
         stage('6.GA Upload') {
             when {
                 expression {
-                    return params.envStage == 'GA' && params.customerPkg == 'NORMAL' && !paramsGA['skipUpload']
+                    return params.envStage == 'GA' && !paramsGA['skipUpload']
                 }
             }
             parallel {
