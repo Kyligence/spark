@@ -2,7 +2,7 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
     try{
         sh "git apply license.patch"
     } catch(ex){
-        pritnln "git apply fail: ${ex.toString()}"
+        println "git apply fail: ${ex.toString()}"
     }
     sh "pwd && ls -lha"
     sh """
