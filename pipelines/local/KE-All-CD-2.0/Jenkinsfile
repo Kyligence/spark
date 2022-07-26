@@ -319,7 +319,7 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customer
                             buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg)
                         }
                         result.no_spark_package_info = no_spark_package_info
-                        sh "git checkout -- ."
+                        // sh "git checkout -- ."
                     }
                 }
             }
@@ -431,6 +431,21 @@ pipeline {
                     def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                     no_spark_package_info = bpns.no_spark_package_info
                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
+
+                    println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
+                    // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name)
+                }
+            }
+            post {
+                success {
+                    sendNotify('EMAIL',
+                        "[KE4] SUCCESSFUL to Upload the NOSPARK Tar to S3'",
+                        nospark_user_eamils,
+                        """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                        <p>The Job upload the package ${no_spark_package_info.file_name} to the S3: bucket [kyligencecloud-ci]</p>
+                        <p>It saved in the path of [/packages/ke-without-spark/], please check it and use! Tks!</p>"""
+                    )
                 }
             }
         }
@@ -499,30 +514,7 @@ pipeline {
                 //         uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
                 //     }
                 // }
-                stage('4.2.Upload to AWS Global S3') {
-                    when {
-                        expression {
-                            return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
-                        }
-                    }
-                    steps {
-                        println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
-                        // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name)
-                    }
-                    post {
-                        success {
-                            sendNotify('EMAIL',
-                                "[KE4] SUCCESSFUL to Upload the NOSPARK Tar to S3'",
-                                nospark_user_eamils,
-                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                <p>The Job upload the package ${no_spark_package_info.file_name} to the S3: bucket [kyligencecloud-ci]</p>
-                                <p>It saved in the path of [/packages/ke-without-spark/], please check it and use! Tks!</p>"""
-                            )
-                        }
-                    }
-                }
-                stage('4.3.Deploy SNAPSHOT Jar') {
+                stage('4.2.Deploy SNAPSHOT Jar') {
                     when {
                         expression {
                             return params.envStage in ['QA', 'RC']
@@ -564,7 +556,7 @@ pipeline {
             steps {
                 container('build') {
                     script {
-                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}\n2. 发布版本号：${params.version}"
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back};\n  2. 发布版本号：${params.version}"
                         println checkMsg
                         // sh 'printenv'
                         paramsGA = input(
