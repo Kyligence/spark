@@ -1,5 +1,9 @@
 def call(String version, boolean noSpark = false, String docs_commitid = 'latest', String customerPkg = 'NORMAL') {
-    sh "git apply license.patch"
+    try{
+        sh "git apply license.patch"
+    } catch(ex){
+        pritnln "git apply fail: ${ex.toString()}"
+    }
     sh "pwd && ls -lha"
     sh """
         wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/grafana-6.2.4.linux-amd64.tar.gz --directory-prefix=build/
