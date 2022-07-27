@@ -79,18 +79,18 @@ pipeline {
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo  https://github.com/Kyligence/spark.git--> Kyligence\nhttps://github.com/apache/spark.git--> apache')
         string(name: 'branch', defaultValue: 'kyspark-3.2.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x ')
-        string(name: 'release_version', defaultValue: '', description: 'spark release version for example: 3.2.0-kylin-4.x-r52')
-        choice(name: 'deployType', choices: 'DEV\nQA\nRC', description: '研发自测用自己分支打包，选择DEV，会在version后面加上 -DEV-SNAPSHOT，并且不会发包给kc，\n' +
-                '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n RC后基于稳定分支发包，选择RC，version 不做处理')
+        string(name: 'release_version', defaultValue: '', description: 'spark release version for example: 3.2.0-kylin-4.5.16.0')
+        choice(name: 'deployType', choices: 'DEV\nQA\nGA', description: '研发自测用自己分支打包，选择DEV，会在version后面加上 -DEV-SNAPSHOT，并且不会发包给kc，\n' +
+                '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n GA后基于稳定分支发包，选择GA，version 不做处理')
         choice(name: 'sparkVersion', choices: 'spark3\nspark2.4', description: 'spark 大版本，spark2.4 发包不会推到云上')
     }
 
 
     stages {
-        stage("approve deploy DI") {
+        stage("approve deploy DI OR Manager") {
             when {
                 expression {
-                    return params.deployType in ['QA', 'RC']
+                    return params.deployType == 'GA'
                 }
             }
             steps {
@@ -102,7 +102,7 @@ pipeline {
                         paramsGA = input(
                                 message: checkMsg,
                                 ok: '确认！',
-                                submitter: 'jiawei.li2,chenliang.lu,biaobiao.sun,luoping.zhang',
+                                submitter: 'jiawei.li2,chenliang.lu,biaobiao.sun,luoping.zhang,lu.cao,meixiu.chen',
                                 submitterParameter: 'APPROVER'
                         )
                         
@@ -111,30 +111,7 @@ pipeline {
             }
 
         }
-
-        stage("approve deploy ADMIN") {
-            when {
-                expression {
-                    return params.deployType  == 'RC'
-                }
-            }
-            steps {
-                container("build") {
-                    script {
-                        releaseVersion = getReleaseVersion(params.release_version, params.deployType)
-                        def checkMsgAdmin = "管理员，确定发布该版本吗？发布repo：${params.repo}, 发布分支：${params.branch}，发布版本号：${releaseVersion}"
-                        println checkMsgAdmin
-                        paramsGA = input(
-                                message: checkMsgAdmin,
-                                ok: '确认！',
-                                submitter: 'lu.cao,meixiu.chen',
-                                submitterParameter: 'APPROVER'
-                        )
-                    }
-                }
-            }
-
-        }
+        
         stage("Checkout Source Code") {
             steps {
                 container("build") {
@@ -156,7 +133,7 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             releaseVersion = getReleaseVersion(params.release_version, params.deployType)
-                            if (params.sparkVersion == 'spark3' && params.deployType in ['QA', 'RC']) {
+                            if (params.sparkVersion == 'spark3' && params.deployType in ['QA', 'GA']) {
                                 publishToKC = true
                             }
                             sh script: """
@@ -288,7 +265,7 @@ pipeline {
         stage('Tag') {
             when {
                 expression {
-                    return params.deployType == 'RC'
+                    return params.deployType == 'GA'
                 }
             }
             steps {
