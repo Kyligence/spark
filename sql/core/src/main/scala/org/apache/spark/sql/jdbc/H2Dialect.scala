@@ -36,7 +36,13 @@ private[sql] object H2Dialect extends JdbcDialect {
   override def canHandle(url: String): Boolean =
     url.toLowerCase(Locale.ROOT).startsWith("jdbc:h2")
 
-  private val supportedFunctions =
+  private val distinctUnsupportedAggregateFunctions =
+    Set("COVAR_POP", "COVAR_SAMP", "CORR", "REGR_INTERCEPT", "REGR_R2", "REGR_SLOPE", "REGR_SXY")
+
+  private val supportedAggregateFunctions = Set("MAX", "MIN", "SUM", "COUNT", "AVG",
+    "VAR_POP", "VAR_SAMP", "STDDEV_POP", "STDDEV_SAMP") ++ distinctUnsupportedAggregateFunctions
+
+  private val supportedFunctions = supportedAggregateFunctions ++
     Set("ABS", "COALESCE", "GREATEST", "LEAST", "RAND", "LOG", "LOG10", "LN", "EXP",
       "POWER", "SQRT", "FLOOR", "CEIL", "ROUND", "SIN", "SINH", "COS", "COSH", "TAN",
       "TANH", "COT", "ASIN", "ACOS", "ATAN", "ATAN2", "DEGREES", "RADIANS", "SIGN",
@@ -124,9 +130,9 @@ private[sql] object H2Dialect extends JdbcDialect {
   }
 
   override def compileExpression(expr: Expression): Option[String] = {
-    val jdbcSQLBuilder = new H2JDBCSQLBuilder()
+    val h2SQLBuilder = new H2SQLBuilder()
     try {
-      Some(jdbcSQLBuilder.build(expr))
+      Some(h2SQLBuilder.build(expr))
     } catch {
       case NonFatal(e) =>
         logWarning("Error occurs while compiling V2 expression", e)
@@ -134,7 +140,15 @@ private[sql] object H2Dialect extends JdbcDialect {
     }
   }
 
-  class H2JDBCSQLBuilder extends JDBCSQLBuilder {
+  class H2SQLBuilder extends JDBCSQLBuilder {
+    override def visitAggregateFunction(
+        funcName: String, isDistinct: Boolean, inputs: Array[String]): String =
+      if (isDistinct && distinctUnsupportedAggregateFunctions.contains(funcName)) {
+        throw new UnsupportedOperationException(s"${this.getClass.getSimpleName} does not " +
+          s"support aggregate function: $funcName with DISTINCT");
+      } else {
+        super.visitAggregateFunction(funcName, isDistinct, inputs)
+      }
 
     override def visitExtract(field: String, source: String): String = {
       val newField = field match {
