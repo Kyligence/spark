@@ -1,5 +1,9 @@
 #!groovy
 import java.net.URLEncoder
+import io.kyligence.devopslib.byzer.ByzerClientConfig
+import io.kyligence.devopslib.byzer.ByzerFacade
+import io.kyligence.devopslib.byzer.ByzerClientFactory
+import io.kyligence.devopslib.Utils
 
 @NonCPS
 def encodeURL(String text) {
@@ -65,11 +69,11 @@ pipeline {
                     dir('build_result') {
                         withCredentials([string(credentialsId: 'apitoken', variable: 'TOKEN')]) {
                             script {
-                                def root = "http://cicd.ops.kyligence.tech/job/KE4/job/KE-All-CD-2.0"
+                                def root = "https://cicd-ofs.kyligence.com/job/KE4/job/KE-All-CD-2.0"
                                 def buildText = ''
 
                                 def options = """/api/json?tree=${encodeURL("builds[actions[parameters[name,value],waitingTimeMillis],number,duration,result,timestamp]")}"""
-                                def text = sh(script:""" curl -X GET '${root}${options}' --user cheng.zuo:${TOKEN} """, returnStdout: true).trim()
+                                def text = sh(script:""" curl -k -X GET '${root}${options}' --user cheng.zuo:${TOKEN} """, returnStdout: true).trim()
                                 def jsonResult = readJSON text: text
                                 jsonResult['builds'].each { buildsdata -> 
                                     def buildResult = buildsdata['result'] 
@@ -103,6 +107,25 @@ pipeline {
                         dir('build_result') {
                             s3Upload(bucket: 'k8s-bucket-devops', path: 'ke-cd-analyze/cd_build_result/', includePathPattern: "*.csv", acl: 'AuthenticatedRead')
                         }
+                    }
+                }
+            }
+        }
+        stage('Sync Data') {
+            steps {
+                withCredentials([string(credentialsId: 'zenpwd', variable: 'zen_pwd')]) {
+                    script {
+                        setctx()
+                        def config = ByzerClientConfig.builder()
+                                        .enableHttps(true)
+                                        .host("zen.kyligence.io")
+                                        .account("cheng.zuo@kyligence.io")
+                                        .password(zen_pwd)
+                                        .tenant("devops")
+                                        .build()
+                        def client = ByzerClientFactory.create(config)
+                        def facade = new ByzerFacade(config, client)
+                        facade.executeNotebook(new File(Utils.resourcesPath() + "/notebook/ke4_cicd_etl.bznb"))
                     }
                 }
             }

@@ -1,4 +1,4 @@
-package io.kyligence.devopslib.k8s.container
+package io.kyligence.devopslib.container.k8s
 
 class MavenContainer extends Container {
 

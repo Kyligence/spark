@@ -1,6 +1,6 @@
 @Grab('org.codehaus.groovy:groovy-yaml:3.0.5')
 import groovy.yaml.YamlBuilder
-import io.kyligence.devopslib.k8s.container.Container
+import Container
 
 @NonCPS
 def call(List<Container> containers) {
