@@ -19,7 +19,24 @@ def call(String sonarArgLine) {
                     script {
                         try { sh script: 'cp ../src/server/target/jars/kap-* jars/' } catch (Exception err) { }
                         try { sh script: 'cp ../src/server/target/jars/yinglong-* jars/' } catch (Exception err) { }
-                        // try { sh script: "cp ../src/server/target/jars/ke-* jars/" } catch (Exception err) { }
+
+                        //  --- start ---  only yinglong-open-core. if error, ignore
+                        if(fileExists("../kylin")) {
+                            try { sh script: 'cp ../kylin/src/server/target/jars/kap-* jars/' } catch (Exception err) { }
+                            try { sh script: "cp ../kylin/src/server/target/jars/kylin-* jars/" } catch (Exception err) { }
+                        }
+
+                        if(fileExists("../kyligence")) {
+                            try { sh script: "cp ../kyligence/src/core-metadata-extensions/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/enterprise-service/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/license-service/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/query-extensions/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/smart/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/smart-server/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/smart-service/target/ke-* jars/" } catch (Exception err) { }
+                        }
+                        // --- end ---
+
                         try { sh script: 'rm -f jars/kap-external-curator-* jars/kap-external-guava20-* jars/kap-external-swagger-* jars/kap-external-influxdb-*' } catch (Exception err) { }
                         try { sh script: 'rm -f jars/*-tests.jar' } catch (Exception err) { }
                         retry(3){
