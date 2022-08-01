@@ -1,0 +1,78 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-agent-aws-ci.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: '', description: 'Kap branch?')
+        string(name: 'args', defaultValue: '', description: 'Extra JVM options for maven test')
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("git") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            }
+                        }
+                        s3Archive4YingLong('download')
+                    }
+                }
+            }
+        }
+        stage('Maven Install') {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        script {
+                            def external_version = sh script: 'mvn help:evaluate -Dexpression=external.version  -q -DforceStdout',returnStdout:true
+                            println external_version
+
+                            retry(3) {
+                                if (!(external_version && external_version=="4.5.9")){
+                                    sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                                }
+                                sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Testing') {
+            steps {
+                script {
+                    dynamicNewtenParallelTest()
+                }
+            }
+            post {
+                always {
+                    timestamps {
+                        junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                    }
+                    s3Archive4YingLong('upload-without-build_result')
+                }
+            }
+        }
+        stage('SonarCloud') {
+            steps {
+                sonarAnalyze("""-Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                -Dsonar.pullrequest.key=${ghprbPullId} """)
+            }
+        }
+    }
+}
