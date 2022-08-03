@@ -177,7 +177,7 @@
     <scala.binary.version>2.12</scala.binary.version>
     <scala-collection-compat.version>2.7.0</scala-collection-compat.version>
     <scalatest-maven-plugin.version>2.2.0</scalatest-maven-plugin.version>
-    <!-- dont update scala-maven-plugin to version 4.8.1 SPARK-42809 and SPARK-43595 -->   
+    <!-- dont update scala-maven-plugin to version 4.8.1 SPARK-42809 and SPARK-43595 -->
     <scala-maven-plugin.version>4.8.0</scala-maven-plugin.version>
     <maven.scaladoc.skip>false</maven.scaladoc.skip>
     <versions-maven-plugin.version>2.16.0</versions-maven-plugin.version>
@@ -3598,6 +3598,36 @@
     <!-- Hadoop-a.b.c dependencies can be found at
     http://hadoop.apache.org/docs/ra.b.c/hadoop-project-dist/hadoop-common/dependency-analysis.html
     -->
+
+    <profile>
+      <id>hadoop2-aws</id>
+      <dependencies>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>2.7.4</version>
+            <scope>runtime</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>*</groupId>
+                <artifactId>*</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+        <dependency>
+          <groupId>com.amazonaws</groupId>
+          <artifactId>aws-java-sdk</artifactId>
+          <version>1.7.4</version>
+          <scope>runtime</scope>
+          <exclusions>
+            <exclusion>
+              <groupId>*</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+      </dependencies>
+    </profile>
 
     <profile>
       <id>hadoop-3</id>
