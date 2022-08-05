@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-ARG java_image_tag=17-jammy
+ARG java_image_tag=8-jdk-slim
 
 FROM eclipse-temurin:${java_image_tag}
 
-ARG spark_uid=185
+ARG spark_uid=root
 
 # Before building the docker image, first build and make a Spark distribution following
 # the instructions in https://spark.apache.org/docs/latest/building-spark.html.
