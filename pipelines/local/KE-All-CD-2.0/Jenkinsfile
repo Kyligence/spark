@@ -118,17 +118,11 @@ def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/de
         remote.host = '159.27.120.141'
         remote.allowAnyHosts = true
         dir(dir_name) {
-            sshCommand remote: remote, command: """
-                ls -lh ${remote_path}
-            """
             try {
                 sshRemove remote: remote, path: "${remote_path}/${pi.file_name}"
             }catch(e){
                 println 'sshRemove fail'
             }
-            sshCommand remote: remote, command: """
-                ls -lh ${remote_path}
-            """
 
             sshPut remote: remote, from: pi.file_name, into: remote_path
             sshCommand remote: remote, command: """
@@ -435,6 +429,8 @@ pipeline {
                     println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
                     // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
                     uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name)
+
+                    println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
                 }
             }
             post {
@@ -456,6 +452,7 @@ pipeline {
                     def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                     package_info = bp.package_info
                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
+                    println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
                 }
             }
         }

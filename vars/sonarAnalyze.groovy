@@ -17,6 +17,7 @@ def call(String sonarArgLine) {
 
                 dir('coverage') {
                     script {
+                        sh script: 'pwd'
                         try { sh script: 'cp ../src/server/target/jars/kap-* jars/' } catch (Exception err) { }
                         try { sh script: 'cp ../src/server/target/jars/yinglong-* jars/' } catch (Exception err) { }
 
