@@ -1,0 +1,38 @@
+---
+kind: "Pod"
+name: "handbook-agent"
+spec:
+  containers:
+    - name: "git"
+      image: "bitnami/git:2.35.1-debian-10-r68"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+    - name: "build"
+      image: "repo-ofs.kyligence.com/handbook2:2.0"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
+        limits:
+          memory: "8Gi"
+          cpu: "4000m"
+      volumeMounts:
+        - mountPath: "/var/devops/cache"
+          name: "jenkins-common"
+          subPath: "cache"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
