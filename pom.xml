@@ -3471,8 +3471,8 @@
       <id>hadoop-2</id>
       <properties>
         <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
-        <hadoop.version>2.7.4</hadoop.version>
-        <curator.version>2.7.1</curator.version>
+        <hadoop.version>2.10.1</hadoop.version>
+        <curator.version>2.12.0</curator.version>
         <commons-io.version>2.8.0</commons-io.version>
         <!--
           the declaration site above of these variables explains why we need to re-assign them here
