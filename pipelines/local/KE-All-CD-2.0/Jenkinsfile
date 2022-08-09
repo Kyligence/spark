@@ -452,7 +452,7 @@ pipeline {
                     def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                     package_info = bp.package_info
                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
-                    println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
+                    println("Download URL: https://package.kyligence.com/${package_info.package_file}")
                 }
             }
         }
