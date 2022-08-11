@@ -51,4 +51,4 @@ spec:
     - name: "handbook-secret"
       secret:
         secretName: "handbook-secret"
-        defaultMode: 0400
+        defaultMode: "0400"
