@@ -245,6 +245,7 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customer
     obj.ga_name = ga_name
     if (envStage == 'GA') {
         obj.file_name = ga_name
+        obj.package_file = "newten-cicd/${package_path}/${ga_name}"
     }
     println obj.toString()
     return obj
