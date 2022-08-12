@@ -588,7 +588,9 @@ pipeline {
                     steps {
                         println("upload to AWS S3 in CN: ${ga_name}")
                         // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        retry(2) {
+                            uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        }
                     // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
                     }
                 }
@@ -596,14 +598,18 @@ pipeline {
                     steps {
                         println("upload to AWS S3 in Global: ${ga_name}")
                         // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        retry(2) {
+                            uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        }
                         // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
                     }
                 }
                 stage('6.3.GA Nexus') {
                     steps {
                         println("upload to Nexus repo-ofs: ${ga_name}")
-                        uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+                        retry(2) {
+                            uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+                        }
                         // uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted')
                     }
                 }
