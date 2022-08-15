@@ -1413,20 +1413,6 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
     val expectedPlanFragment4 = "PushedFilters: [NAME IS NOT NULL], "
     checkPushedInfo(df4, expectedPlanFragment4)
     checkAnswer(df4, Seq(Row(6, "jen", 12000, 1200, true)))
-
-    val df5 = sql("SELECT name FROM h2.test.employee WHERE " +
-      "aes_encrypt(cast(null as string), name) is null")
-    checkFiltersRemoved(df5, false)
-    val expectedPlanFragment5 = "PushedFilters: [], "
-    checkPushedInfo(df5, expectedPlanFragment5)
-    checkAnswer(df5, Seq(Row("amy"), Row("cathy"), Row("alex"), Row("david"), Row("jen")))
-
-    val df6 = sql("SELECT name FROM h2.test.employee WHERE " +
-      "aes_decrypt(cast(null as binary), name) is null")
-    checkFiltersRemoved(df6, false)
-    val expectedPlanFragment6 = "PushedFilters: [], "
-    checkPushedInfo(df6, expectedPlanFragment6)
-    checkAnswer(df6, Seq(Row("amy"), Row("cathy"), Row("alex"), Row("david"), Row("jen")))
   }
 
   test("scan with filter push-down with UDF") {

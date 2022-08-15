@@ -268,8 +268,6 @@ class V2ExpressionBuilder(e: Expression, isPredicate: Boolean = false) {
       generateExpression(child).map(v => new V2Extract("WEEK", v))
     case YearOfWeek(child) =>
       generateExpression(child).map(v => new V2Extract("YEAR_OF_WEEK", v))
-    case encrypt: AesEncrypt => generateExpressionWithName("AES_ENCRYPT", encrypt.children)
-    case decrypt: AesDecrypt => generateExpressionWithName("AES_DECRYPT", decrypt.children)
     case Crc32(child) => generateExpressionWithName("CRC32", Seq(child))
     case Md5(child) => generateExpressionWithName("MD5", Seq(child))
     case Sha1(child) => generateExpressionWithName("SHA1", Seq(child))
@@ -314,14 +312,6 @@ class V2ExpressionBuilder(e: Expression, isPredicate: Boolean = false) {
       Some(new GeneralAggregateFunc("COVAR_SAMP", isDistinct, Array(left, right)))
     case aggregate.Corr(PushableExpression(left), PushableExpression(right), _) =>
       Some(new GeneralAggregateFunc("CORR", isDistinct, Array(left, right)))
-    case aggregate.RegrIntercept(PushableExpression(left), PushableExpression(right)) =>
-      Some(new GeneralAggregateFunc("REGR_INTERCEPT", isDistinct, Array(left, right)))
-    case aggregate.RegrR2(PushableExpression(left), PushableExpression(right)) =>
-      Some(new GeneralAggregateFunc("REGR_R2", isDistinct, Array(left, right)))
-    case aggregate.RegrSlope(PushableExpression(left), PushableExpression(right)) =>
-      Some(new GeneralAggregateFunc("REGR_SLOPE", isDistinct, Array(left, right)))
-    case aggregate.RegrSXY(PushableExpression(left), PushableExpression(right)) =>
-      Some(new GeneralAggregateFunc("REGR_SXY", isDistinct, Array(left, right)))
     // TODO supports other aggregate functions
     case aggregate.V2Aggregator(aggrFunc, children, _, _) =>
       val translatedExprs = children.flatMap(PushableExpression.unapply(_))
