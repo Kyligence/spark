@@ -85,6 +85,40 @@ class DataSourceV2StrategySuite extends PlanTest with SharedSparkSession {
     "a.b.cstr" // three level nested field
   ))
 
+  test("SPARK-39784: translate binary expression") { attrInts
+    .foreach { case (attrInt, intColName) =>
+      testTranslateFilter(EqualTo(attrInt, 1),
+        Some(new Predicate("=", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+      testTranslateFilter(EqualTo(1, attrInt),
+        Some(new Predicate("=", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+
+      testTranslateFilter(EqualNullSafe(attrInt, 1),
+        Some(new Predicate("<=>", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+      testTranslateFilter(EqualNullSafe(1, attrInt),
+        Some(new Predicate("<=>", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+
+      testTranslateFilter(GreaterThan(attrInt, 1),
+        Some(new Predicate(">", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+      testTranslateFilter(GreaterThan(1, attrInt),
+        Some(new Predicate("<", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+
+      testTranslateFilter(LessThan(attrInt, 1),
+        Some(new Predicate("<", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+      testTranslateFilter(LessThan(1, attrInt),
+        Some(new Predicate(">", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+
+      testTranslateFilter(GreaterThanOrEqual(attrInt, 1),
+        Some(new Predicate(">=", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+      testTranslateFilter(GreaterThanOrEqual(1, attrInt),
+        Some(new Predicate("<=", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+
+      testTranslateFilter(LessThanOrEqual(attrInt, 1),
+        Some(new Predicate("<=", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+      testTranslateFilter(LessThanOrEqual(1, attrInt),
+        Some(new Predicate(">=", Array(FieldReference(intColName), LiteralValue(1, IntegerType)))))
+    }
+  }
+
   test("translate simple expression") { attrInts.zip(attrStrs)
     .foreach { case ((attrInt, intColName), (attrStr, strColName)) =>
       testTranslateFilter(EqualTo(attrInt, 1),
