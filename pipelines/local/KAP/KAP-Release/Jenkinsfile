@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib@DEVOPS-1070') _
+@Library('devopslib') _
 
 final AGENT_LABEL_MAPPING = ['hdp-fi':'10.1.1.118-hdp2.4', 'cdh':'10.1.2.87-cdh', 'cdh6':'10.1.2.87-cdh', 'cdh7':'10.1.2.87-cdh',
                             'hdp3':'10.1.2.87-cdh', 'mapr':'10.1.1.45-hdp2.4', 'mrs':'10.1.1.118-hdp2.4']

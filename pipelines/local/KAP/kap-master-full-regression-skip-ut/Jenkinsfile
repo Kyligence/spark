@@ -1,0 +1,92 @@
+#!groovy
+
+@Library('devopslib@DEVOPS-1178') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label '10.1.1.118-hdp2.4 || 10.1.1.45-hdp2.4'
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '')
+        string(name: 'branch', defaultValue: 'master', description: '')
+        string(name: 'WHORU', defaultValue: 'anonymous', description: 'who are you?')
+        choice(name: 'FAST_MODE', choices: ['false', 'true'], description: '')
+        choice(name: 'FIXED_DATA_MODE', choices: ['true', 'false'], description: '')
+        booleanParam(name: 'USE_BIG_SANDBOX', defaultValue: false, description: '')
+        string(name: 'IT_MVN_EXTRA_OPTS', defaultValue: '', description: '')
+    }
+
+    environment {
+        SPARK_HOME='/usr/local/kyspark/spark-newten-2.2.1-3.4.5.2140.4'
+        ZIPKIN_HOSTNAME='localhost'
+        ZIPKIN_PORT=9410
+        KAP_HDFS_WORKING_DIR='/kylin'
+        KAP_METADATA_URL='kylin_default_instance@hbase'
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                script {
+                    currentBuild.displayName = "#${BUILD_NUMBER} for ${params.WHORU}"
+                }
+                dir('kap') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror "KAP", "${params.branch}", false, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh script: """
+                    metadata_url=`echo ${WHORU} | sed 's/\\./_/g'`"_kapmaster_ci_instance"
+                    echo "metadata url used for this run is \${metadata_url}"
+                    cd kap
+                    sed -i "s/kylin_default_instance@hbase/\${metadata_url}@hbase/g" extensions/examples/test_case_data/sandbox/kylin.properties
+
+                    if [ "\$USE_BIG_SANDBOX" == "true" ]; then
+                        echo "use big sandbox."
+                        sed -i "s/0.05/1.0/g" `grep 0.05 -rl extensions/examples/test_case_data/sandbox/mapred-site.xml`
+                    fi
+
+                    sed '/<configuration>/r /opt/ci_queue_props/hive_queue.prop' -i extensions/examples/test_case_data/sandbox/kylin_hive_conf.xml
+                    sed '/<configuration>/r /opt/ci_queue_props/mr_queue.prop' -i extensions/examples/test_case_data/sandbox/kylin_job_conf.xml
+                    sed '/<configuration>/r /opt/ci_queue_props/mr_queue.prop' -i extensions/examples/test_case_data/sandbox/kylin_job_conf_inmem.xml
+                    sed '\$r /opt/ci_queue_props/spark_queue.prop' -i extensions/examples/test_case_data/sandbox/kylin.properties
+                    sed '\$r /opt/ci_queue_props/sqoop_queue.prop' -i extensions/examples/test_case_data/sandbox/kylin.properties
+                """
+
+                sh script: """
+                    lsof -i :7070,7071 | grep "(LISTEN)" | awk '{print \$2}' | xargs kill -9 || exit 0
+                """
+
+                sh script: """
+                    cd ${WORKSPACE}/kap
+                    sleep 10
+                    ulimit -a
+                    ulimit -u 10000
+                    ulimit -a
+
+                    MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/.repository" mvn clean install -U -DskipTests=true -Dsparder.enabled=true
+                    MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/.repository" mvn -pl :kap-it verify -Dhdp.version=2.4.0.0-169 -DfastBuildMode=${FAST_MODE} -P sandbox -Dsparder.enabled=true -DneedDumpSqlStats=false -DneedVerifySqlResults=${FIXED_DATA_MODE} -DbuildCubeUsingProvidedData=${FIXED_DATA_MODE} ${IT_MVN_EXTRA_OPTS}
+                    MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/.repository" mvn -pl :kap-it failsafe:integration-test -Dhdp.version=2.4.0.0-169 -DfastBuildMode=${FAST_MODE} -Dsparder.enabled=false -DneedDumpSqlStats=false -DneedVerifySqlResults=${FIXED_DATA_MODE} -DfailsafeArgLine=${IT_MVN_EXTRA_OPTS}
+                    MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/.repository" mvn -pl :kap-it failsafe:verify -Dhdp.version=2.4.0.0-169  -DfastBuildMode=${FAST_MODE} -P sandbox  -Dsparder.enabled=false -DneedVerifySqlResults=${FIXED_DATA_MODE}
+                """
+
+            }
+        }
+    }
+}
