@@ -394,6 +394,22 @@ object SQLConf {
       .booleanConf
       .createWithDefault(true)
 
+  val RUNTIME_BLOOM_FILTER_WITH_SEGMENT_PRUNE_ENABLED =
+    buildConf("spark.sql.optimizer.runtime.bloomFilter.segmentPrune.enabled")
+      .doc("When true and if one side of a shuffle join has a selective predicate, we attempt " +
+        "to insert a bloom filter in the other side to reduce the amount of shuffle data " +
+        "and prune the KE segment meanwhile.")
+      .version("3.3.0")
+      .booleanConf
+      .createWithDefault(false)
+
+  val RUNTIME_BLOOM_FILTER_BROADCAST_JOIN_CONDITION_IGNORED =
+    buildConf("spark.sql.optimizer.runtime.bloomFilter.broadcastJoinCondition.ignored")
+      .doc("When true the runtime filter will ignore the broadcast join condition.")
+      .version("3.3.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val RUNTIME_BLOOM_FILTER_CREATION_SIDE_THRESHOLD =
     buildConf("spark.sql.optimizer.runtime.bloomFilter.creationSideThreshold")
       .doc("Size threshold of the bloom filter creation side plan. Estimated size needs to be " +
@@ -4668,6 +4684,12 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
 
   def runtimeFilterBloomFilterEnabled: Boolean =
     getConf(RUNTIME_BLOOM_FILTER_ENABLED)
+
+  def runtimeFilterBloomFilterWithSegmentPruneEnabled: Boolean =
+    getConf(RUNTIME_BLOOM_FILTER_WITH_SEGMENT_PRUNE_ENABLED)
+
+  def runtimeFilterBroadcastJoinConditionIgnored: Boolean =
+    getConf(RUNTIME_BLOOM_FILTER_BROADCAST_JOIN_CONDITION_IGNORED)
 
   def runtimeFilterCreationSideThreshold: Long =
     getConf(RUNTIME_BLOOM_FILTER_CREATION_SIDE_THRESHOLD)
