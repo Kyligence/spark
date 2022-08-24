@@ -1,0 +1,747 @@
+#!groovy
+
+@Library('devopslib') _
+
+import groovy.json.*
+import hudson.model.*
+
+// GA包名
+def ga_name = ''
+// 发布分支(前端)
+def release_branch_front = ''
+// 发布分支(后端)
+def release_branch_back = ''
+// 发布分支(开源)
+def release_branch_kylin = ''
+
+def release_commitid_front = ''
+def release_commitid_back = ''
+def release_commitid_kylin = ''
+// 包存在
+def exist_package = false
+// 包信息对象
+def package_info = [:]
+def no_spark_package_info = [:]
+
+// 前后端代码实际 commitid
+def bcid = ''
+def fcid = ''
+def kcid = ''
+
+//变量名，用于存储input步骤的返回值
+def paramsMap = [:]
+
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name, dir_name = 'sourcecode') {
+    dir(dir_name) {
+        timestamps {
+            println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
+            withAWS(region: region, credentials: credentials) {
+                s3Upload(bucket: bucket, path: path, file: ga_name)
+            }
+        }
+    }
+}
+
+// 上传制品包到Nexus制品库
+def uploadNexus(repo, package_path, file_name, dir_name = 'sourcecode') {
+    timestamps {
+        container('build') {
+            dir(dir_name) {
+                script {
+                    println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
+                    // 上传制品库
+                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                        pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 上传制品包到 Azure 服务器
+def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/devops') {
+    script {
+        def remote = [:]
+        remote.name = 'azure_test_env'
+        withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
+                usernameVariable: 'REMOTE_USERNAME',
+                passwordVariable: 'REMOTE_PASSWORD')]) {
+            remote.user = REMOTE_USERNAME
+            remote.password = REMOTE_PASSWORD
+                }
+        remote.host = '159.27.120.141'
+        remote.allowAnyHosts = true
+        dir(dir_name) {
+            try {
+                sshRemove remote: remote, path: "${remote_path}/${pi.file_name}"
+            }catch(e){
+                println 'sshRemove fail'
+            }
+
+            sshPut remote: remote, from: pi.file_name, into: remote_path
+            sshCommand remote: remote, command: """
+                ls -lh ${remote_path}
+            """
+        }
+    }
+}
+
+// 根据发布类型自动获取分支
+def getBranch(deployType, envStage, version) {
+    print "getBranch -> deployType[${deployType}],envStage[${envStage}],version[${version}]"
+    def _result
+    def _branch_release = ''
+    def _branch_qa = ''
+    def _branch_dev = ''
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'yinglong-devops', 'ke-4.5.x']
+
+    switch (deployType) {
+        case 'Regular': 
+            _branch_release = branchCollection[0]
+            _branch_qa = "ke-${version}-qa"
+            _branch_dev = "${_branch_release}-dev"
+            break
+        case 'SP-4.5.x':
+            _branch_release = branchCollection[0]
+            _branch_qa = "${branchCollection[1]}-dev"
+            _branch_dev = "${branchCollection[1]}-dev"
+            break
+        case 'KE-4.3.x':
+            _branch_release = branchCollection[2]
+            _branch_qa = "ke-${version}-qa"
+            _branch_dev = "${_branch_release}-dev"
+            break
+        case 'SP-4.3.x':
+            _branch_release = branchCollection[3]
+            _branch_qa = "${_branch_release}-dev"
+            _branch_dev = "${_branch_release}-dev"
+            break
+        case 'Yinglong': // 含 OpenCore 结构
+            _branch_release = branchCollection[4]
+            _branch_qa = "yl-${version}-qa"
+            // _branch_dev = "${_branch_release}-dev"
+            _branch_dev = "${_branch_release}"
+            break
+        case 'KE-4.5.x': // 
+            _branch_release = branchCollection[5]
+            _branch_qa = "ke-${version}-qa"
+            _branch_dev = "${_branch_release}-dev"
+            break
+    }
+
+    switch (envStage) {
+        case 'DEV':
+            _result = _branch_dev
+            break
+        case 'QA':
+            _result = _branch_qa
+            break
+        case 'RC':
+        case 'GA':
+            _result = _branch_release
+            break
+    }
+    echo "getBranch: ${_result}"
+    return _result
+}
+
+// git获取KE代码（预先触发同步git mirror）
+def gitCodeKe(back, kylin, front, pMap) {
+    def result = [:]
+    container('build') {
+        dir('sourcecode') {
+            script {
+                println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
+                if (!back) {
+                    error 'commitId_back 参数不能为空'
+                }
+
+                if(pMap['back_remote']) {
+                    githubCheckout 'KAP', back, 'https', 'github.com'
+                }else{
+                    pullCodeFromGitMirror 'KAP', back
+                }
+
+                release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                println "release_commitid_back: ${release_commitid_back}"
+                result.release_commitid_back = release_commitid_back
+
+                // 开源代码
+                def _kylin
+                if(!kylin) {
+                    println "No commitId_kylin, use the commitId_kylin: ${back}"
+                    _kylin = back
+                } else {
+                    println "checkout kylin to kylin, use the commitid: ${kylin}"
+                    _kylin = kylin
+                }
+                sh 'ls -lha && ls -lha kylin'
+                sh 'rm -rf kylin'
+                dir('kylin') {
+                    sh 'pwd && ls -lha'
+                    if(pMap['front_remote']) {
+                        githubCheckout 'kylin', _kylin, 'https', 'github.com'
+                    }else{
+                        pullCodeFromGitMirror 'kylin', _kylin
+                    }
+                    sh 'ls -lha'
+
+                    release_commitid_kylin = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                    println "release_commitid_kylin: ${release_commitid_kylin}"
+                    result.release_commitid_kylin = release_commitid_kylin
+                }
+
+                // 前端代码
+                def _front
+                if (!front) {
+                    println "No commitId_front, use the commitId_back: ${back}"
+                    _front = back
+                } else {
+                    println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
+                    _front = front
+                }
+                sh 'ls -lha && ls -lha kystudio'
+                sh 'rm -rf kystudio'
+                dir('kystudio') {
+                    sh 'pwd && ls -lha'
+                    if(pMap['front_remote']) {
+                        githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+                    }else{
+                        pullCodeFromGitMirror 'KAP_Frontend', _front
+                    }
+                    
+                    release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                    println "release_commitid_front: ${release_commitid_front}"
+                    result.release_commitid_front = release_commitid_front
+                    sh """
+                        rm -f .npmrc
+                        echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                        cat .npmrc
+                        ls -lha .
+                    """
+                }
+            }
+        }
+        // script {
+        //     sh '''
+        //         mkdir -p ./nospark && cp -r ./sourcecode/* ./nospark/
+        //         ls -lh .
+        //         echo "=========="
+        //         ls -lh ./sourcecode
+        //         echo "=========="
+        //         ls -lh ./nospark
+        //     '''
+        // }
+    }
+    return result
+}
+
+def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customerPkg = 'NORMAL') {
+    println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}],customerPkg[${customerPkg}]"
+    def package_path
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'yinglong-devops', 'ke-4.5.x']
+    switch (deployType) {
+        case 'Regular':
+            package_path = "artifacts/${branchCollection[0]}/${envStage}"
+            break
+        case 'SP-4.5.x':
+            package_path = "artifacts/${branchCollection[1]}/${envStage}"
+            break
+        case 'KE-4.3.x':
+            package_path = "artifacts/${branchCollection[2]}/${envStage}"
+            break
+        case 'SP-4.3.x':
+            package_path = "artifacts/${branchCollection[3]}/${envStage}"
+            break
+        case 'Yinglong': // 含 OpenCore 结构
+            package_path = "artifacts/${branchCollection[4]}/${envStage}"
+            break
+        case 'KE-4.5.x': // 
+            package_path = "artifacts/${branchCollection[5]}/${envStage}"
+            break
+    }
+    println "package_path: ${package_path}"
+
+    def withoutSpark = noSpark ? '-NoSpark' : ''
+    def _customerPkg = ''
+    switch(customerPkg) {
+        case 'NORMAL':
+            _customerPkg = ''
+            break
+        case 'CUSTOMER_JIANHANG_HDP3':
+            _customerPkg = '-CCB'
+            break
+    }
+
+    file_name = "KE-${version}-${cid}${withoutSpark}${_customerPkg}.tar.gz"
+    package_file = "newten-cicd/${package_path}/${file_name}"
+    ga_name = "Kyligence-Enterprise-${version}${withoutSpark}${_customerPkg}.tar.gz"
+
+    println "file_name: ${file_name}"
+    println "package_file: ${package_file}"
+    println "ga_name: ${ga_name}"
+
+    def obj = [:]
+    obj.package_path = package_path
+    obj.package_file = package_file
+    obj.file_name = file_name
+    obj.ga_name = ga_name
+    if (envStage == 'GA') {
+        obj.file_name = ga_name
+    }
+    println obj.toString()
+    return obj
+}
+
+def checkCacheExist(pi) {
+    println "checkCacheExist -> package_info[${pi}]"
+    def result = false
+    try {
+        def existPackage = "${pi.package_path}/${pi.file_name}"
+        sh script: """
+            ls -l /var/cicd/${pi.package_path}
+            cp /var/cicd/${existPackage} ${pi.file_name}
+        """
+
+        sh 'ls -l'
+        println "pi.package_file: ${pi.package_file}"
+        result = fileExists(pi.file_name)
+        println "/var/cicd/${pi.package_path}/${pi.file_name} is ${result}"
+    } catch (Exception err) {
+        println "The package [${pi.file_name}] not exsits, the pipeline will make it next."
+        result = false
+        // println err.getMessage()
+    }
+
+    println "checkCacheExist result: ${result}"
+    return result
+}
+
+def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg) {
+    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}],customerPkg[${customerPkg}]"
+    // sh "git checkout -- ."
+    buildNewten(version, noSpark, docs_commitid, customerPkg)
+
+    sh script: """
+        mkdir -p /var/cicd/${pi.package_path}
+        mv dist/*.tar.gz ${pi.file_name}
+    """
+    // exist_package = true
+    // archiveArtifacts artifacts: "${pi.file_name}", fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+
+    sh script: """
+        cp ${pi.file_name} /var/cicd/${pi.package_path}
+    """
+}
+
+// buildPackage(params.version, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
+def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customerPkg, pMap) {
+    println "buildPackage -> version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}],pMap[${pMap}]"
+    def result = [:]
+    container('build') {
+        timestamps {
+            script {
+                def _version = "${version}-${envStage}"
+                def _cids = "${release_commitid_back}-${release_commitid_kylin}-${release_commitid_front}"
+                dir('sourcecode') {
+                    if(!noSpark) {
+                        package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
+                        if(!checkCacheExist(package_info) || pMap['overide']) {
+                            buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg)
+                        }
+                        result.package_info = package_info
+                    }else{
+                        no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
+                        if(!checkCacheExist(no_spark_package_info) || pMap['overide']) {
+                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg)
+                        }
+                        result.no_spark_package_info = no_spark_package_info
+                        // sh "git checkout -- ."
+                    }
+                }
+            }
+        }
+    }
+    println "buildPackage result: " + result.toString()
+    return result
+}
+
+pipeline {
+    options {
+        timeout(time: 4, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    environment {
+        // GA过程参数
+        paramsGA = ''
+        // K8S启动用包名
+        package_file = ''
+        // 文件路径
+        package_path = ''
+        // 文件名(给测试过程中的名字)
+        file_name = ''
+        // github token
+        GIT_JEKNINS_TOKEN = credentials('jenkins-token')
+        no_spark = false
+        // tester emails
+        tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
+        fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io;xinxin.li@kyligence.io'''
+        nospark_user_eamils = 'yong.fu@kyligence.io'
+        jar_user_eamils = 'yongchao.li@kyligence.io'
+        // dev eamils
+        dev_regular_emails = 'enwei.jiao@kyligence.io;yifan.zhang@kyligence.io'
+        dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
+        dev_front_emails = 'qian.xia@kyligence.io'
+        // product emails
+        product_emails = 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;kaiqi.xue@kyligence.io;lina.liu@kyligence.io;xinxing.wu@kyligence.io;zhao.han@kyligence.io;yang.li@kyligence.io'
+    }
+
+    parameters {
+        choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
+        choice(name: 'deployType', choices: 'Yinglong\nRegular\nKE-4.5.x\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description: '交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列')
+        string(name: 'version', defaultValue: '4.5.19.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
+        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
+        choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n' )
+        string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
+        booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
+        // booleanParam(name: 'noSpark', defaultValue: false, description: '勾选时，打 NoSpark 包')
+    }
+
+    /**
+    1. pull code (KAP/kylin/KAP_Front)
+    2. build noSpark
+    3. build normal
+    4. deploy snapshot/release opencore (kylin)
+    5. 
+    */
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                script {
+                    // 1. 参数检查：version
+                    paramsVerify.version(params.version)
+                    // 2. 获取分支（前后端）
+                    if (params.deployWay == 'Auto Select') {
+                        // 2.1 根据分支流程规则，自动获取代码分支参数
+                        def _branch = getBranch(params.deployType, params.envStage, params.version)
+                        release_branch_front = _branch
+                        release_branch_back = _branch
+                        release_branch_kylin = _branch
+                        def cms = gitCodeKe(_branch, _branch, _branch, paramsMap)
+                        release_commitid_back = cms.release_commitid_back
+                        release_commitid_kylin = cms.release_commitid_kylin
+                        release_commitid_front = cms.release_commitid_front
+                    } else if (params.deployWay == 'Manual Select') {
+                        // 2.2 根据手动输入参数设定分支
+                        paramsMap = input(
+                            message: '请选择要开始的版本?',
+                            ok: '确认！',
+                            parameters: [
+                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                string(name: 'commitId_kylin', defaultValue: '', description: '后端Repo(kylin)的branch或者commitid'),
+                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid'),
+                                booleanParam(name: 'overide', defaultValue: false, description: '全新打包，覆盖现有同名包'),
+                                booleanParam(name: 'back_remote', defaultValue: false, description: '后端拉取远程分支（绕开 git mirror）'),
+                                booleanParam(name: 'front_remote', defaultValue: false, description: '前端拉取远程分支（绕开 git mirror）'),
+                                booleanParam(name: 'skipNoSpark', defaultValue: false, description: '勾选时，跳过打 NoSpark 包')
+                            ],
+                            // submitter:'liming.meng,admin',
+                            submitterParameter: 'APPROVER'
+                        )
+                        release_branch_front = paramsMap['commitId_front']
+                        release_branch_back = paramsMap['commitId_back']
+                        release_branch_kylin = paramsMap['commitId_kylin']
+                        def cms = gitCodeKe(release_branch_back, release_branch_front, paramsMap)
+                        release_commitid_back = cms.release_commitid_back
+                        release_commitid_kylin = cms.release_commitid_kylin
+                        release_commitid_front = cms.release_commitid_front
+                    } else {
+                        error(message: '请选择足够的信息来确认代码分支')
+                    }
+                }
+            }
+        }
+        stage('2.1.Building noSpark') {
+            when {
+                expression {
+                    return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
+                }
+            }
+            steps {
+                script {
+                    no_spark = true
+                    def bpns = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
+                    no_spark_package_info = bpns.no_spark_package_info
+                    println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
+
+                    println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
+                    // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                    uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name)
+
+                    println("Download URL(keep 2 weeks only): https://package.kyligence.com/${no_spark_package_info.package_file}")
+                }
+            }
+            post {
+                success {
+                    sendNotify('EMAIL',
+                        "[KE4] SUCCESSFUL to Upload the NOSPARK Tar to S3'",
+                        nospark_user_eamils,
+                        """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                        <p>The Job upload the package ${no_spark_package_info.file_name} to the S3: bucket [kyligencecloud-ci]</p>
+                        <p>It saved in the path of [/packages/ke-without-spark/], please check it and use! Tks!</p>"""
+                    )
+                }
+            }
+        }
+        stage('2.2.Building Normal') {
+            steps {
+                script {
+                    no_spark = false
+                    def bp = buildPackage(params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
+                    package_info = bp.package_info
+                    println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
+                    println("Download URL(keep 2 weeks only): https://package.kyligence.com/${package_info.package_file}")
+                }
+            }
+        }
+        stage('3.Scan Public API') {
+            when {
+                expression {
+                    return params.envStage == 'RC' || params.scanApi == true
+                }
+            }
+            steps {
+                container('build') {
+                    timestamps {
+                        script {
+                            dir('sourcecode') {
+                                sh script: """
+                                    ls -lh
+                                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/ke-api-inspector-release.tar.gz --directory-prefix=scanapi_workdir/
+                                    tar -zxvf ./${package_info.file_name} -C ./scanapi_workdir > /dev/null
+                                    tar -zxvf scanapi_workdir/ke-api-inspector-release.tar.gz -C ./scanapi_workdir > /dev/null
+
+                                    ls -lh scanapi_workdir
+                                    cd scanapi_workdir
+                                    ke_pkg_home="`pwd`/${package_info.ga_name - '.tar.gz'}"
+                                    cd ke-api-inspector-release
+                                    ./run.sh \$ke_pkg_home
+                                """
+
+                                publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'scanapi_workdir/ke-api-inspector-release/report', reportFiles: 'ke_api_inspect_report.html', reportName: 'API 扫描报告', reportTitles: "report from ${BUILD_NUMBER}"])
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.Dev/QA Upload') {
+            parallel {
+                stage('4.1.Upload to Azure CN') {
+                    steps {
+                        uplaodAzure(package_info)
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                    "SUCCESSFUL to Upload the Tar into the Azure CN server'",
+                                    // "liming.meng@kyligence.io",
+                                    tester_emails,
+                                    """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
+                                <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
+                            )
+                        }
+                    }
+                }
+                // stage('4.2.Upload to Nexus') {
+                //     steps {
+                //         uploadNexus('raw-tars-hosted', package_info.package_path, package_info.file_name)
+                //     }
+                // }
+                stage('4.2.Deploy SNAPSHOT Jar') {
+                    when {
+                        expression {
+                            return params.envStage in ['QA', 'RC']
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            script {
+                                dir('sourcecode') {
+                                    sh """
+                                        cat /root/.m2/settings.xml
+                                        mvn versions:set -DnewVersion="${version}-SNAPSHOT"
+                                        mvn deploy -Pdev -DskipTests -T 4C
+                                    """
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                "[KE4][SNAPSHOT JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
+                                jar_user_eamils,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the SNAPSHOT Jars into inner Product Library [repo-ofs]</p>
+                                <p>It saved in the repository of [maven-snapshots], please check it and use! Tks!</p>"""
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        stage('5.Approve GA') {
+            when {
+                expression {
+                    return params.envStage == 'GA'
+                }
+            }
+            steps {
+                container('build') {
+                    script {
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back}，开源 ${release_branch_kylin};\n  2. 发布版本号：${params.version}"
+                        println checkMsg
+                        // sh 'printenv'
+                        paramsGA = input(
+                            message: checkMsg,
+                            ok: '确认！',
+                            submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
+                            submitterParameter: 'APPROVER',
+                            parameters: [
+                                booleanParam(name: 'skipUpload', defaultValue: false, description: '是否跳过上传')
+                            ]
+                        )
+                        ga_name = package_info.ga_name
+                    }
+                }
+            }
+        }
+        stage('6.GA Upload') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && !paramsGA['skipUpload']
+                }
+            }
+            parallel {
+                stage('6.1.GA AWS CN') {
+                    steps {
+                        println("upload to AWS S3 in CN: ${ga_name}")
+                        // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                    }
+                }
+                stage('6.2.GA AWS Global') {
+                    steps {
+                        println("upload to AWS S3 in Global: ${ga_name}")
+                        // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                        uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
+                        // uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp')
+                    }
+                }
+                stage('6.3.GA Nexus') {
+                    steps {
+                        println("upload to Nexus repo-ofs: ${ga_name}")
+                        uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.5.x', ga_name)
+                        // uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted')
+                    }
+                }
+            }
+        }
+        stage('7.Released') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && params.customerPkg == 'NORMAL'
+                }
+            }
+            parallel {
+                stage('7.1.Tag') {
+                    steps {
+                        container('build') {
+                            script {
+                                def _tag = "ke-${version}"
+                                try {
+                                    dir('sourcecode') {
+                                        println "backend: KAP push tag: ${_tag} on branch ${release_branch_back} in sourcecode folder"
+                                        githubHelper 'TAG', release_branch_back, 'KAP', _tag
+                                        bcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                        println "backend [KAP] commitId: ${bcid}"
+
+                                        dir('kylin') {
+                                            println "kylin: kylin push tag: ${_tag} on branch ${release_branch_kylin} in kylin folder"
+                                            githubHelper 'TAG', release_branch_kylin, 'kylin', _tag
+                                            kcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                            println "kylin [kylin] commitId: ${kcid}"
+                                        }
+
+                                        dir('kystudio') {
+                                            println "frontend: KAP_Frontend push tag: ${_tag} on branch ${release_branch_front} in kystudio folder"
+                                            githubHelper 'TAG', release_branch_front, 'KAP_Frontend', _tag
+                                            fcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                            println "frontend [KAP_Frontend] commitId: ${fcid}"
+                                        }
+                                    }
+                                } catch (Exception err) {
+                                    echo err.getMessage()
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            sendNotify(
+                                'EMAIL',
+                                "[KE4][GA] ${version} SUCCESSFUL GA",
+                                // "liming.meng@kyligence.io",
+                                product_emails,
+                                """
+                                <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                                <p>The Kylin repo of [kylin] commitId: ${kcid}</p>
+                                <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
+                                <p>Automatically tag [ke-${version}] the front and back branches.</p>
+                                """
+                            )
+                        }
+                    }
+                }
+                stage('7.2.Deploy Jar') {
+                    steps {
+                        container('build') {
+                            script {
+                                dir('sourcecode') {
+                                    sh """
+                                    mvn versions:set -DnewVersion=${version}
+                                    mvn deploy -Pdev -DskipTests -T 4C
+                                    """
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                "[KE4][RELEASE JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
+                                jar_user_eamils,
+                                """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the RELEASE Jars into inner Product Library [repo-ofs]</p>
+                                <p>It saved in the repository of [maven-release], please check it and use! Tks!</p>"""
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

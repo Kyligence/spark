@@ -20,6 +20,8 @@ def call(String sonarArgLine) {
                         sh script: 'pwd'
                         try { sh script: 'cp ../src/server/target/jars/kap-* jars/' } catch (Exception err) { }
                         try { sh script: 'cp ../src/server/target/jars/yinglong-* jars/' } catch (Exception err) { }
+                        try { sh script: 'cp ../src/server/target/jars/kylin-* jars/' } catch (Exception err) { }
+                        try { sh script: 'cp ../src/server/target/jars/ke-* jars/' } catch (Exception err) { }
 
                         //  --- start ---  only yinglong-open-core. if error, ignore
                         if(fileExists("../kylin")) {
@@ -28,13 +30,9 @@ def call(String sonarArgLine) {
                         }
 
                         if(fileExists("../kyligence")) {
-                            try { sh script: "cp ../kyligence/src/core-metadata-extensions/target/ke-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/enterprise-service/target/ke-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/license-service/target/ke-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/query-extensions/target/ke-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/smart/target/ke-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/smart-server/target/ke-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/smart-service/target/ke-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/*/target/ke-* jars/" } catch (Exception err) { }
+                            // try { sh script: "cp ../kyligence/src/second-storage/clickhouse-it/target/kap-* jars/" } catch (Exception err) { }
+                            // try { sh script: "cp ../kyligence/src/spark-project/spark-it/target/spark-it-* jars/" } catch (Exception err) { }
                         }
                         // --- end ---
 
@@ -50,7 +48,6 @@ def call(String sonarArgLine) {
                         mvn sonar:sonar -T 4C \
                             -Dsonar.host.url=https://sonarcloud.io \
                             -Dsonar.organization=kyligence \
-                            -Dsonar.projectKey=Kyligence_KAP \
                             ${sonarArgLine} \
                             -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/sourcecode/coverage/jacoco.xml
                     """

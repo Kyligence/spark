@@ -33,25 +33,18 @@ pipeline {
                 container("git") {
                     dir("sourcecode") {
                         script {
-                            sh "env"
-                            githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            githubCheckout 'KAP', 'yinglong-devops', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
 
-                            def prNo = ghprbCommentBody.minus('retest this please with ').trim()
-                            def prBranch = ghprbTargetBranch
-                            if(prNo) {
-                                prBranch = "origin/pr/${prNo}/merge"
-                                println("prNo: ${prNo}, prBranch: ${prBranch}")
-                            }
                             // 替换 kylin 文件夹
                             sh 'ls -lha && ls -lha kylin'
                             sh 'rm -rf kylin'
                             dir('kylin') {
                                 sh 'pwd && ls -lha'
-                                githubCheckout 'kylin', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                                githubCheckout 'kylin', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                                 // replaceRepo()
                             }
-                            sh 'ls -lha && ls -lha kylin'
+                            sh 'ls -lha'
                         }
                         s3Archive4YingLong('download')
                     }
@@ -91,7 +84,7 @@ pipeline {
                 sonarAnalyze("""-Dsonar.pullrequest.base=${ghprbTargetBranch} \
                                 -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
                                 -Dsonar.pullrequest.key=${ghprbPullId} \
-                                -Dsonar.projectKey=Kyligence_KAP """)
+                                -Dsonar.projectKey=Kyligence_kylin2 """)
             }
         }
     }
