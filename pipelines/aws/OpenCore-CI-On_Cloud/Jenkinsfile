@@ -33,7 +33,8 @@ pipeline {
                 container("git") {
                     dir("sourcecode") {
                         script {
-                            githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            sh "env"
+                            githubCheckout 'KAP', params.branch ?: ghprbTargetBranch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
 
                             // 替换 kylin 文件夹
