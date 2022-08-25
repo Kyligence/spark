@@ -28,19 +28,19 @@ pipeline {
     }
 
     stages {
-        stage("Checkout Source Code") {
+        stage('Checkout Source Code') {
             steps {
-                container("git") {
-                    dir("sourcecode") {
+                container('git') {
+                    dir('sourcecode') {
                         script {
-                            sh "env"
+                            sh 'env'
                             githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
 
                             def prNo = ghprbCommentBody.minus('retest this please with ').trim()
                             def prBranch = ghprbTargetBranch
-                            if(!isNull(prNo)) {
-                                if(prNo.isNumber()) {
+                            if (!prNo) {
+                                if (prNo.isNumber()) {
                                     prBranch = "origin/pr/${prNo}/merge"
 
                                     // 替换 kylin 文件夹
@@ -50,12 +50,14 @@ pipeline {
                                     dir('kylin') {
                                         sh 'pwd && ls -lha'
                                         githubCheckout 'kylin', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
-                                        // replaceRepo()
+                                    // replaceRepo()
                                     }
                                     sh 'ls -lha && ls -lha kylin'
                                 } else {
-                                    println("use build-in code in the folder kylin")
+                                    println('use build-in code in the folder kylin')
                                 }
+                            } else {
+                                println("use build-in code in the folder kylin, prNo: ${prNo}")
                             }
                         }
                         s3Archive4YingLong('download')
@@ -65,11 +67,11 @@ pipeline {
         }
         stage('Maven Install') {
             steps {
-                container("maven") {
-                    dir("sourcecode") {
+                container('maven') {
+                    dir('sourcecode') {
                         script {
                             retry(3) {
-                                sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
+                                sh script: 'mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests'
                             }
                         }
                     }
