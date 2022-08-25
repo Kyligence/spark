@@ -39,19 +39,24 @@ pipeline {
 
                             def prNo = ghprbCommentBody.minus('retest this please with ').trim()
                             def prBranch = ghprbTargetBranch
-                            if(prNo) {
-                                prBranch = "origin/pr/${prNo}/merge"
-                                println("prNo: ${prNo}, prBranch: ${prBranch}")
+                            if(!isNull(prNo)) {
+                                if(prNo.isNumber()) {
+                                    prBranch = "origin/pr/${prNo}/merge"
+
+                                    // 替换 kylin 文件夹
+                                    println("merge the PR ${prNo} with kylin which is splited repo, prBranch: ${prBranch}")
+                                    sh 'ls -lha && ls -lha kylin'
+                                    sh 'rm -rf kylin'
+                                    dir('kylin') {
+                                        sh 'pwd && ls -lha'
+                                        githubCheckout 'kylin', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                                        // replaceRepo()
+                                    }
+                                    sh 'ls -lha && ls -lha kylin'
+                                } else {
+                                    println("use build-in code in the folder kylin")
+                                }
                             }
-                            // 替换 kylin 文件夹
-                            sh 'ls -lha && ls -lha kylin'
-                            sh 'rm -rf kylin'
-                            dir('kylin') {
-                                sh 'pwd && ls -lha'
-                                githubCheckout 'kylin', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
-                                // replaceRepo()
-                            }
-                            sh 'ls -lha && ls -lha kylin'
                         }
                         s3Archive4YingLong('download')
                     }
