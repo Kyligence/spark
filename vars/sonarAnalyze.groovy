@@ -38,6 +38,7 @@ def call(String sonarArgLine) {
 
                         try { sh script: 'rm -f jars/kap-external-curator-* jars/kap-external-guava20-* jars/kap-external-swagger-* jars/kap-external-influxdb-*' } catch (Exception err) { }
                         try { sh script: 'rm -f jars/*-tests.jar' } catch (Exception err) { }
+                        try { sh script: 'rm -f jars/*-assembly-*.jar' } catch (Exception err) { }
                         retry(3){
                             sh script: 'java -jar jacococli.jar report ./exec/* --html output --classfiles jars/ --xml jacoco.xml'
                         }
