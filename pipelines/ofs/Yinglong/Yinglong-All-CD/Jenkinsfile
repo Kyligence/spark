@@ -95,7 +95,7 @@ def getBranch(deployType, envStage, version) {
     def _branch_release = ''
     def _branch_qa = ''
     def _branch_dev = ''
-    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'yinglong-devops', 'ke-4.5.x']
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'ke-4.5.x']
 
     switch (deployType) {
         case 'Regular': 
@@ -118,16 +118,10 @@ def getBranch(deployType, envStage, version) {
             _branch_qa = "${_branch_release}-dev"
             _branch_dev = "${_branch_release}-dev"
             break
-        case 'Yinglong': // 含 OpenCore 结构
-            _branch_release = branchCollection[4]
-            _branch_qa = "yl-${version}-qa"
-            // _branch_dev = "${_branch_release}-dev"
-            _branch_dev = "${_branch_release}"
-            break
         case 'KE-4.5.x': // 
-            _branch_release = branchCollection[5]
+            _branch_release = branchCollection[4]
             _branch_qa = "ke-${version}-qa"
-            _branch_dev = "${_branch_release}-dev"
+            _branch_dev = "${branchCollection[0]}-dev"
             break
     }
 
@@ -241,7 +235,7 @@ def gitCodeKe(back, kylin, front, pMap) {
 def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customerPkg = 'NORMAL') {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}],deployType[${deployType}],customerPkg[${customerPkg}]"
     def package_path
-    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'yinglong-devops', 'ke-4.5.x']
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'ke-4.5.x']
     switch (deployType) {
         case 'Regular':
             package_path = "artifacts/${branchCollection[0]}/${envStage}"
@@ -255,11 +249,8 @@ def getPackageInfo(version, envStage, cid, deployType, noSpark = false, customer
         case 'SP-4.3.x':
             package_path = "artifacts/${branchCollection[3]}/${envStage}"
             break
-        case 'Yinglong': // 含 OpenCore 结构
-            package_path = "artifacts/${branchCollection[4]}/${envStage}"
-            break
         case 'KE-4.5.x': // 
-            package_path = "artifacts/${branchCollection[5]}/${envStage}"
+            package_path = "artifacts/${branchCollection[4]}/${envStage}"
             break
     }
     println "package_path: ${package_path}"
@@ -407,7 +398,7 @@ pipeline {
 
     parameters {
         choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
-        choice(name: 'deployType', choices: 'Yinglong\nRegular\nKE-4.5.x\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description: '交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列')
+        choice(name: 'deployType', choices: 'Regular\nKE-4.5.x\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description: '交付版本流程:\nRegular - (旧)指主线发布\nKE-4.5.x - 指对应4.5系列的发布（含 OpenCore 结构）\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列')
         string(name: 'version', defaultValue: '4.5.19.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
         choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n' )
