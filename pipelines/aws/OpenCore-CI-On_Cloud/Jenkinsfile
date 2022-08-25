@@ -33,7 +33,7 @@ pipeline {
                 container("git") {
                     dir("sourcecode") {
                         script {
-                            githubCheckout 'KAP', 'yinglong-devops', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
 
                             // 替换 kylin 文件夹
