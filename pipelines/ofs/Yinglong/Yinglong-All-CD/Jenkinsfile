@@ -119,9 +119,9 @@ def getBranch(deployType, envStage, version) {
             _branch_dev = "${_branch_release}-dev"
             break
         case 'KE-4.5.x': // 
-            _branch_release = branchCollection[4]
+            _branch_release = branchCollection[0]
             _branch_qa = "ke-${version}-qa"
-            _branch_dev = "${branchCollection[0]}-dev"
+            _branch_dev = "${branchCollection[4]}-dev"
             break
     }
 
