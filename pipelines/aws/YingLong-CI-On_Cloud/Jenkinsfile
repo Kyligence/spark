@@ -2,6 +2,15 @@
 
 @Library('devopslib') _
 
+def replaceRepo() {
+    sh """
+        env
+        sed -i 's#https://repo-ofs.kyligence.com#http://devops-nexus:8081#g' pom.xml
+        sed -i 's#https://repository.kyligence.io#http://devops-nexus:8081#g' pom.xml
+        cat pom.xml
+    """
+}
+
 pipeline {
     options {
         timeout(time: 3, unit: 'HOURS')
@@ -24,9 +33,25 @@ pipeline {
                 container("git") {
                     dir("sourcecode") {
                         script {
-                            retry(3) {
-                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            sh "env"
+                            githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            // replaceRepo()
+
+                            def prNo = ghprbCommentBody.minus('retest this please with ').trim()
+                            def prBranch = ghprbTargetBranch
+                            if(prNo) {
+                                prBranch = "origin/pr/${prNo}/merge"
+                                println("prNo: ${prNo}, prBranch: ${prBranch}")
                             }
+                            // 替换 kylin 文件夹
+                            sh 'ls -lha && ls -lha kylin'
+                            sh 'rm -rf kylin'
+                            dir('kylin') {
+                                sh 'pwd && ls -lha'
+                                githubCheckout 'kylin', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                                // replaceRepo()
+                            }
+                            sh 'ls -lha && ls -lha kylin'
                         }
                         s3Archive4YingLong('download')
                     }
@@ -38,13 +63,7 @@ pipeline {
                 container("maven") {
                     dir("sourcecode") {
                         script {
-                            def external_version = sh script: 'mvn help:evaluate -Dexpression=external.version  -q -DforceStdout',returnStdout:true
-                            println external_version
-
                             retry(3) {
-                                if (!(external_version && external_version=="4.5.9")){
-                                    sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
-                                }
                                 sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
                             }
                         }
@@ -71,7 +90,8 @@ pipeline {
             steps {
                 sonarAnalyze("""-Dsonar.pullrequest.base=${ghprbTargetBranch} \
                                 -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
-                                -Dsonar.pullrequest.key=${ghprbPullId} """)
+                                -Dsonar.pullrequest.key=${ghprbPullId} \
+                                -Dsonar.projectKey=Kyligence_KAP """)
             }
         }
     }

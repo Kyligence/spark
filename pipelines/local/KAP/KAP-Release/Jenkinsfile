@@ -1,0 +1,275 @@
+#!groovy
+
+@Library('devopslib') _
+
+final AGENT_LABEL_MAPPING = ['hdp-fi':'10.1.1.118-hdp2.4', 'cdh':'10.1.2.87-cdh', 'cdh6':'10.1.2.87-cdh', 'cdh7':'10.1.2.87-cdh',
+                            'hdp3':'10.1.2.87-cdh', 'mapr':'10.1.1.45-hdp2.4', 'mrs':'10.1.1.118-hdp2.4']
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label AGENT_LABEL_MAPPING[params.hadoop_release]
+    }
+
+    parameters {
+        choice(name: 'hadoop_release', choices: ['hdp-fi', 'cdh', 'cdh6', 'cdh7', 'hdp3', 'mapr', 'mrs'], description: '选择 Hadoop 发行版本')
+        string(name: 'repo', defaultValue: 'Kyligence', description: '')
+        string(name: 'branch', defaultValue: 'master', description: '')
+        string(name: 'cdh_branch', defaultValue: '', description: 'only cdh6+ or hdp3\n cdh6: master-cdh6.0 \ncdh7: master-CDH7 \n hdp3: master-hdp3')
+        string(name: 'release_version', defaultValue: '3.3.0-Beta', description: 'The release version present in tar filename.')
+        string(name: 'release_series', defaultValue: 'master', description: '')
+        booleanParam(name: 'skipTests', defaultValue: true, description: '')
+        booleanParam(name: 'hasLicense', defaultValue: true, description: '')
+        booleanParam(name: 'onlyPlus', defaultValue: true, description: '')
+        choice(name: 'skip_engine', choices: ['', 'mr', 'spark'], description: '')
+        string(name: 'PATCH_NAME', defaultValue: '100-license.patch', description: '')
+        booleanParam(name: 'skipObf', defaultValue: false, description: '')
+        booleanParam(name: 'is3_2', defaultValue: false, description: '')
+        booleanParam(name: 'is_35x', defaultValue: false, description: '')
+    }
+
+    stages {
+        stage('Pull Code') {
+            parallel {
+                stage("Checkout Backend Code") {
+                    steps {
+                        dir('sourcecode') {
+                            timestamps {
+                                script {
+                                    retry(3) {
+                                        pullCodeFromGitMirror "KAP", "${params.branch}", false, "${params.repo}"
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+                stage("Checkout Frontend Code") {
+                    steps {
+                        dir('sourcecode') {
+                            timestamps {
+                                script {
+                                    retry(3) {
+                                        checkoutKapNodeModules()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build NoPlus') {
+            when {
+                expression {
+                    return !params.onlyPlus
+                }
+            }
+            steps {
+                script {
+                    dir("noplus") {
+                        sh script: """
+                            rm -rf ./*
+                            ls -l ../sourcecode
+                            cp -rf ../sourcecode/. ./
+                            ls -l
+                        """
+
+                        if (params.hadoop_release in ['cdh6', 'cdh7', 'hdp3']) {
+                            sh script: """
+                                git config credential.helper store
+                                git branch -D ${cdh_branch} || echo "${branch} branch is not existed"
+                                git checkout -b ${cdh_branch}
+                            """
+                            if (params.hadoop_release == 'cdh6') {
+                                sh script: "(git apply build/patch/000-support-cdh6.patch) || (git apply --abort && exit 1;)"
+                            } else if (params.hadoop_release == 'cdh7') {
+                                sh script: "(git apply build/patch/000-support-cdh7.patch) || (git apply --abort && exit 1;)"
+                            } else if (params.hadoop_release == 'hdp3') {
+                                sh script: "(git apply build/patch/000-support-hdp3.patch) || (git apply --abort && exit 1;)"
+                            }
+                        } else if (params.hadoop_release == 'mrs') {
+                            sh script: "git apply build/patch/0001-upgrade-distcp-to-3.1.1.patch"
+                        }
+
+                        sh script: """
+                            cp /mnt/jenkins/apache-tomcat-7.0.85.tar.gz build/
+                            cp /mnt/jenkins/apache-tomcat-8.5.33.tar.gz build/
+                            cp /mnt/jenkins/apache-tomcat-8.5.39.tar.gz build/
+                            cp /mnt/jenkins/apache-tomcat-8.5.51.tar.gz build/
+                            cp /mnt/jenkins/kyspark/spark-2.2.1-bin-kyspark-r*.tgz build/
+                            unzip kap_nodemodules/node_modules.zip -d kystudio/
+                            rm -rf kap_nodemodules
+                        """
+
+                        kap_release.copy_kybot params.hadoop_release
+
+                        if (params.is3_2) {
+                            println "use 32x patch"
+                            sh script: "git apply /mnt/jenkins/kap/master/license/3.3.1.patch || exit 1"
+                        } else if (params.is_35x) {
+                            println "use 35x patch"
+                            sh script: "git apply /mnt/jenkins/kap/master/license/3.4.0.x.patch || exit 1"
+                        } else {
+                            println "use master patch"
+                            sh script: "git apply build/patch/${PATCH_NAME} || exit 1"
+                        }
+
+                        if (!params.hasLicense) {
+                            println "skip create license"
+                        } else {
+                            kap_release.gen_license()
+                        }
+
+                        if (params.skipObf) {
+                            kap_release.build params.hadoop_release, [skipObf:true, noPlus: true, skipFront: true]
+                        } else {
+                            kap_release.build params.hadoop_release, [skipObf:false, noPlus: true, skipFront: true]
+                        }
+
+                        kap_release.git_archive params.hadoop_release, params.release_series
+
+                        if (!params.skipTests) {
+                            kap_release.smoke_test params.hadoop_release, params.skip_engine, false
+                        }
+
+                        kap_release.release_noplus params.hadoop_release, params.release_series
+                    }
+                }
+            }
+            post {
+                failure {
+                    script {
+                        sh script: """
+                            lsof -i :7070 | grep "(LISTEN)" | awk '{print \$2}' | xargs kill -9
+                            lsof -i :7071 | grep "(LISTEN)" | awk '{print \$2}' | xargs kill -9
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Build Plus') {
+            steps {
+                script {
+                    dir("plus") {
+                        sh script: """
+                            rm -rf ./*
+                            ls -l ../sourcecode
+                            cp -rf ../sourcecode/. ./
+                            ls -l
+                        """
+
+                        if (params.hadoop_release in ['cdh6', 'cdh7', 'hdp3']) {
+                            sh script: """
+                                git config credential.helper store
+                                git branch -D ${cdh_branch} || echo "${branch} branch is not existed"
+                                git checkout -b ${cdh_branch}
+                            """
+
+                            if (params.hadoop_release == 'cdh6') {
+                                sh script: "(git apply build/patch/000-support-cdh6.patch) || (git apply --abort && exit 1;)"
+                            } else if (params.hadoop_release == 'cdh7') {
+                                sh script: "(git apply build/patch/000-support-cdh7.patch) || (git apply --abort && exit 1;)"
+                            } else if (params.hadoop_release == 'hdp3') {
+                                sh script: "(git apply build/patch/000-support-hdp3.patch) || (git apply --abort && exit 1;)"
+                            }
+
+                            sh script: "git add ."
+                        } else if (params.hadoop_release == 'mrs') {
+                            sh script: "git apply build/patch/0001-upgrade-distcp-to-3.1.1.patch"
+                        }
+
+                        sh script: """
+                            cp /mnt/jenkins/apache-tomcat-7.0.85.tar.gz build/
+                            cp /mnt/jenkins/apache-tomcat-8.5.33.tar.gz build/
+                            cp /mnt/jenkins/apache-tomcat-8.5.39.tar.gz build/
+                            cp /mnt/jenkins/apache-tomcat-8.5.51.tar.gz build/
+                            cp /mnt/jenkins/kyspark/spark-2.2.1-bin-kyspark-r*.tgz build/
+                            unzip kap_nodemodules/node_modules.zip -d kystudio/
+                            rm -rf kap_nodemodules
+                        """
+
+                        kap_release.copy_kybot params.hadoop_release
+
+                        if (params.is3_2) {
+                            println "use 32x patch"
+                            sh script: "git apply /mnt/jenkins/kap/master/license/3.3.1.patch || exit 1"
+                        } else if (params.is_35x) {
+                            println "use 35x patch"
+                            sh script: "git apply /mnt/jenkins/kap/master/license/3.4.0.x.patch || exit 1"
+                        } else {
+                            println "use master patch"
+                            sh script: "git apply build/patch/${PATCH_NAME} || exit 1"
+                        }
+
+                        if (!params.hasLicense) {
+                            println "skip create license"
+                        } else {
+                            kap_release.gen_license()
+                        }
+
+                        if (params.skipObf) {
+                            kap_release.build params.hadoop_release, [skipObf:true, noPlus: false, skipFront: true]
+                        } else {
+                            kap_release.build params.hadoop_release, [skipObf:false, noPlus: false, skipFront: true]
+                        }
+
+                        kap_release.git_archive params.hadoop_release, params.release_series
+
+                        if (!params.skipTests) {
+                            if (params.hadoop_release in ['hdp', 'mrs']) {
+                                sh script: """
+                                    cp /mnt/jenkins/kap/master/0001-For-spark-cubing.patch ./
+                                    git apply 0001-For-spark-cubing.patch
+                                """
+                            }
+
+                            kap_release.smoke_test params.hadoop_release, params.skip_engine, true
+                        }
+
+                        kap_release.release_plus params.hadoop_release, params.release_version, params.release_series
+
+                        if (params.hadoop_release == 'cdh6' && params.repo == 'Kyligence') {
+                            sh script: """
+                                git commit -m 'support cdh6+ patch'
+                                git remote add upstream https://github.com/Kyligence/KAP.git
+                                git push -f upstream ${cdh_branch}
+                            """
+                        } else if (params.hadoop_release == 'cdh7' && params.repo == 'Kyligence') {
+                            sh script: """
+                                git commit -m 'support cdh7 patch'
+                                git remote add upstream https://github.com/Kyligence/KAP.git
+                                git push -f upstream ${cdh_branch}
+                            """
+                        } else if (params.hadoop_release == 'hdp3' && params.repo == 'Kyligence') {
+                             sh script: """
+                                 git commit -m 'support hdp3 patch'
+                                 git remote add upstream https://github.com/Kyligence/KAP.git
+                                 git push -f upstream ${cdh_branch}
+                             """
+                        }
+
+                    }
+                }
+            }
+            post {
+                failure {
+                    script {
+                        sh script: """
+                            lsof -i :7070 | grep "(LISTEN)" | awk '{print \$2}' | xargs kill -9
+                            lsof -i :7071 | grep "(LISTEN)" | awk '{print \$2}' | xargs kill -9
+                        """
+                    }
+                }
+            }
+        }
+
+    }
+}

@@ -1,0 +1,115 @@
+#!groovy
+
+@Library('devopslib') _
+
+final String NOTIFY_TO = "na.pan@kyligence.io;chen.gui@kyligence.io;luqian.chen@kyligence.io;xue.tang@kyligence.io;sijie.chen@kyligence.io"
+final String CACHE_DIR = "/var/devops/cache/Zen_Manual"
+
+
+pipeline {
+    options {
+        timeout(time: 24, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-handbook2-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '指定仓库')
+        string(name: 'branch', defaultValue: 'quick_started', description: '指定分支')
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                container('git') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror "Zen_Manual", "${params.branch}", false, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                container('build') {
+                    dir('zen-quickstart') {
+                        script {
+                            commitid = sh(script:'git rev-parse --short HEAD', returnStdout: true).trim()
+                            println "commitid: ${commitid}"
+
+                            cached = sh(script: """
+                                ls -l ${CACHE_DIR}
+                                ls -l ${CACHE_DIR}/${commitid}
+                            """, returnStatus: true) == 0
+                            println cached ? "in cache!" : "not in cache!"
+
+                            if (cached) {
+                                println "From cache..."
+                                sh script: """
+                                    rm -rf build && mkdir build
+                                    cp -rf ${CACHE_DIR}/${commitid}/* ./build/
+                                """
+                            } else {
+                                println "Building..."
+                                sh script: """
+                                    rm -f .npmrc
+                                    echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+
+                                    npm install && npm run build
+                                """
+
+                                println "Caching..."
+                                sh script: """
+                                    rm -rf ${CACHE_DIR}/${commitid} && mkdir -p ${CACHE_DIR}/${commitid}
+                                    cp -rf build/* ${CACHE_DIR}/${commitid}/
+                                """
+                            }
+                            sh script: "ls -l build"
+
+                            sendNotify('EMAIL', "[DEVOPS] Handbook [Zen_Manual] Ready to Deploy", "${NOTIFY_TO}", """
+                                <h3>Hi,</h3><br />
+                                <p>Handbook [Zen_Manual] Ready to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
+                                <p>Please check it and Confirm on the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                            """)
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            input {
+                message '可以发布吗？'
+                ok '确认！'
+                submitterParameter 'APPROVER'
+            }
+            steps {
+                container('build') {
+                    dir('zen-quickstart') {
+                        script {
+                            withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                                s3Upload(bucket:"zen-docs.kyligence.io", includePathPattern:'**/*', workingDir:'build')
+                            }
+
+                            sendNotify('EMAIL', "[DEVOPS] Handbook [Zen_Manual] Deploy Successful", "${NOTIFY_TO}", """
+                                <h3>Hi,</h3><br />
+                                <p>Handbook [Zen_Manual] Success to Deploy: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]:</p>
+                                <p>The pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                                <p>Document URL: http://zen-docs.kyligence.io/</p>
+                            """)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

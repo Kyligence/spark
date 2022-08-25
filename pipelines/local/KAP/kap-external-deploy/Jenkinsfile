@@ -1,0 +1,78 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label '10.1.1.118-hdp2.4 || 10.1.1.45-hdp2.4'
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '')
+        string(name: 'branch', defaultValue: 'master', description: '')
+        string(name: 'WHORU', defaultValue: 'anonymous', description: 'who are you?')
+        string(name: 'release_version', defaultValue: '3.4.5.2119', description: '')
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                script {
+                    currentBuild.displayName = "#${BUILD_NUMBER} for ${params.WHORU}"
+                }
+                dir('sourcecode') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror "KAP", "${params.branch}", false, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh script: """
+                    export SPARK_HOME=/usr/local/kyspark/spark-bin-2.2.1-r20
+                    export MVN_SETTING=/mnt/jenkins/pom-for-deploy/settings_kap.xml
+
+                    MAVEN_OPTS="-Dmaven.repo.local=\${WORKSPACE}/.repository" mvn -s \${MVN_SETTING} clean
+
+                    cd \${WORKSPACE}/sourcecode
+                    mvn versions:set -DnewVersion=\${release_version}
+
+                    cd \${WORKSPACE}/sourcecode/kylin
+                    mvn versions:set -DnewVersion=\${release_version}
+
+                    cd \${WORKSPACE}/sourcecode
+                    sed -i 's/3.2.0-SNAPSHOT/'\${release_version}'/g' extensions/external/curator/pom.xml
+                    sed -i 's/3.2.0-SNAPSHOT/'\${release_version}'/g' extensions/external/curator-test/pom.xml
+                    sed -i 's/3.2.0-SNAPSHOT/'\${release_version}'/g' extensions/external/influxdb/pom.xml
+                    sed -i 's/3.2.0-SNAPSHOT/'\${release_version}'/g' kylin/external/htrace/pom.xml
+                    sed -i 's/3.2.0-SNAPSHOT/'\${release_version}'/g' pom.xml
+                    IFS=\$'\\n'
+                    sed -i 's/<\\/project>/<distributionManagement><snapshotRepository><id>user-snapshots<\\/id><name>User Project SNAPSHOTS<\\/name><url>https:\\/\\/repository.kyligence.io\\/repository\\/maven-snapshots\\/<\\/url><\\/snapshotRepository><repository><id>user-releases<\\/id><name>User Project Release<\\/name><url>https:\\/\\/repository.kyligence.io\\/repository\\/maven-releases\\/<\\/url><\\/repository><\\/distributionManagement><\\/project>/g' pom.xml
+                    sed -i 's/<\\/project>/<distributionManagement><snapshotRepository><id>user-snapshots<\\/id><name>User Project SNAPSHOTS<\\/name><url>https:\\/\\/repository.kyligence.io\\/repository\\/maven-snapshots\\/<\\/url><\\/snapshotRepository><repository><id>user-releases<\\/id><name>User Project Release<\\/name><url>https:\\/\\/repository.kyligence.io\\/repository\\/maven-releases\\/<\\/url><\\/repository><\\/distributionManagement><\\/project>/g' kylin/pom.xml
+
+                    MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/sourcecode/.repository" mvn -s \${MVN_SETTING} install -DskipTests=true
+                    MAVEN_OPTS="-Dmaven.repo.local=${WORKSPACE}/sourcecode/.repository" mvn -s \${MVN_SETTING} deploy -DskipTests=true
+
+                    ##deploy external
+                    mvn -s /mnt/jenkins/pom-for-deploy/settings_kap.xml deploy:deploy-file -DgroupId=io.kyligence.kap -DartifactId=kap-external-curator -Dversion=${release_version} -Dpackaging=jar -Dfile=.repository/io/kyligence/kap/kap-external-curator/${release_version}/kap-external-curator-${release_version}.jar -Durl=https://repository.kyligence.io/repository/maven-releases/ -DrepositoryId=user-releases
+                    mvn -s /mnt/jenkins/pom-for-deploy/settings_kap.xml deploy:deploy-file -DgroupId=io.kyligence.kap -DartifactId=kap-external-curator-test -Dversion=${release_version} -Dpackaging=jar -Dfile=.repository/io/kyligence/kap/kap-external-curator-test/${release_version}/kap-external-curator-test-${release_version}.jar -Durl=https://repository.kyligence.io/repository/maven-releases/ -DrepositoryId=user-releases
+                    mvn -s /mnt/jenkins/pom-for-deploy/settings_kap.xml deploy:deploy-file -DgroupId=io.kyligence.kap -DartifactId=kap-external-influxdb -Dversion=${release_version} -Dpackaging=jar -Dfile=.repository/io/kyligence/kap/kap-external-influxdb/${release_version}/kap-external-influxdb-${release_version}.jar -Durl=https://repository.kyligence.io/repository/maven-releases/ -DrepositoryId=user-releases
+                    mvn -s /mnt/jenkins/pom-for-deploy/settings_kap.xml deploy:deploy-file -DgroupId=org.apache.kylin -DartifactId=kylin-external-htrace -Dversion=${release_version} -Dpackaging=jar -Dfile=.repository/org/apache/kylin/kylin-external-htrace/${release_version}/kylin-external-htrace-${release_version}.jar -Durl=https://repository.kyligence.io/repository/maven-releases/ -DrepositoryId=user-releases
+
+                """
+            }
+        }
+    }
+}

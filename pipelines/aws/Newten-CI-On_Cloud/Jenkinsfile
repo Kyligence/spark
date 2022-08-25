@@ -71,7 +71,8 @@ pipeline {
             steps {
                 sonarAnalyze("""-Dsonar.pullrequest.base=${ghprbTargetBranch} \
                                 -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
-                                -Dsonar.pullrequest.key=${ghprbPullId} """)
+                                -Dsonar.pullrequest.key=${ghprbPullId} \
+                                -Dsonar.projectKey=Kyligence_KAP """)
             }
         }
     }

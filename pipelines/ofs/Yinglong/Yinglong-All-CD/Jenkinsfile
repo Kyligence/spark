@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib@opencore') _
+@Library('devopslib') _
 
 import groovy.json.*
 import hudson.model.*
@@ -410,7 +410,7 @@ pipeline {
         choice(name: 'deployType', choices: 'Yinglong\nRegular\nKE-4.5.x\nKE-4.3.x\nSP-4.5.x\nSP-4.3.x', description: '交付版本流程:\nRegular - 指主线发布\nKE-4.3.x - 指对应4.3系列的发布\nSP-4.5.x - 指每周的版本发布4.5系列\nSP-4.3.x - 指每周的版本发布4.3系列')
         string(name: 'version', defaultValue: '4.5.19.0', description: '填写版本号，格式：4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-        // choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n' )
+        choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n' )
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         // booleanParam(name: 'noSpark', defaultValue: false, description: '勾选时，打 NoSpark 包')

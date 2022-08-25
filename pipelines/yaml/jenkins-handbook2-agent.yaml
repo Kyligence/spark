@@ -5,10 +5,6 @@ spec:
   containers:
     - name: "git"
       image: "bitnami/git:2.35.1-debian-10-r68"
-      volumeMounts:
-        - mountPath: "/var/cicd"
-          name: "jenkins-common"
-          subPath: "newten-cicd"
       tty: true
       command:
         - "cat"
@@ -20,7 +16,7 @@ spec:
           memory: "1Gi"
           cpu: "1000m"
     - name: "build"
-      image: "repo-ofs.kyligence.com/handbook:1.12"
+      image: "repo-ofs.kyligence.com/handbook2:2.0"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
@@ -33,22 +29,10 @@ spec:
           memory: "8Gi"
           cpu: "4000m"
       volumeMounts:
-        - mountPath: "/var/cicd"
+        - mountPath: "/var/devops/cache"
           name: "jenkins-common"
-          subPath: "newten-cicd"
-        - mountPath: "/etc/pem/"
-          name: "handbook-secret"
-        # - mountPath: "/etc/pem/rsa.pem"
-        #   name: "handbook-secret"
-        #   subPath: "rsa.pem"
-        - mountPath: "/usr/local/lib/node_modules"
-          name: "jenkins-common"
-          subPath: "handbook"
+          subPath: "cache"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-common"
-    - name: "handbook-secret"
-      secret:
-        secretName: "handbook-secret"
-        defaultMode: 0400
