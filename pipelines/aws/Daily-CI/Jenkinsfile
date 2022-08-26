@@ -69,7 +69,8 @@ pipeline {
         }
         stage('SonarQube') {
             steps {
-                sonarAnalyze("-Dsonar.branch.name=${params.branch}")
+                sonarAnalyze("""-Dsonar.branch.name=${params.branch} \
+                                -Dsonar.projectKey=Kyligence_KAP """)
             }
         }
     }
