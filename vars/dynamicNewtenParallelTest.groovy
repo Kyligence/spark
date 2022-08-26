@@ -6,7 +6,7 @@ def call() {
         def modules = sh(script: '''
                 cd sourcecode
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
-            ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") || it.startsWith("kyligence/src") || it == "kylin" }
+            ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") || it.startsWith("kyligence/src") || it.startsWith("kylin/src") || it == "kylin" }
         println "origin modules: ${modules}"
 
         def kap_it_module = modules.findAll({ it.contains('src/kap-it') }).getAt(0)
