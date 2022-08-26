@@ -1,0 +1,75 @@
+#!groovy
+
+@Library('devopslib') _
+
+def credentialsIds = [
+    'aws_global':'66511a3e-78d4-410f-9268-8797d07260a7',
+    'azure_cn':'loadtest_azure_cn',
+    'huawei':'8162ba51-32c6-4aac-bbe5-f0e3d3808bb7']
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label '10.1.1.118-hdp2.4'
+    }
+
+    parameters {
+        choice(name: 'cloud', choices: ['aws_global', 'azure_cn', 'huawei'], description: '选择云平台')
+        choice(name: 'deploy', choices: ['no', 'yes'], description: '是否部署newten')
+        string(name: 'version', defaultValue: '4.5.4', description: '要部署的KC版本号')
+        string(name: 'query_work_node_count', defaultValue: '2,4,8', description: '查询节点数量')
+        string(name: 'ke_node_count', defaultValue: '1,2,4', description: 'KE节点数')
+        booleanParam(name: 'skip_build_benchmark', defaultValue: true, description: '跳过构建')
+        booleanParam(name: 'skip_query_benchmark', defaultValue: true, description: '跳过query')
+        booleanParam(name: 'skip_qps_benchmark', defaultValue: false, description: '跳过qps')
+        booleanParam(name: 'skip_alluxio_warmup', defaultValue: false, description: '跳过alluxio预热')
+        string(name: 'concurrent', defaultValue: '150', description: '并发数')
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                dir('sourcecode') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror "KC-Toolbox", "master"
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir("sourcecode") {
+                    withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh script: """
+                            ansible-galaxy collection install git+https://${GIT_PASSWORD}@github.com/Kyligence/ansible_collection_ke_cloud.git
+                            ansible-galaxy collection install ansible.posix
+                        """
+                        ansiblePlaybook credentialsId: "${credentialsIds[cloud]}", disableHostKeyChecking: true, \
+                            extras: "-e deploy=${deploy} -e version=${version} -e query_work_node_count=${query_work_node_count} \
+                                -e ke_node_count=${ke_node_count} -e skip_build_benchmark=${skip_build_benchmark} -e skip_query_benchmark=${skip_query_benchmark} \
+                                -e skip_qps_benchmark=${skip_qps_benchmark} -e skip_alluxio_warmup=${skip_alluxio_warmup} -e conf_category=qps -e query_concurrent_count=${concurrent}", \
+                            installation: 'py3-ansible', inventory: 'ansible/inventory', limit: "${cloud}", playbook: 'ansible/playbook.yml'
+                    }
+                }
+            }
+            post {
+                success {
+                    dir("sourcecode") {
+                        archiveArtifacts artifacts: 'logs/, report/', followSymlinks: false
+                        perfReport filterRegex: '', persistConstraintLog: true, showTrendGraphs: true, sourceDataFiles: 'report/*.jtl'
+                    }
+                }
+            }
+        }
+    }
+}
