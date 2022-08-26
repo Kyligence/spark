@@ -18,6 +18,17 @@ def call() {
             ])
         }
 
+        if ('kylin' in modules) {
+            def kylin_modules = sh(script: '''
+                cd sourcecode/kylin
+                mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
+            ''', returnStdout: true).trim().split("\n").collect({ 'kylin/' + it.trim() }).findAll { it.startsWith("kylin/src") }
+            println "kylin sub modules: ${kylin_modules}"
+
+            modules.removeAll(['kylin'])
+            modules.addAll(kylin_modules)
+        }
+
         Collections.reverse(modules)
         println "final modules: ${modules}"
 
@@ -57,7 +68,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                             -Duser.timezone=GMT+8 ${jvmArgs}
                         """
                         item = taskQueue.poll()
-                    } catch(ex) {
+                    } catch (ex) {
                         echo """Exception: ${ex.toString()}\n \
                                 ooops - caught: ${ex.class}\n \
                                 ooops - with msg: ${ex.message}\n \
@@ -65,8 +76,8 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         jvmArgs = ''
                         _count += 1
                     }
-                    
-                    if(_count==2){
+
+                    if (_count == 2) {
                         error 'Retry twice and still fail'
                     }
                 }
