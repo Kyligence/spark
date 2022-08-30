@@ -45,6 +45,7 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
     def releaseName = releaseVersion.replace("-kylin", "")
     //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
     //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
+    //https://olapio.atlassian.net/browse/KC-12372 delete slf4j-log4j12
     sh script: """
         sleep ${waitTime}
         export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
@@ -52,6 +53,7 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
         cp ../depedencies/log4j/*.jar dist/jars/
         cp ../depedencies/cloud_log4j/*.jar dist/jars/
         rm  dist/jars/log4j-1.2-api-*.jar
+        rm  dist/jars/slf4j-log4j12*.jar
         cp -r ../hive_1_2_2  dist/
         cp ../depedencies/${dependencyDir}/* dist/jars/
         cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
