@@ -35,7 +35,7 @@ pipeline {
                         script {
                             sh 'env'
                             githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
-                            replaceRepo()
+                            // replaceRepo()
 
                             def prNo = ghprbCommentBody.minus('retest this please with ').trim()
                             def prBranch = ghprbTargetBranch
@@ -50,7 +50,7 @@ pipeline {
                                     dir('kylin') {
                                         sh 'pwd && ls -lha'
                                         githubCheckout 'kylin', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
-                                        replaceRepo()
+                                        // replaceRepo()
                                     }
                                     sh 'ls -lha && ls -lha kylin'
                                 } else {
