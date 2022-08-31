@@ -692,4 +692,11 @@ pipeline {
             }
         }
     }
+post {
+  failure {
+    container('build') {
+    feishu("失败！！ ❌")
+    }
+  }
+ }
 }
