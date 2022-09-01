@@ -1,0 +1,175 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label '10.1.3.90-kylin_cdh'
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'apache', description: '')
+        string(name: 'branch', defaultValue: 'main', description: '')
+        booleanParam(name: 'OnlyPackage', defaultValue: false, description: '只打包, 不执行smoke test')
+        booleanParam(name: 'Spark3Profile', defaultValue: false, description: '使用 Spark3 Profile')
+        booleanParam(name: 'CDH57Profile', defaultValue: false, description: '为 kylin3 使用 cdh57 profile')
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                dir('kylin') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror "kylin", "${params.branch}", true, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir("kylin") {
+                    sh script: """
+                        cp -f /root/lib/spark-2.3.2-bin-hadoop2.7.tgz build/
+                        cp -f /mnt/jenkins/flink/flink-1.7.2-bin-hadoop27-scala_2.11.tgz build/
+
+                        whoami
+                        pwd
+                        set
+
+                        rm -f kylin-tools.log
+                        rm -f build/conf/kylin-tools-log4j.properties
+                        cp ../kylin-tools-log4j.properties build/conf/
+
+                        # Ignore testDiag.py
+                        sed -ie "s/unittest.main()//g" build/smoke-test/testDiag.py
+
+                        ## 为了处理 maven-scala-plugin的问题
+                        sed -ie "s/<!--<version>3.4.1<\\/version>-->/<version>3.4.1<\\/version>/g" pom.xml
+
+                        ## spark从Kylin的二进制包去除了
+                        export SPARK_HOME=`pwd`"/build/spark-2.3.2-bin-hadoop2.7"
+
+                        cd build
+                        tar -zxf spark-2.3.2-bin-hadoop2.7.tgz
+                        cd ..
+
+                        lsof -i :7070,7071 | grep "(LISTEN)" | awk '{print \$2}' | xargs kill -9 || exit 0
+                    """
+
+                    sh script: """
+                        npm cache verify
+
+                        # because I met scala maven plugin require higher version of maven,
+                        # so I manually upgrade it here (cdh-master)
+                        # By xiaoxiang.yu
+                        export PATH=/root/xiaoxiang.yu/lib/apache-maven-3.6.2/bin:\$PATH
+
+                        ## 在cdh上打包必须制定 Profile, 否则报错
+                        if [[ \$HOSTNAME =~ "cdh" ]]
+                        then
+                          export PATH=/usr/java/jdk1.8.0_171/bin:\$PATH
+                          echo \$PATH
+                          echo "You are in cloudera node"
+                          sed -ie "s/sandbox/localhost/g" core-common/src/main/resources/kylin-defaults.properties
+                          sed -ie "s/sandbox/localhost/g" examples/test_case_data/sandbox/kylin.properties
+
+                          cp /root/lib/apache-tomcat-7.0.91.tar.gz build/
+                          cp /root/lib/apache-tomcat-7.0.100.tar.gz build/
+
+                          # 解决找不到java
+                          export PATH=/usr/java/jdk1.8.0_171/bin:\$PATH
+
+
+                          if \$Spark3Profile;
+                            then
+                            echo "Package using profile spark3"
+                            sh -x build/script/package.sh -P spark3
+                          elif \$CDH57Profile;
+                            then
+                            echo “Package using profile cdh5.7”
+                            sh -x build/script/package.sh -P cdh5.7
+                          else
+                            echo "Package using profile default"
+                            sh -x build/script/package.sh
+                          fi;
+
+                          ## 在这里将每天的二进制包复制到指定目录, 方便在CDH集群验证
+                          cd dist
+                          dt=`date "+%Y-%m-%d"`
+                          pkg_name=`ls *.tar.gz`
+
+                          ## 包名 = 用户名 + 日期 + 原始包名
+                          cp \$pkg_name /root/lib/kylin-dist/\$branch-\$dt-\$pkg_name
+
+                          if \$OnlyPackage;
+                            then
+                            scp \$pkg_name root@cdh-client:/root/kylin-dist/\$branch-\$dt-\$pkg_name
+                          fi;
+
+
+
+                          ## 清理旧文件
+                          find /root/lib/kylin-dist -mtime 5 -name "*tar.gz" -type f | xargs rm -rf
+                          cd -
+                        else
+                          echo "You are in HDP node"
+                          build/script/package.sh
+                        fi
+                    """
+                }
+
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                dir('kylin') {
+                    sh script: """
+                        cp /var/jenkins/workspace/kylin-smoke-test.sh build/script/
+                    """
+
+                    sh script: """
+                        export SPARK_HOME=`pwd`"/build/spark-2.3.2-bin-hadoop2.7"
+                        export KAFKA_HOME=/usr/hdp/2.4.0.0-169/kafka
+
+                        # kylin很多配置文件是写死了节点域名是sandbox,这是不合理的,在cloudera需要去掉这些东西
+                        if [[ \$HOSTNAME =~ "cdh" ]]
+                        then
+                          echo "You are in cloudera node"
+                          export PATH=/usr/java/jdk1.8.0_171/bin:\$PATH
+                          echo \$PATH
+                          export KAFKA_HOME=/root/lib/kafka_2.11-1.1.0
+                          cd build/smoke-test
+                          sed -ie "s/sandbox/localhost/g" *.py
+                          cd -
+                        else
+                          echo "You are in HDP node"
+                        fi
+
+                        if \$OnlyPackage;
+                            then
+                            echo "============================= \
+                        SKIP smoke-test!!!!!!!!!!!!!!"
+                            ls /root/lib/kylin-dist;
+                        else
+                            export PATH=/usr/anaconda2/bin/:\$PATH
+                            sh -x build/script/kylin-smoke-test.sh;
+                        fi;
+
+                    """
+                }
+            }
+        }
+    }
+}
