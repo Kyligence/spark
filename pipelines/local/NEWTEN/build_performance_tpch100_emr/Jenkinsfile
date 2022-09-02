@@ -1,0 +1,59 @@
+#!groovy
+
+@Library('devopslib') _
+
+def testing_stage_result = 'unknown'
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label '10.1.3.33-dw'
+    }
+
+    parameters {
+        string(name: 'build_args',
+            defaultValue: '-project_name build_performance_tpch_100 -clone_number 1 -base_model_names   AUTO_MODEL_EMR_VIEW  AUTO_MODEL_PART_2 AUTO_MODEL_LINEITEM_12 AUTO_MODEL_LINEITEM_11 AUTO_MODEL_LINEITEM_10 AUTO_MODEL_ORDERS_2 AUTO_MODEL_CUSTOMER_2 AUTO_MODEL_CUSTOMER_1 AUTO_MODEL_PART_1 AUTO_MODEL_SUPPLIER_1 AUTO_MODEL_LINEITEM_9 AUTO_MODEL_LINEITEM_8 AUTO_MODEL_LINEITEM_7 AUTO_MODEL_LINEITEM_6 AUTO_MODEL_LINEITEM_5 AUTO_MODEL_LINEITEM_4 AUTO_MODEL_LINEITEM_3 AUTO_MODEL_LINEITEM_2 AUTO_MODEL_LINEITEM_1 AUTO_MODEL_PARTSUPP_3 AUTO_MODEL_PARTSUPP_2 AUTO_MODEL_PARTSUPP_1 AUTO_MODEL_ORDERS_1 ',
+            description: ' -url KE http://host:port\n -username KE login username\n -password KE login password\n -kylin_home  absolute path of kylin_home\n -project_name build project name\n -baes_model_name base model to clone\n -clone_number number of clone model and job\n')
+    }
+
+    stages {
+        stage('Testing') {
+            steps {
+                script {
+                    testing_stage_result= 'running'
+                }
+
+                sh script: """
+                    cd /home/kylin_dw/fengjiao/tnt_back/script
+                    python3 build_qzx_emr.py ${build_args}
+                """
+
+                script {
+                    testing_stage_result= 'done'
+                }
+            }
+            post {
+                unstable {
+                    script {
+                        sendNotify('EMAIL', "Job [build_performance_tpch100_emr]", "meixiu.chen@kyligence.io", """
+                                <h3>Hi,</h3><br />
+                                <p>build_performance_tpch100_emr ${env.BUILD_NUMBER} failed!</p>
+                                <p>Please check it with url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                        """)
+                    }
+                }
+                always {
+                    script {
+                        if (testing_stage_result != 'unknown') {
+                            build wait: false, job: './build_performance_emr', parameters: [string(name: 'build_args', value: '')]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
