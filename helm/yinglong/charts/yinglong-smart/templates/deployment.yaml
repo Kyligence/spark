@@ -24,7 +24,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "yinglong-smart.serviceAccountName" . }}
+      serviceAccountName: spark
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       volumes:
@@ -54,6 +54,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
+            - name: TZ
+              value: Asia/Shanghai
             - name: KYLIN_HOME
               value: /opt/kyligence
             - name: HOST_IP
@@ -66,6 +68,8 @@ spec:
               value: {{ .Values.global.nacos.discovery.serverAddr | default .Values.global.nacos.serverAddr}}
             - name: TENANT_ID
               value:  {{ .Values.global.tenantId | quote}}
+            - name: DISCOVERY_PUBLIC_GROUP
+              value:  {{ .Values.global.publicGroup | quote}}
             - name: SPRING_SESSION_STORE_TYPE
               value: jdbc
             - name: KYLIN_ENV_ZOOKEEPER_CONNECT_STRING  
@@ -76,10 +80,8 @@ spec:
               value: {{ .Values.global.metadata.url | default (printf "%s_%s@jdbc,driverClassName=com.mysql.jdbc.Driver,url=jdbc:mysql://%s-mysql:3306/%s?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8,username=%s,password=%s,maxTotal=50,maxIdle=8" .Values.global.metadata.identifierPrefix  .Release.Namespace  .Values.global.hadoopPrefix .Values.global.metadata.database .Values.global.metadata.user .Values.global.metadata.password ) }}
             - name: HADOOP_CONF_DIR
               value: $(KYLIN_HOME)/hadoop_conf
-            {{- if .Values.debug.enabled }}
-            - name: KYLIN_DEBUG_SETTINGS
-              value: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
-            {{- end}}
+            - name: HADOOP_CLASSPATH
+              value: /opt/hadoop-2.10.1/share/hadoop/tools/lib/*
             {{- if .Values.skyWalking.enabled }}
             - name: SW_AGENT_NAME
               value: "{{ include "yinglong-smart.fullname" . }}"
@@ -90,18 +92,28 @@ spec:
             {{- end }}
           command:
             - sh
+            - "-x"
             - "-c"
             - |
+              {{- $skyWalking := "" -}}
               {{- if .Values.skyWalking.enabled }}
-              sed -i 's/nohup java ${KYLIN_KERBEROS_OPTS}/& -javaagent:\/skywalking\/agent\/skywalking-agent.jar/' $(KYLIN_HOME)/sbin/bootstrap.sh
+              {{- $skyWalking = "-javaagent:/skywalking/agent/skywalking-agent.jar" }}
               {{- end }}
-              $(KYLIN_HOME)/bin/kylin.sh start
-              if [ -f $KYLIN_HOME/logs/kylin.log ]
-              then
-                tail -300f $KYLIN_HOME/logs/kylin.log
-              else
-                tail -300f $KYLIN_HOME/logs/shell.stderr
-              fi
+              {{- $javaDebug := "" -}}
+              {{- if .Values.debug.enabled }}
+              {{- $javaDebug = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"}}
+              {{- end}}
+              date
+              mkdir ${KYLIN_HOME}/logs
+              cd ${KYLIN_HOME}/server
+              nohup java {{ $skyWalking }} -server -Xms1g -Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+PrintReferenceGC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintAdaptiveSizePolicy -XX:+UnlockDiagnosticVMOptions -XX:+G1SummarizeConcMark -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/kyligence/logs -Xloggc:/opt/kyligence/logs/kylin.gc.%p -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=64M {{ $javaDebug }} -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=8192 -Dfile.encoding=UTF-8 -Dlogging.path=/opt/kyligence/logs -Dspring.profiles.active=prod -Dlogging.config=file:/opt/kyligence/conf/log4j2.xml -Dkylin.hadoop.conf.dir=/opt/kyligence/hadoop_conf -Dhdp.version=current -Dloader.path="/opt/kyligence/hadoop_conf,/opt/kyligence/conf,/opt/kyligence/lib/ext,/opt/kyligence/server/jars,/opt/kyligence/spark/jars" -XX:OnOutOfMemoryError="sh /opt/kyligence/bin/guardian.sh kill" -jar /opt/kyligence/server/newten.jar --kylin.server.mode=all 2>&1 < /dev/null & 
+              echo $! >> /opt/kyligence/pid 
+              while [[ ! -f $KYLIN_HOME/logs/kylin.log ]];
+              do
+              echo "kylin not startup, will sleep 10 sec"
+              sleep 10
+              done
+              tail -300f $KYLIN_HOME/logs/kylin.log
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -109,12 +121,6 @@ spec:
             - name: debug
               containerPort: {{ .Values.service.debugPort }}
               protocol: TCP
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
-          startupProbe:
-            {{- toYaml .Values.startupProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
@@ -146,6 +152,9 @@ spec:
             - mountPath: /opt/kyligence/hadoop_conf/fair-scheduler.xml
               name: yarn-xml
               subPath: fair-scheduler.xml
+            - mountPath: /opt/kyligence/conf/log4j2.xml
+              name: newten-conf
+              subPath: log4j2.xml
             {{- if .Values.skyWalking.enabled }}
             - name: skywalking-agent
               mountPath: /skywalking

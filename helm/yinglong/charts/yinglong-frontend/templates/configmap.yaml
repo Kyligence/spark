@@ -10,7 +10,12 @@ data:
       server_name  localhost;
 
       # Gateway
-        location ~^/(kylin/api|kylin/sparder|kylin/history_server)/ {
+      location /ka-iam/api {
+        rewrite ^/ka-iam(.*)$ /saas-kyiam/$1 break;
+        proxy_pass http://{{ .Values.gateway.serverAddr }};
+      }
+
+      location ~^/(kylin/api|kylin/sparder|kylin/history_server|kylin/driver_ui)/ {
         proxy_pass http://{{ .Values.gateway.serverAddr }};
       }
 

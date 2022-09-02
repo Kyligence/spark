@@ -21,10 +21,7 @@ global:
     # serverAddr:
   
   tenantId: "54642236552822785"
+  publicGroup: "yinglong"
 
   zookeeper: {}
     # address: localhost:2181
-
-skywalking:
-  oap:
-    rest: http://oap.ops.kyligence.tech

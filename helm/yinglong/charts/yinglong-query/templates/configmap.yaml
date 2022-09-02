@@ -34,3 +34,22 @@ data:
         </pool>
     </allocations>
   check-env-bypass: ''
+  log4j2.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Configuration name="Log4j1">
+        <Appenders>
+            <RollingRandomAccessFile name="server" fileName="${env:KYLIN_HOME}/logs/kylin.log" append="true"
+                                     filePattern="${env:KYLIN_HOME}/logs/kylin.log.%i" immediateFlush="false">
+                <Policies>
+                    <SizeBasedTriggeringPolicy size="268435456"/>
+                </Policies>
+                <DefaultRolloverStrategy max="10"/>
+                <PatternLayout pattern="%d{ISO8601} %-5p %X{request.project}[%t] %c{2} : %mask{%m}%n"/>
+            </RollingRandomAccessFile>
+        </Appenders>
+        <Loggers>
+            <Root level="TRACE">
+                <AppenderRef ref="server"/>
+            </Root>
+        </Loggers>
+    </Configuration>

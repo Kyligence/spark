@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: xuanwu-admin-binding
+  namespace: {{ .Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: spark
+roleRef:
+  kind: Role
+  name: xuanwu-admin
+  apiGroup: rbac.authorization.k8s.io

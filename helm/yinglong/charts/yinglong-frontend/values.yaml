@@ -47,7 +47,7 @@ ingress:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: kyligence.tech
+    - host: dev.kyligence.com
       paths:
         - path: /
           pathType: ImplementationSpecific
@@ -84,3 +84,16 @@ affinity: {}
 
 gateway:
   serverAddr: saas-gateway:8080
+
+iam:
+  serverAddr: https://iam.dev.kyligence.com
+
+config:
+  serverAddr: https://nacos.config.dev.kyligence.com
+
+nginx:
+  shareDir: /usr/share/nginx/html
+
+skywalking:
+    oap:
+      rest: http://oap.ops.kyligence.tech
