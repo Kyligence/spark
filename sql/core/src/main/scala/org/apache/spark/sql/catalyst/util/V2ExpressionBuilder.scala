@@ -52,7 +52,7 @@ class V2ExpressionBuilder(e: Expression, isPredicate: Boolean = false) {
       } else {
         Some(ref)
       }
-    case in @ InSet(child, hset) =>
+    case InSet(child, hset) =>
       generateExpression(child).map { v =>
         val children =
           (v +: hset.toSeq.map(elem => LiteralValue(elem, child.dataType))).toArray[V2Expression]
