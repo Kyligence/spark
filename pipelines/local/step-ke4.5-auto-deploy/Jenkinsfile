@@ -1,0 +1,173 @@
+#!groovy
+
+@Library('devopslib') _
+
+packageFilename = ''
+namespace = 'cicd'
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'remote_dir', defaultValue: '/home/step/data/CH/CH_STEP', description: 'gw05 KE4.5 work_dir')
+        string(name: 'kepackage_dir', defaultValue: '/home/step/data/devops', description: 'gw05 KE4.5 work_dir')
+        string(name: 'package_name', defaultValue: '', description: 'KE defualt version')
+        string(name: 'ke_workdir',defaultValue:'Kyligence-Enterprise-4.5-CKstep-do-not-delete',description: 'ke_dir')
+        credentials(name: 'certificate', credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'kyligence-git', required: true)
+    }
+
+    stages {  
+        stage('Auto Deploy KE on Azure gw05') {
+            steps {
+                container('build') {
+                    script {
+                        def remote = [:]
+                        remote.name = 'azure_env-gw05'
+                        withCredentials([usernamePassword(credentialsId: 'azure-step',
+                                usernameVariable: 'REMOTE_USERNAME',
+                                passwordVariable: 'REMOTE_PASSWORD')]) {
+                            remote.user = REMOTE_USERNAME
+                            remote.password = REMOTE_PASSWORD
+                        }
+                        remote.host = '159.27.224.211'
+                        remote.allowAnyHosts = true         
+                        sshCommand remote: remote, command: """
+                            #! /bin/bash
+                            cd ${remote_dir}
+                            rm -f ke_package/K*.tar.gz
+                            scp step@10.0.0.28:${kepackage_dir}/${package_name}  ke_package/
+                            if test -d new_kedir
+                            then
+                                rm -rf new_kedir
+                                mkdir new_kedir
+                                tar -xf ke_package/${package_name} -C new_kedir/
+                            else
+                                mkdir new_kedir
+                                tar -xf ke_package/${package_name} -C new_kedir/
+                            fi
+                            if test -d ${ke_workdir}
+                            then
+                                bash ${ke_workdir}/bin/kylin.sh stop
+                            else
+                                echo "The KE server is not running"
+                            fi
+                            tmp_ke_dir=`ls new_kedir`
+                            bash new_kedir/\${tmp_ke_dir}/bin/upgrade.sh ${ke_workdir} --silent
+                            touch ${ke_workdir}/bin/check-env-bypass
+                            echo "skip check env"
+                            cp -rf /home/step/data/CH/bootstrap.sh ${ke_workdir}/sbin/
+                            echo "replace bootstrap.sh"
+                            bash ${ke_workdir}/bin/kylin.sh start
+                            cat ${ke_workdir}/commit_SHA1
+                            echo "upgrade gw05-168-step-ch-env finished" 
+                            """                                          
+                    }
+                }
+            }
+        }
+        stage('Auto Deploy KE on Azure gw06') {
+            steps {
+                container('build') {
+                    script {
+                        def remote = [:]
+                        remote.name = 'azure_env-gw06'
+                        withCredentials([usernamePassword(credentialsId: 'azure-step',
+                                usernameVariable: 'REMOTE_USERNAME',
+                                passwordVariable: 'REMOTE_PASSWORD')]) {
+                            remote.user = REMOTE_USERNAME
+                            remote.password = REMOTE_PASSWORD
+                        }
+                        remote.host = '159.27.224.168'
+                        remote.allowAnyHosts = true         
+                        sshCommand remote: remote, command: """
+                            #! /bin/bash
+                            cd ${remote_dir}
+                            rm -f ke_package/K*.tar.gz
+                            scp step@10.0.0.28:${kepackage_dir}/${package_name}  ke_package/
+                            if test -d new_kedir
+                            then
+                                rm -rf new_kedir
+                                mkdir new_kedir
+                                tar -xf ke_package/${package_name} -C new_kedir/
+                            else
+                                mkdir new_kedir
+                                tar -xf ke_package/${package_name} -C new_kedir/
+                            fi
+                            if test -d ${ke_workdir}
+                            then
+                                bash ${ke_workdir}/bin/kylin.sh stop
+                            else
+                                echo "The KE server is not running"
+                            fi
+                            tmp_ke_dir=`ls new_kedir`
+                            bash new_kedir/\${tmp_ke_dir}/bin/upgrade.sh ${ke_workdir} --silent
+                            touch ${ke_workdir}/bin/check-env-bypass
+                            echo "skip check env"
+                            cp -rf /home/step/data/CH/bootstrap.sh ${ke_workdir}/sbin/
+                            echo "replace bootstrap.sh"
+                            bash ${ke_workdir}/bin/kylin.sh start
+                            cat ${ke_workdir}/commit_SHA1
+                            echo "upgrade gw06-168-step-ch-env finished" 
+                            """                                          
+                    }
+                }
+            }
+        }
+        stage('Auto Deploy KE on Azure gw08') {
+            steps {
+                container('build') {
+                    script {
+                        def remote = [:]
+                        remote.name = 'azure_env-gw08'
+                        withCredentials([usernamePassword(credentialsId: 'azure-step',
+                                usernameVariable: 'REMOTE_USERNAME',
+                                passwordVariable: 'REMOTE_PASSWORD')]) {
+                            remote.user = REMOTE_USERNAME
+                            remote.password = REMOTE_PASSWORD
+                        }
+                        remote.host = '159.27.120.134'
+                        remote.allowAnyHosts = true         
+                        sshCommand remote: remote, command: """
+                            #! /bin/bash
+                            cd ${remote_dir}
+                            rm -f ke_package/K*.tar.gz
+                            scp step@10.0.0.28:${kepackage_dir}/${package_name}  ke_package/
+                            if test -d new_kedir
+                            then
+                                rm -rf new_kedir
+                                mkdir new_kedir
+                                tar -xf ke_package/${package_name} -C new_kedir/
+                            else
+                                mkdir new_kedir
+                                tar -xf ke_package/${package_name} -C new_kedir/
+                            fi
+                            if test -d ${ke_workdir}
+                            then
+                                bash ${ke_workdir}/bin/kylin.sh stop
+                            else
+                                echo "The KE server is not running"
+                            fi
+                            tmp_ke_dir=`ls new_kedir`
+                            bash new_kedir/\${tmp_ke_dir}/bin/upgrade.sh ${ke_workdir} --silent
+                            touch ${ke_workdir}/bin/check-env-bypass
+                            echo "skip check env"
+                            cp -rf /home/step/data/CH/bootstrap.sh ${ke_workdir}/sbin/
+                            echo "replace bootstrap.sh"
+                            bash ${ke_workdir}/bin/kylin.sh start
+                            cat ${ke_workdir}/commit_SHA1
+                            echo "upgrade gw08-168-step-ch-env finished" 
+                            """                                          
+                    }
+                }
+            }
+        }
+    }
+}
