@@ -1,0 +1,55 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '指定仓库')
+        string(name: 'branch', defaultValue: 'master', description: '指定分支')
+        string(name: 'release_version', defaultValue: '', description: '指定发布版本，不指定时为代码中的版本号')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        retry(3) {
+                            timestamps {
+                                pullCodeFromGitMirror "hadoop-huaweicloud", "${params.branch}", false, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Maven Deploy') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (params.release_version.trim() != '') {
+                                sh "mvn versions:set -DnewVersion=${params.release_version}"
+                            }
+                            sh """
+                                cat /root/.m2/settings.xml
+                                mvn deploy -Pdev -DskipTests -T 4C
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

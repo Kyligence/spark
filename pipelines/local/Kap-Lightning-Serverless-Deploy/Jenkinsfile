@@ -1,0 +1,79 @@
+#!groovy
+
+@Library('devopslib') _
+
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name, dir_name = 'sourcecode') {
+    dir(dir_name) {
+        timestamps {
+            println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
+            withAWS(region: region, credentials: credentials) {
+                s3Upload(bucket: bucket, path: path, file: ga_name)
+            }
+        }
+    }
+}
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '指定仓库')
+        string(name: 'branch', defaultValue: 'master', description: '指定分支')
+        string(name: 'release_version', defaultValue: 'dev', description: '指定发布版本')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        retry(3) {
+                            timestamps {
+                                pullCodeFromGitMirror "kap-lightning-serverless", "${params.branch}", false, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Maven Install') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        retry(3) {
+                            timestamps {
+                                sh "mvn clean install"
+                                sh "ls -lh target"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Upload to AWS Global S3') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            def finalName = sh script: 'mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout', returnStdout:true
+                            echo "final name: ${finalName}"
+                            retry(2) {
+                                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/newten/${params.release_version}/${finalName}.jar", "${finalName}.jar", 'target')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
