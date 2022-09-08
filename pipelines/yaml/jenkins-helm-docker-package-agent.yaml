@@ -14,8 +14,8 @@ spec:
           memory: "2Gi"
           cpu: "100m"
         limits:
-          memory: "4Gi"
-          cpu: "2000m"
+          memory: "8Gi"
+          cpu: "4000m"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
