@@ -1,0 +1,88 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-agent-gluten-cd.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'clickhouse_backend', description: 'gluten branch')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('git') {
+                    dir('clickhouse') {
+                        script {
+                            sh 'env'
+                            githubCheckout 'ClickHouse', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            // replaceRepo()
+                            sh 'ls;'
+                            sh 'git submodule update --init --recursive;'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build CH') {
+            steps {
+                container('libchbuilder') {
+                    dir('clickhouse') {
+                        script {
+                            sh 'env'
+                            sh 'ls;'
+
+                            sh '''mkdir -p /build && cd /build || exit;
+                                export CCACHE_DIR=/ccache;
+                                export CCACHE_BASEDIR=/build;
+                                export CCACHE_NOHASHDIR=true;
+                                export CCACHE_COMPILERCHECK=content;
+                                export CCACHE_MAXSIZE=15G;
+
+                                cmake -G Ninja  "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" "-DCMAKE_BUILD_TYPE=Release" "-DENABLE_PROTOBUF=1" "-DENABLE_EMBEDDED_COMPILER=$ENABLE_EMBEDDED_COMPILER" "-DENABLE_TESTS=OFF" "-DWERROR=OFF" "-DENABLE_JEMALLOC=1" \${WORKSPACE}/clickhouse/;
+                                ninja ch;'''
+                        }
+                        script {
+                            sh 'mkdir output && cp /build/utils/local-engine/libch.so output/libch.so;'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Release') {
+            steps {
+                container("libchbuilder") {
+                    dir("clickhouse") {
+                        script {
+                            withCredentials([usernamePassword(credentialsId: 'nexus-upload', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                sh script: """
+                                   curl -X POST "http://devops-nexus:8081/service/rest/v1/components?repository=raw-tars-hosted" \
+                                      -H "accept: application/json" \
+                                      -H "Content-Type: multipart/form-data" \
+                                      -F "raw.directory=io.kyligence.clickhouse/${params.branch}/latest" \
+                                      -F "raw.asset1=@output/libch.so;type=application/java-archive" \
+                                      -F "raw.asset1.filename=libch.so" \
+                                      -u "${user}":"${passwd}"
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+    }
+}
