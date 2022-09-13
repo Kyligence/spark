@@ -278,10 +278,10 @@ def checkCacheExist(pi) {
     return result
 }
 
-def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg) {
-    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}],customerPkg[${customerPkg}]"
+def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg, excludeDocs) {
+    println "buildAndCopy -> version[${version}],noSpark[${noSpark}],pi[${pi}],docs_commitid[${docs_commitid}],customerPkg[${customerPkg}],excludeDocs[${excludeDocs}]"
     // sh "git checkout -- ."
-    buildNewten(version, noSpark, docs_commitid, customerPkg)
+    buildNewten(version, noSpark, docs_commitid, customerPkg, excludeDocs)
 
     sh script: """
         mkdir -p /var/cicd/${pi.package_path}
@@ -314,13 +314,13 @@ def buildPackage(version, envStage, deployType, noSpark, docs_commitid, customer
                     if(!noSpark) {
                         package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
                         if(!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
-                            buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg)
+                            buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg, params.excludeDocs)
                         }
                         result.package_info = package_info
                     }else{
                         no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
                         if(!checkCacheExist(no_spark_package_info) || pMap['overide'] || envStage == 'GA') {
-                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg)
+                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg, params.excludeDocs)
                         }
                         result.no_spark_package_info = no_spark_package_info
                         // sh "git checkout -- ."
@@ -378,6 +378,7 @@ pipeline {
         choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3', 'CUSTOMER_GUANGDA_CDH5'], description:'指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n - CUSTOMER_GUANGDA_CDH5：光大\n' )
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
+        booleanParam(name: 'excludeDocs', defaultValue: false, description: '勾选时，将不包含手册')
         // booleanParam(name: 'noSpark', defaultValue: false, description: '勾选时，打 NoSpark 包')
     }
 

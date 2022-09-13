@@ -1,4 +1,4 @@
-def call(String version, boolean noSpark = false, String docs_commitid = 'latest', String customerPkg = 'NORMAL') {
+def call(String version, boolean noSpark = false, String docs_commitid = 'latest', String customerPkg = 'NORMAL', boolean excludeDocs = false) {
     try{
         sh "git apply license.patch"
     } catch(ex){
@@ -29,7 +29,10 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
         echo "Package not include Spark"
         sh "export ${customerPkg}=1 && export release_version=${version} && sh build/script_newten/release.sh -noTimestamp -noSpark"
     } else {
-        insertDocs(version, docs_commitid)
+        if (!excludeDocs) {
+            insertDocs(version, docs_commitid)
+        }
+
         sh "export ${customerPkg}=1 && export release_version=${version} && sh build/script_newten/release.sh -noTimestamp"
     }
 }
