@@ -33,29 +33,27 @@ pipeline {
     }
 
     stages {
-        stage('Pull Code') {
-            stage("Checkout Backend Code") {
-                steps {
-                    dir('sourcecode') {
-                        timestamps {
-                            script {
-                                retry(3) {
-                                    pullCodeFromGitMirror "KAP", "${params.branch}", false, "${params.repo}"
-                                }
+        stage("Checkout Backend Code") {
+            steps {
+                dir('sourcecode') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror "KAP", "${params.branch}", false, "${params.repo}"
                             }
                         }
                     }
-
                 }
+
             }
-            stage("Checkout Frontend Code") {
-                steps {
-                    dir('sourcecode') {
-                        timestamps {
-                            script {
-                                retry(3) {
-                                    checkoutKapNodeModules()
-                                }
+        }
+        stage("Checkout Frontend Code") {
+            steps {
+                dir('sourcecode') {
+                    timestamps {
+                        script {
+                            retry(3) {
+                                checkoutKapNodeModules()
                             }
                         }
                     }
