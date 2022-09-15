@@ -34,12 +34,16 @@ def build(hadoop_release, ops) {
             break
         case 'cdh7':
             internal_build 'cdh7'
+            break
         case 'hdp3':
             internal_build 'hdp3'
+            break
         case 'mapr':
             internal_build 'mapr'
+            break
         case 'mrs':
             internal_build 'mrs'
+            break
     }
 }
 
