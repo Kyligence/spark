@@ -26,7 +26,7 @@ pipeline {
 
     environment {
         repo = 'repo-ofs.kyligence.com'
-        dockerRegistryUrl = "http://${repo}"
+        dockerRegistryUrl = "http://${repo}/repository/docker-dev-hosted/"
         registryCredential = 'nexus-docker'
         common = ''
         data_loading = ''
