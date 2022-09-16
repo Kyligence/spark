@@ -42,7 +42,7 @@ pipeline {
                     timestamps {
                         script {
                             retry(3) {
-                                pullCodeFromGitMirror "KAP", "${params.branch}", false, "${params.repo}"
+                                pullCodeFromGitMirror "KAP", "${params.branch}", !"kyligence".equalsIgnoreCase(params.repo), "${params.repo}"
                             }
                         }
                     }
