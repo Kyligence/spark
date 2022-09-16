@@ -13,8 +13,17 @@ def call() {
         if (kap_it_module) {
             modules.removeAll([kap_it_module])
             modules.addAll([
-                    "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-                    "${kap_it_module} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
+                "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
+                "${kap_it_module} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
+            ])
+        }
+
+        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+        if(clickhouse_it_module) {
+            modules.removeAll([clickhouse_it_module])
+            modules.addAll([
+                "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
+                "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
             ])
         }
 
@@ -42,6 +51,17 @@ def call() {
         def allTestStages = worker1 + worker2 + worker3 + worker4
         allTestStages.failFast = true
         parallel allTestStages
+    }
+}
+
+def spliteUt(List modules, String moduleName, String methordName) {
+    def split_module = modules.findAll({ it.contains(moduleName)}).getAt(0)
+    if(split_module) {
+        modules.removeAll([split_module])
+        modules.addAll([
+            "${split_module} -Dtest='!${methordName}'",
+            "${split_module} -Dtest='${methordName}'"
+        ])
     }
 }
 
