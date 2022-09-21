@@ -1,0 +1,99 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  hostAliases:
+    - ip: "10.236.9.220"
+      hostnames:
+        - "intf2.portal.unicom.local"
+  tolerations:
+  - key: "nodetype"
+    operator: "Equal"
+    value: "ke"
+    effect: "NoSchedule"
+  containers:
+    - name: "git"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+      tty: true
+      command:
+        - "cat"
+      image: "bitnami/git:2.35.1-debian-10-r68"
+      imagePullPolicy: "IfNotPresent"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+        requests:
+          memory: "2Gi"
+          cpu: "800m"
+
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
+      resources:
+        limits:
+          memory: "56Gi"
+          cpu: "14"
+        requests:
+          memory: "56Gi"
+          cpu: "12"
+
+    - name: "sonar-cloud"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-11"
+      imagePullPolicy: "IfNotPresent"
+      env:
+        - name: HTTP_PROXY
+          value: null
+        - name: HTTPS_PROXY
+          value: null
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+        requests:
+          memory: "2Gi"
+          cpu: "1000m"
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "ke-maven-settings"
+      name: "maven-settings"
+    - name: "dockersock"
+      hostPath:
+        path: "/var/run/docker.sock"
