@@ -3,9 +3,33 @@ kind: "Pod"
 name: "jenkins-agent"
 spec:
   hostAliases:
-    - ip: "10.236.9.220"
+    - ip: "140.82.113.3"
       hostnames:
-        - "intf2.portal.unicom.local"
+        - "github.com"
+    - ip: "140.82.112.4"
+      hostnames:
+        - "github.com"
+    - ip: "192.30.255.112"
+      hostnames:
+        - "github.com"
+    - ip: "192.30.255.113"
+      hostnames:
+        - "github.com"
+    - ip: "140.82.112.3"
+      hostnames:
+        - "github.com"
+    - ip: "140.82.114.4"
+      hostnames:
+        - "github.com"
+    - ip: "20.205.243.166"
+      hostnames:
+        - "github.com"
+    - ip: "140.82.113.4"
+      hostnames:
+        - "github.com"
+    - ip: "140.82.114.3"
+      hostnames:
+        - "github.com"
   tolerations:
   - key: "nodetype"
     operator: "Equal"
