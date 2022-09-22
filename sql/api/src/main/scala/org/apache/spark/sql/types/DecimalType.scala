@@ -90,6 +90,8 @@ case class DecimalType(precision: Int, scale: Int) extends FractionalType {
       // If the precision equals `integerAsDecimal.precision`, there can be integer overflow
       // during casting.
       precision < integerAsDecimal.precision && scale == 0
+    case dt: DoubleType =>
+      isTighterThan(DecimalType(precision, scale))
     case _ => false
   }
 
