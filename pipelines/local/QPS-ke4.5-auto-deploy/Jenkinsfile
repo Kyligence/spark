@@ -42,12 +42,13 @@ pipeline {
                         sshCommand remote: remote, command: """
                             cd ${remote_dir}
                             rm -rf dist
-                            mkdir -p dist
+                            mkdir dist
                             cd dist
                             cp ${kepackage_dir}/${package_name} .
                             cd ${remote_dir}
                             rm -rf new_kedir
-                            mkdir -p new_kedir && tar -zxvf dist/${package_name} new_kedir -C --strip-components 1
+                            mkdir new_kedir
+                            tar -zxvf dist/${package_name} --strip-components 1 -C new_kedir
                             if test -d ${ke_workdir}
                             then
                                 bash ${ke_workdir}/bin/kylin.sh stop
@@ -55,7 +56,7 @@ pipeline {
                                 echo "The KE server is not running"
                             fi
                             bash new_kedir/bin/upgrade.sh ${ke_workdir} --silent
-                            #touch ${ke_workdir}/bin/check-env-bypass
+                            touch ${ke_workdir}/bin/check-env-bypass
                             echo "skip check env"
                             bash ${ke_workdir}/bin/kylin.sh start
                             cat ${ke_workdir}/commit_SHA1
@@ -82,12 +83,13 @@ pipeline {
                         sshCommand remote: remote, command: """
                             cd ${remote_dir}
                             rm -rf dist
-                            mkdir -p dist
+                            mkdir dist
                             cd dist
                             scp 4xuser@10.0.0.28:${kepackage_dir}/${package_name} .
                             cd ${remote_dir}
                             rm -rf new_kedir
-                            mkdir -p new_kedir && tar -zxvf dist/${package_name} new_kedir -C --strip-components 1
+                            mkdir new_kedir
+                            tar -zxvf dist/${package_name} --strip-components 1 -C new_kedir
                             if test -d ${ke_workdir}
                             then
                                 bash ${ke_workdir}/bin/kylin.sh stop
@@ -95,7 +97,7 @@ pipeline {
                                 echo "The KE server is not running"
                             fi
                             bash new_kedir/bin/upgrade.sh ${ke_workdir} --silent
-                            #touch ${ke_workdir}/bin/check-env-bypass
+                            touch ${ke_workdir}/bin/check-env-bypass
                             echo "skip check env"
                             bash ${ke_workdir}/bin/kylin.sh start
                             cat ${ke_workdir}/commit_SHA1
