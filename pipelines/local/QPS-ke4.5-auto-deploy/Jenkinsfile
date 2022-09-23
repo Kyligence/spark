@@ -17,7 +17,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'remote_dir', defaultValue: '/data/dev/sdc/data/4.5test', description: 'gw07 KE work dir')
+        string(name: 'remote_dir', defaultValue: '/home/4xuser/data/4.5test', description: 'gw07 KE work dir')
         string(name: 'kepackage_dir', defaultValue: '/home/4xuser/data/devops', description: 'gw07 KE4.5 stroage dir')
         string(name: 'ke_workdir',defaultValue:'Kyligence-Enterprise-newten-current',description: 'ke work dir')
         string(name: 'package_name', defaultValue: '', description: 'KE defualt version')
@@ -41,26 +41,21 @@ pipeline {
                         remote.allowAnyHosts = true         
                         sshCommand remote: remote, command: """
                             cd ${remote_dir}
-                            rm -rf ke_package/*.tar.gz
-                            cp ${kepackage_dir}/${package_name} ke_package/
-                            if test -d new_kedir
-                            then
-                                rm -rf new_kedir
-                                mkdir new_kedir
-                                tar -xf ke_package/${package_name} -C new_kedir/
-                            else
-                                mkdir new_kedir
-                                tar -xf ke_package/${package_name} -C new_kedir/
-                            fi
+                            rm -rf dist
+                            mkdir -p dist
+                            cd dist
+                            cp ${kepackage_dir}/${package_name} .
+                            cd ${remote_dir}
+                            rm -rf new_kedir
+                            mkdir -p new_kedir && tar -zxvf dist/${package_name} new_kedir -C --strip-components 1
                             if test -d ${ke_workdir}
                             then
                                 bash ${ke_workdir}/bin/kylin.sh stop
                             else
                                 echo "The KE server is not running"
                             fi
-                            tmp_ke_dir=`ls new_kedir`
-                            bash new_kedir/\${tmp_ke_dir}/bin/upgrade.sh ${ke_workdir} --silent
-                            touch ${ke_workdir}/bin/check-env-bypass
+                            bash new_kedir/bin/upgrade.sh ${ke_workdir} --silent
+                            #touch ${ke_workdir}/bin/check-env-bypass
                             echo "skip check env"
                             bash ${ke_workdir}/bin/kylin.sh start
                             cat ${ke_workdir}/commit_SHA1
@@ -86,26 +81,21 @@ pipeline {
                         remote.allowAnyHosts = true         
                         sshCommand remote: remote, command: """
                             cd ${remote_dir}
-                            rm -rf ke_package/*.tar.gz
-                            scp 4xuser@10.0.0.28:${kepackage_dir}/${package_name} ke_package/
-                            if test -d new_kedir
-                            then
-                                rm -rf new_kedir
-                                mkdir new_kedir
-                                tar -xf ke_package/${package_name} -C new_kedir/
-                            else
-                                mkdir new_kedir
-                                tar -xf ke_package/${package_name} -C new_kedir/
-                            fi
-                                                        if test -d ${ke_workdir}
+                            rm -rf dist
+                            mkdir -p dist
+                            cd dist
+                            scp 4xuser@10.0.0.28:${kepackage_dir}/${package_name} .
+                            cd ${remote_dir}
+                            rm -rf new_kedir
+                            mkdir -p new_kedir && tar -zxvf dist/${package_name} new_kedir -C --strip-components 1
+                            if test -d ${ke_workdir}
                             then
                                 bash ${ke_workdir}/bin/kylin.sh stop
                             else
                                 echo "The KE server is not running"
                             fi
-                            tmp_ke_dir=`ls new_kedir`
-                            bash new_kedir/\${tmp_ke_dir}/bin/upgrade.sh ${ke_workdir} --silent
-                            touch ${ke_workdir}/bin/check-env-bypass
+                            bash new_kedir/bin/upgrade.sh ${ke_workdir} --silent
+                            #touch ${ke_workdir}/bin/check-env-bypass
                             echo "skip check env"
                             bash ${ke_workdir}/bin/kylin.sh start
                             cat ${ke_workdir}/commit_SHA1
