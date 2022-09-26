@@ -30,7 +30,13 @@ pipeline {
                                 githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', params.repo
                             }
                         }
-                        s3Archive('download')
+                        script {
+                            if(params.branch == 'newten') {
+                                s3Archive('download')
+                            }else if(params.branch == "newten-dev") {
+                                s3Archive4YingLong('download')
+                            }
+                        }
                     }
                 }
             }
@@ -62,7 +68,13 @@ pipeline {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
                     container('maven') {
-                        s3Archive('upload')
+                        script {
+                            if(params.branch == 'newten') {
+                                s3Archive('upload')
+                            }else if(params.branch == "newten-dev") {
+                                s3Archive4YingLong('upload')
+                            }
+                        }
                     }
                 }
             }
