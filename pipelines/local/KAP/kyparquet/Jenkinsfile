@@ -16,7 +16,7 @@ pipeline {
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: '')
-        string(name: 'branch', defaultValue: 'kycalcite-1.16.0.x-3.x', description: '')
+        string(name: 'branch', defaultValue: 'kylin-1.9.0-r1', description: '')
         string(name: 'WHORU', defaultValue: 'anonymous', description: 'who are you?')
     }
 
@@ -31,7 +31,7 @@ pipeline {
                         timestamps {
                             script {
                                 retry(3) {
-                                    pullCodeFromGitMirror "calcite", "${params.branch}", false, "${params.repo}"
+                                    pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
                                 }
                             }
                         }
@@ -44,10 +44,17 @@ pipeline {
             steps {
                 container('build') {
                     dir("kycalcite"){
-                        sh script: """
-                            sed -i "s/<id>user-snapshots<\\/id>/<id>pro<\\/id>/g" pom.xml
-                            sed -i "s/<id>user-releases<\\/id>/<id>pro<\\/id>/g" pom.xml
-                        """
+                        sh script: '''
+                            sed -i "s/\\${snapshots.id}/pro/g" pom.xml
+                            sed -i "s/\\${snapshots.name}/User Project SNAPSHOTS/g" pom.xml
+                            sed -i "s/\\${snapshots.url}/https:\\/\\/repository.kyligence.io\\/repository\\/maven-snapshots\\//g" pom.xml
+                        '''
+
+                        sh script: '''
+                            sed -i "s/\\${releases.id}/pro/g" pom.xml
+                            sed -i "s/\\${releases.name}/User Project Release/g" pom.xml
+                            sed -i "s/\\${releases.url}/https:\\/\\/repository.kyligence.io\\/repository\\/maven-releases\\//g" pom.xml
+                        '''
 
                         sh script: """
                             mvn clean deploy -DskipTests=true
