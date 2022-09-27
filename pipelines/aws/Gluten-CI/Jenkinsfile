@@ -14,7 +14,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'branch', defaultValue: 'clickhouse_backend', description: 'gluten branch')
+        string(name: 'branch', defaultValue: '', description: 'gluten branch')
     }
 
 
@@ -35,6 +35,28 @@ pipeline {
                         script {
                             sh 'env'
                             githubCheckout 'gluten', 'main', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', 'oap-project'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Code Style Check") {
+            steps {
+                container('git') {
+                    dir('clickhouse') {
+                        script {
+                            status = sh returnStatus: true ,script:'''
+                            info=`\${WORKSPACE}/clickhouse/utils/local-engine/tool/check-style`
+                            if [ -z "$info" ]; then
+                                echo "check success"
+                            else
+                                exit 1
+                            fi
+                            '''
+                            if (status == 1) {
+                                error("failed")
+                            }
                         }
                     }
                 }
