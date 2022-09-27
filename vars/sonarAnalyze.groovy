@@ -25,17 +25,18 @@ def call(String sonarArgLine) {
 
                         //  --- start ---  only yinglong-open-core. if error, ignore
                         if(fileExists("../kylin")) {
-                            try { sh script: 'cp ../kylin/src/server/target/jars/kap-* jars/' } catch (Exception err) { }
-                            try { sh script: "cp ../kylin/src/server/target/jars/kylin-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kylin/src/second-storage/clickhouse-it/target/kylin-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kylin/src/spark-project/spark-it/target/spark-it-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kylin/src/kylin-it/target/kylin-it-* jars/" } catch (Exception err) { }
+                            // try { sh script: 'cp ../kylin/src/server/target/jars/kap-* jars/' } catch (Exception err) { }
+                            // try { sh script: "cp ../kylin/src/server/target/jars/kylin-* jars/" } catch (Exception err) { }
+                            // try { sh script: "cp ../kylin/src/second-storage/clickhouse-it/target/kylin-* jars/" } catch (Exception err) { }
+                            // try { sh script: "cp ../kylin/src/spark-project/spark-it/target/spark-it-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kylin/src/*/target/k* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kylin/src/*/*/target/k* jars/" } catch (Exception err) { }
                         }
 
                         if(fileExists("../kyligence")) {
-                            try { sh script: "cp ../kyligence/src/*/target/ke-* jars/" } catch (Exception err) { }
-                            // try { sh script: "cp ../kyligence/src/second-storage/clickhouse-it/target/kap-* jars/" } catch (Exception err) { }
-                            // try { sh script: "cp ../kyligence/src/spark-project/spark-it/target/spark-it-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/*/target/k* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kyligence/src/*/*/target/k* jars/" } catch (Exception err) { }
+                            // try { sh script: "cp ../kyligence/src/spark-project/*/target/spark-it-* jars/" } catch (Exception err) { }
                         }
                         // --- end ---
 
