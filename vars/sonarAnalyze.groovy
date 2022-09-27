@@ -29,6 +29,7 @@ def call(String sonarArgLine) {
                             try { sh script: "cp ../kylin/src/server/target/jars/kylin-* jars/" } catch (Exception err) { }
                             try { sh script: "cp ../kylin/src/second-storage/clickhouse-it/target/kylin-* jars/" } catch (Exception err) { }
                             try { sh script: "cp ../kylin/src/spark-project/spark-it/target/spark-it-* jars/" } catch (Exception err) { }
+                            try { sh script: "cp ../kylin/src/kylin-it/target/kylin-it-* jars/" } catch (Exception err) { }
                         }
 
                         if(fileExists("../kyligence")) {
