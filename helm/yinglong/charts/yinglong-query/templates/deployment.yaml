@@ -28,6 +28,9 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       volumes:
+        - name: lib-ext
+            persistentVolumeClaim:
+              claimName: yinglong-lib-ext
         - name: newten-conf
           configMap:
             name: {{ include "yinglong-query.fullname" . }}-conf
@@ -153,6 +156,8 @@ spec:
             - mountPath: /opt/kyligence/conf/log4j2.xml
               name: newten-conf
               subPath: log4j2.xml
+            - name: lib-ext
+              mountPath: /opt/kyligence/lib/ext
             {{- if .Values.skyWalking.enabled }}
             - name: skywalking-agent
               mountPath: /skywalking

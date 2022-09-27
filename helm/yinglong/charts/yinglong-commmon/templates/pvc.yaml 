@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+ name: yinglong-lib-ext
+spec:
+ storageClassName: ceph-fs
+ accessModes:
+ - ReadOnlyMany
+ resources:
+  requests:
+     storage: 1Gi
