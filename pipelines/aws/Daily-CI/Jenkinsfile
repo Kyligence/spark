@@ -33,7 +33,7 @@ pipeline {
                         script {
                             if(params.branch == 'newten') {
                                 s3Archive('download')
-                            }else if(params.branch == "newten-dev") {
+                            }else if(params.branch =~ "newten-dev.*") {
                                 s3Archive4YingLong('download')
                             }
                         }
