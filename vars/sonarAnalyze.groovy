@@ -15,15 +15,6 @@ def call(String sonarArgLine) {
                     done
                 """
 
-                def copyJars(path) {
-                    try { 
-                        sh script: """
-                        cp ${path} jars/
-                        ls -l ${path} | grep "^-" | wc -l
-                        """
-                    } catch (Exception err) { }
-                }
-
                 dir('coverage') {
                     script {
                         sh script: 'pwd'
@@ -72,4 +63,14 @@ def call(String sonarArgLine) {
             }
         }
     }
+}
+
+
+def copyJars(String path) {
+    try { 
+        sh script: """
+        cp ${path} jars/
+        ls -l ${path} | grep "^-" | wc -l
+        """
+    } catch (Exception err) { }
 }
