@@ -15,13 +15,22 @@ def call(String sonarArgLine) {
                     done
                 """
 
+                def copyJars(path) {
+                    try { 
+                        sh script: """
+                        cp ${path} jars/
+                        ls -l ${path} | grep "^-" | wc -l
+                        """
+                    } catch (Exception err) { }
+                }
+
                 dir('coverage') {
                     script {
                         sh script: 'pwd'
-                        try { sh script: 'cp ../src/server/target/jars/kap-* jars/' } catch (Exception err) { }
-                        try { sh script: 'cp ../src/server/target/jars/yinglong-* jars/' } catch (Exception err) { }
-                        try { sh script: 'cp ../src/server/target/jars/kylin-* jars/' } catch (Exception err) { }
-                        try { sh script: 'cp ../src/server/target/jars/ke-* jars/' } catch (Exception err) { }
+                        copyJars('../src/server/target/jars/kap-*')
+                        copyJars('../src/server/target/jars/yinglong-*')
+                        copyJars('../src/server/target/jars/kylin-*')
+                        copyJars('../src/server/target/jars/ke-*')
 
                         //  --- start ---  only yinglong-open-core. if error, ignore
                         if(fileExists("../kylin")) {
@@ -29,13 +38,13 @@ def call(String sonarArgLine) {
                             // try { sh script: "cp ../kylin/src/server/target/jars/kylin-* jars/" } catch (Exception err) { }
                             // try { sh script: "cp ../kylin/src/second-storage/clickhouse-it/target/kylin-* jars/" } catch (Exception err) { }
                             // try { sh script: "cp ../kylin/src/spark-project/spark-it/target/spark-it-* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kylin/src/*/target/k* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kylin/src/*/*/target/k* jars/" } catch (Exception err) { }
+                            copyJars('../kylin/src/*/target/k*')
+                            copyJars('../kylin/src/*/*/target/k*')
                         }
 
                         if(fileExists("../kyligence")) {
-                            try { sh script: "cp ../kyligence/src/*/target/k* jars/" } catch (Exception err) { }
-                            try { sh script: "cp ../kyligence/src/*/*/target/k* jars/" } catch (Exception err) { }
+                            copyJars('../kyligence/src/*/target/k*')
+                            copyJars('../kyligence/src/*/*/target/k*')
                             // try { sh script: "cp ../kyligence/src/spark-project/*/target/spark-it-* jars/" } catch (Exception err) { }
                         }
                         // --- end ---
@@ -44,7 +53,10 @@ def call(String sonarArgLine) {
                         try { sh script: 'rm -f jars/*-tests.jar' } catch (Exception err) { }
                         try { sh script: 'rm -f jars/*-assembly-*.jar' } catch (Exception err) { }
                         retry(3){
-                            sh script: 'java -jar jacococli.jar report ./exec/* --html output --classfiles jars/ --xml jacoco.xml'
+                            sh script: '''
+                                java -jar jacococli.jar report ./exec/* --html output --classfiles jars/ --xml jacoco.xml
+                                ls -l jars/*.jar | grep "^-" | wc -l
+                            '''
                         }
                     }
                 }
