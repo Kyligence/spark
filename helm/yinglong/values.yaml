@@ -15,7 +15,8 @@ global:
     identifierPrefix: ke_metadata_yinglong
   nacos:
     config:
-      serverAddr: http://nacos.config.kyligence.tech:80
+      serverAddr: http://nacos-config-svc.yinglong:8848
+      serverAddrNoHttp: nacos-config-svc.yinglong:8848
     discovery:
       serverAddr: http://nacos-naming-svc.yinglong:8848
     # serverAddr:

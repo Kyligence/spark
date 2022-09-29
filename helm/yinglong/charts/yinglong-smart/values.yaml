@@ -103,3 +103,6 @@ skyWalking:
 
 debug: 
   enabled: true
+
+configcenter:
+  disabled: false

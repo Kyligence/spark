@@ -29,8 +29,8 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       volumes:
         - name: lib-ext
-            persistentVolumeClaim:
-              claimName: yinglong-lib-ext
+          persistentVolumeClaim:
+            claimName: yinglong-lib-ext
         - name: newten-conf
           configMap:
             name: {{ include "yinglong-data-loading.fullname" . }}-conf
@@ -38,6 +38,11 @@ spec:
         - configMap:
             name: {{ .Values.global.hadoopPrefix }}-yarn-xml
           name: yarn-xml
+        {{- if .Values.configcenter.disabled }}
+        - configMap:
+            name: kylin.properties.yaml
+          name: kylin-properties
+        {{- end }}
       {{- if .Values.skyWalking.enabled }}
         - name: skywalking-agent
           emptyDir: { }
@@ -57,6 +62,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
+            - name: APP_NAME
+              value: yinglong-data-loading-booter
             - name: TZ
               value: Asia/Shanghai
             - name: KYLIN_HOME
@@ -65,8 +72,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: K8S_NAMESPACE
+              value: "{{ .Release.Namespace }}"
             - name: NACOS_CONFIG_SERVER_ADDR
               value: {{ .Values.global.nacos.config.serverAddr | default .Values.global.nacos.serverAddr}}
+            - name: NACOS_CONFIG_SERVER_ADDR_NO_HTTP
+              value: {{ .Values.global.nacos.config.serverAddrNoHttp }}
             - name: NACOS_DISCOVERY_SERVER_ADDR
               value: {{ .Values.global.nacos.discovery.serverAddr | default .Values.global.nacos.serverAddr}}
             - name: TENANT_ID
@@ -93,6 +104,10 @@ spec:
             - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
               value: "{{ .Values.skyWalking.backendServerAddr }}"
             {{- end }}
+            {{- if .Values.configcenter.disabled }}
+            - name: KYLIN_LEGACY_CONFIG
+              value: "true"
+            {{- end }}
           command:
             - sh
             - "-x"
@@ -109,6 +124,8 @@ spec:
               date
               mkdir ${KYLIN_HOME}/logs
               cd ${KYLIN_HOME}/server
+              cp ${KYLIN_HOME}/conf/spark-driver-log4j.xml ${KYLIN_HOME}/spark/conf/spark-driver-log4j.xml
+              cp ${KYLIN_HOME}/conf/spark-executor-log4j.xml ${KYLIN_HOME}/spark/conf/spark-executor-log4j.xml
               nohup java {{ $skyWalking }} -server -Xms1g -Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+PrintReferenceGC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintAdaptiveSizePolicy -XX:+UnlockDiagnosticVMOptions -XX:+G1SummarizeConcMark -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/kyligence/logs -Xloggc:/opt/kyligence/logs/kylin.gc.%p -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=64M {{ $javaDebug }} -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=8192 -Dfile.encoding=UTF-8 -Dlogging.path=/opt/kyligence/logs -Dspring.profiles.active=prod -Dlogging.config=file:/opt/kyligence/conf/log4j2.xml -Dkylin.hadoop.conf.dir=/opt/kyligence/hadoop_conf -Dhdp.version=current -Dloader.path="/opt/kyligence/hadoop_conf,/opt/kyligence/conf,/opt/kyligence/lib/ext,/opt/kyligence/server/jars,/opt/kyligence/spark/jars" -XX:OnOutOfMemoryError="sh /opt/kyligence/bin/guardian.sh kill" -jar /opt/kyligence/server/newten.jar --kylin.server.mode=all 2>&1 < /dev/null & 
               echo $! >> /opt/kyligence/pid 
               while [[ ! -f $KYLIN_HOME/logs/kylin.log ]];
@@ -116,7 +133,7 @@ spec:
               echo "kylin not startup, will sleep 10 sec"
               sleep 10
               done
-              tail -300f $KYLIN_HOME/logs/kylin.log
+              tail -f $KYLIN_HOME/logs/kylin.log
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -163,6 +180,11 @@ spec:
               mountPath: /opt/kyligence/lib/ext
             - name: skywalking-agent
               mountPath: /skywalking
+            {{- end }}
+            {{- if .Values.configcenter.disabled }}
+            - mountPath: /opt/kyligence/conf/kylin.properties.override
+              name: kylin-properties
+              subPath: kylin.properties
             {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

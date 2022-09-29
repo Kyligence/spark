@@ -29,8 +29,8 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       volumes:
         - name: lib-ext
-            persistentVolumeClaim:
-              claimName: yinglong-lib-ext
+          persistentVolumeClaim:
+            claimName: yinglong-lib-ext
         - name: newten-conf
           configMap:
             name: {{ include "yinglong-commmon.fullname" . }}-conf
@@ -38,6 +38,11 @@ spec:
         - configMap:
             name: {{ .Values.global.hadoopPrefix }}-yarn-xml
           name: yarn-xml
+        {{- if .Values.configcenter.disabled }}
+        - configMap:
+            name: kylin.properties.yaml
+          name: kylin-properties
+        {{- end }}
       {{- if .Values.skyWalking.enabled }}
         - name: skywalking-agent
           emptyDir: { }
@@ -57,6 +62,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
+            - name: APP_NAME
+              value: yinglong-common-booter
             - name: TZ
               value: Asia/Shanghai
             - name: KYLIN_HOME
@@ -65,8 +72,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: K8S_NAMESPACE
+              value: "{{ .Release.Namespace }}"
             - name: NACOS_CONFIG_SERVER_ADDR
               value: {{ .Values.global.nacos.config.serverAddr | default .Values.global.nacos.serverAddr}}
+            - name: NACOS_CONFIG_SERVER_ADDR_NO_HTTP
+              value: {{ .Values.global.nacos.config.serverAddrNoHttp }}
             - name: NACOS_DISCOVERY_SERVER_ADDR
               value: {{ .Values.global.nacos.discovery.serverAddr | default .Values.global.nacos.serverAddr}}
             - name: TENANT_ID
@@ -93,6 +104,10 @@ spec:
             - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
               value: "{{ .Values.skyWalking.backendServerAddr }}"
             {{- end }}
+            {{- if .Values.configcenter.disabled }}
+            - name: KYLIN_LEGACY_CONFIG
+              value: "true"
+            {{- end }}
           command:
             - sh
             - "-x"
@@ -116,7 +131,7 @@ spec:
               echo "kylin not startup, will sleep 10 sec"
               sleep 10
               done
-              tail -300f $KYLIN_HOME/logs/kylin.log
+              tail -f $KYLIN_HOME/logs/kylin.log
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -163,6 +178,11 @@ spec:
             {{- if .Values.skyWalking.enabled }}
             - name: skywalking-agent
               mountPath: /skywalking
+            {{- end }}
+            {{- if .Values.configcenter.disabled }}
+            - mountPath: /opt/kyligence/conf/kylin.properties.override
+              name: kylin-properties
+              subPath: kylin.properties
             {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
