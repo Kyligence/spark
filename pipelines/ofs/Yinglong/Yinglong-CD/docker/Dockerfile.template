@@ -1,0 +1,8 @@
+FROM repo-ofs.kyligence.com/kyligence-env:hadoop_2.10.1_hive_1.2.2
+RUN mkdir -p /opt/kyligence
+COPY replace_package /opt/
+RUN tar -xf /opt/replace_dir*.tar.gz --strip-components 1 -C /opt/kyligence --remove-files
+RUN mkdir -p /opt/kyligence/hadoop_conf
+RUN touch /opt/kyligence/bin/check-env-bypass && touch /opt/kyligence/spark/jars/replace-jars-bypass
+RUN cd /bin && rm -f sh && ln -s /bin/bash sh
+ENTRYPOINT ["bash", "/opt/kyligence/bin/kylin.sh", "start"]

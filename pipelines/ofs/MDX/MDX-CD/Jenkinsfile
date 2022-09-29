@@ -1,0 +1,247 @@
+#!groovy
+
+@Library('devopslib') _
+
+// 包信息对象
+def package_info =  [:]
+
+def existPackaged(package_info) {
+    println "existPackaged -> package_info[${package_info}]"
+    try {
+        // 将已存在的包cp到当前目录，避免重新打包
+        def exist_package = "${package_info.package_path}/${package_info.file_name}"
+        sh script: """
+            ls -l /var/cicd/${package_info.package_path}
+            cp /var/cicd/${exist_package} ${package_info.file_name}
+        """
+
+        sh 'ls -l'
+        exist_package = fileExists(package_info.file_name)
+        println "/var/cicd/${package_info.package_path}/${package_info.file_name} is ${exist_package}"
+        return exist_package
+    } catch (Exception err) {
+        echo err.getMessage()
+    }
+    return false
+}
+
+def getPackageInfo(version, envStage, cid) {
+    println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}]"
+    def package_path = "mdx/${envStage}"
+
+    file_name = "MDX-${version}-${cid}.tar.gz"
+    final_name = "Kyligence-MDX-${version}.tar.gz"
+
+    def obj = [:]
+    obj.package_path = package_path
+    obj.file_name = file_name
+    obj.final_name = final_name
+    println obj.toString()
+    return obj
+}
+
+pipeline {
+    options {
+        timeout(time: 4, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines//yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    environment {
+        //变量名，用于存储input步骤的返回值
+        auto_branch = ''
+        commitid = ''
+        exist_package = false
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'develop', description: '分支（必填）')
+        choice(name: 'shotgun', choices:'sniper\nkc\nshotgun', description: 'sniper:：基于并扩展mondrian的计算引擎\nshotgun：具备spark分布式能力的引擎\nkc：是shotgun适配kc云环境的版本')
+        string(name: 'version', defaultValue: '1.4.13.0', description: '填写版本号，格式：1.4.10.0，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
+        text(name: 'changelog', defaultValue: '', description: 'Change Log')
+        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
+
+    // string(name: 'ke-version', defaultValue: '', description: '依赖的KE版本（如果不填用pom配置文件里的 ke.version 变量）')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            // 1. 参数检查：version
+                            paramsVerify.version(params.version)
+                            // 2. 根据分支流程接入分支算法
+                            auto_branch = params.branch
+
+                            pullCodeFromGitMirror 'MDX', auto_branch
+                            // commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                            commitid = githubHelper.gitCommitId()
+                            println "commitid: ${commitid}"
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    timestamps {
+                        script {
+                            dir('sourcecode') {
+                                def _version = "${params.version}-${params.envStage}"
+                                // 1. 获取包信息
+                                package_info = getPackageInfo(_version, params.envStage, commitid)
+
+                                // 2. 判断是否已打包，避免重复打包
+                                exist_package = existPackaged(package_info)
+                                println "exist_package: ${exist_package}"
+
+                                if (!exist_package) {
+                                    sh script:"""
+                                        export package=${params.shotgun}
+                                        export version=${params.version}
+                                        export changelog=${params.changelog}
+
+                                        build/scripts/package.sh
+                                    """
+                                    archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+
+                                    sh script: """
+                                        mkdir -p /var/cicd/${package_info.package_path}
+                                        mv dist/*.tar.gz ${package_info.file_name}
+                                    """
+                                    exist_package = true
+
+                                    if (params.envStage != 'GA') {
+                                        sh script: """
+                                            cp ${package_info.file_name} /var/cicd/${package_info.package_path}
+                                        """
+                                    }else {
+                                        sh script: """
+                                            cp ${package_info.file_name} ${package_info.final_name}
+                                            cp ${package_info.final_name} /var/cicd/${package_info.package_path}
+                                        """
+                                        package_info.file_name = package_info.final_name
+                                    }
+                                } else {
+                                    println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.Dev/QA Upload') {
+            parallel {
+                stage('3.1.Upload to Azure CN') {
+                    steps {
+                        script {
+                            println 'update to Test Env : TODO'
+                        }
+                    }
+                }
+                stage('3.2.Upload to Nexus') {
+                    steps {
+                        script {
+                            println 'Upload to Nexus'
+                            uploadHelper.uploadNexus(package_info.file_name, package_info.package_path, 'raw-tars-hosted')
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.Approve GA') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && exist_package
+                }
+            }
+            steps {
+                container('build') {
+                    script {
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况: ${auto_branch}\n2. 发布版本号：${params.version}"
+                        // sh 'printenv'
+                        paramsGA = input (
+                            message: checkMsg,
+                            ok: '确认！',
+                            submitter:'liming.meng,yongchao.liu',
+                            submitterParameter:'APPROVER',
+                            parameters:[
+                                booleanParam(name: 'skipUpload', defaultValue: false, description: '是否跳过上传')
+                            ]
+                        )
+                    }
+                }
+            }
+        }
+        stage('5.GA Upload') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && exist_package && !paramsGA['skipUpload']
+                }
+            }
+            parallel {
+                stage('5.1.GA AWS CN') {
+                    steps {
+                        script {
+                            println("upload to AWS S3 in CN: ${package_info.final_name}")
+                            // 国内站点：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?prefix=product%2Fkmdx%2F&showversions=false&region=cn-north-1
+                            uploadHelper.uploadAwsS3(package_info.final_name, "product/kmdx/${package_info.final_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                        }
+                    }
+                }
+                stage('5.2.GA AWS Global') {
+                    steps {
+                        script {
+                            println("upload to AWS S3 in Global: ${package_info.final_name}")
+                            // 国际站点：https://us-east-1.console.aws.amazon.com/s3/buckets/download.kyligence.io?prefix=product%2Fkmdx%2F&region=us-west-1&showversions=false
+                            uploadHelper.uploadAwsS3(package_info.final_name, "product/kmdx/${package_info.final_name}", 'download.kyligence.io', 'us-west-1', 'aws_global_s3_cp')
+                        }
+                    }
+                }
+                stage('5.3.GA Nexus') {
+                    steps {
+                        script {
+                            println("upload to Nexus repo-ofs: ${package_info.final_name}")
+                            uploadHelper.uploadNexus(package_info.final_name, 'product/kmdx', 'raw-ke-ga-tar-hosted')
+                        }
+                    }
+                }
+            }
+        }
+        stage('6.Released') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && exist_package
+                }
+            }
+            steps {
+                container('build') {
+                    script {
+                        def _tag = "mdx-${version}"
+                        def _cid = ''
+                        try {
+                            dir('sourcecode') {
+                                println "MDX push tag: ${_tag} on branch ${auto_branch} in sourcecode folder"
+                                githubHelper 'TAG', auto_branch, 'MDX', _tag
+                                // _cid = gitHubHelper 'COMMITID', auto_branch, 'MDX', null, false
+                                _cid = sh(returnStdout:true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                println "[MDX] commitId: ${_cid}"
+                            }
+                        } catch (Exception err) {
+                            echo err.getMessage()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

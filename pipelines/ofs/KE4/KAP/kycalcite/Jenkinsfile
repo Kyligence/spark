@@ -1,0 +1,60 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: '')
+        string(name: 'branch', defaultValue: 'kycalcite-1.16.0.x-3.x', description: '')
+        string(name: 'WHORU', defaultValue: 'anonymous', description: 'who are you?')
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                container('build') {
+                    script {
+                        currentBuild.displayName = "#${BUILD_NUMBER} for ${params.WHORU}"
+                    }
+                    dir('kycalcite') {
+                        timestamps {
+                            script {
+                                retry(3) {
+                                    pullCodeFromGitMirror "calcite", "${params.branch}", false, "${params.repo}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                container('build') {
+                    dir("kycalcite"){
+                        sh script: """
+                            sed -i "s/<id>user-snapshots<\\/id>/<id>pro<\\/id>/g" pom.xml
+                            sed -i "s/<id>user-releases<\\/id>/<id>pro<\\/id>/g" pom.xml
+                        """
+
+                        sh script: """
+                            mvn clean deploy -DskipTests=true
+                        """
+                    }
+                }
+            }
+        }
+    }
+}

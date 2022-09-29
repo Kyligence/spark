@@ -1,0 +1,103 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='repo-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        frontend = ''
+    }
+
+    parameters {
+        string(name: 'commitId_front', defaultValue: 'newten-qa', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+        string(name: 'tag', defaultValue: '4.5.10-dev', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.commitId_front) {
+                                error 'commitId_front 参数不能为空'
+                            }
+
+                            echo 'Sync the git mirror'
+                            sshCmdWithCredentials(
+                                'bash -c /var/lib/git/pull.sh',
+                                'private_git',
+                                ['name':'localhost', 'host':'10.1.2.192', 'allowAnyHosts': true]
+                            )
+
+                            echo 'checkout KAP'
+                            retry(3) {
+                                githubCheckout 'KAP', params.commitId_front
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.build docker image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        script {
+                            dir('kystudio') {
+                                sh """
+                                    pwd
+                                    ls -alt
+                                    cat .npmrc
+                                    rm -f .npmrc
+                                    echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                                frontend = docker.build("kyligence/yinglong-frontend", "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            frontend.push("$tag")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

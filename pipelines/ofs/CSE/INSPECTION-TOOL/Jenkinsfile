@@ -1,0 +1,83 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'bi-adapter repo')
+        string(name: 'branch', defaultValue: 'main', description: 'branch')
+        booleanParam(name: 'skipTests', defaultValue: false, description: 'skip tests')
+        booleanParam(name: 'isDeploy', defaultValue: false, description: 'is deploy')
+    }
+
+    environment {
+        ENVIRONMENT_TEST_FLAG = 'NO'
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                githubCheckout 'inspection-tool', "${branch ?: params.branch ?: 'main'}", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*','kyligence-git'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Maven Install') {
+            steps {
+                container("build") {
+                    sh "cat /root/.m2/settings.xml"
+                    dir("sourcecode") {
+                        script {
+                            if (params.skipTests) {
+                                sh script: """
+                                    echo "skip tests"
+                                    mvn clean install -DskipTests
+                                """
+                            } else {
+                                sh script: """
+                                    mvn clean install
+                                """
+                            }
+                        }
+                       
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            when {
+                expression {
+                    return params.isDeploy
+                }
+            }
+            steps {
+                container("build") {
+                    sh "cat /root/.m2/settings.xml"
+                    dir("sourcecode") {
+                        sh script: """
+                            echo "start deploy ${params.isDeploy}"
+                            mvn clean deploy -Pdev
+                        """
+                    }
+                }
+            }
+        }   
+        
+    }
+}

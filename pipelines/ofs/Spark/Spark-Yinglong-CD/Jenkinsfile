@@ -1,0 +1,83 @@
+#!groovy
+
+@Library('devopslib') _
+
+// 文件路径
+def package_path = 'io.kyligence.spark.yinglong'
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo')
+        string(name: 'branch', defaultValue: '3.2.0-kylin-4.x-r60', description: 'spark branch')
+        string(name: 'release_version', defaultValue: '', description: 'spark release version for example: 3.2.0-kylin-4.x-r52')
+        string(name: 'hadoop_version', defaultValue: '2.7', description: '2.7')
+        booleanParam(name: 'push', defaultValue: true, description: '是否推送打包')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        retry(3) {
+                            timestamps {
+                                pullCodeFromGitMirror "spark", "${params.branch}", true, "${params.repo}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            def releaseName = params.release_version.replace('-kylin', '')
+                            sh(script: """
+                                #1、package kyspark
+                                ./build/mvn versions:set -DnewVersion=${params.release_version}
+                                export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
+                                dev/make-distribution.sh --name ${params.release_version} --tgz -Phadoop-${hadoop_version} -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes
+                                mv spark-${params.release_version}-bin-${params.release_version}.tgz spark-newten-${releaseName}.tgz
+                            """, returnStdout: true).trim()
+                            file_name = "spark-newten-${releaseName}.tgz"
+                            packageFilename = file_name
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('push') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                pushRawArtifactsByApi('raw-tars-hosted', package_path, packageFilename, file_name, user, passwd)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,164 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='repo-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        gateway = ''
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'gateway repo')
+        string(name: 'commitId_back', defaultValue: 'main', description: '后端Repo(gateway)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'tag', defaultValue: '5.0.0', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+        booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
+        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
+        booleanParam(name: 'is_public', defaultValue:true, description:'是否为公共应用服务（iam/nacos）服务的gateway' )
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.commitId_back) {
+                                error 'commitId_back 参数不能为空'
+                            }
+
+                            echo 'checkout gateway'
+                            retry(3) {
+                                timestamps {
+                                    pullCodeFromGitMirror "saas-gateway", "${params.commitId_back}", true, "${params.repo}"
+                                }
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!tag) {
+                                error 'tag 版本号不能为空'
+                            }
+                            // download jars from sh
+                            sh """
+                                echo "build gateway"
+                                mvn -U clean package -DskipTest
+                            """
+                            sh returnStatus: true , script: '''
+                                pwd
+                                ls -al
+                                cp ../pipelines/local/Gateway-CD/docker/Dockerfile.template Dockerfile
+                                cat Dockerfile
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.build docker image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        script {
+                            gateway = docker.build 'gateway'
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            gateway.push("$tag")
+                            gateway.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        stage('5.deploy') {
+            when {
+                environment name: 'deploy', value: 'true'
+            }
+            steps {
+                echo 'Up in K8S at office env'
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        script {
+                            sh 'pwd && ls -alt'
+                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+                            try {
+                                if (params.is_public == true) {
+                                    sh returnStatus: true , script: '''
+                                    helm -n ${namespace} list
+                                     helm -n ${namespace} uninstall saas-gateway-public
+                                     '''
+                                } else {
+                                    sh returnStatus: true , script: '''
+                                    helm -n ${namespace} list
+                                    helm -n ${namespace} uninstall saas-gateway-${namespace}
+                                     '''
+                                }
+
+                            } catch(Exception err) {
+                                echo err.getMessage()
+                                echo "delete resource failed, but we will continue."
+                            }
+
+                            if (params.is_public == true) {
+                                sh returnStatus: true , script: '''
+                                helm -n ${namespace} install saas-gateway-public ./helm/gateway --set image.tag=${tag} --set fullnameOverride=public
+                                helm -n ${namespace} list
+                            '''
+                            } else {
+                                sh returnStatus: true , script: '''
+                                helm -n ${namespace} install saas-gateway-${namespace} ./helm/gateway --set image.tag=${tag}
+                                helm -n ${namespace} list
+                            '''
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

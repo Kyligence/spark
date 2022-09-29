@@ -1,0 +1,185 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='repo-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'nexus-docker'
+        iam = ''
+        frontend=''
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'iam repo')
+        string(name: 'commitId_back', defaultValue: 'main', description: '后端Repo(IAM)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'commitId_front', defaultValue: 'main', description: '前端repo(IAM_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+        string(name: 'tag', defaultValue: '5.0.0', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+        booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
+        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.commitId_back) {
+                                error 'commitId_back 参数不能为空'
+                            }
+
+                            echo 'checkout IAM'
+                            retry(3) {
+                                timestamps {
+                                    pullCodeFromGitMirror "saas-kyiam", "${params.commitId_back}", true, "${params.repo}"
+                                }
+                            }
+                        }
+                    }
+                    dir('frontenddir'){
+                        script {
+                            def front
+                            if (!params.commitId_front) {
+                                echo 'Not commitId_front, use the commitId_back: ${params.commitId_back}'
+                                front = params.commitId_back
+                            } else {
+                                echo 'checkout IAMFrontend, use the commitid: ${params.commitId_front}'
+                                front = params.commitId_front
+                            }
+                            echo 'checkout IAM frontend'
+                            retry(3) {
+                                timestamps {
+                                    pullCodeFromGitMirror "Saas_Iam_Frontend", "${params.commitId_front}", true, "${params.repo}"
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!tag) {
+                                error 'tag 版本号不能为空'
+                            }
+                            sh """
+                                echo "build iam"
+                                mvn clean install -DskipTest
+                            """
+                            sh returnStatus: true , script: '''
+                                pwd
+                                ls -al
+                                cp ../pipelines/local/IAM-CD/docker/Dockerfile.template Dockerfile
+                                cat Dockerfile
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.build docker image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        script {
+                            iam = docker.build 'iam'
+                        }
+                        // build frontend
+                    }
+                    dir('frontenddir'){
+                        script {
+                            sh """
+                                pwd
+                                ls -alt
+                                cat .npmrc
+                                rm -f .npmrc
+                                echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                cat .npmrc
+                            """
+                            frontend = docker.build("iam-frontend", "-f ${env.WORKSPACE}/pipelines/local/IAM-CD/docker/frontend/Dockerfile .")
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            iam.push("$tag")
+                            iam.push('latest')
+                            frontend.push("$tag")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        stage('5.deploy') {
+            when {
+                environment name: 'deploy', value: 'true'
+            }
+            steps {
+                echo 'Up in K8S at office env'
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        script {
+                            sh 'pwd && ls -alt'
+                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+                            try {
+                                sh returnStatus: true , script: '''
+                                    helm -n ${namespace} list
+                                    helm -n ${namespace} uninstall saas-kyiam-${namespace}
+                                '''
+                            } catch(Exception err) {
+                                echo err.getMessage()
+                                echo "delete resource failed, but we will continue."
+                            }
+
+                            dir("helm/iam") {
+                                sh returnStatus: true, script: '''
+                                helm dependency build
+                                helm -n ${namespace} install saas-kyiam-${namespace} ./ --set image.tag=${tag} --set frontend.image.tag=${tag}
+                                helm -n ${namespace} list
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

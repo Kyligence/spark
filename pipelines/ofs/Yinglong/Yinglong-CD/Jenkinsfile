@@ -1,0 +1,282 @@
+#!groovy
+
+@Library('devopslib') _
+
+//变量名，用于存储input步骤的返回值
+def approvalMap
+// K8S启动用包名
+def package_file
+// 文件路径
+def package_path
+// 文件名
+def file_name
+// 上传到nexus文件
+def packageFilename
+
+pipeline {
+    options {
+        timeout(time: 4, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo = 'repo-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}/repository/docker-dev-hosted/"
+        registryCredential = 'nexus-docker'
+        common = ''
+        data_loading = ''
+        query = ''
+        smart = ''
+        frontend = ''
+    }
+
+    parameters {
+        string(name: 'commitId_back', defaultValue: 'yinglong-dev', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        string(name: 'commitId_front', defaultValue: 'yinglong', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）')
+        string(name: 'tag', defaultValue: 'yinglong-dev-version', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        booleanParam(name: 'build', defaultValue:true, description:'是否构建' )
+        string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
+        booleanParam(name: 'push', defaultValue:true, description:'推送镜像' )
+        booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s' )
+        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
+        string(name: 'hadoop_prefix', defaultValue: 'hadoop-0', description: 'hadoop environment')
+        string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
+        string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.commitId_back) {
+                                error 'commitId_back 参数不能为空'
+                            }
+
+                            echo 'checkout KAP'
+                            retry(3) {
+                                pullCodeFromGitMirror 'KAP', params.commitId_back
+                            }
+
+                            def front
+                            if (!params.commitId_front) {
+                                echo 'Not commitId_front, use the commitId_back: ${params.commitId_back}'
+                                front = params.commitId_back
+                            }else {
+                                echo 'checkout KAP_Frontend to kystudio, use the commitid: ${params.commitId_front}'
+                                front = params.commitId_front
+                            }
+
+                            sh 'rm -rf ./kystudio'
+                            dir('kystudio') {
+                                retry(3) {
+                                    pullCodeFromGitMirror 'KAP_Frontend', front
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            when {
+                environment name: 'build', value: 'true'
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!tag) {
+                                error 'tag 版本号不能为空'
+                            }
+
+                            sh '''
+                                sh build/script_newten/download-spark.sh
+                            '''
+
+                            if (!profiles) {
+                                sh '''
+                                    mvn clean install -DskipTests -T1C
+                                '''
+                            } else {
+                                sh """
+                                    mvn clean install -DskipTests -P ${profiles} -T1C
+                                """
+                            }
+
+                            dir('kyligence/src/ke-common-booter') {
+                                sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/ke-common*.tar.gz"
+                                    package_name="ke-common"
+                                    cp ../../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+                            dir('kylin/src/data-loading-booter') {
+                                sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/data-loading*.tar.gz"
+                                    package_name="data-loading"
+                                    cp ../../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+
+                            dir('kylin/src/query-booter') {
+                                sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/query*.tar.gz"
+                                    package_name="query"
+                                    cp ../../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+
+                            dir('kyligence/src/smart-booter') {
+                                sh returnStatus: true , script: '''
+                                    pwd
+                                    ls -al
+                                    package="target/yinglong-smart*.tar.gz"
+                                    package_name="yinglong-smart"
+                                    cp ../../../../pipelines/local/Yinglong-CD/docker/Dockerfile.template Dockerfile
+                                    sed -i "s#replace_package#${package}#g" Dockerfile
+                                    sed -i "s#replace_dir#${package_name}#g" Dockerfile
+                                    cat Dockerfile
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.build docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        dir('kyligence/src/ke-common-booter') {
+                            script {
+                                common = docker.build 'kyligence/yinglong-common'
+                            }
+                        }
+                        dir('kylin/src/data-loading-booter') {
+                            script {
+                                data_loading = docker.build 'kyligence/yinglong-data-loading'
+                            }
+                        }
+
+                        dir('kylin/src/query-booter') {
+                            script {
+                                query = docker.build 'kyligence/yinglong-query'
+                            }
+                        }
+                        dir('kyligence/src/smart-booter') {
+                            script {
+                                smart = docker.build 'kyligence/yinglong-smart'
+                            }
+                        }
+                        script {
+                            dir('kystudio') {
+                                sh """
+                                    pwd
+                                    ls -alt
+                                    cat .npmrc
+                                    rm -f .npmrc
+                                    echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                                    cat .npmrc
+                                """
+                                frontend = docker.build('kyligence/yinglong-frontend', "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.push docker image') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            common.push("$tag")
+                            common.push('latest')
+
+                            data_loading.push("$tag")
+                            data_loading.push('latest')
+
+                            query.push("$tag")
+                            query.push('latest')
+
+                            smart.push("$tag")
+                            smart.push('latest')
+
+                            frontend.push("$tag")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        stage('5.deploy') {
+            when {
+                environment name: 'deploy', value: 'true'
+            }
+            steps {
+                echo 'Up in K8S at office env'
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        script {
+                            sh 'pwd && ls -alt'
+                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+                            try {
+                                sh returnStatus: true , script: """
+                                    helm -n ${namespace} list
+                                    helm -n ${namespace} uninstall yinglong
+                                """
+                            } catch (Exception err) {
+                                echo err.getMessage()
+                                echo 'delete resource failed, but we will continue.'
+                            }
+
+                            sh returnStatus: true , script: """
+                                helm -n ${namespace} install yinglong ./helm/yinglong 
+                                    --set yinglong-common.image.tag=${tag} 
+                                    --set yinglong-data-loading.image.tag=${tag} 
+                                    --set yinglong-query.image.tag=${tag} 
+                                    --set yinglong-smart.image.tag=${tag}  
+                                    --set yinglong-frontend.image.tag=${tag} 
+                                    --set global.hadoopPrefix=${hadoop_prefix} 
+                                    --set global.tenantId=${params.tenant_id} ${params.extra_settings}
+                                helm -n ${namespace} list
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

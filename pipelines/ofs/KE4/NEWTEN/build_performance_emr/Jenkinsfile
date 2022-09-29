@@ -1,0 +1,44 @@
+#!groovy
+
+@Library('devopslib') _
+
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        label '10.1.3.33-dw'
+    }
+
+    parameters {
+        string(name: 'build_args',  defaultValue: '',
+            description: ' -url KE http://host:port\n -username KE login username\n -password KE login password\n -kylin_home  absolute path of kylin_home\n -project_name build project name\n -baes_model_name base model to clone\n -clone_number number of clone model and job\n')
+    }
+
+    stages {
+        stage('Testing') {
+            steps {
+
+                sh script: """
+                    cd /home/kylin_dw/fengjiao/tnt_back/script
+                    python3 build_emr.py
+                """
+
+            }
+            post {
+                unstable {
+                    script {
+                        sendNotify('EMAIL', "Job [build_performance_emr]", "meixiu.chen@kyligence.io", """
+                                <h3>Hi,</h3><br />
+                                <p>build_performance_tpch100_emr ${env.BUILD_NUMBER} failed!</p>
+                                <p>Please check it with url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
+                        """)
+                    }
+                }
+            }
+        }
+    }
+}
