@@ -17,6 +17,8 @@ data:
 
       location ~^/(kylin/api|kylin/sparder|kylin/history_server|kylin/driver_ui)/ {
         proxy_pass http://{{ .Values.gateway.serverAddr }};
+        proxy_send_timeout 3600;
+        proxy_read_timeout 3600;
       }
 
         location /kylin {
