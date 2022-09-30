@@ -123,6 +123,8 @@ spec:
               {{- end}}
               date
               mkdir ${KYLIN_HOME}/logs
+              cp ${KYLIN_HOME}/conf/spark-driver-log4j.xml ${KYLIN_HOME}/spark/conf/spark-driver-log4j.xml
+              cp ${KYLIN_HOME}/conf/spark-executor-log4j.xml ${KYLIN_HOME}/spark/conf/spark-executor-log4j.xml
               cd ${KYLIN_HOME}/server
               cp ${KYLIN_HOME}/conf/spark-driver-log4j.xml ${KYLIN_HOME}/spark/conf/spark-driver-log4j.xml
               cp ${KYLIN_HOME}/conf/spark-executor-log4j.xml ${KYLIN_HOME}/spark/conf/spark-executor-log4j.xml
