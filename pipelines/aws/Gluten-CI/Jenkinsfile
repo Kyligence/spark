@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-agent-gluten-ci.yaml'
+            yamlFile env.is_opencicd ? 'pipelines/yaml/jenkins-agent-opencicd.yaml' : 'pipelines/yaml/jenkins-agent-gluten-ci.yaml'
         }
     }
 
@@ -81,8 +81,18 @@ pipeline {
                                 cmake -G Ninja  "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" "-DCMAKE_BUILD_TYPE=Release" "-DENABLE_PROTOBUF=1" "-DENABLE_EMBEDDED_COMPILER=$ENABLE_EMBEDDED_COMPILER" "-DENABLE_TESTS=OFF" "-DWERROR=OFF" "-DENABLE_JEMALLOC=1" \${WORKSPACE}/clickhouse/;
                                 ninja ch;'''
                         }
+                    }
+
+                    sh 'rm -rf ./clickhouse'
+                    sh 'du -h -d1 ./'
+
+                    dir('output') {
                         script {
-                            sh 'mkdir output && cp /build/utils/local-engine/libch.so output/libch.so;'
+                            sh 'pwd'
+                            sh 'mv /build/utils/local-engine/libch.so ./libch.so;'
+                            sh 'ls -alh ./'
+
+                            sh 'rm -rf /build'
                         }
                     }
                 }
@@ -93,17 +103,16 @@ pipeline {
             steps {
                 container("maven") {
                     dir("gluten") {
-                        script {
-                            sh script: 'mkdir -p /data && tar -zxf /dataset/tpcds-data-sf1.tar.gz -C /data/'
-                            sh script: 'ls -al /data/tpcds-data-sf1'
-                            sh script: 'export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g" && mvn clean test -Pbackends-clickhouse,spark-3.2 -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/clickhouse/output/libch.so'
+                        retry(2) {
+                            script {
+                                sh script: 'mkdir -p /data && tar -zxf /dataset/tpcds-data-sf1.tar.gz -C /data/'
+                                sh script: 'ls -al /data/tpcds-data-sf1'
+                                sh script: 'export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g" && mvn clean test -Pbackends-clickhouse,spark-3.2 -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/output/libch.so'
+                            }
                         }
                     }
                 }
             }
         }
-
-
-
     }
 }

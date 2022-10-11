@@ -1,0 +1,79 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "git"
+      tty: true
+      command:
+        - "cat"
+#        - "git submodule update --init --recursive"
+      image: "bitnami/git:2.35.1-debian-10-r68"
+      imagePullPolicy: "IfNotPresent"
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "800m"
+          ephemeral-storage: "500Mi"
+
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - mountPath: "/dataset"
+          name: "jenkins-common"
+          readOnly: true
+          subPath: "dataset"
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          readOnly: false
+          subPath: "m2repo"
+        - name: "gluten-repo"
+          mountPath: /root/.m2/repository/io/glutenproject
+          readOnly: false
+      resources:
+        requests:
+          memory: "20Gi"
+          cpu: "8"
+          ephemeral-storage: "7Gi"
+
+    - name: "libchbuilder"
+      tty: true
+      command:
+        - "cat"
+      image: "qwe1398775315/libchbuilder:0.1.0"
+      imagePullPolicy: "IfNotPresent"
+      env:
+        - name: HTTP_PROXY
+          value: null
+        - name: HTTPS_PROXY
+          value: null
+        - name: ENABLE_EMBEDED_COMPILER
+          value: ON
+      volumeMounts:
+        - mountPath: "/ccache"
+          name: "jenkins-common"
+          readOnly: false
+          subPath: "ccache"
+      resources:
+        requests:
+          memory: "30Gi"
+          cpu: "16"
+          ephemeral-storage: "3Gi"
+    - image: "jenkins/inbound-agent:4.11-1-jdk11"
+      name: "jnlp"
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "1"
+          ephemeral-storage: "500Mi"
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "fileserver-claim"
+    - name: "gluten-repo"
+      emptyDir: { }
