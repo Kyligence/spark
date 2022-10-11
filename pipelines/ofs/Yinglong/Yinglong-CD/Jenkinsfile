@@ -14,7 +14,7 @@ def setDockerfie(path, pack) {
         sh """
             pwd
             ls -al
-            cp ../../../../pipelines/local/Yinglong-CD/docker/Dockerfile Dockerfile
+            cp ../../../../pipelines/ofs/Yinglong/Yinglong-CD/docker/Dockerfile Dockerfile
             sed -i "s#replace_package#target/${pack}*.tar.gz#g" Dockerfile
             sed -i "s#replace_dir#${pack}#g" Dockerfile
             cat Dockerfile
