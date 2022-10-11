@@ -32,6 +32,9 @@ spec:
         - "cat"
       image: "maven:3.8.3-openjdk-8"
       imagePullPolicy: "IfNotPresent"
+      env:
+        - name: JAVA_OPTS 
+          value: "-Dkubernetes.websocket.timeout=60000 -Dorg.csanchez.jenkins.plugins.kubernetes.pipeline.ContainerExecDecorator.websocketConnectionTimeout=90"
       volumeMounts:
         - name: "kyligence-repo"
           mountPath: /jenkins-common/.kem2/repository
