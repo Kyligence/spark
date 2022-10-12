@@ -27,8 +27,10 @@ def call() {
             println "kylin sub modules: ${kylin_modules}"
 
             modules.removeAll(['kylin'])
+            modules.addAll(kylin_modules)
 
             clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+            println "clickhouse_it_module: ${clickhouse_it_module}"
             if(clickhouse_it_module) {
                 kylin_modules.removeAll([clickhouse_it_module])
                 clickhouse_it_module.addAll([
@@ -36,7 +38,6 @@ def call() {
                     "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
                 ])
             }
-            modules.addAll(kylin_modules)
         }
 
         Collections.reverse(modules)
