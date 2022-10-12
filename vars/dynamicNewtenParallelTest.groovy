@@ -34,10 +34,7 @@ def call() {
 
             if(_clickhouse_it_module) {
                 kylin_modules.removeAll([_clickhouse_it_module])
-                clickhouse_it_module = [
-                    "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
-                    "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
-                ]
+                clickhouse_it_module = [_clickhouse_it_module]
             }
         }
 
@@ -50,10 +47,11 @@ def call() {
 
         def worker1 = createWorker("UTest-Stage-1", taskQueue)
         def worker2 = createWorker("UTest-Stage-2", taskQueue)
-        def worker3 = createWorker("UTest-Stage-3", queryQueue)
-        def worker4 = createWorker("UTest-Stage-4", chitQueue)
+        def worker3 = createWorker("UTest-Stage-3", taskQueue)
+        def worker4 = createWorker("UTest-Stage-4", queryQueue)
+        def worker5 = createWorker("UTest-Stage-5", chitQueue)
 
-        def allTestStages = worker1 + worker2 + worker3 + worker4
+        def allTestStages = worker1 + worker2 + worker3 + worker4 + worker5
         allTestStages.failFast = true
         parallel allTestStages
     }
