@@ -33,7 +33,7 @@ def call() {
             println "_clickhouse_it_module: ${_clickhouse_it_module}"
 
             if(_clickhouse_it_module) {
-                kylin_modules.removeAll([_clickhouse_it_module])
+                modules.removeAll([_clickhouse_it_module])
                 clickhouse_it_module = [_clickhouse_it_module]
             }
         }
