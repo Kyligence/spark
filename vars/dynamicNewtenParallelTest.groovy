@@ -12,23 +12,13 @@ def call() {
         def kap_it_module = modules.findAll({ it.contains('src/kap-it') }).getAt(0)
         if (kap_it_module) {
             modules.removeAll([kap_it_module])
-            modules.addAll([
-                // "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
+            kap_it_module = [
+                "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
                 "${kap_it_module} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
-            ])
+            ]
         }
 
-        def no_query_module = ["${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"]
-
-        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
-        if(clickhouse_it_module) {
-            modules.removeAll([clickhouse_it_module])
-            modules.addAll([
-                "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
-                "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
-            ])
-        }
-
+        def clickhouse_it_module = []
         if ('kylin' in modules) {
             def kylin_modules = sh(script: '''
                 cd sourcecode/kylin
@@ -37,6 +27,15 @@ def call() {
             println "kylin sub modules: ${kylin_modules}"
 
             modules.removeAll(['kylin'])
+
+            clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+            if(clickhouse_it_module) {
+                kylin_modules.removeAll([clickhouse_it_module])
+                clickhouse_it_modules.addAll([
+                    "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
+                    "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
+                ])
+            }
             modules.addAll(kylin_modules)
         }
 
@@ -44,28 +43,17 @@ def call() {
         println "final modules: ${modules}"
 
         def taskQueue = modules as LinkedBlockingQueue
-        def specQueue = no_query_module as LinkedBlockingQueue
+        def queryQueue = kap_it_module as LinkedBlockingQueue
+        def chitQueue = clickhouse_it_module as LinkedBlockingQueue
 
         def worker1 = createWorker("UTest-Stage-1", taskQueue)
         def worker2 = createWorker("UTest-Stage-2", taskQueue)
-        def worker3 = createWorker("UTest-Stage-3", taskQueue)
-        def worker4 = createWorker("UTest-Stage-4", taskQueue)
-        def worker5 = createWorker("UTest-Stage-5", specQueue)
+        def worker3 = createWorker("UTest-Stage-3", queryQueue)
+        def worker4 = createWorker("UTest-Stage-4", chitQueue)
 
-        def allTestStages = worker1 + worker2 + worker3 + worker4 + worker5
+        def allTestStages = worker1 + worker2 + worker3 + worker4
         allTestStages.failFast = true
         parallel allTestStages
-    }
-}
-
-def spliteUt(List modules, String moduleName, String methordName) {
-    def split_module = modules.findAll({ it.contains(moduleName)}).getAt(0)
-    if(split_module) {
-        modules.removeAll([split_module])
-        modules.addAll([
-            "${split_module} -Dtest='!${methordName}'",
-            "${split_module} -Dtest='${methordName}'"
-        ])
     }
 }
 
