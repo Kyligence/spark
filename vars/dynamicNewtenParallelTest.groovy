@@ -18,7 +18,7 @@ def call() {
             ]
         }
 
-        def clickhouse_it_module = []
+        def clickhouse_it_module
         if ('kylin' in modules) {
             def kylin_modules = sh(script: '''
                 cd sourcecode/kylin
@@ -29,14 +29,15 @@ def call() {
             modules.removeAll(['kylin'])
             modules.addAll(kylin_modules)
 
-            clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
-            println "clickhouse_it_module: ${clickhouse_it_module}"
-            if(clickhouse_it_module) {
-                kylin_modules.removeAll([clickhouse_it_module])
-                clickhouse_it_module.addAll([
+            def _clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+            println "_clickhouse_it_module: ${_clickhouse_it_module}"
+
+            if(_clickhouse_it_module) {
+                kylin_modules.removeAll([_clickhouse_it_module])
+                clickhouse_it_module = [
                     "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
                     "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
-                ])
+                ]
             }
         }
 
