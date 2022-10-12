@@ -31,7 +31,7 @@ def call() {
             clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
             if(clickhouse_it_module) {
                 kylin_modules.removeAll([clickhouse_it_module])
-                clickhouse_it_modules.addAll([
+                clickhouse_it_module.addAll([
                     "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
                     "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
                 ])

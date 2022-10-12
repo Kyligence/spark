@@ -26,9 +26,9 @@ spec:
     - ReadWriteMany
   cephfs:
     monitors: 
-    - 10.1.9.21:6789
-    - 10.1.9.22:6789
-    - 10.1.9.23:6789
+    - 10.1.9.101:6789
+    - 10.1.9.102:6789
+    - 10.1.9.103:6789
     path: /data/myservice
     user: admin
     secretRef:
