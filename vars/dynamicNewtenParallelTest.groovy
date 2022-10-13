@@ -18,7 +18,12 @@ def call() {
             ]
         }
 
-        def clickhouse_it_module
+        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+        if(clickhouse_it_module) {
+            modules.removeAll([clickhouse_it_module])
+            clickhouse_it_module = [clickhouse_it_module]
+        }
+
         if ('kylin' in modules) {
             def kylin_modules = sh(script: '''
                 cd sourcecode/kylin
