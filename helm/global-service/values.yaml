@@ -1,0 +1,120 @@
+# Default values for global-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  redis:
+    host: redis-master.yinglong.svc.cluster.local
+    database: 3
+    password: "*****"
+
+gateway:
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    repository: repo-ofs.kyligence.com/gateway
+    tag: "5.0.1"
+  saas:
+    nacos:
+      discovery:
+        serverAddr: nacos-naming-svc.yinglong-middle-qa.svc.cluster.local:8848
+      config:
+        serverAddr: nacos-config-svc.yinglong-middle-qa.svc.cluster.local:8848
+
+iam:
+  kyligence:
+    request:
+      domain: dev.kyligence.com
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    repository: repo-ofs.kyligence.com/iam
+    tag: "5.0.2"
+  frontend:
+    image:
+      repository: repo-ofs.kyligence.com/iam-frontend
+      tag: "5.0.0-api-token-1"
+  config:
+    mysql:
+      host: "10.1.9.111"
+      port: 3306
+      db: yideploy
+    db:
+      username: "yldeploy"
+      password: "******"
+  nacos:
+    discovery:
+      serverAddr: nacos-naming-svc.yinglong-middle-qa.svc.cluster.local:8848
+    config:
+      serverAddr: nacos-config-svc.yinglong-middle-qa.svc.cluster.local:8848
+  gateway:
+    serverAddr: saas-gateway.yinglong-middle-qa.svc.cluster.local:8080
+  ingress:
+    hosts:
+      - host: iam-qa.dev.kyligence.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+
+nacos:
+  config:
+    imagePullSecrets:
+      - name: xuanwuimagesecret
+    image:
+      repository: repo-ofs.kyligence.com/kyligence/kynacos
+      tag: "v2.1.1"
+    replicaCount: 1
+    nacos:
+      serverAddr: nacos-naming-svc.yinglong-middle-qa.svc.cluster.local:8848
+    ingress:
+      hosts:
+        - host: nacos-qa.config.dev.kyligence.com
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+  naming:
+    imagePullSecrets:
+      - name: xuanwuimagesecret
+    image:
+      repository: repo-ofs.kyligence.com/kyligence/kynacos
+      tag: "v2.1.1"
+    replicaCount: 3
+    ingress:
+      hosts:
+        - host: nacos-qa.naming.dev.kyligence.com
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+  mysql:
+    host: "10.1.9.111"
+    port: 3306
+    db: "yideploy"
+    auth:
+      username: "yldeploy"
+      password: "*****"
+    imagePullSecrets:
+      - name: xuanwuimagesecret
+    image:
+      repository: mysql
+      pullPolicy: Always
+      tag: "5.7"
+
+nacos-frontend:
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    repository: repo-ofs.kyligence.com/kyligence/kynacos-frontend
+    tag: "1.0.0"
+  gateway:
+    serverAddr: http://saas-gateway.yinglong-middle-qa:8080
+  iam:
+    serverAddr: https://iam-qa.dev.kyligence.com/
+  config:
+    serverAddr: https://nacos-qa.dev.kyligence.com/
+  ingress:
+    enabled: true
+    hosts:
+      - host: nacos-qa.dev.kyligence.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific

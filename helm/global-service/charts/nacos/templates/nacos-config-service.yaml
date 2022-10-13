@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nacos.fullname" . }}-config-headless
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  clusterIP: None
+  ports:
+    - name: server
+      port: {{ .Values.config.service.port }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port }}
+    - name: client-rpc
+      port: {{ .Values.config.service.port | int | add 1000 }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port | int | add 1000 }}
+    - name: raft-rpc
+      port: {{ .Values.config.service.port | int | add 1001 }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port | int | add 1001 }}
+    - name: old-raft-rpc
+      port: {{ .Values.config.service.port | int | add -1000 }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port | int | add -1000 }}
+  selector:
+    {{- include "nacos.selectorLabels" . | nindent 4 }}
+    app: {{ include "nacos.fullname" . }}-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nacos.fullname" . }}-config-svc
+  labels:
+    {{- include "nacos.labels" . | nindent 4 }}
+    app: {{ include "nacos.fullname" . }}-config-svc
+spec:
+  type: {{ .Values.config.service.type }}
+  ports:
+    - name: server
+      port: {{ .Values.config.service.port }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port }}
+    - name: client-rpc
+      port: {{ .Values.config.service.port | int | add 1000 }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port | int | add 1000 }}
+    - name: raft-rpc
+      port: {{ .Values.config.service.port | int | add 1001 }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port | int | add 1001 }}
+    - name: old-raft-rpc
+      port: {{ .Values.config.service.port | int | add -1000 }}
+      protocol: TCP
+      targetPort: {{ .Values.config.service.port | int | add -1000 }}
+  selector:
+    {{- include "nacos.selectorLabels" . | nindent 4 }}
+    app: {{ include "nacos.fullname" . }}-config
