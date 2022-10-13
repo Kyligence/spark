@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: spark-role-binding
+  name: {{ .Values.sparkRoleBinding }}
   namespace: {{ .Values.sparkResourceNamespace }}
 subjects:
   - kind: ServiceAccount
