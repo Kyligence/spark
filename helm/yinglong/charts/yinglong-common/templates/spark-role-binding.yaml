@@ -1,12 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Values.sparkRoleBinding }}
+  name: {{ .Values.sparkRoleBinding }}-{{ .Release.Namespace }}
   namespace: {{ .Values.sparkResourceNamespace }}
 subjects:
   - kind: ServiceAccount
     name: spark
 roleRef:
   kind: ClusterRole
-  name: {{ .Values.sparkRole }}
+  name: {{ .Values.sparkRole }}-{{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io

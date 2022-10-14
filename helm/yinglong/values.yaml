@@ -8,21 +8,61 @@ global:
     # workingDir: 
 
   metadata:
-    user: root
-    password: kyligence
-    database: kylin
-    # url: ke_metadata@jdbc,driverClassName=org.postgresql.Driver,url=jdbc:postgresql://localhost:5432/kylin,username=postgres,password=
-    identifierPrefix: ke_metadata_yinglong
+    url: "*****"
   nacos:
     config:
-      serverAddr: http://nacos-config-svc.yinglong:8848
-      serverAddrNoHttp: nacos-config-svc.yinglong:8848
+      serverAddrNoHttp: nacos-config-svc.yinglong-middle-qa:8848
     discovery:
-      serverAddr: http://nacos-naming-svc.yinglong:8848
+      serverAddrNoHttp: nacos-naming-svc.yinglong-middle-qa:8848
     # serverAddr:
   
-  tenantId: "54642236552822785"
-  publicGroup: "yinglong"
+  tenantId: "103074753383407618"
+  publicGroup: "xuanwu-system"
 
   zookeeper: {}
     # address: localhost:2181
+  tz: "Asia/Shanghai"
+
+  configcenter:
+    disabled: false
+
+yinglong-common:
+  image:
+    tag: yl-5.0.10
+  fullnameOverride: yinglong-common-with-a-very-long-name
+  serviceAccount:
+    name: spark-abc
+
+yinglong-data-loading:
+  image:
+    tag: yl-5.0.10
+  fullnameOverride: yinglong-data-loading-with-a-very-long-name
+
+yinglong-query:
+  image:
+    tag: yl-5.0.10
+  fullnameOverride: yinglong-query-with-a-very-long-name
+
+yinglong-smart:
+  image:
+    tag: yl-5.0.10
+
+yinglong-frontend:
+  image:
+    tag: yl-5.0.10
+  gateway:
+    serverAddr: gateway:8080
+  iam:
+    serverAddr: https://iam-qa.dev.kyligence.com/
+  config:
+    serverAddr: https://nacos-qa.dev.kyligence.com/
+
+gateway:
+  image:
+    tag: "5.0.1-private"
+  fullnameOverride: gateway
+  config: # must same with middle ware
+    redis:
+      host: redis-master.yinglong.svc.cluster.local
+      database: 3
+      password: "******"

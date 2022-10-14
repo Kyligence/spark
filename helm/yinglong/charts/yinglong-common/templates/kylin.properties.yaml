@@ -26,7 +26,7 @@ data:
     kylin.engine.spark-conf.spark.kubernetes.executor.limit.cores=1
     kylin.engine.spark-conf.spark.kubernetes.executor.podNamePrefix=data-loading
     kylin.engine.spark-conf.spark.kubernetes.file.upload.path=s3a://yinglong-dep
-    kylin.engine.spark-conf.spark.kubernetes.namespace=${K8S_NAMESPACE}
+    kylin.engine.spark-conf.spark.kubernetes.namespace=yinglong-calc
     kylin.engine.spark-conf.spark.master=k8s://https://kubernetes.default:443
     kylin.engine.spark-conf.spark.sql.hive.metastore.jars.path=s3a://yinglong/kylin/hive_1_2_2/*
     kylin.engine.spark-conf.spark.sql.hive.metastore.jars=path
@@ -66,7 +66,7 @@ data:
     kylin.storage.columnar.spark-conf.spark.kubernetes.executor.limit.cores=1
     kylin.storage.columnar.spark-conf.spark.kubernetes.executor.podNamePrefix=sparder
     kylin.storage.columnar.spark-conf.spark.kubernetes.file.upload.path=s3a://yinglong-dep
-    kylin.storage.columnar.spark-conf.spark.kubernetes.namespace=${K8S_NAMESPACE}
+    kylin.storage.columnar.spark-conf.spark.kubernetes.namespace=yinglong-calc
     kylin.storage.columnar.spark-conf.spark.master=k8s://https://kubernetes.default:443
     kylin.storage.columnar.spark-conf.spark.serializer=org.apache.spark.serializer.KryoSerializer
     kylin.storage.columnar.spark-conf.spark.sql.shuffle.partitions=32
@@ -77,3 +77,4 @@ data:
     spring.cloud.nacos.server-addr=${NACOS_DISCOVERY_SERVER_ADDR}
     spring.session.store-type=none
     spring.profiles.active=custom
+    kylin.env.hdfs-working-dir=${KYLIN_ENV_HDFS_WORKING_DIR}

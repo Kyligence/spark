@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "yinglong-commmon.fullname" . }}
+  name: {{ include "yinglong-common.fullname" . }}
   labels:
-    {{- include "yinglong-commmon.labels" . | nindent 4 }}
+    {{- include "yinglong-common.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -16,4 +16,4 @@ spec:
       protocol: TCP
       name: debug
   selector:
-    {{- include "yinglong-commmon.selectorLabels" . | nindent 4 }}
+    {{- include "yinglong-common.selectorLabels" . | nindent 4 }}
