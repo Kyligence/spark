@@ -14,10 +14,12 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: 'Kyligence', description: 'bi-adapter repo')
-        string(name: 'branch', defaultValue: 'master', description: 'branch')
-        booleanParam(name: 'skipTests', defaultValue: false, description: 'skip tests')
-        booleanParam(name: 'isDeploy', defaultValue: false, description: 'is deploy')
+        string(name: 'repo', defaultValue: 'custom-user-manager-4x', description: 'git repository（GitHub ID）：default custom-user-manager-4x')
+        choice(name: 'branch', choices: ['changan-4x', 'aums', 'cmft'], description: 'git manager branch')
+        string(name: 'version', defaultValue: '', description: 'manager version\n for example: 1.0.4')
+        string(name: 'keVersion', defaultValue: '', description: 'ke version\n for example: 4.5.17.0')
+        choice(name: 'option', choices: ['isDeploy', 'isIT'], description: 'deploy or integration test')
+        string(name: 'extraOption', defaultValue: 'normal', description: 'normal/sleep')
     }
 
     environment {
@@ -25,13 +27,75 @@ pipeline {
     }
 
     stages {
+        stage("Checkout Test Web Source Code") {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                githubCheckout "custom-user-manager-4x", "master", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('copy_file_to_remote') {
+            steps {
+                container('build') {
+                    dir("sourcecode") {
+                        timestamps {
+                            script {
+                                cmd = "mkdir -p /root/manager"
+                                echo "cmd: ${cmd}"
+                                sshCmdWithCredentials(
+                                        cmd,
+                                        'shuiaileiroot',
+                                        ['name': 'localhost', 'host': '10.1.2.181', 'allowAnyHosts': true]
+                                )
+                            }
+                            script {
+                                cmd = "rm -rf /root/manager/bin"
+                                echo "cmd: ${cmd}"
+                                sshCmdWithCredentials(
+                                        cmd,
+                                        'shuiaileiroot',
+                                        ['name': 'localhost', 'host': '10.1.2.181', 'allowAnyHosts': true]
+                                )
+                            }
+                            script {
+                                def remote = [:]
+                                def file_name = "./../sourcecode/bin"
+                                def remote_path = "/root/manager"
+                                def remote_ip = "10.1.2.181"
+                                remote.name = 'server_test_env'
+                                def credentials = "shuiaileiroot"
+                                withCredentials([usernamePassword(credentialsId: credentials,
+                                        usernameVariable: 'REMOTE_USERNAME',
+                                        passwordVariable: 'REMOTE_PASSWORD')]) {
+                                    remote.user = REMOTE_USERNAME
+                                    remote.password = REMOTE_PASSWORD
+                                }
+                                remote.host = remote_ip
+                                remote.allowAnyHosts = true
+                                sshPut remote: remote, from: file_name, into: remote_path
+                                sshCommand remote: remote, command: """
+                                ls -lh ${remote_path}
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         stage("Checkout Source Code") {
             steps {
                 container("build") {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'custom-user-manager-4x', "${branch ?: params.branch ?: 'master'}", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*','kyligence-git'
+                                githubCheckout "${params.repo}", "${params.branch ?: 'changan-4x'}", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
                         }
                     }
@@ -44,18 +108,89 @@ pipeline {
                     sh "cat /root/.m2/settings.xml"
                     dir("sourcecode") {
                         script {
-                            if (params.skipTests) {
-                                sh script: """
-                                    echo "skip tests"
-                                    mvn clean install -DskipTests
-                                """
-                            } else {
-                                sh script: """
-                                    mvn clean install
-                                """
+                            sh script: """
+                                echo "skip tests"
+                                mvn clean install -DskipTests
+                            """
+                        }
+                        sh script: """
+                            echo "start deploy SNAPSHOT ${params.isDeploy}"
+                            mvn clean deploy  -DskipTests -Pcse
+                        """
+                    }
+                }
+            }
+        }
+        stage('test_prepare') {
+            when {
+                expression {
+                    return params.option == 'isIT'
+                }
+            }
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            def branch = "${params.branch ?: 'changan-4x'}"
+                            def version = "${params.version}"
+                            def keVersion = "${params.keVersion}"
+                            echo "branch: ${branch}"
+                            echo "version: ${version}"
+                            cmd = "sh /root/manager/bin/manager_test.sh test " + branch + " " + keVersion + " " + version
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
+                            )
+                            echo "ssh cmd send success"
+                            echo "Listen for the KE running status"
+                            def url= 'http://10.1.2.181:7383/kylin/api/system/license'
+                            def i = 0
+                            retry(10) {
+                                echo "Get KE Status ${++i} "
+                                try{
+                                    def response = httpRequest \
+                                            httpMode: 'GET' ,
+                                    contentType: 'APPLICATION_JSON',
+                                    url: url
+                                    def status = response.status
+                                    echo "status: ${status}"
+                                } catch (e) {
+                                    sleep(time: 30, unit: "SECONDS")
+                                    echo "check KE status exception: ${e}"
+                                    sh 'exit 1'
+                                }
                             }
                         }
-                       
+                    }
+                }
+            }
+        }
+        stage('test') {
+            when {
+                expression {
+                    return params.option == 'isIT'
+                }
+            }
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            def branch = "${params.branch ?: 'changan-4x'}"
+                            def sleepTest = "${params.extraOption ?: 'normal'}"
+                            echo "branch: ${branch}"
+                            echo "sleepTest: ${sleepTest}"
+                            echo "start happy pass test."
+                            cmd = "sh /root/manager/bin/happy_pass.sh " + branch + " " + sleepTest
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
+                            )
+                            echo "happy pass test finished."
+                        }
                     }
                 }
             }
@@ -63,7 +198,7 @@ pipeline {
         stage('Deploy') {
             when {
                 expression {
-                    return params.isDeploy
+                    return params.option == 'isDeploy'
                 }
             }
             steps {
@@ -72,12 +207,73 @@ pipeline {
                     dir("sourcecode") {
                         sh script: """
                             echo "start deploy ${params.isDeploy}"
-                            mvn clean deploy -Pdev
+                            mvn versions:set -DnewVersion=${version}
+                            mvn clean deploy  -DskipTests -Pcse
                         """
                     }
                 }
             }
-        }   
-        
+        }
+        stage('record') {
+            when {
+                expression {
+                    return params.option == 'isDeploy'
+                }
+            }
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            def branch = "${params.branch ?: 'changan-4x'}"
+                            def version = "${params.version}"
+                            def keVersion = "${params.keVersion}"
+                            echo "branch: ${branch}"
+                            echo "version: ${version}"
+                            cmd = "sh /root/manager/bin/manager_test.sh record " + branch + " " + keVersion + " " + version
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
+                            )
+                            echo "ssh cmd send success"
+                        }
+                        script {
+                            def branch = "${params.branch ?: 'changan-4x'}"
+                            def version = "${params.version}"
+                            def keVersion = "${params.keVersion}"
+                            echo "branch: ${branch}"
+                            echo "start record."
+                            cmd = "sh /root/manager/bin/happy_pass.sh " + branch + " record " + keVersion + " " + version
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
+                            )
+                            echo "record finished."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("doTag") {
+            when {
+                expression {
+                    return params.option == 'isDeploy'
+                }
+            }
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            def _tag = "tag-" + params.branch + "-" + params.version
+                            githubHelper 'TAG', params.branch, 'custom-user-manager-4x', _tag
+                        }
+                    }
+                }
+            }
+        }
     }
 }
