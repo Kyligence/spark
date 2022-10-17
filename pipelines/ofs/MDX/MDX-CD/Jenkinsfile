@@ -25,9 +25,9 @@ def existPackaged(package_info) {
     return false
 }
 
-def getPackageInfo(version, envStage, cid) {
+def getPackageInfo(engine, version, envStage, cid) {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],cid[${cid}]"
-    def package_path = "mdx/${envStage}"
+    def package_path = "mdx/${envStage}/${engine}"
 
     file_name = "MDX-${version}-${cid}.tar.gz"
     final_name = "Kyligence-MDX-${version}.tar.gz"
@@ -48,7 +48,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines//yaml/jenkins-package-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
         }
     }
 
@@ -61,12 +61,10 @@ pipeline {
 
     parameters {
         string(name: 'branch', defaultValue: 'develop', description: '分支（必填）')
-        choice(name: 'shotgun', choices:'sniper\nkc\nshotgun', description: 'sniper:：基于并扩展mondrian的计算引擎\nshotgun：具备spark分布式能力的引擎\nkc：是shotgun适配kc云环境的版本')
-        string(name: 'version', defaultValue: '1.4.13.0', description: '填写版本号，格式：1.4.10.0，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
+        choice(name: 'engine', choices:'shotgun\nkc\nsniper', description: 'sniper：基于并扩展mondrian的计算引擎\nshotgun：具备spark分布式能力的引擎\nkc：是shotgun适配kc云环境的版本')
+        string(name: 'version', defaultValue: '1.4.17.0', description: '填写版本号，格式：1.4.17.0，版本号由【数字和 . 】组合，最多5段，必须规范')
         text(name: 'changelog', defaultValue: '', description: 'Change Log')
-        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
-
-    // string(name: 'ke-version', defaultValue: '', description: '依赖的KE版本（如果不填用pom配置文件里的 ke.version 变量）')
+        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程')
     }
 
     stages {
@@ -97,7 +95,7 @@ pipeline {
                             dir('sourcecode') {
                                 def _version = "${params.version}-${params.envStage}"
                                 // 1. 获取包信息
-                                package_info = getPackageInfo(_version, params.envStage, commitid)
+                                package_info = getPackageInfo(params.engine, _version, params.envStage, commitid)
 
                                 // 2. 判断是否已打包，避免重复打包
                                 exist_package = existPackaged(package_info)
@@ -105,9 +103,13 @@ pipeline {
 
                                 if (!exist_package) {
                                     sh script:"""
-                                        export package=${params.shotgun}
-                                        export version=${params.version}
-                                        export changelog=${params.changelog}
+                                        node -v
+                                        export package=${params.engine}
+                                        export version=${_version}
+export changelog=\$(cat <<- EOF
+${params.changelog}
+EOF
+)
 
                                         build/scripts/package.sh
                                     """
@@ -123,7 +125,7 @@ pipeline {
                                         sh script: """
                                             cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                                         """
-                                    }else {
+                                    } else {
                                         sh script: """
                                             cp ${package_info.file_name} ${package_info.final_name}
                                             cp ${package_info.final_name} /var/cicd/${package_info.package_path}
@@ -131,6 +133,9 @@ pipeline {
                                         package_info.file_name = package_info.final_name
                                     }
                                 } else {
+                                    sh script:"""
+                                        node -v
+                                    """
                                     println "The package: ${package_info.file_name} is exist， Please reuse the it. \n 包已存在，不用重复打包"
                                 }
                             }
@@ -150,9 +155,16 @@ pipeline {
                 }
                 stage('3.2.Upload to Nexus') {
                     steps {
-                        script {
-                            println 'Upload to Nexus'
-                            uploadHelper.uploadNexus(package_info.file_name, package_info.package_path, 'raw-tars-hosted')
+                        container('build') {
+                            timestamps {
+                                script {
+                                    println 'Upload to Nexus'
+                                    sh script: """
+                                        echo ${package_info.file_name}
+                                    """
+                                    uploadHelper.uploadNexus(package_info.file_name, package_info.package_path, 'raw-tars-hosted')
+                                }
+                            }
                         }
                     }
                 }
@@ -168,11 +180,10 @@ pipeline {
                 container('build') {
                     script {
                         def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况: ${auto_branch}\n2. 发布版本号：${params.version}"
-                        // sh 'printenv'
                         paramsGA = input (
                             message: checkMsg,
                             ok: '确认！',
-                            submitter:'liming.meng,yongchao.liu',
+                            submitter:'liming.meng,yongchao.li',
                             submitterParameter:'APPROVER',
                             parameters:[
                                 booleanParam(name: 'skipUpload', defaultValue: false, description: '是否跳过上传')
@@ -191,27 +202,39 @@ pipeline {
             parallel {
                 stage('5.1.GA AWS CN') {
                     steps {
-                        script {
-                            println("upload to AWS S3 in CN: ${package_info.final_name}")
-                            // 国内站点：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?prefix=product%2Fkmdx%2F&showversions=false&region=cn-north-1
-                            uploadHelper.uploadAwsS3(package_info.final_name, "product/kmdx/${package_info.final_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                        container('build') {
+                            timestamps {
+                                script {
+                                    println("upload to AWS S3 in CN: ${package_info.final_name}")
+                                    // 国内站点：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?prefix=product%2Fkmdx%2F&showversions=false&region=cn-north-1
+                                    uploadHelper.uploadAwsS3(package_info.final_name, "product/kmdx/${package_info.final_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp')
+                                }
+                            }
                         }
                     }
                 }
                 stage('5.2.GA AWS Global') {
                     steps {
-                        script {
-                            println("upload to AWS S3 in Global: ${package_info.final_name}")
-                            // 国际站点：https://us-east-1.console.aws.amazon.com/s3/buckets/download.kyligence.io?prefix=product%2Fkmdx%2F&region=us-west-1&showversions=false
-                            uploadHelper.uploadAwsS3(package_info.final_name, "product/kmdx/${package_info.final_name}", 'download.kyligence.io', 'us-west-1', 'aws_global_s3_cp')
+                        container('build') {
+                            timestamps {
+                                script {
+                                    println("upload to AWS S3 in Global: ${package_info.final_name}")
+                                    // 国际站点：https://us-east-1.console.aws.amazon.com/s3/buckets/download.kyligence.io?prefix=product%2Fkmdx%2F&region=us-west-1&showversions=false
+                                    uploadHelper.uploadAwsS3(package_info.final_name, "product/kmdx/${package_info.final_name}", 'download.kyligence.io', 'us-west-1', 'aws_global_s3_cp')
+                                }
+                            }
                         }
                     }
                 }
                 stage('5.3.GA Nexus') {
                     steps {
-                        script {
-                            println("upload to Nexus repo-ofs: ${package_info.final_name}")
-                            uploadHelper.uploadNexus(package_info.final_name, 'product/kmdx', 'raw-ke-ga-tar-hosted')
+                        container('build') {
+                            timestamps {
+                                script {
+                                    println("upload to Nexus repo-ofs: ${package_info.final_name}")
+                                    uploadHelper.uploadNexus(package_info.final_name, 'product/kmdx', 'raw-ke-ga-tar-hosted')
+                                }
+                            }
                         }
                     }
                 }

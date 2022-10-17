@@ -1,0 +1,80 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    environment {
+        //变量名，用于存储input步骤的返回值
+        auto_branch = ''
+        commitid = ''
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'master', description: '分支（必填）')
+        choice(name: 'envStage', choices:'GA', description:'打包阶段，如果要GA，选择GA进行流程')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            auto_branch = params.branch
+
+                            pullCodeFromGitMirror 'olap4j', auto_branch
+                            // commitid = sh(returnStdout:true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                            commitid = githubHelper.gitCommitId()
+                            println "commitid: ${commitid}"
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.Approve GA') {
+            when {
+                expression {
+                    return params.envStage == 'GA'
+                }
+            }
+            steps {
+                container('build') {
+                    script {
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况: ${auto_branch}"
+                        // sh 'printenv'
+                        paramsGA = input (
+                            message: checkMsg,
+                            ok: '确认！',
+                            submitter:'liming.meng,yongchao.li',
+                            submitterParameter:'APPROVER'
+                        )
+                    }
+                }
+            }
+        }
+        stage('6.2.Deploy Jar') {
+            steps {
+                container('build') {
+                    script {
+                        dir('sourcecode') {
+                            sh """
+                            mvn deploy -Pdev -Dmaven.test.skip=true
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
