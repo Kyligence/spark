@@ -8,7 +8,7 @@ global:
     # workingDir: 
 
   metadata:
-    url: "*****"
+    url: "*****" # yinglong所在的mysql的URL地址, (用户名和密码在参数上)
   nacos:
     config:
       serverAddrNoHttp: nacos-config-svc.yinglong-middle-qa:8848
@@ -16,52 +16,62 @@ global:
       serverAddrNoHttp: nacos-naming-svc.yinglong-middle-qa:8848
     # serverAddr:
   
-  tenantId: "103074753383407618"
-  publicGroup: "xuanwu-system"
+  tenantId: "103074753383407618" # 部署一个yinglong-release需要的租户ID
+  publicGroup: "xuanwu-system"   # 租户中心在nacos-naming中的组
 
   zookeeper: {}
     # address: localhost:2181
-  tz: "Asia/Shanghai"
+  tz: "Asia/Shanghai"        # 部署yinglong的时区, 必须考虑实际情况.
 
   configcenter:
-    disabled: false
+    disabled: false         # 使用非配置中心版本的yinglong (beta) 为xuanwu-offering 10月演示特殊设置.
 
 yinglong-common:
   image:
+    repository: repo-ofs.kyligence.com/kyligence/yinglong-common
     tag: yl-5.0.10
   fullnameOverride: yinglong-common-with-a-very-long-name
-  serviceAccount:
-    name: spark-abc
 
 yinglong-data-loading:
   image:
+    repository: repo-ofs.kyligence.com/kyligence/yinglong-data-loading
     tag: yl-5.0.10
   fullnameOverride: yinglong-data-loading-with-a-very-long-name
 
 yinglong-query:
   image:
+    repository: repo-ofs.kyligence.com/kyligence/yinglong-query
     tag: yl-5.0.10
   fullnameOverride: yinglong-query-with-a-very-long-name
 
 yinglong-smart:
   image:
+    repository: repo-ofs.kyligence.com/kyligence/yinglong-smart
     tag: yl-5.0.10
 
 yinglong-frontend:
   image:
+    repository: repo-ofs.kyligence.com/kyligence/yinglong-frontend
     tag: yl-5.0.10
   gateway:
     serverAddr: gateway:8080
   iam:
-    serverAddr: https://iam-qa.dev.kyligence.com/
+    serverAddr: https://iam-qa.dev.kyligence.com/   # 租户中心的访问地址.
   config:
-    serverAddr: https://nacos-qa.dev.kyligence.com/
+    serverAddr: https://nacos-qa.dev.kyligence.com/   # 配置中心的访问地址.
+  ingress:
+    hosts:
+      - host: dev.kyligence.com  # yinglong 最终的访问地址是 https://{helm-release-name}.{k8s-namespace}.{host}/
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
 
 gateway:
   image:
+    repository: repo-ofs.kyligence.com/gateway
     tag: "5.0.1-private"
   fullnameOverride: gateway
-  config: # must same with middle ware
+  config: # redis参数必须和租户中心的gateway所使用的redis一致.
     redis:
       host: redis-master.yinglong.svc.cluster.local
       database: 3

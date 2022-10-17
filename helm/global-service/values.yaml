@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 global:
-  redis:
+  redis:  # 用户登录以后, session存放在这个redis上,  租户中心和yinglong必须使用同一个redis
     host: redis-master.yinglong.svc.cluster.local
     database: 3
     password: "*****"
@@ -24,7 +24,7 @@ gateway:
 iam:
   kyligence:
     request:
-      domain: dev.kyligence.com
+      domain: kyligence.com   # 租户中心,配置中心,yinglong的所有域名都必须在这个域名的子域名. 如果不是这个域名的子域名, 则无法登录
   imagePullSecrets:
     - name: xuanwuimagesecret
   image:
@@ -34,7 +34,7 @@ iam:
     image:
       repository: repo-ofs.kyligence.com/iam-frontend
       tag: "5.0.0-api-token-1"
-  config:
+  config:  # IAM的mysql元数据配置
     mysql:
       host: "10.1.9.111"
       port: 3306
@@ -50,7 +50,7 @@ iam:
   gateway:
     serverAddr: saas-gateway.yinglong-middle-qa.svc.cluster.local:8080
   ingress:
-    hosts:
+    hosts:  #  这个是租户中心的登录页面, 必须是 {iam.kyligence.request.domain} 的子域名, 必须是https开头. 如何客户现场不能解析域名, 需要自己在电脑配置/etc/hosts
       - host: iam-qa.dev.kyligence.com
         paths:
           - path: /
@@ -67,7 +67,7 @@ nacos:
     nacos:
       serverAddr: nacos-naming-svc.yinglong-middle-qa.svc.cluster.local:8848
     ingress:
-      hosts:
+      hosts:   # nacos-config 便携访问地址. (可选, 可以使用其他方式比如 node-port, port-forward 等方式访问)
         - host: nacos-qa.config.dev.kyligence.com
           paths:
             - path: /
@@ -80,12 +80,12 @@ nacos:
       tag: "v2.1.1"
     replicaCount: 3
     ingress:
-      hosts:
+      hosts:  # nacos-naming 便携访问地址. (可选, 可以使用其他方式比如 node-port, port-forward 等方式访问)
         - host: nacos-qa.naming.dev.kyligence.com
           paths:
             - path: /
               pathType: ImplementationSpecific
-  mysql:
+  mysql:  # nacos-naming 和 nacos-config 必须使用同一个mysql库
     host: "10.1.9.111"
     port: 3306
     db: "yideploy"
@@ -107,13 +107,13 @@ nacos-frontend:
     tag: "1.0.0"
   gateway:
     serverAddr: http://saas-gateway.yinglong-middle-qa:8080
-  iam:
+  iam:  # 这个地址见 {iam.ingress.hosts[0].host} 必须一致.
     serverAddr: https://iam-qa.dev.kyligence.com/
-  config:
+  config:  #  这个是配置中心的登录页面, 必须是 {iam.kyligence.request.domain} 的子域名, 必须是https开头. 如何客户现场不能解析域名, 需要自己在电脑配置/etc/hosts
     serverAddr: https://nacos-qa.dev.kyligence.com/
   ingress:
     enabled: true
-    hosts:
+    hosts:   #  这个是配置中心的登录页面, 必须是 {iam.kyligence.request.domain} 的子域名, 必须是https开头. 如何客户现场不能解析域名, 需要自己在电脑配置/etc/hosts 见 {nacos-frontend.config.serverAddr}
       - host: nacos-qa.dev.kyligence.com
         paths:
           - path: /
