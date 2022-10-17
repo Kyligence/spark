@@ -2,6 +2,8 @@
 
 @Library('devopslib') _
 
+def branch_name = 'master'
+
 pipeline {
     options {
         timeout(time: 2, unit: 'HOURS')
@@ -13,15 +15,14 @@ pipeline {
         }
     }
 
+    //参数定义
     parameters {
-        string(name: 'repo', defaultValue: 'Kyligence', description: 'kap-source-connectors repo')
-        string(name: 'customerBranch', defaultValue: '', description: 'input branch priority 1')
-        choice(name: 'choiceBranch',
-            choices: ['commons', 'cirrodata', 'postgresql', 'impala', 'clickhouse', 'bigquery', 'greenplum', 'mysql', 'oracle', 'gbase8a', 
-            'doris', 'tidb', 'snowflake', 'gaussdb'], 
-            description: 'choice branch priority 2')
-        booleanParam(name: 'skipTests', defaultValue: false, description: 'skip tests')
-        booleanParam(name: 'isDeploy', defaultValue: false, description: 'is deploy')
+        choice(name: 'moduleName',
+                choices: ['commons', 'gaussdb', 'greenplum', 'clickhouse', 'elk', 'bigquery', 'cirrodata', 'doris', 'gbase8a', 'impala', 'mysql',
+                          'oracle', 'postgresql', 'presto', 'snowflake', 'starrocks', 'tidb'],
+                description: '打包升级验证的模块名称，如果是 commons 模块，则所有数据源 sdk 版本都将升级，如果只是单个模块，则只将对应数据源验证升级')
+        string(name: 'KEVersion', defaultValue: '4.5.17.0', description: '指定 KE 的版本')
+        string(name: 'toMail', defaultValue: 'fanfan.li@kyligence.io', description: '将函数对比结果发送给此人')
     }
 
     environment {
@@ -32,10 +33,10 @@ pipeline {
         stage("Checkout Source Code") {
             steps {
                 container("build") {
-                    dir("sourcecode") {
+                    dir("kap-source-connectors") {
                         script {
                             retry(3) {
-                                githubCheckout 'kap-source-connectors', "${params.customerBranch ?: params.choiceBranch ?: params.customerBranch}", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*','kyligence-git'
+                                githubCheckout 'kap-source-connectors', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
                             }
                         }
                     }
@@ -45,43 +46,165 @@ pipeline {
         stage('Maven Install') {
             steps {
                 container("build") {
-                    sh "cat /root/.m2/settings.xml"
-                    dir("sourcecode") {
+                    dir("kap-source-connectors") {
                         script {
-                            if (params.skipTests) {
-                                sh script: """
-                                    echo "skip tests"
+                            sh script: """
+                                    git branch
+                                    mvn install:install-file -Dfile="bigquery/ext_jar/GoogleBigQueryJDBC42.jar" -DgroupId=com.google.cloud -DartifactId=bigquery -Dversion=1.0.0 -Dpackaging=jar
                                     mvn clean install -DskipTests
+                                    mvn clean package -pl commons
+                                    if [[ ${params.moduleName} != "commons" ]]
+                                    then
+                                       mvn clean package -pl ${params.moduleName}
+                                    fi
                                 """
-                            } else {
-                                sh script: """
-                                    mvn clean install
-                                """
-                            }
                         }
-                       
                     }
                 }
             }
         }
-        stage('Deploy') {
-            when {
-                expression {
-                    return params.isDeploy
+        stage('copy_file_to_remote') {
+            steps {
+                container('build') {
+                    dir("kap-source-connectors") {
+                        timestamps {
+                            script {
+                                cmd = "rm -rf /opt/kap-source-connectors"
+                                echo "cmd: ${cmd}"
+                                sshCmdWithCredentials(
+                                        cmd,
+                                        'shuiaileiroot',
+                                        ['name': 'localhost', 'host': '10.1.2.181', 'allowAnyHosts': true]
+                                )
+                            }
+                            script {
+                                def remote = [:]
+                                def file_name = "./../kap-source-connectors"
+                                def remote_path = "/opt"
+                                def remote_ip = "10.1.2.181"
+                                remote.name = 'server_test_env'
+                                def credentials = "shuiaileiroot"
+                                withCredentials([usernamePassword(credentialsId: credentials,
+                                        usernameVariable: 'REMOTE_USERNAME',
+                                        passwordVariable: 'REMOTE_PASSWORD')]) {
+                                    remote.user = REMOTE_USERNAME
+                                    remote.password = REMOTE_PASSWORD
+                                }
+                                remote.host = remote_ip
+                                remote.allowAnyHosts = true
+                                sshPut remote: remote, from: file_name, into: remote_path
+                                sshCommand remote: remote, command: """
+                    ls -lh ${remote_path}
+                """
+                            }
+                        }
+                    }
                 }
             }
+        }
+        stage('test_prepare') {
             steps {
                 container("build") {
-                    sh "cat /root/.m2/settings.xml"
-                    dir("sourcecode") {
+                    dir("kap-source-connectors") {
+                        script {
+                            def installDir = "/opt"
+                            def keVersion = "${params.KEVersion}"
+                            def moduleName = "${params.moduleName == 'commons' ? "postgresql" : params.moduleName}"
+                            def sdkVersion = sh(script: " mvn help:evaluate -Dexpression=sub.version -pl " + moduleName + "  | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
+                            def host = "10.1.2.181"
+                            cmd = "sh " + installDir + "/kap-source-connectors/benchmark/src/main/resources/script/prepareKEEnvironment.sh  " + keVersion + " " + moduleName + " " + sdkVersion
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name': 'localhost', 'host': host, 'allowAnyHosts': true]
+                            )
+                            echo "ssh cmd send success"
+                            echo "Listen for the KE running status"
+                            def url = "http://10.1.2.181:7079/kylin/api/system/license"
+                            def i = 0
+                            retry(10) {
+                                echo "Get KE Status ${++i} "
+                                try {
+                                    def response = httpRequest     \
+                                                httpMode: 'GET',
+                                            contentType: 'APPLICATION_JSON',
+                                            url: url
+                                    def status = response.status
+                                    echo "status: ${status}"
+                                } catch (e) {
+                                    sleep(time: 30, unit: "SECONDS")
+                                    echo "check KE status exception: ${e}"
+                                    sh 'exit 1'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('test') {
+            steps {
+                container("build") {
+                    dir("kap-source-connectors") {
                         sh script: """
-                            echo "start deploy ${params.isDeploy}"
-                            mvn clean deploy -Pdev
+                            mvn test -Dspring.profiles.active=${params.moduleName == 'commons' ? "postgresql" : params.moduleName} -Dapi.kylin.url=http://10.1.2.181:7079 -Dmail.to=${params.toMail} -Dtest=io.kyligence.kap.TestCI#testCI -pl benchmark
                         """
                     }
                 }
             }
-        }   
-        
+        }
+
+        stage('testPush') {
+            steps {
+                container("build") {
+                    dir("kap-source-connectors") {
+                        sh script: """
+                            mvn test -Dspring.profiles.active=${params.moduleName == 'commons' ? "postgresql" : params.moduleName} -Dapi.kylin.url=http://10.1.2.181:7079 -Dmail.to=${params.toMail} -Dtest=io.kyligence.kap.TestCI#testPushDown -pl benchmark
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                container("build") {
+                    dir("kap-source-connectors") {
+                        script {
+                            sh script: """
+                                   sh benchmark/src/main/resources/script/deployRelease.sh ${params.KEVersion}
+                                """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("doTag") {
+            steps {
+                container("build") {
+                    dir("kap-source-connectors") {
+                        script {
+                            sdkVersion = ''
+                            if (params.moduleName == 'commons') {
+                                sdkVersion = sh(script: " mvn help:evaluate -Dexpression=revision -pl commons | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
+                            } else {
+                                sdkVersion = sh(script: " mvn help:evaluate -Dexpression=sub.version -pl ${params.moduleName} | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
+                            }
+                            echo "sdkVersion: ${sdkVersion}"
+                            echo "is deploy: ${sdkVersion.contains("-SNAPSHOT")}"
+                            echo "module name: ${params.moduleName}"
+                            if (sdkVersion.contains("-SNAPSHOT")) {
+                                echo "skip do tag, ${params.moduleName} contains SNAPSHOT"
+                            } else {
+                                def _tag = "v-" + params.moduleName + "-" + sdkVersion
+                                githubHelper 'TAG', branch_name, 'kap-source-connectors', _tag
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
