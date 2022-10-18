@@ -79,7 +79,7 @@ pipeline {
                             remote.password = REMOTE_PASSWORD
                         }
                         remote.host = '159.27.120.138'
-                        remote.allowAnyHosts = true         
+                        remote.allowAnyHosts = true
                         sshCommand remote: remote, command: """
                             cd ${remote_dir}
                             rm -rf dist
