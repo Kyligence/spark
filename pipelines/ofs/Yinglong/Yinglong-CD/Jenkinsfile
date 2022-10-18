@@ -27,7 +27,7 @@ def buidImage(path, tag) {
         dir("sourcecode/${path}") {
             script {
                 retry(2) {
-                    return docker.build("kyligence/${tag}")
+                    return docker.build("yinglong/${tag}")
                 }
             }
         }
@@ -59,9 +59,9 @@ pipeline {
     }
 
     environment {
-        repo = 'repo-ofs.kyligence.com'
+        repo = 'harbor-ofs.kyligence.com'
         dockerRegistryUrl = "http://${repo}"
-        registryCredential = 'nexus-docker'
+        registryCredential = 'harbor-docker'
         common = ''
         data_loading = ''
         query = ''
@@ -133,17 +133,17 @@ pipeline {
                                 error 'tag 版本号不能为空'
                             }
 
-                            sh '''
-                                sh build/script_newten/download-spark.sh
-                            '''
+                            // sh '''
+                            //     sh build/script_newten/download-spark.sh
+                            // '''
 
                             if (!profiles) {
                                 sh '''
-                                    mvn clean install -DskipTests -T 1C
+                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true
                                 '''
                             } else {
                                 sh """
-                                    mvn clean install -DskipTests -P ${profiles} -T 1C
+                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true -P ${profiles}
                                 """
                             }
 
@@ -174,7 +174,7 @@ pipeline {
                                             echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                             cat .npmrc
                                         """
-                                        frontend = docker.build('kyligence/yinglong-frontend', "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
+                                        frontend = docker.build('yinglong/yinglong-frontend', "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
                                     }
                                 }
                             }
@@ -183,11 +183,9 @@ pipeline {
                 }
                 stage('3.2.images') {
                     steps {
-                        container('docker') {
-                            script {
-                                for (m in modules) {
-                                    m.image = buidImage(m.path, m.imageName)
-                                }
+                        script {
+                            for (m in modules) {
+                                m.image = buidImage(m.path, m.imageName)
                             }
                         }
                     }
@@ -199,12 +197,10 @@ pipeline {
                 environment name: 'push', value: 'true'
             }
             steps {
-                container('docker') {
-                    script {
-                        pushImage(frontend, tag)
-                        for (m in modules) {
-                            pushImage(m.image, tag)
-                        }
+                script {
+                    pushImage(frontend, tag)
+                    for (m in modules) {
+                        pushImage(m.image, tag)
                     }
                 }
             }

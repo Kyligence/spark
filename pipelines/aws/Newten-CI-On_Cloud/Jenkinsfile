@@ -76,11 +76,11 @@ pipeline {
             }
         }
     }
-post {
-  failure {
-    container('git') {
-    feishu("失败！！ ❌")
+    post {
+        failure {
+            container('git') {
+                feishu("失败！！ ❌")
+            }
+        }
     }
-  }
- }
 }

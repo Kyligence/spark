@@ -1,32 +1,37 @@
-def call(ctl, file_name, remote_path, bucket, region='', credentials=null) {
+def call(String ctl, String file_name, String remote_path, String bucket, String dir_name = 'sourcecode', String region='', String credentials=null) {
+    println "uploadHelper -> ctl[${ctl}],file_name[${file_name}],remote_path[${remote_path},bucket[${bucket},dir_name[${dir_name},region[${region},credentials[${credentials}]"
     switch (ctl) {
-        case 'AwsS3':
-            uploadAwsS3(file_name, remote_path, bucket, region, credentials)
+        case 'AWSS3':
+            uploadAwsS3(file_name, remote_path, bucket, region, credentials, dir_name)
             break
         case 'SERVER':
-            uplaodServer(file_name, remote_path, bucket, credentials)
+            uplaodServer(file_name, remote_path, bucket, dir_name, credentials)
             break
         case 'NEXUS':
-            uploadNexus(file_name, remote_path, bucket)
+            uploadNexus(file_name, remote_path, bucket, dir_name)
             break
     }
 }
 
 // 上传制品包到Aws S3存储
-def uploadAwsS3(file_name, remote_path, bucket, region, credentials) {
-    dir('sourcecode') {
+def uploadAwsS3(file_name, remote_path, bucket, region, credentials, dir_name = 'sourcecode') {
+    println "uploadAwsS3 -> file_name[${file_name}],remote_path[${remote_path},bucket[${bucket},dir_name[${dir_name},region[${region},credentials[${credentials}]"
+    dir(dir_name) {
         timestamps {
-            println("uploadAwsS3 ->  file_name: ${file_name}, remote_path: ${remote_path}, bucket: ${bucket}, region: ${region}, credentials: ${credentials}")
-            withAWS(region: region, credentials: credentials) {
-                s3Upload(bucket: bucket, path: remote_path, file: file_name)
+            script {
+                println("uploadAwsS3 ->  file_name: ${file_name}, remote_path: ${remote_path}, bucket: ${bucket}, region: ${region}, credentials: ${credentials}")
+                withAWS(region: region, credentials: credentials) {
+                    s3Upload(bucket: bucket, path: remote_path, file: file_name)
+                }
             }
         }
     }
 }
 
 // 上传包到Azure服务器
-def uplaodServer(file_name, remote_path, remote_ip, credentials='azure-4xuser') {
-    dir('sourcecode') {
+def uplaodServer(file_name, remote_path, remote_ip, dir_name = 'sourcecode', credentials='azure-4xuser') {
+    println "uplaodServer -> file_name[${file_name}],remote_path[${remote_path},remote_ip[${remote_ip},dir_name[${dir_name},credentials[${credentials}]"
+    dir(dir_name) {
         timestamps {
             script {
                 def remote = [:]
@@ -49,8 +54,9 @@ def uplaodServer(file_name, remote_path, remote_ip, credentials='azure-4xuser') 
 }
 
 // 上传制品包到Nexus制品库
-def uploadNexus(file_name, package_path, repo, credentials='nexus-raw') {
-    dir('sourcecode') {
+def uploadNexus(file_name, package_path, repo, dir_name = 'sourcecode', credentials='nexus-raw') {
+    print "uploadNexus -> file_name[${file_name}],package_path[${package_path},repo[${repo},dir_name[${dir_name},credentials[${credentials}]"
+    dir(dir_name) {
         timestamps {
             script {
                 println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")

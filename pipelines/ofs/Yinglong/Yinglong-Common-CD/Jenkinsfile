@@ -1,0 +1,226 @@
+#!groovy
+
+@Library('devopslib') _
+
+// 根据发布类型自动获取分支
+def getBranch(deployType, envStage, version) {
+    print "getBranch -> deployType[${deployType}],envStage[${envStage}],version[${version}]"
+    def _result
+    def _branch_release = ''
+    def _branch_qa = ''
+    def _branch_dev = ''
+    def branchCollection = ['yinglong']
+
+    switch (deployType) {
+        case 'Regular':
+            _branch_release = branchCollection[0]
+            _branch_qa = "yinglong-${version}-qa"
+            _branch_dev = "${_branch_release}-dev"
+            break
+    }
+
+    switch (envStage) {
+        case 'DEV':
+            _result = _branch_dev
+            break
+        case 'QA':
+            _result = _branch_qa
+            break
+        case 'RC':
+        case 'GA':
+            _result = _branch_release
+            break
+    }
+    echo "getBranch: ${_result}"
+    return _result
+}
+
+pipeline {
+    options {
+        timeout(time: 4, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-helm-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo = 'harbor-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'harbor-docker'
+        dockerImage = ''
+        tag = ''
+        release_commitid = ''
+        booter = ''
+    }
+
+    parameters {
+        choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
+        string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
+        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
+        // string(name: 'branch', defaultValue: 'yinglong-dev', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填')
+        // string(name: 'tag', defaultValue: 'yl-5.0.0', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
+        // booleanParam(name: 'build', defaultValue:true, description:'是否构建')
+        string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
+        // booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
+        // booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s')
+        string(name: 'namespace-prefix', defaultValue: 'dev', description: 'namespace to deploy')
+        // string(name: 'hadoop_prefix', defaultValue: 'hadoop-0', description: 'hadoop environment')
+        string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
+        string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            // when {
+            //     environment name: 'build', value: 'true'
+            // }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            // 1. 参数检查：version
+                            paramsVerify.version(params.version)
+                            // 2. 根据分支规则获取分支
+                            if (params.deployWay == 'Auto Select') {
+                                // 2.1 根据分支流程规则，自动获取代码分支参数
+                                def _branch = getBranch(params.deployType, params.envStage, params.version)
+                                pullCodeFromGitMirror 'KAP', _branch
+                            } else if (params.deployWay == 'Manual Select') {
+                                // 2.2 根据手动输入参数设定分支
+                                paramsMap = input(
+                                    message: '请选择要开始的版本?',
+                                    ok: '确认！',
+                                    parameters: [
+                                        string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                        booleanParam(name: 'overide', defaultValue: false, description: '全新打包，覆盖现有同名包')
+                                    ],
+                                    // submitter:'liming.meng,admin',
+                                    submitterParameter: 'APPROVER'
+                                )
+                                pullCodeFromGitMirror 'KAP', paramsMap['commitId_back']
+                            } else {
+                                println "no code pulled"
+                            }
+                            release_commitid = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+                            println "release_commitid: ${release_commitid}"
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Building Package') {
+            // when {
+            //     environment name: 'build', value: 'true'
+            // }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            println "release_commitid: ${release_commitid}"
+
+                            tag = "${params.envStage}-${release_commitid}"
+                            if(params.envStage == 'GA') {
+                                tag = params.version
+                            }
+
+                            if (!profiles) {
+                                sh '''
+                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true
+                                '''
+                            } else {
+                                sh """
+                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true -P ${profiles}
+                                """
+                            }
+
+                            // for (m in modules) {
+                            //     setDockerfie(m.path, m.name)
+                            // }
+                            dir('kyligence/src/ke-common-booter') {
+                                sh """
+                                    pwd
+                                    ls -al
+                                    cp ../../../../docker/yinglong-jdk8/Dockerfile Dockerfile
+                                    sed -i "s#&&replace_package&&#target/${pack}*.tar.gz#g" Dockerfile
+                                    sed -i "s#&&replace_dir&&#${pack}#g" Dockerfile
+                                    cat Dockerfile
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.Build Docker Image') {
+            steps {
+                container('docker') {
+                    dir("sourcecode/kyligence/src/ke-common-booter") {
+                        script {
+                            retry(2) {
+                                booter = docker.build("yinglong/yinglong-common")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.push images') {
+            when {
+                environment name: 'push', value: 'true'
+            }
+            steps {
+                container('docker') {
+                    script {
+                        retry(2) {
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                booter.push(tag)
+                                booter.push('latest')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // stage('5.deploy') {
+        //     when {
+        //         environment name: 'deploy', value: 'true'
+        //     }
+        //     steps {
+        //         echo 'Up in K8S at office env'
+        //         container('helm') {
+        //             withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+        //                 script {
+        //                     sh 'pwd && ls -alt'
+        //                     sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+
+        //                     try {
+        //                         sh returnStatus: true , script: """
+        //                             helm -n ${namespace} list
+        //                             helm -n ${namespace} uninstall yinglong
+        //                         """
+        //                     } catch (Exception err) {
+        //                         echo err.getMessage()
+        //                         echo 'delete resource failed, but we will continue.'
+        //                     }
+
+        //                     sh returnStatus: true , script: """
+        //                         helm -n ${namespace} install yinglong ./helm/yinglong
+        //                             --set yinglong-common.image.tag=${tag}
+        //                             --set yinglong-data-loading.image.tag=${tag}
+        //                             --set yinglong-query.image.tag=${tag}
+        //                             --set yinglong-smart.image.tag=${tag}
+        //                             --set yinglong-frontend.image.tag=${tag}
+        //                             --set global.hadoopPrefix=${hadoop_prefix}
+        //                             --set global.tenantId=${params.tenant_id} ${params.extra_settings}
+        //                         helm -n ${namespace} list
+        //                     """
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+    }
+}

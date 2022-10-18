@@ -1,21 +1,20 @@
-def call(String way,String subject,String to,String body,String from=null) {
-
-    switch(way) {
+def call(String way, String subject, String to, String body, String from=null) {
+    switch (way) {
         case 'EMAIL':
-            sendEmail(subject,to,body,from)
-        break
+            sendEmail(subject, to, body, from)
+            break
         case 'FEISHU':
-            sendFeishu(subject,to,body,from)
-        break
+            sendFeishu(subject, to, body, from)
+            break
         case 'SMS':
-            sendSms(subject,to,body,from)
-        break
+            sendSms(subject, to, body, from)
+            break
     }
 }
 
 // way == EMAIL
-def sendEmail(subject,to,body,from=null) {
-    emailext (
+def sendEmail(subject, to, body, from=null) {
+    emailext(
         subject: subject,
         to: "devops_support@kyligence.io;${to}",
         from: from ?: 'devops_support@kyligence.io',
@@ -28,10 +27,10 @@ def sendEmail(subject,to,body,from=null) {
     )
 }
 
-def sendFeishu(subject,to,body,from) {
-    println "飞书提醒还未实现，情景期待"
+def sendFeishu(subject, to, body, from) {
+    println '飞书提醒还未实现，情景期待'
 }
 
-def sendSms(subject,to,body,from) {
-    println "短信提醒还未实现，情景期待"
+def sendSms(subject, to, body, from) {
+    println '短信提醒还未实现，情景期待'
 }
