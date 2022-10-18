@@ -79,13 +79,23 @@ def downloadArchive() {
                 """
             }
             s3Download(file: './tmp', bucket: 'k8s-bucket-devops', path: "ke-ci/${targetBranch()}/", force: true)
-            sh script: """
-                if [ -d ./tmp/ke-ci/${targetBranch()} ]; then
-                    mv ./tmp/ke-ci/${targetBranch()} ./src/examples/test_data
-                    ls -al ./src/examples/test_data
-                fi
-                rm -rf ./tmp
-            """
+            if(fileExists('./kylin/pom.xml')) {
+                sh script: """
+                    if [ -d ./tmp/ke-ci/${targetBranch()} ]; then
+                        mv ./tmp/ke-ci/${targetBranch()} ./kylin/src/examples/test_data
+                        ls -al ./kylin/src/examples/test_data
+                    fi
+                    rm -rf ./tmp
+                """
+            } else {
+                sh script: """
+                    if [ -d ./tmp/ke-ci/${targetBranch()} ]; then
+                        mv ./tmp/ke-ci/${targetBranch()} ./src/examples/test_data
+                        ls -al ./src/examples/test_data
+                    fi
+                    rm -rf ./tmp
+                """
+            }
             s3Download(file: 'coverage/jacococli.jar', bucket: 'k8s-bucket-devops', path: "ke-ci/jacococli.jar", force: true)
         }
     }
