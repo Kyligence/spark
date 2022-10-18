@@ -113,10 +113,14 @@ pipeline {
                                 mvn clean install -DskipTests
                             """
                         }
-                        sh script: """
-                            echo "start deploy SNAPSHOT ${params.isDeploy}"
-                            mvn clean deploy  -DskipTests -Pcse
+                        script {
+                            def newVersion = params.version + "-SNAPSHOT"
+                            sh script: """
+                            echo "start deploy SNAPSHOT ${newVersion}"
+                            mvn versions:set -DnewVersion=${newVersion}
+                            mvn clean deploy  -DskipTests
                         """
+                        }
                     }
                 }
             }
@@ -205,11 +209,13 @@ pipeline {
                 container("build") {
                     sh "cat /root/.m2/settings.xml"
                     dir("sourcecode") {
-                        sh script: """
+                        script {
+                            sh script: """
                             echo "start deploy ${params.isDeploy}"
                             mvn versions:set -DnewVersion=${version}
-                            mvn clean deploy  -DskipTests -Pcse
+                            mvn clean deploy  -DskipTests
                         """
+                        }
                     }
                 }
             }
