@@ -159,7 +159,7 @@ properties([
                     script:
                         '''
                             def version_mapping = [:]
-                            version_mapping["KE"] = ["KE 4.5 dev", "KE 4.5 test", "KE 4.5", "KE 4.3 test", "KE 4.3", "KE 4.2", "KE 3.2"]
+                            version_mapping["KE"] = ["KE 4.6 test", "KE 4.6", "KE 4.5 test", "KE 4.5", "KE 4.3 test", "KE 4.3", "KE 4.2", "KE 3.2"]
                             version_mapping["KC"] = ["KC 4.6", "KC 4.6 test", "KC 4.6 dev", "KC 4.5", "KC Test Drive", "KC 4.3", "KC 3.2"]
                             version_mapping["KI"] = ["KI 1.3", "KI 1.2"]
                             version_mapping["KM"] = ["KM 1.1", "KM 4.3", "KM 4.5"]
