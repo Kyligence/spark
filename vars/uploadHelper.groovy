@@ -19,7 +19,6 @@ def uploadAwsS3(file_name, remote_path, bucket, region, credentials, dir_name = 
     dir(dir_name) {
         timestamps {
             script {
-                println("uploadAwsS3 ->  file_name: ${file_name}, remote_path: ${remote_path}, bucket: ${bucket}, region: ${region}, credentials: ${credentials}")
                 withAWS(region: region, credentials: credentials) {
                     s3Upload(bucket: bucket, path: remote_path, file: file_name)
                 }
@@ -59,7 +58,6 @@ def uploadNexus(file_name, package_path, repo, dir_name = 'sourcecode', credenti
     dir(dir_name) {
         timestamps {
             script {
-                println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
                 // 上传制品库
                 withCredentials([usernamePassword(credentialsId: credentials, passwordVariable: 'passwd', usernameVariable: 'user')]) {
                     pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
