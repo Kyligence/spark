@@ -75,6 +75,7 @@ pipeline {
         string(name: 'tag', defaultValue: 'yl-5.0.0', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
+        booleanParam(name: 'include_spark', defaultValue:true, description:'是否内置spark包')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
         booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s')
         string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
@@ -133,9 +134,11 @@ pipeline {
                                 error 'tag 版本号不能为空'
                             }
 
-                            // sh '''
-                            //     sh build/script_newten/download-spark.sh
-                            // '''
+                            if (include_spark) {
+                                sh '''
+                                    sh build/script_newten/download-spark.sh
+                                '''
+                            }
 
                             if (!profiles) {
                                 sh '''

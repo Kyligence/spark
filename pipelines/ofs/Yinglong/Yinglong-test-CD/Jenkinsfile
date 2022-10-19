@@ -68,9 +68,9 @@ def gitCodeKe(back, front, pMap) {
                     error 'commitId_back 参数不能为空'
                 }
 
-                if(pMap['back_remote']) {
+                if (pMap['back_remote']) {
                     githubCheckout 'KAP', back, 'https', 'github.com'
-                }else{
+                }else {
                     pullCodeFromGitMirror 'KAP', back
                 }
 
@@ -92,9 +92,9 @@ def gitCodeKe(back, front, pMap) {
                 sh 'ls -lha'
                 dir('kystudio') {
                     sh 'pwd && ls -lha'
-                    if(pMap['front_remote']) {
+                    if (pMap['front_remote']) {
                         githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
-                    }else{
+                    }else {
                         pullCodeFromGitMirror 'KAP_Frontend', _front
                     }
 
@@ -142,8 +142,9 @@ pipeline {
         choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
         choice(name: 'deployType', choices: 'Regular\nSP-5.0.x', description: '交付版本流程:\nRegular - 指主线发布\nSP-5.0.x - 指每周的版本发布5.0.x系列')
         string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
-        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程' )
+        choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
+        booleanParam(name: 'include_spark', defaultValue:true, description:'是否内置spark包')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
         booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s')
@@ -194,7 +195,7 @@ pipeline {
                                 release_commitid_back = cms.release_commitid_back
                                 release_commitid_front = cms.release_commitid_front
                             } else {
-                                println "no code pulled"
+                                println 'no code pulled'
                             }
                         }
                     }
@@ -209,9 +210,11 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            // sh '''
-                            //     sh build/script_newten/download-spark.sh
-                            // '''
+                            if (include_spark) {
+                                sh '''
+                                    sh build/script_newten/download-spark.sh
+                                '''
+                            }
 
                             if (!profiles) {
                                 sh '''
@@ -293,7 +296,7 @@ pipeline {
                         println "release_commitid_front: ${release_commitid_front}"
 
                         release_tag_front = "${params.envStage}-${release_commitid_front}"
-                        if(params.envStage == 'GA') {
+                        if (params.envStage == 'GA') {
                             release_tag_front = params.version
                         }
 
@@ -306,7 +309,7 @@ pipeline {
                         }
 
                         release_tag_back = "${params.envStage}-${release_commitid_back}"
-                        if(params.envStage == 'GA') {
+                        if (params.envStage == 'GA') {
                             release_tag_back = params.version
                         }
                         println "release_tag_back: ${release_tag_back}"
