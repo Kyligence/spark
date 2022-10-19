@@ -60,55 +60,51 @@ def getBranch(deployType, envStage, version) {
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front, pMap) {
     def result = [:]
-    container('build') {
-        dir('sourcecode') {
-            script {
-                println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
-                if (!back) {
-                    error 'commitId_back 参数不能为空'
-                }
+    script {
+        println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
+        if (!back) {
+            error 'commitId_back 参数不能为空'
+        }
 
-                if (pMap['back_remote']) {
-                    githubCheckout 'KAP', back, 'https', 'github.com'
-                }else {
-                    pullCodeFromGitMirror 'KAP', back
-                }
+        if (pMap['back_remote']) {
+            githubCheckout 'KAP', back, 'https', 'github.com'
+        }else {
+            pullCodeFromGitMirror 'KAP', back
+        }
 
-                release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
-                println "release_commitid_back: ${release_commitid_back}"
-                result.release_commitid_back = release_commitid_back
+        release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+        println "release_commitid_back: ${release_commitid_back}"
+        result.release_commitid_back = release_commitid_back
 
-                def _front
-                if (!front) {
-                    println "No commitId_front, use the commitId_back: ${back}"
-                    _front = back
-                } else {
-                    println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
-                    _front = front
-                }
+        def _front
+        if (!front) {
+            println "No commitId_front, use the commitId_back: ${back}"
+            _front = back
+        } else {
+            println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
+            _front = front
+        }
 
-                sh 'ls -lha && ls -lha kystudio'
-                sh 'rm -rf kystudio'
-                sh 'ls -lha'
-                dir('kystudio') {
-                    sh 'pwd && ls -lha'
-                    if (pMap['front_remote']) {
-                        githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
-                    }else {
-                        pullCodeFromGitMirror 'KAP_Frontend', _front
-                    }
-
-                    release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
-                    println "release_commitid_front: ${release_commitid_front}"
-                    result.release_commitid_front = release_commitid_front
-                    sh """
-                        rm -f .npmrc
-                        echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
-                        cat .npmrc
-                        ls -lha .
-                    """
-                }
+        sh 'ls -lha && ls -lha kystudio'
+        sh 'rm -rf kystudio'
+        sh 'ls -lha'
+        dir('kystudio') {
+            sh 'pwd && ls -lha'
+            if (pMap['front_remote']) {
+                githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+            }else {
+                pullCodeFromGitMirror 'KAP_Frontend', _front
             }
+
+            release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
+            println "release_commitid_front: ${release_commitid_front}"
+            result.release_commitid_front = release_commitid_front
+            sh """
+                rm -f .npmrc
+                echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                cat .npmrc
+                ls -lha .
+            """
         }
     }
     return result

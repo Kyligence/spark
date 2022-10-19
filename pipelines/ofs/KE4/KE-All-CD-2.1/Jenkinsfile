@@ -78,8 +78,6 @@ def getBranch(deployType, envStage, version) {
 def gitCodeKe(back, front, pMap) {
     print "gitCodeKe -> back[${back}],front[${front}],pMap[${pMap}]"
     def result = [:]
-    // container('build') {
-    //     dir('sourcecode') {
     script {
         println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
         if (!back) {
