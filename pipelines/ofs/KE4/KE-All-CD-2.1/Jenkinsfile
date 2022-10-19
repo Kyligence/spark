@@ -7,13 +7,6 @@ import hudson.model.*
 
 // GA包名
 def ga_name = ''
-// 发布分支(前端)
-// def release_branch_front = ''
-// 发布分支(后端)
-// def release_branch_back = ''
-
-// def release_commitid_front = ''
-// def release_commitid_back = ''
 
 // 包信息对象
 def package_info = [:]
@@ -27,64 +20,6 @@ def fcid = ''
 def paramsMap = [:]
 def pull_result_nospark = [:]
 def pull_result_withspark = [:]
-
-// // 上传制品包到Aws S3存储
-// def uploadAwsS3(region, credentials, bucket, path, ga_name, dir_name = 'sourcecode') {
-//     dir(dir_name) {
-//         timestamps {
-//             println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
-//             withAWS(region: region, credentials: credentials) {
-//                 s3Upload(bucket: bucket, path: path, file: ga_name)
-//             }
-//         }
-//     }
-// }
-
-// // 上传制品包到Nexus制品库
-// def uploadNexus(repo, package_path, file_name, dir_name = 'sourcecode') {
-//     timestamps {
-//         container('build') {
-//             dir(dir_name) {
-//                 script {
-//                     println("repo: ${repo}, package_path: ${package_path}, file_name: ${file_name}")
-//                     // 上传制品库
-//                     withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-//                         pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// // 上传制品包到 Azure 服务器
-// def uplaodAzure(pi, dir_name = 'sourcecode', remote_path = '/home/4xuser/data/devops') {
-//     print "uplaodAzure -> pi[${pi}],dir_name[${dir_name}],remote_path[${remote_path}]"
-//     script {
-//         def remote = [:]
-//         remote.name = 'azure_test_env'
-//         withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
-//                 usernameVariable: 'REMOTE_USERNAME',
-//                 passwordVariable: 'REMOTE_PASSWORD')]) {
-//             remote.user = REMOTE_USERNAME
-//             remote.password = REMOTE_PASSWORD
-//                 }
-//         remote.host = '159.27.120.141'
-//         remote.allowAnyHosts = true
-//         dir(dir_name) {
-//             try {
-//                 sshRemove remote: remote, path: "${remote_path}/${pi.file_name}"
-//             }catch (e) {
-//                 println 'sshRemove fail'
-//             }
-
-//             sshPut remote: remote, from: pi.file_name, into: remote_path
-//             sshCommand remote: remote, command: """
-//                 ls -lh ${remote_path}
-//             """
-//         }
-//     }
-// }
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
@@ -193,7 +128,7 @@ def gitCodeKe(back, front, pMap) {
         }
     }
     return result
-    }
+}
 
 // pullCode(params)
 def pullCode(params) {
