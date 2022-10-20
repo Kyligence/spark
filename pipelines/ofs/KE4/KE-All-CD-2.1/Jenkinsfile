@@ -659,12 +659,14 @@ pipeline {
                             "SUCCESSFUL to Deploy into the Azure CN server'",
                             // "liming.meng@kyligence.io",
                             tester_emails,
-                            """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                        <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141/159.27.120.138]</p>
-                        <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
-                        <p>It's run in the url: </p>
-                        <p><a href='${paramsDeploy['override_141']?http://159.27.120.141:7072/kylin:''}! >http://159.27.120.141:7072/kylin</a></p>
-                        <p><a href='${paramsDeploy['override_138']?http://159.27.120.138:7072/kylin:''}! >http://159.27.120.138:7072/kylin</a></p>"""
+                            """
+                            <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                            <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141/159.27.120.138]</p>
+                            <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
+                            <p>It's run in the url: </p>
+                            <p><a href="${paramsDeploy['override_141']?http://159.27.120.141:7072/kylin:''}">http://159.27.120.141:7072/kylin</a></p>
+                            <p><a href="${paramsDeploy['override_138']?http://159.27.120.138:7072/kylin:''}">http://159.27.120.138:7072/kylin</a></p>
+                            """
                     )
                 }
             }
