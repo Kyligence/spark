@@ -140,7 +140,7 @@ pipeline {
         string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
-        booleanParam(name: 'include_spark', defaultValue:true, description:'是否内置spark包')
+        booleanParam(name: 'include_spark', defaultValue:false, description:'是否内置spark包')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
         booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s')
