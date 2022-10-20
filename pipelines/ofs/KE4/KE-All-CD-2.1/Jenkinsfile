@@ -408,26 +408,37 @@ pipeline {
     }
 
     stages {
+        stage('0.1.Pull NoSpark') {
+            when {
+                expression {
+                    return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
+                }
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode1') {
+                        script {
+                            pull_result_nospark = pullCode(params)
+                        }
+                    }
+                }
+            }
+        }
+        stage('0.1.Pull Normal') {
+            steps {
+                container('build') {
+                    dir('sourcecode2') {
+                        script {
+                            pull_result_withspark = pullCode(params)
+                        }
+                    }
+                }
+            }
+        }
         stage('1.Parallel Building') {
             parallel {
                 stage('1.NoSpark') {
                     stages {
-                        stage('1.1.Pull Code') {
-                            when {
-                                expression {
-                                    return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
-                                }
-                            }
-                            steps {
-                                container('build') {
-                                    dir('sourcecode1') {
-                                        script {
-                                            pull_result_nospark = pullCode(params)
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         stage('1.2.Building noSpark') {
                             when {
                                 expression {
@@ -447,17 +458,6 @@ pipeline {
                 }
                 stage('2.Normal') {
                     stages {
-                        stage('2.1.Pull Code') {
-                            steps {
-                                container('build') {
-                                    dir('sourcecode2') {
-                                        script {
-                                            pull_result_withspark = pullCode(params)
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         stage('2.2.Building Normal') {
                             steps {
                                 script {
@@ -650,6 +650,22 @@ pipeline {
                         deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
                             paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
                     }
+                }
+            }
+
+            post {
+                success {
+                    sendNotify('EMAIL',
+                            "SUCCESSFUL to Deploy into the Azure CN server'",
+                            // "liming.meng@kyligence.io",
+                            tester_emails,
+                            """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                        <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141/159.27.120.138]</p>
+                        <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
+                        <p>It's run in the url: </p>
+                        <p><a href='${paramsDeploy['override_141']?http://159.27.120.141:7072/kylin:''}! >http://159.27.120.141:7072/kylin</a></p>
+                        <p><a href='${paramsDeploy['override_138']?http://159.27.120.138:7072/kylin:''}! >http://159.27.120.138:7072/kylin</a></p>"""
+                    )
                 }
             }
         }
