@@ -79,8 +79,31 @@ def getBranch(deployType, envStage, version) {
     return _result
 }
 
+def setVersions(version, kylin_ver, is_GA) {
+    def _version = version
+    if (!is_GA) {
+        _version = "${version}-SNAPSHOT"
+    }
+    sh 'mvn versions:set -DnewVersion=${_version}'
+    dir('kylin') {
+        sh 'mvn versions:set -DnewVersion=${kylin_ver}-ke-${_version}'
+    }
+}
+
+def mvnDeploy() {
+    sh '''
+        mvn deploy -Pdev -DskipTests -T 4C
+    '''
+
+    dir('kylin') {
+        sh '''
+            mvn deploy -Pdev -DskipTests -T 4C
+        '''
+    }
+}
+
 // git获取KE代码（预先触发同步git mirror）
-def gitCodeKe(back, front, pMap) {
+def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
     print "gitCodeKe -> back[${back}],front[${front}],pMap[${pMap}]"
     def result = [:]
     script {
@@ -98,6 +121,8 @@ def gitCodeKe(back, front, pMap) {
         result.release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
         println "result.release_commitid_back: ${result.release_commitid_back}"
         // result.release_commitid_back = release_commitid_back
+
+        setVersions(version, kylin_ver, is_GA)
 
         def _front
         if (!front) {
@@ -139,13 +164,14 @@ def pullCode(params) {
     def result = [:]
     // 1. 参数检查：version
     paramsVerify.version(params.version)
+    def after_rc = params.envStage == 'GA' || params.envStage == 'RC'
     // 2. 获取分支（前后端）
     if (params.deployWay == 'Auto Select') {
         // 2.1 根据分支流程规则，自动获取代码分支参数
         def _branch = getBranch(params.deployType, params.envStage, params.version)
         result.release_branch_front = _branch
         result.release_branch_back = _branch
-        def cms = gitCodeKe(_branch, _branch, result.paramsMap)
+        def cms = gitCodeKe(_branch, _branch, params.version, params.kylin_ver, after_rc, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else if (params.deployWay == 'Manual Select') {
@@ -166,7 +192,7 @@ def pullCode(params) {
         )
         result.release_branch_front = result.paramsMap['commitId_front']
         result.release_branch_back = result.paramsMap['commitId_back']
-        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, result.paramsMap)
+        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, params.version, params.kylin_ver, after_rc, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else {
@@ -548,18 +574,18 @@ pipeline {
                             }
                         }
                     }
-                    // post {
-                    //     success {
-                    //         sendNotify('EMAIL',
-                    //                 "SUCCESSFUL to Upload the Tar into the Azure CN server'",
-                    //                 // "liming.meng@kyligence.io",
-                    //                 tester_emails,
-                    //                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                    //             <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
-                    //             <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
-                    //         )
-                    //     }
-                    // }
+                // post {
+                //     success {
+                //         sendNotify('EMAIL',
+                //                 "SUCCESSFUL to Upload the Tar into the Azure CN server'",
+                //                 // "liming.meng@kyligence.io",
+                //                 tester_emails,
+                //                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                //             <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
+                //             <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
+                //         )
+                //     }
+                // }
                 }
                 stage('3.2.Upload Normal to Azure CN 138') {
                     steps {
@@ -583,11 +609,13 @@ pipeline {
                         container('build') {
                             script {
                                 dir('sourcecode2') {
-                                    sh """
-                                        cat /root/.m2/settings.xml
-                                        mvn versions:set -DnewVersion="${version}-SNAPSHOT"
-                                        mvn deploy -Pdev -DskipTests -T 4C
-                                    """
+                                    setVersions(params.version, params.kylin_ver, false)
+                                    mvnDeploy()
+                                // sh """
+                                //     cat /root/.m2/settings.xml
+                                //     mvn versions:set -DnewVersion="${version}-SNAPSHOT"
+                                //     mvn deploy -Pdev -DskipTests -T 4C
+                                // """
                                 }
                             }
                         }
@@ -609,7 +637,7 @@ pipeline {
         stage('4.Approve Deploy') {
             steps {
                 script {
-                    def checkMsg = "部署到 Azure 服务器？"
+                    def checkMsg = '部署到 Azure 服务器？'
                     println checkMsg
                     // sh 'printenv'
                     paramsDeploy = input(
@@ -620,7 +648,7 @@ pipeline {
                         parameters: [
                             string(name: 'remote_dir', defaultValue: '/home/4xuser/data/4.5test', description: 'gw07 KE work dir'),
                             string(name: 'kepackage_dir', defaultValue: '/home/4xuser/data/devops', description: 'gw07 KE4.5 stroage dir'),
-                            string(name: 'ke_workdir',defaultValue:'Kyligence-Enterprise-newten-current',description: 'ke work dir'),
+                            string(name: 'ke_workdir', defaultValue:'Kyligence-Enterprise-newten-current', description: 'ke work dir'),
                             booleanParam(name: 'override_141', defaultValue: false, description: '是否覆盖【159.27.120.141】环境'),
                             booleanParam(name: 'override_138', defaultValue: false, description: '是否覆盖【159.27.120.138】环境')
                         ]
@@ -664,8 +692,8 @@ pipeline {
                         <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141/159.27.120.138]</p>
                         <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
                         <p>It's run in the url: </p>
-                        <p><a href="${paramsDeploy['override_141']?'http://159.27.120.141:7072/kylin':''}">http://159.27.120.141:7072/kylin</a></p>
-                        <p><a href="${paramsDeploy['override_138']?'http://159.27.120.138:7072/kylin':''}">http://159.27.120.138:7072/kylin</a></p>
+                        <p><a href="${paramsDeploy['override_141']?'http://159.27.120.141:7072/kylin':''}">http : //159.27.120.141 : 7072/kylin</a></p>
+                        <p><a href="${paramsDeploy['override_138']?'http://159.27.120.138:7072/kylin':''}">http : //159.27.120.138 : 7072/kylin</a></p>
                         """
                     )
                 }
@@ -798,17 +826,8 @@ pipeline {
                         container('build') {
                             script {
                                 dir('sourcecode2') {
-                                    sh """
-                                    mvn versions:set -DnewVersion=${version}
-                                    mvn deploy -Pdev -DskipTests -T 4C
-                                    """
-
-                                    dir('kylin') {
-                                        sh """
-                                        mvn versions:set -DnewVersion=${kylin_ver}-ke-${version}
-                                        mvn deploy -Pdev -DskipTests -T 4C
-                                        """
-                                    }
+                                    setVersions(params.version, params.kylin_ver, params.envStage == 'GA')
+                                    mvnDeploy()
                                 }
                             }
                         }
