@@ -611,11 +611,6 @@ pipeline {
                                 dir('sourcecode2') {
                                     setVersions(params.version, params.kylin_ver, false)
                                     mvnDeploy()
-                                // sh """
-                                //     cat /root/.m2/settings.xml
-                                //     mvn versions:set -DnewVersion="${version}-SNAPSHOT"
-                                //     mvn deploy -Pdev -DskipTests -T 4C
-                                // """
                                 }
                             }
                         }
