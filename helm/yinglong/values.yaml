@@ -49,6 +49,11 @@ yinglong-smart:
     repository: repo-ofs.kyligence.com/kyligence/yinglong-smart
     tag: yl-5.0.10
 
+yinglong-resource:
+  image:
+    repository: repo-ofs.kyligence.com/kyligence/yinglong-resource
+    tag: yl-5.0.10
+
 yinglong-frontend:
   image:
     repository: repo-ofs.kyligence.com/kyligence/yinglong-frontend
