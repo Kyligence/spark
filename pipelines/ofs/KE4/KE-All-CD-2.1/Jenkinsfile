@@ -382,7 +382,6 @@ pipeline {
         file_name = ''
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
-        no_spark = false
         // tester emails
         tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
         fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io;xinxin.li@kyligence.io'''
@@ -448,7 +447,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    no_spark = true
+                                    def no_spark = true
                                     def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     no_spark_package_info = bpns.no_spark_package_info
                                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
@@ -462,7 +461,7 @@ pipeline {
                         stage('2.2.Building Normal') {
                             steps {
                                 script {
-                                    no_spark = false
+                                    def no_spark = false
                                     def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     package_info = bp.package_info
                                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
