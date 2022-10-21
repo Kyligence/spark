@@ -693,9 +693,8 @@ pipeline {
                                     sh """
                                         mvn versions:set -DnewVersion=${version}
                                         mvn deploy -Pdev -DskipTests -T 4C
-                                        sed 
                                     """
-                                    
+
                                     // dir('kylin') {
                                     //     sh """
                                     //     mvn versions:set -DnewVersion=${kylin_version}-ke-${version}
