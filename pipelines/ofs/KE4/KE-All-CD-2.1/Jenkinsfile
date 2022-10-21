@@ -451,6 +451,7 @@ pipeline {
                                     def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     no_spark_package_info = bpns.no_spark_package_info
                                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
+                                    println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
                                 }
                             }
                         }
