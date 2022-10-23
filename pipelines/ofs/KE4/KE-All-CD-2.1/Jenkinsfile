@@ -87,14 +87,14 @@ def setVersions(version, kylin_ver, is_GA) {
         _version = "${version}-SNAPSHOT"
         _kylin_ver = "${kylin_ver}-ke-${_version}"
         sh """
-            sed -i 's/<kylin.module.version>.*<//kylin.module.version>/<kylin.module.version>${_kylin_ver}<//kylin.module.version>/g'
+            sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>'\${_kylin_ver}'<\\/kylin.module.version>/g' pom.xml
         """
     }
     sh "mvn versions:set -DnewVersion=${_version}"
     dir('kylin') {
         sh "mvn versions:set -DnewVersion=${_kylin_ver}"
         sh """
-            sed -i 's/<kylin.module.version>.*<//kylin.module.version>/<kylin.module.version>${_kylin_ver}<//kylin.module.version>/g'
+            sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>'\${_kylin_ver}'<\\/kylin.module.version>/g' pom.xml
         """
     }
 }
@@ -117,10 +117,12 @@ def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
             error 'commitId_back 参数不能为空'
         }
 
-        if (pMap && pMap['back_remote']) {
-            githubCheckout 'KAP', back, 'https', 'github.com'
-        } else {
-            pullCodeFromGitMirror 'KAP', back
+        retry(3) {
+            if (pMap && pMap['back_remote']) {
+                githubCheckout 'KAP', back, 'https', 'github.com'
+            } else {
+                pullCodeFromGitMirror 'KAP', back
+            }
         }
 
         result.release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
@@ -138,15 +140,17 @@ def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
             _front = front
         }
 
-        sh 'ls -lha && ls -lha kystudio'
+        // sh 'ls -lha && ls -lha kystudio'
         sh 'rm -rf kystudio'
-        sh 'ls -lha'
+        // sh 'ls -lha'
         dir('kystudio') {
-            sh 'pwd && ls -lha'
-            if (pMap && pMap['front_remote']) {
-                githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
-            }else {
-                pullCodeFromGitMirror 'KAP_Frontend', _front
+            // sh 'pwd && ls -lha'
+            retry(3) {
+                if (pMap && pMap['front_remote']) {
+                    githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+                }else {
+                    pullCodeFromGitMirror 'KAP_Frontend', _front
+                }
             }
 
             result.release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
@@ -156,7 +160,6 @@ def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
                 rm -f .npmrc
                 echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                 cat .npmrc
-                ls -lha .
             """
         }
     }
