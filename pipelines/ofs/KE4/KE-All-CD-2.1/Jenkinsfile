@@ -80,14 +80,14 @@ def getBranch(deployType, envStage, version) {
 }
 
 def setVersions(version, kylin_ver, is_GA) {
-    print "setVersions -> version[${v}],kylin_ver[${kylin_ver}],is_GA[${is_GA}]"
+    print "setVersions -> version[${version}],kylin_ver[${kylin_ver}],is_GA[${is_GA}]"
     def _version = version
     if (!is_GA) {
         _version = "${version}-SNAPSHOT"
     }
-    sh 'mvn versions:set -DnewVersion=${_version}'
+    sh "mvn versions:set -DnewVersion=${_version}"
     dir('kylin') {
-        sh 'mvn versions:set -DnewVersion=${kylin_ver}-ke-${_version}'
+        sh "mvn versions:set -DnewVersion=${kylin_ver}-ke-${_version}"
     }
 }
 
