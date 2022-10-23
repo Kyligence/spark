@@ -105,7 +105,7 @@ def mvnDeploy() {
 
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
-    print "gitCodeKe -> back[${back}],front[${front}],pMap[${pMap}]"
+    print "gitCodeKe -> back[${back}],front[${front}],version[${version}],kylin_ver[${kylin_ver}],is_GA[${is_GA}],pMap[${pMap}]"
     def result = [:]
     script {
         println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
@@ -165,14 +165,14 @@ def pullCode(params) {
     def result = [:]
     // 1. 参数检查：version
     paramsVerify.version(params.version)
-    def after_rc = params.envStage == 'GA' || params.envStage == 'RC'
+    def is_GA = params.envStage == 'GA'
     // 2. 获取分支（前后端）
     if (params.deployWay == 'Auto Select') {
         // 2.1 根据分支流程规则，自动获取代码分支参数
         def _branch = getBranch(params.deployType, params.envStage, params.version)
         result.release_branch_front = _branch
         result.release_branch_back = _branch
-        def cms = gitCodeKe(_branch, _branch, params.version, params.kylin_ver, after_rc, result.paramsMap)
+        def cms = gitCodeKe(_branch, _branch, params.version, params.kylin_ver, is_GA, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else if (params.deployWay == 'Manual Select') {
@@ -193,7 +193,7 @@ def pullCode(params) {
         )
         result.release_branch_front = result.paramsMap['commitId_front']
         result.release_branch_back = result.paramsMap['commitId_back']
-        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, params.version, params.kylin_ver, after_rc, result.paramsMap)
+        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, params.version, params.kylin_ver, is_GA, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else {
@@ -610,7 +610,7 @@ pipeline {
                         container('build') {
                             script {
                                 dir('sourcecode2') {
-                                    setVersions(params.version, params.kylin_ver, false)
+                                    // setVersions(params.version, params.kylin_ver, false)
                                     mvnDeploy()
                                 }
                             }
@@ -822,7 +822,7 @@ pipeline {
                         container('build') {
                             script {
                                 dir('sourcecode2') {
-                                    setVersions(params.version, params.kylin_ver, params.envStage == 'GA')
+                                    // setVersions(params.version, params.kylin_ver, params.envStage == 'GA')
                                     mvnDeploy()
                                 }
                             }
