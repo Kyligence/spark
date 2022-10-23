@@ -118,13 +118,10 @@ def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
         if (!back) {
             error 'commitId_back 参数不能为空'
         }
-
-        retry(3) {
-            if (pMap && pMap['back_remote']) {
-                githubCheckout 'KAP', back, 'https', 'github.com'
-            } else {
-                pullCodeFromGitMirror 'KAP', back
-            }
+        if (pMap && pMap['back_remote']) {
+            githubCheckout 'KAP', back, 'https', 'github.com'
+        } else {
+            pullCodeFromGitMirror 'KAP', back
         }
 
         result.release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
@@ -147,14 +144,12 @@ def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
         // sh 'ls -lha'
         dir('kystudio') {
             // sh 'pwd && ls -lha'
-            retry(3) {
-                if (pMap && pMap['front_remote']) {
-                    githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
-                }else {
-                    pullCodeFromGitMirror 'KAP_Frontend', _front
-                }
+            if (pMap && pMap['front_remote']) {
+                githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+            }else {
+                pullCodeFromGitMirror 'KAP_Frontend', _front
             }
-
+        
             result.release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
             println "result.release_commitid_front: ${result.release_commitid_front}"
             // result.release_commitid_front = release_commitid_front
