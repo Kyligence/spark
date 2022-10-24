@@ -33,7 +33,7 @@ pipeline {
                 container('git') {
                     dir('sourcecode') {
                         script {
-                            sh 'cat /root/.m2/setting.xml'
+                            sh 'cat /root/.m2/settings.xml'
                             githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
                         }
