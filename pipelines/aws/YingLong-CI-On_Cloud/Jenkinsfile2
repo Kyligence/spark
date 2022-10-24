@@ -33,7 +33,7 @@ pipeline {
                 container('git') {
                     dir('sourcecode') {
                         script {
-                            sh 'env'
+                            sh 'cat /root/.m2/setting.xml'
                             githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
                         }
@@ -48,7 +48,7 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             retry(3) {
-                                sh script: 'mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests -Prepo-aws'
+                                sh script: 'mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests'
                             }
                         }
                     }
