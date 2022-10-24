@@ -2,7 +2,6 @@
 
 @Library('devopslib') _
 
-
 def releaseVersion = '' //最后发布的版本号
 def publishToKC = false //是否发布给KC
 // 上传制品包到Aws S3存储
@@ -38,17 +37,15 @@ def gitSparkCodeKe(repo, branch) {
             githubCheckout 'spark', branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git', repo
         }
     }
-
 }
 
 def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
-    def releaseName = releaseVersion.replace("-kylin", "")
+    def releaseName = releaseVersion.replace('-kylin', '')
     //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
     //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
     //https://olapio.atlassian.net/browse/KC-12372 delete slf4j-log4j12
     sh script: """
         sleep ${waitTime}
-        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
         dev/make-distribution.sh --name ${releaseVersion} -Phadoop-3.2 -Phive-thriftserver -pl assembly
         cp ../depedencies/log4j/*.jar dist/jars/
         cp ../depedencies/cloud_log4j/*.jar dist/jars/
@@ -65,7 +62,6 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
     }
     uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz")
 }
-
 
 pipeline {
     options {
@@ -87,16 +83,15 @@ pipeline {
         choice(name: 'sparkVersion', choices: 'spark3\nspark2.4', description: 'spark 大版本，spark2.4 发包不会推到云上')
     }
 
-
     stages {
-        stage("approve deploy DI OR Manager") {
+        stage('approve deploy DI OR Manager') {
             when {
                 expression {
                     return params.deployType == 'GA'
                 }
             }
             steps {
-                container("build") {
+                container('build') {
                     script {
                         releaseVersion = getReleaseVersion(params.release_version, params.deployType)
                         def checkMsg = "DI部门，确定发布该版本吗？发布repo：${params.repo}, 发布分支：${params.branch}，发布版本号：${releaseVersion}"
@@ -107,25 +102,23 @@ pipeline {
                                 submitter: 'jiawei.li2,chenliang.lu,biaobiao.sun,luoping.zhang,lu.cao,meixiu.chen',
                                 submitterParameter: 'APPROVER'
                         )
-                        
                     }
                 }
             }
-
         }
-        
-        stage("Checkout Source Code") {
+
+        stage('Checkout Source Code') {
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         gitSparkCodeKe(params.repo, params.branch)
                     }
-                    sh script: """
+                    sh script: '''
                         wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/depedencies.tar.gz
                         tar zxf depedencies.tar.gz
                         wget  https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
                         tar zxf hive_1_2_2.tar.gz
-                    """
+                    '''
                 }
             }
         }
@@ -141,19 +134,18 @@ pipeline {
                             sh script: """
                                 #1、package kyspark
                                 ./build/mvn versions:set -DnewVersion=${releaseVersion}
-                                export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
                                 ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                                 # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                             """
                         }
                     }
-                    sh script: """
+                    sh script: '''
                         cp -r sourcecode ./on-perm-hadoop2
                         cp -r sourcecode ./on-perm-nohadoop
                         cp -r sourcecode ./cloud-hadoop3
                         cp -r sourcecode ./cloud-gcp
                         cp -r sourcecode ./cloud-huawei
-                    """
+                    '''
                 }
             }
         }
@@ -161,17 +153,16 @@ pipeline {
             parallel {
                 stage('on-perm-hadoop2') {
                     steps {
-                        container("build") {
+                        container('build') {
                             dir('on-perm-hadoop2') {
                                 script {
-                                    def releaseName = releaseVersion.replace("-kylin", "")
-                                    def hadoopVersion = "hadoop-2.7"
+                                    def releaseName = releaseVersion.replace('-kylin', '')
+                                    def hadoopVersion = 'hadoop-2.7'
                                     if (params.sparkVersion == 'spark2.4') {
-                                        hadoopVersion = "hadoop-2.6"
+                                        hadoopVersion = 'hadoop-2.6'
                                     }
                                     sh script: """
-                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn -Pkubernetes 
+                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn -Pkubernetes
                                         if [ 'spark3' = '${params.sparkVersion}' ]; then
                                             cp ../depedencies/log4j/*.jar dist/jars/
                                         fi
@@ -195,14 +186,13 @@ pipeline {
                         }
                     }
                     steps {
-                        container("build") {
-                            dir("on-perm-nohadoop") {
+                        container('build') {
+                            dir('on-perm-nohadoop') {
                                 script {
-                                    def releaseName = releaseVersion.replace("-kylin", "")
+                                    def releaseName = releaseVersion.replace('-kylin', '')
                                     sh script: """
                                         sleep 10
-                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly 
+                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                     """
@@ -221,10 +211,10 @@ pipeline {
                         }
                     }
                     steps {
-                        container("build") {
-                            dir("cloud-hadoop3") {
+                        container('build') {
+                            dir('cloud-hadoop3') {
                                 script {
-                                    generateCloudPackage("20", "cloud-hadoop3", "hadoop3", releaseVersion)
+                                    generateCloudPackage('20', 'cloud-hadoop3', 'hadoop3', releaseVersion)
                                 }
                             }
                         }
@@ -237,10 +227,10 @@ pipeline {
                         }
                     }
                     steps {
-                        container("build") {
-                            dir("cloud-gcp") {
+                        container('build') {
+                            dir('cloud-gcp') {
                                 script {
-                                    generateCloudPackage("30", "cloud-gcp", "gcp", releaseVersion)
+                                    generateCloudPackage('30', 'cloud-gcp', 'gcp', releaseVersion)
                                 }
                             }
                         }
@@ -253,10 +243,10 @@ pipeline {
                         }
                     }
                     steps {
-                        container("build") {
-                            dir("cloud-huawei") {
+                        container('build') {
+                            dir('cloud-huawei') {
                                 script {
-                                    generateCloudPackage("40", "cloud-huawei", "huawei", releaseVersion)
+                                    generateCloudPackage('40', 'cloud-huawei', 'huawei', releaseVersion)
                                 }
                             }
                         }
@@ -271,14 +261,13 @@ pipeline {
                 }
             }
             steps {
-                container("build") {
-                    dir("sourcecode") {
+                container('build') {
+                    dir('sourcecode') {
                         githubHelper 'TAG', params.branch, 'spark', releaseVersion
                     }
                 }
             }
-
         }
     }
 }
-    
+
