@@ -26,6 +26,10 @@ def buidImage(path, tag) {
     container('docker') {
         dir("sourcecode/${path}") {
             script {
+                sh '''
+                    cat /root/.docker/config.json
+                    cat /root/.docker/daemon.json
+                '''
                 retry(2) {
                     return docker.build("yinglong/${tag}")
                 }
