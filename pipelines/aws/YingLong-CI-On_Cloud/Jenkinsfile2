@@ -48,10 +48,7 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             retry(3) {
-                                sh script: '''
-                                    mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests -Prepo-aws -pl kylin
-                                    mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests -Prepo-aws
-                                '''
+                                sh script: 'mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests -Prepo-aws'
                             }
                         }
                     }

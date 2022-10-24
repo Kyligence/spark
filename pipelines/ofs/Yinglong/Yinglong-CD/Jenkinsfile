@@ -14,7 +14,7 @@ def setDockerfie(path, pack) {
         sh """
             pwd
             ls -al
-            cp ../../../../pipelines/ofs/Yinglong/Yinglong-CD/docker/Dockerfile Dockerfile
+            cp ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile Dockerfile
             sed -i "s#replace_package#target/${pack}*.tar.gz#g" Dockerfile
             sed -i "s#replace_dir#${pack}#g" Dockerfile
             cat Dockerfile
@@ -177,7 +177,7 @@ pipeline {
                                             echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                             cat .npmrc
                                         """
-                                        frontend = docker.build('yinglong/yinglong-frontend', "-f ${env.WORKSPACE}/pipelines/local/Yinglong-CD/docker/frontend/Dockerfile .")
+                                        frontend = docker.build('yinglong/yinglong-frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile .")
                                     }
                                 }
                             }
