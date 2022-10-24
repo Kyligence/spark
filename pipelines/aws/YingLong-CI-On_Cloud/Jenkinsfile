@@ -33,7 +33,6 @@ pipeline {
                 container('git') {
                     dir('sourcecode') {
                         script {
-                            sh 'env'
                             githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                             // replaceRepo()
 
