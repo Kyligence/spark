@@ -40,8 +40,10 @@ spec:
           name: "dockersock"
         - mountPath: "/root/.docker/config.json"
           name: "docker-config"
+          subPath: "config.json"
         - mountPath: "/root/.docker/daemon.json"
           name: "lex-docker"
+          subPath: "daemon.json"
       resources:
         request:
           memory: "1Gi"
