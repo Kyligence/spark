@@ -34,7 +34,7 @@ def getBranch(deployType, envStage, version) {
     def _branch_release = ''
     def _branch_qa = ''
     def _branch_dev = ''
-    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'ke-4.5.x', 'newten-sp-dev']
+    def branchCollection = ['newten', 'ke-4.5.x-sp', 'ke-4.3.x', 'ke-4.3.x-sp', 'ke-4.5.x', 'newten-sp']
 
     switch (deployType) {
         case 'Regular':
@@ -59,13 +59,13 @@ def getBranch(deployType, envStage, version) {
             break
         case 'KE-4.5.x':
             _branch_release = branchCollection[4]
-            _branch_qa = "${branchCollection[1]}-qa"
-            _branch_dev = "${branchCollection[1]}-dev"
+            _branch_qa = "${_branch_release}-qa"
+            _branch_dev = "${_branch_release}-dev"
             break
         case 'SP-4.6.x':
-            _branch_release = branchCollection[5]
-            _branch_qa = "${branchCollection[1]}-dev"
-            _branch_dev = "${branchCollection[1]}-dev"
+            _branch_release = branchCollection[0]
+            _branch_qa = "${_branch_release}-dev"
+            _branch_dev = "${_branch_release}-dev"
             break
     }
 
