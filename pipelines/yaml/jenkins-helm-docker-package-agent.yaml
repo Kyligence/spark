@@ -42,7 +42,6 @@ spec:
           name: "docker-config"
         - mountPath: "/root/.docker/daemon.json"
           name: "lex-docker"
-          subPath: "daemon.json"
       resources:
         request:
           memory: "1Gi"
