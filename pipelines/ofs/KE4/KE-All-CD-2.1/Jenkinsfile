@@ -87,18 +87,11 @@ def setVersions(version, kylin_ver, is_GA) {
         _version = "${version}-SNAPSHOT"
         _kylin_ver = "${kylin_ver}-ke-${_version}"
     }
-    // dir('kylin') {
-    //     sh """
-    //         sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>${_kylin_ver}<\\/kylin.module.version>/g' pom.xml
-    //         cat pom.xml
-    //         mvn versions:set -DnewVersion=${_kylin_ver}
-    //     """
-    // }
     sh """
         sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>${_kylin_ver}<\\/kylin.module.version>/g' pom.xml
         cat pom.xml
         mvn versions:set -DnewVersion=${_version}
-        mvn versions:update-child-modules
+        mvn versions:set -DnewVersion=${_kylin_ver} -pl kylin
     """
 }
 
