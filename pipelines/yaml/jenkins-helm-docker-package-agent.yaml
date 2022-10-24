@@ -4,7 +4,7 @@ name: "jenkins-package-agent"
 spec:
   containers:
     - name: "build"
-      image: "harbor-ofs.kyligence.com/library/newten-build:latest"
+      image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
