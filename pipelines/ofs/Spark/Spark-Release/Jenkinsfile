@@ -142,7 +142,7 @@ pipeline {
                                 #1、package kyspark
                                 ./build/mvn versions:set -DnewVersion=${releaseVersion}
                                 export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss512m"
-                                ./build/mvn deploy -settings /root/.m2/settings.xml -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
+                                ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                                 # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
                             """
                         }
