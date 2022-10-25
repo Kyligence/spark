@@ -104,11 +104,11 @@ pipeline {
 
                             if (!profiles) {
                                 sh '''
-                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true
+                                    mvn -U clean install -T 4C -Dmaven.test.skip=true -Dmaven.compile.fork=true -Dcheckstyle.skip=true
                                 '''
                             } else {
                                 sh """
-                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true -P ${profiles}
+                                    mvn -U clean install -T 4C -Dmaven.test.skip=true -Dmaven.compile.fork=true -Dcheckstyle.skip=true -P ${profiles}
                                 """
                             }
 
