@@ -72,6 +72,10 @@ spec:
           name: "maven-settings"
           readOnly: false
           subPath: "settings.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository/org/apache/kylin
       resources:
         limits:
           memory: "4Gi"
@@ -85,6 +89,8 @@ spec:
       persistentVolumeClaim:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "kylin-repo"
       emptyDir: { }
     - configMap:
         defaultMode: 0777
