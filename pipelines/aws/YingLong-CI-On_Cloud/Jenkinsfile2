@@ -58,7 +58,7 @@ pipeline {
         stage('Testing') {
             steps {
                 script {
-                    dynamicNewtenParallelTest()
+                    dynamicNewtenParallelTest2()
                 }
             }
             post {

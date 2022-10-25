@@ -6,63 +6,55 @@ def call() {
         def modules = sh(script: '''
                 cd sourcecode
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
-            ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") || it.startsWith("kyligence/src") || it.startsWith("kylin/src") || it == "kylin" }
+            ''', returnStdout: true).trim().split('\n').collect({ it.trim() }).findAll { it.startsWith('src') || it.startsWith('kyligence/src') || it.startsWith('kylin/src') || it == 'kylin' }
         println "origin modules: ${modules}"
 
         def kap_it_module = modules.findAll({ it.contains('src/kap-it') }).getAt(0)
         if (kap_it_module) {
             modules.removeAll([kap_it_module])
-            modules.addAll([
-                // "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
+            kap_it_module = [
+                "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
                 "${kap_it_module} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
-            ])
+            ]
         }
 
-        def no_query_module = ["${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"]
-
-        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
-        if(clickhouse_it_module) {
+        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it') }).getAt(0)
+        if (clickhouse_it_module) {
             modules.removeAll([clickhouse_it_module])
-            modules.addAll([
-                "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
-                "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
-            ])
+            clickhouse_it_module = [clickhouse_it_module]
         }
 
         if ('kylin' in modules) {
             def kylin_modules = sh(script: '''
                 cd sourcecode/kylin
                 mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
-            ''', returnStdout: true).trim().split("\n").collect({ 'kylin/' + it.trim() }).findAll { it.startsWith("kylin/src") }
+            ''', returnStdout: true).trim().split('\n').collect({ 'kylin/' + it.trim() }).findAll { it.startsWith('kylin/src') }
             println "kylin sub modules: ${kylin_modules}"
 
             modules.removeAll(['kylin'])
             modules.addAll(kylin_modules)
 
-            def _clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+            def _clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it') }).getAt(0)
             println "_clickhouse_it_module: ${_clickhouse_it_module}"
 
-            if(_clickhouse_it_module) {
+            if (_clickhouse_it_module) {
                 modules.removeAll([_clickhouse_it_module])
-                modules.addAll([
-                    "${clickhouse_it_module} -Dtest='!io.kyligence.kap.secondstorage.tdvt.TDVTTest'",
-                    "${clickhouse_it_module} -Dtest='io.kyligence.kap.secondstorage.tdvt.TDVTTest'"
-                ])
+                clickhouse_it_module = [_clickhouse_it_module]
             }
-        }
+}
 
         Collections.reverse(modules)
         println "final modules: ${modules}"
 
         def taskQueue = modules as LinkedBlockingQueue
-        def queryQueue = no_query_module as LinkedBlockingQueue
-        // def chitQueue = clickhouse_it_module as LinkedBlockingQueue
+        def queryQueue = kap_it_module as LinkedBlockingQueue
+        def chitQueue = clickhouse_it_module as LinkedBlockingQueue
 
-        def worker1 = createWorker("UTest-Stage-1", taskQueue)
-        def worker2 = createWorker("UTest-Stage-2", taskQueue)
-        def worker3 = createWorker("UTest-Stage-3", taskQueue)
-        def worker4 = createWorker("UTest-Stage-4", taskQueue)
-        def worker5 = createWorker("UTest-Stage-5", queryQueue)
+        def worker1 = createWorker('UTest-Stage-1', taskQueue)
+        def worker2 = createWorker('UTest-Stage-2', taskQueue)
+        def worker3 = createWorker('UTest-Stage-3', taskQueue)
+        def worker4 = createWorker('UTest-Stage-4', queryQueue)
+        def worker5 = createWorker('UTest-Stage-5', chitQueue)
 
         def allTestStages = worker1 + worker2 + worker3 + worker4 + worker5
         allTestStages.failFast = true
@@ -91,6 +83,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                             -pl ${item} \
                             -DfailIfNoTests=false \
                             -Duser.timezone=GMT+8 ${jvmArgs}
+                            -Pnexus,3rd
                         """
                         item = taskQueue.poll()
                     } catch (ex) {
