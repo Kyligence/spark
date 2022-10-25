@@ -9,48 +9,6 @@ def modules = [
         ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': '']
     ]
 
-def setDockerfie(path, pack) {
-    dir(path) {
-        sh """
-            pwd
-            ls -al
-            cp ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile Dockerfile
-            sed -i "s#replace_package#target/${pack}*.tar.gz#g" Dockerfile
-            sed -i "s#replace_dir#${pack}#g" Dockerfile
-            cat Dockerfile
-        """
-    }
-}
-
-def buidImage(path, tag) {
-    container('docker') {
-        dir("sourcecode/${path}") {
-            script {
-                // sh '''
-                //     cat /root/.docker/config.json
-                //     cat /root/.docker/daemon.json
-                // '''
-                retry(2) {
-                    return docker.build("yinglong/${tag}")
-                }
-            }
-        }
-    }
-}
-
-def pushImage(booter, tag) {
-    container('docker') {
-        script {
-            retry(2) {
-                docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                    booter.push(tag)
-                    booter.push('latest')
-                }
-            }
-        }
-    }
-}
-
 pipeline {
     options {
         timeout(time: 4, unit: 'HOURS')
@@ -155,7 +113,16 @@ pipeline {
                             }
 
                             for (m in modules) {
-                                setDockerfie(m.path, m.name)
+                                dir(m.path) {
+                                    sh """
+                                        pwd
+                                        ls -al
+                                        cp ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile Dockerfile
+                                        sed -i "s#&&replace_package&&#target/${m.name}*.tar.gz#g" Dockerfile
+                                        sed -i "s#&&replace_dir&&#${m.name}#g" Dockerfile
+                                        cat Dockerfile
+                                    """
+                                }
                             }
                         }
                     }
@@ -192,7 +159,11 @@ pipeline {
                     steps {
                         script {
                             for (m in modules) {
-                                m.image = buidImage(m.path, m.imageName)
+                                dir("sourcecode/${m.path}") {
+                                    retry(2) {
+                                        m.image = docker.build("yinglong/${m.imageName}")
+                                    }
+                                }
                             }
                         }
                     }
@@ -207,7 +178,12 @@ pipeline {
                 script {
                     pushImage(frontend, tag)
                     for (m in modules) {
-                        pushImage(m.image, tag)
+                        retry(2) {
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                m.image.push(release_tag_back)
+                                m.image.push('latest')
+                            }
+                        }
                     }
                 }
             }
