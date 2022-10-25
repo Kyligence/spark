@@ -80,7 +80,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         sh script: """
                             cd ./${stage}
                             mvn clean test --fail-at-end \
-                            -Pclickhouse.native.jdbc,3rd,aze,sandbox
+                            -Paws,3rd,sandbox,clickhouse.native.jdbc
                             -pl ${item} \
                             -DfailIfNoTests=false \
                             -Duser.timezone=GMT+8 ${jvmArgs}
