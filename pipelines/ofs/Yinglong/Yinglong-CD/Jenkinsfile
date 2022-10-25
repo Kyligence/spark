@@ -177,16 +177,18 @@ pipeline {
                 environment name: 'push', value: 'true'
             }
             steps {
-                script {
-                    docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                        frontend.push(tag)
-                        frontend.push('latest')
-                    }
-                    for (m in modules) {
-                        retry(2) {
-                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                m.image.push(tag)
-                                m.image.push('latest')
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            frontend.push(tag)
+                            frontend.push('latest')
+                        }
+                        for (m in modules) {
+                            retry(2) {
+                                docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                    m.image.push(tag)
+                                    m.image.push('latest')
+                                }
                             }
                         }
                     }
