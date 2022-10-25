@@ -45,6 +45,10 @@ spec:
           subPath: "settings.xml"
         - mountPath: "/var/run/docker.sock"
           name: "dockersock"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository/org/apache/kylin
       resources:
         limits:
           memory: "56Gi"
@@ -72,10 +76,6 @@ spec:
           name: "maven-settings"
           readOnly: false
           subPath: "settings.xml"
-        - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - name: "kylin-repo"
-          mountPath: /root/.m2/repository/org/apache/kylin
       resources:
         limits:
           memory: "4Gi"
