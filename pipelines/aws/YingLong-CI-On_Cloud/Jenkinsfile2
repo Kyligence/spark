@@ -38,7 +38,7 @@ pipeline {
                         script {
                             retry(3) {
                                 // sh 'cat /root/.m2/settings.xml'
-                                sh script: 'mvn -U clean install -pl kylin -T 4C -Dmaven.compile.fork=true -DskipTests -P aws'
+                                // sh script: 'mvn -U clean install -pl kylin -amd -T 4C -Dmaven.compile.fork=true -DskipTests -P aws'
                                 sh script: 'mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests -P aws'
                             }
                         }
