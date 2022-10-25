@@ -80,7 +80,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         sh script: """
                             cd ./${stage}
                             mvn clean test --fail-at-end \
-                            -P aws,3rd,sandbox,clickhouse.native.jdbc
+                            -P aws
                             -pl ${item} \
                             -DfailIfNoTests=false \
                             -Duser.timezone=GMT+8 ${jvmArgs}
