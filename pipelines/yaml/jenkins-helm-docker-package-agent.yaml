@@ -39,10 +39,11 @@ spec:
         - mountPath: "/var/run/docker.sock"
           name: "dockersock"
         - mountPath: "/root/.docker/config.json"
-          name: "docker-config"
+          name: "lex-docker"
           subPath: "config.json"
         - mountPath: "/etc/docker/daemon.json"
-          name: "docker-daemon"
+          name: "lex-docker"
+          subPath: "daemon.json"
       resources:
         request:
           memory: "1Gi"
