@@ -47,7 +47,7 @@ pipeline {
     }
 
     stages {
-        stage {
+        stage('0.test') {
             steps {
                 container('docker') {
                     script {
