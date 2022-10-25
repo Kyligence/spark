@@ -169,8 +169,6 @@ pipeline {
                     steps {
                         container('docker') {
                             script {
-                                sh 'ls -lh /root/.docker/'
-                                sh 'cat /root/.docker/config.json'
                                 for (m in modules) {
                                     dir("sourcecode/${m.path}") {
                                         retry(2) {

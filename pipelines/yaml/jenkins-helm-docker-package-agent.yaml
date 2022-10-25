@@ -40,7 +40,6 @@ spec:
           name: "dockersock"
         - mountPath: "/root/.docker/config.json"
           name: "docker-config"
-          subPath: "config.json"
         - mountPath: "/etc/docker/daemon.json"
           name: "lex-docker"
           subPath: "daemon.json"
