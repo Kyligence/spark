@@ -299,8 +299,8 @@ pipeline {
                         println "release_tag_front: ${release_tag_front}"
                         retry(2) {
                             docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                m.image.push(release_tag_front)
-                                m.image.push('latest')
+                                frontend.push(release_tag_front)
+                                frontend.push('latest')
                             }
                         }
 
