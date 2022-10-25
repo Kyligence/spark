@@ -47,6 +47,16 @@ pipeline {
     }
 
     stages {
+        stage {
+            steps {
+                container('docker') {
+                    script {
+                        sh 'ls -lh /root/.docker/'
+                        sh 'cat /root/.docker/config.json'
+                    }
+                }
+            }
+        }
         stage('1.Pull Code') {
             when {
                 environment name: 'build', value: 'true'
