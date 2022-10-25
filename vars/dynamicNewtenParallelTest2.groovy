@@ -79,7 +79,7 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                     try {
                         sh script: """
                             cd ./${stage}
-                            mvn clean test -Pnexus,3rd --fail-at-end \
+                            mvn clean test --fail-at-end \
                             -pl ${item} \
                             -DfailIfNoTests=false \
                             -Duser.timezone=GMT+8 ${jvmArgs}

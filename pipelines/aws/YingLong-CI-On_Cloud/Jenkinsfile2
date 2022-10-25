@@ -48,7 +48,7 @@ pipeline {
                         script {
                             retry(3) {
                                 // sh 'cat /root/.m2/settings.xml'
-                                sh script: 'mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests -Pnexus,3rd'
+                                sh script: 'mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests'
                             }
                         }
                     }
