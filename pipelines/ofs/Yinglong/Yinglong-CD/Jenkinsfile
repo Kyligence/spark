@@ -104,11 +104,11 @@ pipeline {
 
                             if (!profiles) {
                                 sh '''
-                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true -Dcheckstyle.skip=true
+                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true
                                 '''
                             } else {
                                 sh """
-                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true -Dcheckstyle.skip=true -P ${profiles}
+                                    mvn -U clean install -T 4C -DskipTests -Dmaven.compile.fork=true -P ${profiles}
                                 """
                             }
 
@@ -116,7 +116,7 @@ pipeline {
                                 dir(m.path) {
                                     sh """
                                         pwd
-                                        ls -al
+                                        ls -al target
                                         cp ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile Dockerfile
                                         sed -i "s#&&replace_package&&#target/${m.name}*.tar.gz#g" Dockerfile
                                         sed -i "s#&&replace_dir&&#${m.name}#g" Dockerfile
@@ -160,8 +160,11 @@ pipeline {
                         container('docker') {
                             script {
                                 for (m in modules) {
+                                    sh "ls -lh sourcecode/${m.path}"
                                     dir("sourcecode/${m.path}") {
                                         retry(2) {
+                                            println(m.toString())
+                                            sh 'ls -lh '
                                             m.image = docker.build("yinglong/${m.imageName}")
                                         }
                                     }
