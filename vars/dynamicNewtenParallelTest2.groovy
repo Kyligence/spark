@@ -80,7 +80,6 @@ def createWorker(String stage, LinkedBlockingQueue taskQueue) {
                         sh script: """
                             cd ./${stage}
                             mvn clean test --fail-at-end \
-                            -P aws
                             -pl ${item} \
                             -DfailIfNoTests=false \
                             -Duser.timezone=GMT+8 ${jvmArgs}
