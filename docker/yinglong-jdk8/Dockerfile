@@ -1,5 +1,5 @@
 FROM openjdk:8-jdk-alpine as build
-ADD &&replace_package&& /opt/
+COPY &&replace_package&& /opt/
 
 RUN mkdir -p /opt/kyligence \
     && mkdir -p /opt/kyligence/hadoop_conf \
