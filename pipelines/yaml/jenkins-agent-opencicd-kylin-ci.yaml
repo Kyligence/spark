@@ -1,0 +1,47 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "git"
+      tty: true
+      command:
+        - "cat"
+      #        - "git submodule update --init --recursive"
+      image: "bitnami/git:2.35.1-debian-10-r68"
+      imagePullPolicy: "IfNotPresent"
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "800m"
+          ephemeral-storage: "500Mi"
+
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          readOnly: false
+          subPath: "m2repo"
+      resources:
+        requests:
+          memory: "12Gi"
+          cpu: "6"
+          ephemeral-storage: "7Gi"
+
+    - image: "jenkins/inbound-agent:4.11-1-jdk11"
+      name: "jnlp"
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "1"
+          ephemeral-storage: "500Mi"
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "fileserver-claim"
