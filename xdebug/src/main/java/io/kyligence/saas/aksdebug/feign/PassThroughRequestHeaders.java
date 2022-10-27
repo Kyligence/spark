@@ -7,6 +7,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+
+import io.kyligence.saas.aksdebug.Constant;
 import java.util.Collections;
 import java.util.Enumeration;
 
@@ -21,7 +23,7 @@ public class PassThroughRequestHeaders implements RequestInterceptor {
 
         for (final Enumeration<String> e = currentRequest.getHeaderNames(); e.hasMoreElements(); ) {
             val name = e.nextElement();
-            if ("x-debug".equals(name)) {
+            if (Constant.REQUEST_HEADER_XDEBUG_KEY.equals(name)) {
                 template.header(name, Collections.list(currentRequest.getHeaders(name)));
             }
         }

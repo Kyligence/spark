@@ -14,6 +14,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+
+import io.kyligence.saas.aksdebug.Constant;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
@@ -38,6 +40,8 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
     public Object invoke(MethodInvocation invocation) throws Throwable {
         try {
             return invoke0(invocation);
+        } catch (DebugInstanceNotFoundException nfe) {
+            throw nfe;
         } catch (Throwable throwable) {
             return failover(invocation, throwable);
         }
@@ -57,10 +61,7 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
             return fallback(invocation, "无效的 Request 类型，不处理");
         }
 
-        final List<String> debugHeaders = getDebugHeader(request.getContext());
-        if (debugHeaders.isEmpty()) {
-            return fallback(invocation, "非 x-debug 请求，不处理");
-        }
+        final List<String> debugHeaderValues = getDebugHeaderValues(request.getContext());
 
         final ServiceInstanceListSupplier sils =
                 clientFactory.getInstance(name, ServiceInstanceListSupplier.class);
@@ -71,10 +72,14 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
         final List<ServiceInstance> debugInstances =
                 sils.get(request)
                         .next()
-                        .map(serviceInstances -> selectDebugInstance(name, debugHeaders, serviceInstances))
+                        .map(serviceInstances -> selectInstance(name, debugHeaderValues, serviceInstances))
                         .toFuture().get();
+
         if (debugInstances == null || debugInstances.isEmpty()) {
-            return fallback(invocation, "没有匹配的 debug 实例，回退处理");
+            if (debugHeaderValues.isEmpty()) {
+                return fallback(invocation, "正常请求没有匹配的实例，回退处理");
+            }
+            throw new DebugInstanceNotFoundException("Debug 请求没有找到对应的实例");
         }
 
         log.info("匹配 debug 实例 {}", debugInstances);
@@ -82,7 +87,7 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
         return Mono.just(new DefaultResponse(debugInstances.get(randomIndex)));
     }
 
-    private List<String> getDebugHeader(Object reqCtx) {
+    private List<String> getDebugHeaderValues(Object reqCtx) {
         if (reqCtx == null) {
             return Collections.emptyList();
         }
@@ -91,28 +96,35 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
                 && ((RequestDataContext) reqCtx).getClientRequest() != null) {
             HttpHeaders headers = ((RequestDataContext) reqCtx).getClientRequest().getHeaders();
             if (headers != null) {
-                return headers.getValuesAsList("x-debug");
+                return headers.getValuesAsList(Constant.REQUEST_HEADER_XDEBUG_KEY);
             }
         }
 
         return Collections.emptyList();
     }
 
-    private List<ServiceInstance> selectDebugInstance(
-            String serviceId, List<String> debugHeaders, List<ServiceInstance> serviceInstances) {
+    private List<ServiceInstance> selectInstance(
+            String serviceId, List<String> debugHeaderValues, List<ServiceInstance> serviceInstances) {
         if (serviceInstances.isEmpty()) {
             log.warn("No debug servers available for service: " + serviceId);
             return Collections.emptyList();
         }
+        // 正常请求，筛选无 DebugHeader 的实例
+        if (debugHeaderValues.isEmpty()) {
+            return serviceInstances.stream()
+                .filter(instance ->
+                    !instance.getMetadata().containsKey(Constant.REQUEST_HEADER_XDEBUG_KEY))
+                .collect(Collectors.toList());
+        }
 
         // TODO
         return serviceInstances.stream()
-                .filter(
-                        serviceInstance ->
-                                debugHeaders.stream()
-                                        .anyMatch(
-                                                debugHeader -> serviceInstance.getMetadata().containsKey(debugHeader)))
-                .collect(Collectors.toList());
+            .filter(instance ->
+                debugHeaderValues.stream()
+                    .anyMatch(debugHeaderValue ->
+                        debugHeaderValue.equals(
+                            instance.getMetadata().get(Constant.REQUEST_HEADER_XDEBUG_KEY))))
+            .collect(Collectors.toList());
     }
 
     private Object fallback(MethodInvocation invocation, String msg) throws Throwable {
@@ -123,5 +135,12 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
     private Object failover(MethodInvocation invocation, Throwable throwable) throws Throwable {
         log.error("x-debug 失效转移", throwable);
         return invocation.proceed();
+    }
+
+    static class DebugInstanceNotFoundException extends RuntimeException {
+
+        DebugInstanceNotFoundException(String errorMsg) {
+            super(errorMsg);
+        }
     }
 }
