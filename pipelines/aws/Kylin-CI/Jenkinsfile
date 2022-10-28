@@ -25,7 +25,7 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             sh "env"
-                            githubCheckout 'kylin5', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'Mukvin', 'apache'
+                            githubCheckout 'kylin', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'hit-lacus', 'apache'
                             sh 'ls -lha'
                         }
                     }
