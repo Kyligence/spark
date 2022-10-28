@@ -1,0 +1,137 @@
+#!groovy
+
+@Library('devopslib@DEVOPS-1217') _
+
+def DEFAULT_DEPLOY_ENV_HOST = [
+        "test": "10.1.3.197",
+        "prod": "10.1.3.197",
+        "flag": "52.131.74.41"
+]
+
+def DEFAULT_DEPLOY_HOME = [
+        "test": "/usr/local/Byzen-test",
+        "prod": "/usr/local/Byzen",
+        "flag": "/work/server/tabletrans"
+]
+
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-tabletrans-deploy-agent.yaml'
+        }
+    }
+
+    parameters {
+
+        string(name: 'backend_branch', defaultValue: 'main', description: '')
+        string(name: 'frontend_branch', defaultValue: 'main', description: '')
+        string(name: 'version', defaultValue: '1.0-SNAPSHOT', description: '')
+        choice(name: 'deploy_env', choices:'test\nprod\nflag',
+            description:'''选择部署环境：
+    - test：deploy_env_host=10.1.3.197，deploy_home=/usr/local/Byzen-test
+    - prod：deploy_env_host=10.1.3.197, deploy_home=/usr/local/Byzen
+    - flag：deploy_env_host=52.131.74.41, deploy_home=/work/server/tabletrans
+                            ''')
+        string(name: 'deploy_env_host', description: '部署主机，默认根据部署环境自动设置，可覆盖')
+        string(name: 'deploy_home', description: '部署路径，默认根据部署环境自动设置，可覆盖')
+        booleanParam(name: 'STEP_01_PACKAGE', defaultValue:true, description:'')
+        booleanParam(name: 'STEP_02_DEPLOY', defaultValue:true, description:'')
+
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror 'Byzen', params.backend_branch
+                            }
+                            dir("Byzen-Frontend") {
+                                retry(3) {
+                                    pullCodeFromGitMirror 'Byzen-Frontend', params.frontend_branch
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build') {
+            when {
+                expression {
+                    return params.STEP_01_PACKAGE
+                }
+            }
+            steps {
+                container('yarn') {
+                    dir('sourcecode/Byzen-Frontend') {
+                        sh script: """
+                           echo "====================================="
+                           echo "frontend latest git log"
+                           echo "\$(git log --stat -1)"
+                           echo "====================================="
+                           bash ./build/build.sh
+                        """
+                    }
+                }
+
+                container('build') {
+                    dir('sourcecode') {
+                        sh script: """
+                            export FRONTEND_BRANCH=\${frontend_branch}
+                            export SKIP_FRONTEND_BUILD=1
+                            bash ./build/package.sh
+                        """
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            when {
+                expression {
+                    return params.STEP_02_DEPLOY
+                }
+            }
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if(params.deploy_env == 'test') {
+                                tableTransHelper.deploy_test(
+                                    params.deploy_env_host ?: DEFAULT_DEPLOY_ENV_HOST[params.deploy_env],
+                                    params.deploy_home ?: DEFAULT_DEPLOY_HOME[params.deploy_env],
+                                    params.version
+                                )
+                            } else if(params.deploy_env == 'prod') {
+                                tableTransHelper.deploy_prod(
+                                    params.deploy_env_host ?: DEFAULT_DEPLOY_ENV_HOST[params.deploy_env],
+                                    params.deploy_home ?: DEFAULT_DEPLOY_HOME[params.deploy_env],
+                                    params.version
+                                )
+                            } else if(params.deploy_env == 'flag') {
+                                tableTransHelper.deploy_flag(
+                                    params.deploy_env_host ?: DEFAULT_DEPLOY_ENV_HOST[params.deploy_env],
+                                    params.deploy_home ?: DEFAULT_DEPLOY_HOME[params.deploy_env],
+                                    params.version
+                                )
+                            }
+
+                        }
+                    }
+                }
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'sourcecode/dist/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
+                }
+            }
+        }
+    }
+}

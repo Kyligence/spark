@@ -1,0 +1,87 @@
+---
+kind: "Pod"
+name: "jenkins-package-agent"
+spec:
+  containers:
+    - name: "build"
+      image: "repo-ofs.kyligence.com/newten-build:latest"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
+        limits:
+          memory: "8Gi"
+          cpu: "4000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository/org/apache/kylin
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+    - name: "yarn"
+      image: "node:14.20-bullseye"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
+        limits:
+          memory: "4Gi"
+          cpu: "4000m"
+    - name: "kubectl"
+      image: "cnych/kubectl"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          cpu: "100m"
+          memory: "200Mi"
+        limits:
+          cpu: "300m"
+          memory: "1024Mi"
+      volumeMounts:
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "kylin-repo"
+      emptyDir: { }
+    - name:  "kube-config"
+      hostPath:
+        path:  "/home/jenkins/.kube"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "lex-mvn-settings"
+      name: "lex-mvn-settings"

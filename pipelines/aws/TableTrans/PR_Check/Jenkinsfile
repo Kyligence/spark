@@ -1,0 +1,67 @@
+#!groovy
+
+@Library('devopslib@DEVOPS-1217') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-tabletrans-ci-agenti.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: '', description: 'branch')
+    }
+
+    stages {
+        stage('Pull Code') {
+            steps {
+                container("git") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                githubCheckout 'Byzen', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Testing') {
+            steps {
+                container('maven') {
+                    dir('sourcecode') {
+                        retry(2) {
+                            sh script: "mvn clean test"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Sonar Check') {
+            steps {
+                container('sonar-cloud') {
+                    dir('sourcecode') {
+                        retry(2) {
+                            withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
+                                sh script: """
+                                    mvn sonar:sonar -T 2C \
+                                        -Dsonar.host.url=https://sonarcloud.io \
+                                        -Dsonar.organization=kyligence \
+                                        -Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                        -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                        -Dsonar.pullrequest.key=${ghprbPullId} \
+                                        -Dsonar.projectKey=Kyligence_Byzen
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
