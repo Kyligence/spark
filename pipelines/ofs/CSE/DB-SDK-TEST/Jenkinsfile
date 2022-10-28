@@ -2,8 +2,6 @@
 
 @Library('devopslib') _
 
-def branch_name = 'master'
-
 pipeline {
     options {
         timeout(time: 3, unit: 'HOURS')
@@ -23,6 +21,8 @@ pipeline {
                 description: '打包升级验证的模块名称，如果是 commons 模块，则所有数据源 sdk 版本都将升级，如果只是单个模块，则只将对应数据源验证升级')
         string(name: 'KEVersion', defaultValue: '4.5.17.0', description: '指定 KE 的版本')
         string(name: 'toMail', defaultValue: 'fanfan.li@kyligence.io', description: '将函数对比结果发送给此人')
+        string(name: 'branch', defaultValue: 'dev', description: '指定分支')
+        string(name: 'repo', defaultValue: 'Kyligence', description: '指定 repo')
     }
 
     environment {
@@ -36,7 +36,7 @@ pipeline {
                     dir("kap-source-connectors") {
                         script {
                             retry(3) {
-                                githubCheckout 'kap-source-connectors', 'master', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'kap-source-connectors', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', params.repo
                             }
                         }
                     }
@@ -175,32 +175,6 @@ pipeline {
                             sh script: """
                                    sh benchmark/src/main/resources/script/deployRelease.sh ${params.KEVersion}
                                 """
-                        }
-                    }
-                }
-            }
-        }
-
-        stage("doTag") {
-            steps {
-                container("build") {
-                    dir("kap-source-connectors") {
-                        script {
-                            sdkVersion = ''
-                            if (params.moduleName == 'commons') {
-                                sdkVersion = sh(script: " mvn help:evaluate -Dexpression=revision -pl commons | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
-                            } else {
-                                sdkVersion = sh(script: " mvn help:evaluate -Dexpression=sub.version -pl ${params.moduleName} | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
-                            }
-                            echo "sdkVersion: ${sdkVersion}"
-                            echo "is deploy: ${sdkVersion.contains("-SNAPSHOT")}"
-                            echo "module name: ${params.moduleName}"
-                            if (sdkVersion.contains("-SNAPSHOT")) {
-                                echo "skip do tag, ${params.moduleName} contains SNAPSHOT"
-                            } else {
-                                def _tag = "v-" + params.moduleName + "-" + sdkVersion
-                                githubHelper 'TAG', branch_name, 'kap-source-connectors', _tag
-                            }
                         }
                     }
                 }

@@ -4,12 +4,12 @@
 
 pipeline {
     options {
-        timeout(time: 12, unit: 'HOURS')
+        timeout(time: 20, unit: 'HOURS')
         ansiColor('xterm')
     }
 
     agent {
-        label '10.1.1.118-hdp2.4 || 10.1.1.45-hdp2.4'
+        label '10.1.1.117-hdp2.4 || 10.1.1.45-hdp2.4'
     }
 
     parameters {
