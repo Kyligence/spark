@@ -1,5 +1,0 @@
-FROM openjdk:8u312-jre
-VOLUME /opt/kyligence/kyiam/log /logs
-COPY iam-server/target/iam-server.jar /app/saas-kyiam.jar
-COPY iam-server/target/jars /app/jars/
-CMD ["java","-Dloader.path=/app/jars","-Dspring.config.additional-location=/etc/saas-kyiam/config.yaml","-Dcom.sun.jndi.ldap.object.disableEndpointIdentification=true","-jar","/app/saas-kyiam.jar"]

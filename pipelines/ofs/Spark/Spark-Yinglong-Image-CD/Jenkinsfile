@@ -1,6 +1,6 @@
 #!groovy
 
-@Library('devopslib') _
+@Library('devopslib@set_https') _
 
 
 def origin_spark_folder_name
