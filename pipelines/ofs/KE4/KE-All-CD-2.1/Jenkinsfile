@@ -88,9 +88,10 @@ def setVersions(version, kylin_ver, is_GA) {
         _kylin_ver = "${kylin_ver}-ke-${_version}"
     }
     sh """
-        sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>${_kylin_ver}<\\/kylin.module.version>/g' pom.xml
         mvn versions:set -DnewVersion=${_kylin_ver} -pl kylin
         mvn versions:set -DnewVersion=${_version}
+
+        sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>${_kylin_ver}<\\/kylin.module.version>/g' pom.xml
     """
 }
 
@@ -103,8 +104,8 @@ def mvnDeploy() {
 }
 
 // git获取KE代码（预先触发同步git mirror）
-def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
-    print "gitCodeKe -> back[${back}],front[${front}],version[${version}],kylin_ver[${kylin_ver}],is_GA[${is_GA}],pMap[${pMap}]"
+def gitCodeKe(back, front, pMap) {
+    print "gitCodeKe -> back[${back}],front[${front}],pMap[${pMap}]"
     def result = [:]
     script {
         println "backend branch/commit: ${back}, frontend branch/commit: ${front}"
@@ -121,7 +122,7 @@ def gitCodeKe(back, front, version, kylin_ver, is_GA, pMap) {
         println "result.release_commitid_back: ${result.release_commitid_back}"
         // result.release_commitid_back = release_commitid_back
 
-        setVersions(version, kylin_ver, is_GA)
+        // setVersions(version, kylin_ver, is_GA)
 
         def _front
         if (!front) {
@@ -162,14 +163,13 @@ def pullCode(params) {
     def result = [:]
     // 1. 参数检查：version
     paramsVerify.version(params.version)
-    def is_GA = params.envStage == 'GA'
     // 2. 获取分支（前后端）
     if (params.deployWay == 'Auto Select') {
         // 2.1 根据分支流程规则，自动获取代码分支参数
         def _branch = getBranch(params.deployType, params.envStage, params.version)
         result.release_branch_front = _branch
         result.release_branch_back = _branch
-        def cms = gitCodeKe(_branch, _branch, params.version, params.kylin_ver, is_GA, result.paramsMap)
+        def cms = gitCodeKe(_branch, _branch, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else if (params.deployWay == 'Manual Select') {
@@ -190,7 +190,7 @@ def pullCode(params) {
         )
         result.release_branch_front = result.paramsMap['commitId_front']
         result.release_branch_back = result.paramsMap['commitId_back']
-        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, params.version, params.kylin_ver, is_GA, result.paramsMap)
+        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else {
@@ -472,6 +472,9 @@ pipeline {
                             steps {
                                 script {
                                     def no_spark = true
+                                    if(params.envStage == 'GA') {
+                                        setVersions(params.version, params.kylin_ver, true)
+                                    }
                                     def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     no_spark_package_info = bpns.no_spark_package_info
                                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
@@ -487,6 +490,9 @@ pipeline {
                             steps {
                                 script {
                                     def no_spark = false
+                                    if(params.envStage == 'GA') {
+                                        setVersions(params.version, params.kylin_ver, true)
+                                    }
                                     def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     package_info = bp.package_info
                                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
@@ -497,7 +503,7 @@ pipeline {
                         stage('2.3.Scan Public API') {
                             when {
                                 expression {
-                                    return params.envStage == 'RC' || params.scanApi == true
+                                    return params.envStage in ['RC','GA'] || params.scanApi == true
                                 }
                             }
                             steps {
@@ -607,7 +613,7 @@ pipeline {
                         container('build') {
                             script {
                                 dir('sourcecode2') {
-                                    // setVersions(params.version, params.kylin_ver, false)
+                                    setVersions(params.version, params.kylin_ver, false)
                                     mvnDeploy()
                                 }
                             }
