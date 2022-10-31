@@ -22,6 +22,20 @@ pipeline {
         stage('Checkout Source Code') {
             steps {
                 container('git') {
+                    dir('gluten') {
+                        script {
+                            def prNo = ghprbCommentBody.minus('test this please with ').trim()
+                            def prBranch = "main"
+                            if (prNo) {
+                                if (prNo.isNumber()) {
+                                    prBranch = "origin/pr/${prNo}/merge"
+                                }
+                            }
+                            sh 'env'
+                            echo "clone gluten branch ${prBranch}"
+                            githubCheckout 'gluten', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', 'oap-project'
+                        }
+                    }
                     dir('clickhouse') {
                         script {
                             sh 'env'
@@ -29,12 +43,6 @@ pipeline {
                             // replaceRepo()
                             sh 'ls;'
                             sh 'git submodule update --init --recursive;'
-                        }
-                    }
-                    dir('gluten') {
-                        script {
-                            sh 'env'
-                            githubCheckout 'gluten', 'main', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', 'oap-project'
                         }
                     }
                 }
@@ -78,7 +86,7 @@ pipeline {
                                 export CCACHE_COMPILERCHECK=content;
                                 export CCACHE_MAXSIZE=15G;
 
-                                cmake -G Ninja  "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" "-DCMAKE_BUILD_TYPE=Release" "-DENABLE_PROTOBUF=1" "-DENABLE_EMBEDDED_COMPILER=$ENABLE_EMBEDDED_COMPILER" "-DENABLE_TESTS=OFF" "-DWERROR=OFF" "-DENABLE_JEMALLOC=1" \${WORKSPACE}/clickhouse/;
+                                cmake -G Ninja  "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" "-DCMAKE_BUILD_TYPE=Release" "-DENABLE_PROTOBUF=1" "-DENABLE_EMBEDDED_COMPILER=$ENABLE_EMBEDDED_COMPILER" "-DENABLE_TESTS=OFF" "-DENABLE_JEMALLOC=1" \${WORKSPACE}/clickhouse/;
                                 ninja ch;'''
                         }
                     }
