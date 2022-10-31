@@ -69,22 +69,20 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
             return fallback(invocation, "无法正常获取服务列表，回退处理");
         }
 
-        final List<ServiceInstance> debugInstances =
-                sils.get(request)
-                        .next()
-                        .map(serviceInstances -> selectInstance(name, debugHeaderValues, serviceInstances))
-                        .toFuture().get();
+        List<ServiceInstance> allInstances = sils.get(request).next().toFuture().get();
+        List<ServiceInstance> selectedInstances = selectInstance(name, debugHeaderValues, allInstances);
 
-        if (debugInstances == null || debugInstances.isEmpty()) {
+        if (selectedInstances == null || selectedInstances.isEmpty()) {
             if (debugHeaderValues.isEmpty()) {
                 return fallback(invocation, "正常请求没有匹配的实例，回退处理");
             }
-            throw new DebugInstanceNotFoundException("Debug 请求没有找到对应的实例");
+            // Debug 请求重新寻找正常 Instance
+            selectedInstances = selectInstance(name, Collections.emptyList(), allInstances);
         }
 
-        log.info("匹配 debug 实例 {}", debugInstances);
-        final int randomIndex = ThreadLocalRandom.current().nextInt(debugInstances.size());
-        return Mono.just(new DefaultResponse(debugInstances.get(randomIndex)));
+        log.info("匹配 debug 实例 {}", selectedInstances);
+        final int randomIndex = ThreadLocalRandom.current().nextInt(selectedInstances.size());
+        return Mono.just(new DefaultResponse(selectedInstances.get(randomIndex)));
     }
 
     private List<String> getDebugHeaderValues(Object reqCtx) {
@@ -123,7 +121,7 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
                 debugHeaderValues.stream()
                     .anyMatch(debugHeaderValue ->
                         debugHeaderValue.equals(
-                            instance.getMetadata().get(Constant.REQUEST_HEADER_XDEBUG_KEY))))
+                            instance.getMetadata().get(Constant.NACOS_METADATA_XDEBUG_USER_KEY))))
             .collect(Collectors.toList());
     }
 
