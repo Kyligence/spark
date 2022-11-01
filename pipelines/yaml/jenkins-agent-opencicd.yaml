@@ -74,6 +74,6 @@ spec:
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
-        claimName: "fileserver-claim"
+        claimName: "fileserver1-claim"
     - name: "gluten-repo"
       emptyDir: { }
