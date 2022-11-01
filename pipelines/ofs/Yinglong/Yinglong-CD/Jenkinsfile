@@ -6,7 +6,8 @@ def modules = [
         ['name': 'ke-common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'yinglong-common', 'image': ''],
         ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'yinglong-data-loading', 'image': ''],
         ['name': 'query', 'path': 'kylin/src/query-booter', 'imageName': 'yinglong-query', 'image': ''],
-        ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': '']
+        ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': ''],
+        ['name': 'yinglong-resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'yinglong-resource', 'image': '']
     ]
 
 pipeline {
@@ -222,6 +223,7 @@ pipeline {
 
                             sh returnStatus: true , script: """
                                 helm -n ${namespace} install yinglong ./helm/yinglong
+                                    --set yinglong-resource.image.tag=${tag}
                                     --set yinglong-common.image.tag=${tag}
                                     --set yinglong-data-loading.image.tag=${tag}
                                     --set yinglong-query.image.tag=${tag}
