@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "yinglong-smart.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "yinglong-resource.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never

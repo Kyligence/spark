@@ -12,10 +12,10 @@ def call() {
         def kap_it_module = modules.findAll({ it.contains('src/kap-it') }).getAt(0)
         if (kap_it_module) {
             modules.removeAll([kap_it_module])
-            kap_it_module = [
+            modules.addAll([
                 "${kap_it_module} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
                 "${kap_it_module} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
-            ]
+            ])
         }
 
         def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it') }).getAt(0)
@@ -41,19 +41,19 @@ def call() {
                 modules.removeAll([_clickhouse_it_module])
                 clickhouse_it_module = [_clickhouse_it_module]
             }
-}
+        }
 
         Collections.reverse(modules)
         println "final modules: ${modules}"
 
         def taskQueue = modules as LinkedBlockingQueue
-        def queryQueue = kap_it_module as LinkedBlockingQueue
+        // def queryQueue = kap_it_module as LinkedBlockingQueue
         def chitQueue = clickhouse_it_module as LinkedBlockingQueue
 
         def worker1 = createWorker('UTest-Stage-1', taskQueue)
         def worker2 = createWorker('UTest-Stage-2', taskQueue)
         def worker3 = createWorker('UTest-Stage-3', taskQueue)
-        def worker4 = createWorker('UTest-Stage-4', queryQueue)
+        def worker4 = createWorker('UTest-Stage-4', taskQueue)
         def worker5 = createWorker('UTest-Stage-5', chitQueue)
 
         def allTestStages = worker1 + worker2 + worker3 + worker4 + worker5
