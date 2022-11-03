@@ -94,5 +94,5 @@ nginx:
   shareDir: /usr/share/nginx/html
 
 skywalking:
-    oap:
-      rest: http://oap.ops.kyligence.tech
+  oap:
+    rest: http://oap.dev.kyligence.com

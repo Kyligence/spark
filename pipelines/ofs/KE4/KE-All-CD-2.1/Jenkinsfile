@@ -57,7 +57,7 @@ def getBranch(deployType, envStage, version) {
             _branch_dev = "${_branch_release}-dev"
             break
         case 'SP-4.6.x':
-            _branch_release = branchCollection[0]
+            _branch_release = branchCollection[5]
             _branch_qa = "${_branch_release}-dev"
             _branch_dev = "${_branch_release}-dev"
             break
