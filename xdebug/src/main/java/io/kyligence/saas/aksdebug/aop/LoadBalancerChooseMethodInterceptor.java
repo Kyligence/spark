@@ -107,12 +107,15 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
             log.warn("No debug servers available for service: " + serviceId);
             return Collections.emptyList();
         }
-        // 正常请求，筛选无 DebugHeader 的实例
+        // 正常请求，筛选正常实例，即无 Metadata 标识或者是 SYSTEM 用户启动的
         if (debugHeaderValues.isEmpty()) {
             return serviceInstances.stream()
-                .filter(instance ->
-                    !instance.getMetadata().containsKey(Constant.REQUEST_HEADER_XDEBUG_KEY))
-                .collect(Collectors.toList());
+                .filter(instance -> {
+                    if (instance.getMetadata().containsKey(Constant.NACOS_METADATA_XDEBUG_USER_KEY)) {
+                        return debugHeaderValues.stream().anyMatch(Constant.SYSTEM_USER_NAME::equalsIgnoreCase);
+                    }
+                    return true;
+                }).collect(Collectors.toList());
         }
 
         // TODO
