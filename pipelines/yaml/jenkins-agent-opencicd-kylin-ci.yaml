@@ -29,8 +29,8 @@ spec:
           subPath: "m2repo"
       resources:
         requests:
-          memory: "12Gi"
-          cpu: "6"
+          memory: "20Gi"
+          cpu: "8"
           ephemeral-storage: "7Gi"
 
     - image: "jenkins/inbound-agent:4.11-1-jdk11"
