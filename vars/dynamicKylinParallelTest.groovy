@@ -9,11 +9,11 @@ def call() {
             ''', returnStdout: true).trim().split("\n").collect({ it.trim() }).findAll { it.startsWith("src") || it.startsWith("kylin/src") || it == "kylin" }
         println "origin modules: ${modules}"
 
-//        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
-//        if(clickhouse_it_module) {
-//            modules.removeAll([clickhouse_it_module])
-//            clickhouse_it_module = [clickhouse_it_module]
-//        }
+        def clickhouse_it_module = modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+        if(clickhouse_it_module) {
+            modules.removeAll([clickhouse_it_module])
+            clickhouse_it_module = [clickhouse_it_module]
+        }
 
         if ('kylin' in modules) {
             def kylin_modules = sh(script: '''
@@ -25,15 +25,13 @@ def call() {
             modules.removeAll(['kylin'])
             modules.addAll(kylin_modules)
 
-            modules.removeAll(['src/second-storage/clickhouse-it'])
+            def _clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
+            println "_clickhouse_it_module: ${_clickhouse_it_module}"
 
-//            def _clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
-//            println "_clickhouse_it_module: ${_clickhouse_it_module}"
-//
-//            if(_clickhouse_it_module) {
-//                modules.removeAll([_clickhouse_it_module])
-//                clickhouse_it_module = [_clickhouse_it_module]
-//            }
+            if(_clickhouse_it_module) {
+                modules.removeAll([_clickhouse_it_module])
+                clickhouse_it_module = [_clickhouse_it_module]
+            }
         }
 
         Collections.reverse(modules)
