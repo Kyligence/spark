@@ -25,6 +25,8 @@ def call() {
             modules.removeAll(['kylin'])
             modules.addAll(kylin_modules)
 
+            modules.removeAll(['src/second-storage/clickhouse-it'])
+
 //            def _clickhouse_it_module = kylin_modules.findAll({ it.contains('src/second-storage/clickhouse-it')}).getAt(0)
 //            println "_clickhouse_it_module: ${_clickhouse_it_module}"
 //
