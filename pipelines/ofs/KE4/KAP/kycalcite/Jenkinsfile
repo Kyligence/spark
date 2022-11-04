@@ -45,12 +45,8 @@ pipeline {
                 container('build') {
                     dir("kycalcite"){
                         sh script: """
-                            sed -i "s/<id>user-snapshots<\\/id>/<id>pro<\\/id>/g" pom.xml
-                            sed -i "s/<id>user-releases<\\/id>/<id>pro<\\/id>/g" pom.xml
-                        """
-
-                        sh script: """
-                            mvn clean deploy -DskipTests=true
+                            mvn clean deploy -DskipTests=true -Pdev
+                            mvn clean deploy -DskipTests=true -Ppro
                         """
                     }
                 }
