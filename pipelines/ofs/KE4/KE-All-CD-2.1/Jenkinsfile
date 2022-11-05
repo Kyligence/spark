@@ -113,7 +113,7 @@ def gitCodeKe(back, front, pMap) {
             error 'commitId_back 参数不能为空'
         }
         if (pMap && pMap['back_remote']) {
-            githubCheckout 'KAP', back, 'https', 'github.com'
+            githubCheckout2 'KAP', back, 'https', 'github.com'
         } else {
             pullCodeFromGitMirror 'KAP', back
         }
@@ -139,7 +139,7 @@ def gitCodeKe(back, front, pMap) {
         dir('kystudio') {
             // sh 'pwd && ls -lha'
             if (pMap && pMap['front_remote']) {
-                githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
+                githubCheckout2 'KAP_Frontend', _front, 'https', 'github.com'
             }else {
                 pullCodeFromGitMirror 'KAP_Frontend', _front
             }
@@ -578,18 +578,6 @@ pipeline {
                             }
                         }
                     }
-                // post {
-                //     success {
-                //         sendNotify('EMAIL',
-                //                 "SUCCESSFUL to Upload the Tar into the Azure CN server'",
-                //                 // "liming.meng@kyligence.io",
-                //                 tester_emails,
-                //                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                //             <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141]</p>
-                //             <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! Tks!</p>"""
-                //         )
-                //     }
-                // }
                 }
                 stage('3.2.Upload Normal to Azure CN 138') {
                     steps {
@@ -603,7 +591,7 @@ pipeline {
                         }
                     }
                 }
-                stage('3.3.Deploy SNAPSHOT Jar') {
+                stage('3.3.Deploy SNAPSHOT Jars') {
                     when {
                         expression {
                             return params.envStage in ['QA', 'RC']
@@ -655,7 +643,7 @@ pipeline {
                 }
             }
         }
-        stage('4.Deploy to Azure') {
+        stage('5.Deploy to Azure') {
             parallel {
                 stage('Auto Deploy KE on Azure gw07') {
                     when {
@@ -698,7 +686,7 @@ pipeline {
                 }
             }
         }
-        stage('5.Approve GA') {
+        stage('6.Approve GA') {
             when {
                 expression {
                     return params.envStage == 'GA'
@@ -724,14 +712,14 @@ pipeline {
                 }
             }
         }
-        stage('6.GA Upload') {
+        stage('7.GA Upload') {
             when {
                 expression {
                     return params.envStage == 'GA' && !paramsGA['skipUpload']
                 }
             }
             parallel {
-                stage('6.1.GA AWS CN') {
+                stage('GA AWS CN') {
                     steps {
                         script {
                             println("upload to AWS S3 in CN: ${ga_name}")
@@ -744,7 +732,7 @@ pipeline {
                         }
                     }
                 }
-                stage('6.2.GA AWS Global') {
+                stage('GA AWS Global') {
                     steps {
                         script {
                             println("upload to AWS S3 in Global: ${ga_name}")
@@ -757,7 +745,7 @@ pipeline {
                         }
                     }
                 }
-                stage('6.3.GA Nexus') {
+                stage('GA Nexus') {
                     steps {
                         script {
                             println("upload to Nexus repo-ofs: ${ga_name}")
@@ -769,63 +757,11 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
-        stage('7.Released') {
-            when {
-                expression {
-                    return params.envStage == 'GA' && params.customerPkg == 'NORMAL'
-                }
-            }
-            parallel {
-                stage('7.1.Tag') {
-                    steps {
-                        container('build') {
-                            script {
-                                def _tag = "ke-${version}"
-                                try {
-                                    dir('sourcecode2') {
-                                        println "backend: KAP push tag: ${_tag} on branch ${pull_result_withspark.release_branch_back} in sourcecode folder"
-                                        githubHelper 'TAG', pull_result_withspark.release_branch_back, 'KAP', _tag
-                                        bcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
-                                        println "backend [KAP] commitId: ${bcid}"
-
-                                        dir('kystudio') {
-                                            println "frontend: KAP_Frontend push tag: ${_tag} on branch ${pull_result_withspark.release_branch_front} in kystudio folder"
-                                            githubHelper 'TAG', pull_result_withspark.release_branch_front, 'KAP_Frontend', _tag
-                                            fcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
-                                            println "frontend [KAP_Frontend] commitId: ${fcid}"
-                                        }
-                                    }
-                                } catch (Exception err) {
-                                    echo err.getMessage()
-                                }
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            sendNotify(
-                                'EMAIL',
-                                "[KE4][GA] ${version} SUCCESSFUL GA",
-                                // "liming.meng@kyligence.io",
-                                product_emails,
-                                """
-                                <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                                <p>The Backend repo of [KAP] commitId: ${bcid}</p>
-                                <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
-                                <p>Automatically tag [ke-${version}] the front and back branches.</p>
-                                """
-                            )
-                        }
-                    }
-                }
-                stage('7.2.Deploy Jar') {
+                stage('Jars Nexus') {
                     steps {
                         container('build') {
                             script {
                                 dir('sourcecode2') {
-                                    // setVersions(params.version, params.kylin_ver, params.envStage == 'GA')
                                     mvnDeploy()
                                 }
                             }
@@ -842,6 +778,49 @@ pipeline {
                             )
                         }
                     }
+                }
+            }
+        }
+        stage('8.Git Tag') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && params.customerPkg == 'NORMAL'
+                }
+            }
+            steps {
+                container('build') {
+                    script {
+                        def _tag = "ke-${version}"
+                        dir('sourcecode2') {
+                            println "backend: KAP push tag: ${_tag} on branch ${pull_result_withspark.release_branch_back} in sourcecode folder"
+                            githubHelper 'TAG', pull_result_withspark.release_branch_back, 'KAP', _tag
+                            bcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                            println "backend [KAP] commitId: ${bcid}"
+
+                            dir('kystudio') {
+                                println "frontend: KAP_Frontend push tag: ${_tag} on branch ${pull_result_withspark.release_branch_front} in kystudio folder"
+                                githubHelper 'TAG', pull_result_withspark.release_branch_front, 'KAP_Frontend', _tag
+                                fcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                println "frontend [KAP_Frontend] commitId: ${fcid}"
+                            }
+                        }
+                    }
+                }
+            }
+            post {
+                success {
+                    sendNotify(
+                        'EMAIL',
+                        "[KE4][GA] ${version} SUCCESSFUL GA",
+                        // "liming.meng@kyligence.io",
+                        product_emails,
+                        """
+                        <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                        <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                        <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
+                        <p>Automatically tag [ke-${version}] the front and back branches.</p>
+                        """
+                    )
                 }
             }
         }
