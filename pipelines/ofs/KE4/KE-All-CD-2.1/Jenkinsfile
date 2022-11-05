@@ -113,7 +113,7 @@ def gitCodeKe(back, front, pMap) {
             error 'commitId_back 参数不能为空'
         }
         if (pMap && pMap['back_remote']) {
-            githubCheckout2 'KAP', back, 'https', 'github.com'
+            githubCheckoutNew 'KAP', back, 'https', 'github.com'
         } else {
             pullCodeFromGitMirror 'KAP', back
         }
@@ -139,7 +139,7 @@ def gitCodeKe(back, front, pMap) {
         dir('kystudio') {
             // sh 'pwd && ls -lha'
             if (pMap && pMap['front_remote']) {
-                githubCheckout2 'KAP_Frontend', _front, 'https', 'github.com'
+                githubCheckoutNew 'KAP_Frontend', _front, 'https', 'github.com'
             }else {
                 pullCodeFromGitMirror 'KAP_Frontend', _front
             }
