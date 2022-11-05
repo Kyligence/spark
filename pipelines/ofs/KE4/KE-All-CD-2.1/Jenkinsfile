@@ -112,11 +112,7 @@ def gitCodeKe(back, front, pMap) {
         if (!back) {
             error 'commitId_back 参数不能为空'
         }
-        if (pMap && pMap['back_remote']) {
-            githubCheckoutNew 'KAP', back, 'https', 'github.com'
-        } else {
-            pullCodeFromGitMirror 'KAP', back
-        }
+        pullCodeFromGitMirror 'KAP', back, pMap['back_remote'], 'Kyligence', false
 
         result.release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
         println "result.release_commitid_back: ${result.release_commitid_back}"
@@ -138,11 +134,7 @@ def gitCodeKe(back, front, pMap) {
         // sh 'ls -lha'
         dir('kystudio') {
             // sh 'pwd && ls -lha'
-            if (pMap && pMap['front_remote']) {
-                githubCheckoutNew 'KAP_Frontend', _front, 'https', 'github.com'
-            }else {
-                pullCodeFromGitMirror 'KAP_Frontend', _front
-            }
+            pullCodeFromGitMirror 'KAP_Frontend', _front, pMap['front_remote'], 'Kyligence', false
         
             result.release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
             println "result.release_commitid_front: ${result.release_commitid_front}"
@@ -432,30 +424,11 @@ pipeline {
     }
 
     stages {
-        stage('0.1.Pull NoSpark') {
-            when {
-                expression {
-                    return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
-                }
-            }
+        stage('0.Sync Git Mirror') {
             steps {
-                container('build') {
-                    dir('sourcecode1') {
-                        script {
-                            pull_result_nospark = pullCode(params)
-                        }
-                    }
-                }
-            }
-        }
-        stage('0.2.Pull Normal') {
-            steps {
-                container('build') {
-                    dir('sourcecode2') {
-                        script {
-                            pull_result_withspark = pullCode(params)
-                        }
-                    }
+                script{
+                    syncGitMirror('KAP')
+                    syncGitMirror('KAP_Frontend')
                 }
             }
         }
@@ -463,7 +436,23 @@ pipeline {
             parallel {
                 stage('1.NoSpark') {
                     stages {
-                        stage('1.2.Building noSpark') {
+                        stage('Pull NoSpark') {
+                            when {
+                                expression {
+                                    return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
+                                }
+                            }
+                            steps {
+                                container('build') {
+                                    dir('sourcecode1') {
+                                        script {
+                                            pull_result_nospark = pullCode(params)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        stage('Building noSpark') {
                             when {
                                 expression {
                                     return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
@@ -486,7 +475,18 @@ pipeline {
                 }
                 stage('2.Normal') {
                     stages {
-                        stage('2.2.Building Normal') {
+                        stage('Pull Normal') {
+                            steps {
+                                container('build') {
+                                    dir('sourcecode2') {
+                                        script {
+                                            pull_result_withspark = pullCode(params)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        stage('Building Normal') {
                             steps {
                                 script {
                                     def no_spark = false
@@ -500,7 +500,7 @@ pipeline {
                                 }
                             }
                         }
-                        stage('2.3.Scan Public API') {
+                        stage('Scan Public API') {
                             when {
                                 expression {
                                     return params.envStage in ['RC','GA'] || params.scanApi == true
