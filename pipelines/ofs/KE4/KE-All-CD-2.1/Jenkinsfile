@@ -163,7 +163,7 @@ def pullCode(params) {
         def _branch = getBranch(params.deployType, params.envStage, params.version)
         result.release_branch_front = _branch
         result.release_branch_back = _branch
-        def cms = gitCodeKe(_branch, _branch, result.paramsMap)
+        def cms = gitCodeKe(_branch, _branch, null)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
     } else if (params.deployWay == 'Manual Select') {
