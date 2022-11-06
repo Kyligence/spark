@@ -112,7 +112,7 @@ def gitCodeKe(back, front, pMap) {
 
 pipeline {
     options {
-        timeout(time: 4, unit: 'HOURS')
+        timeout(time: 12, unit: 'HOURS')
     }
 
     agent {
@@ -143,11 +143,6 @@ pipeline {
         booleanParam(name: 'include_spark', defaultValue:false, description:'是否内置spark包')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
-        booleanParam(name: 'deploy', defaultValue:false, description:'部署在 k8s')
-        string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
-        string(name: 'hadoop_prefix', defaultValue: 'hadoop-0', description: 'hadoop environment')
-        string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
-        string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
     }
 
     stages {
@@ -322,38 +317,50 @@ pipeline {
             }
         }
         stage('5.deploy') {
-            when {
-                environment name: 'deploy', value: 'true'
+            input {
+                message '请选择部署方式，并配置必须的参数，完成后请点击确认。整个流程12小时后会自动截止）'
+                ok '确认！'
+                parameters {
+                    choice(name: 'deploy', choices: 'skip\nupgrade\ninstall', description: '部署方式:\nskip - 跳过\nupgrade - 更新\ninstall - 重新部署')
+                    choice(name: 'namespace', choices: 'yinglong-qa\nyinglong-test', description: '选择要部署的namespace')
+                    string(name: 'hadoop_prefix', defaultValue: 'hadoop', description: 'hadoop environment')
+                    string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
+                    string(name: 'metadata_table_name', defaultValue: 'yinglong_metadata', description: 'metadata table name')
+                    string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
+                }
+                submitterParameter 'APPROVER'
             }
             steps {
                 echo 'Up in K8S at office env'
                 container('helm') {
                     withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                         script {
-                            sh 'pwd && ls -alt'
-                            sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
+                            if (params.deploy == "upgrade") {
+                                sh 'pwd && ls -alt'
+                                sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
 
-                            try {
                                 sh returnStatus: true , script: """
                                     helm -n ${namespace} list
-                                    helm -n ${namespace} uninstall yinglong
+                                    helm -n ${namespace} upgrade yinglong ./helm/yinglong \
+                                        --set global.image.tag=${tag} \
+                                        --set global.image.pullPolicy=Always \
+                                        --set global.hadoopPrefix=${hadoop_prefix} \
+                                        --set global.tenantId=${tenant_id} \
+                                        --set global.publicGroup=yinglong \
+                                        --set global.nacos.discovery.serverAddrNoHttp=nacos-naming-svc.yinglong:8848 \
+                                        --set global.nacos.config.serverAddrNoHttp=nacos-config-svc.yinglong:8848 \
+                                        --set 'global.metadata.url=${metadata_table_name}@jdbc\\,driverClassName=com.mysql.jdbc.Driver\\,url=jdbc:mysql://10.1.9.111:3306/kylin?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8\\,username=yinglong\\,password=cA*BUi#4\\,maxTotal=50\\,maxIdle=8' \
+                                        --set 'yl-gateway.image.tag=5.0.1-private' \
+                                        --set 'yl-gateway.nacos.serverAddr=nacos-naming-svc.yinglong:8848' \
+                                        --set 'yl-gateway.saas.nacos.discovery.group=${tenant_id}' \
+                                        --set 'yl-gateway.saas.nacos.discovery.publicGroup=yinglong' ${extra_settings}
+                                    helm -n ${namespace} list
                                 """
-                            } catch (Exception err) {
-                                echo err.getMessage()
-                                echo 'delete resource failed, but we will continue.'
+                            } else if (params.deploy == "install") {
+                                sh "echo 'not support now'"
+                            } else {
+                                sh "echo 'skip deploy'"
                             }
-
-                            sh returnStatus: true , script: """
-                                helm -n ${namespace} install yinglong ./helm/yinglong
-                                    --set yinglong-common.image.tag=${release_tag_back}
-                                    --set yinglong-data-loading.image.tag=${release_tag_back}
-                                    --set yinglong-query.image.tag=${release_tag_back}
-                                    --set yinglong-smart.image.tag=${release_tag_back}
-                                    --set yinglong-frontend.image.tag=${release_tag_front}
-                                    --set global.hadoopPrefix=${hadoop_prefix}
-                                    --set global.tenantId=${params.tenant_id} ${params.extra_settings}
-                                helm -n ${namespace} list
-                            """
                         }
                     }
                 }
