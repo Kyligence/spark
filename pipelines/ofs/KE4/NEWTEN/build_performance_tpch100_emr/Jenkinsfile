@@ -11,7 +11,7 @@ pipeline {
     }
 
     agent {
-        label '10.1.3.33-dw'
+        label '52.83.177.0-ec2'
     }
 
     parameters {
@@ -28,7 +28,7 @@ pipeline {
                 }
 
                 sh script: """
-                    cd /home/kylin_dw/fengjiao/tnt_back/script
+                    cd /home/ec2-user
                     python3 build_qzx_emr.py ${build_args}
                 """
 
