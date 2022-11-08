@@ -579,7 +579,7 @@ pipeline {
             steps {
                 container('build') {
                     script {
-                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back};\n  2. 发布版本号：${params.version}"
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${release_branch_front}，后端 ${release_branch_back};\n2. 发布版本号：${params.version}"
                         println checkMsg
                         // sh 'printenv'
                         paramsGA = input(
