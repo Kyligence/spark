@@ -295,9 +295,9 @@ def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg, excludeDocs) 
     """
 }
 
-// buildPackage(params.version, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
-def buildPackage(path, pull_result, version, envStage, deployType, noSpark, docs_commitid, customerPkg, pMap) {
-    println "buildPackage -> path[${path}],pull_result[${pull_result}],version[${version}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}],pMap[${pMap}]"
+// buildPackage(params.version, params.kylin_ver, params.envStage, params.deployType, params.noSpark, params.docs_commitid)
+def buildPackage(path, pull_result, version, kylin_ver, envStage, deployType, noSpark, docs_commitid, customerPkg, pMap) {
+    println "buildPackage -> path[${path}],pull_result[${pull_result}],version[${version}],kylin_ver[${kylin_ver}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}],pMap[${pMap}]"
     def result = [:]
     container('build') {
         timestamps {
@@ -311,6 +311,10 @@ def buildPackage(path, pull_result, version, envStage, deployType, noSpark, docs
                      * 2. 手动模式中选择了overide参数的；
                      * 3. GA版打包时；
                      */
+
+                    if(params.envStage == 'GA') {
+                        setVersions(_version, kylin_ver, no_spark)
+                    }
                     if (!noSpark) {
                         package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
                         if (!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
@@ -463,10 +467,7 @@ pipeline {
                             steps {
                                 script {
                                     def no_spark = true
-                                    if(params.envStage == 'GA') {
-                                        setVersions(params.version, params.kylin_ver, true)
-                                    }
-                                    def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
+                                    def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     no_spark_package_info = bpns.no_spark_package_info
                                     println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
                                     println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
@@ -492,10 +493,7 @@ pipeline {
                             steps {
                                 script {
                                     def no_spark = false
-                                    if(params.envStage == 'GA') {
-                                        setVersions(params.version, params.kylin_ver, true)
-                                    }
-                                    def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
+                                    def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                     package_info = bp.package_info
                                     println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
                                     println("Download URL: https://package.kyligence.com/${package_info.package_file}")
