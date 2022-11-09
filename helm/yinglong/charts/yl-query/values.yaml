@@ -97,7 +97,7 @@ startupProbe:
 
 skyWalking:
   enabled: true
-  backendServerAddr: skywalking-oap.sk:11800
+  backendServerAddr: skywalking-skywalking-helm-oap.sk:11800
 
 debug: 
   enabled: true

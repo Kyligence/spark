@@ -102,4 +102,4 @@ saas:
 
 skyWalking:
   enabled: true
-  serverAddr: skywalking-oap.sk:11800
+  serverAddr: skywalking-skywalking-helm-oap.sk:11800
