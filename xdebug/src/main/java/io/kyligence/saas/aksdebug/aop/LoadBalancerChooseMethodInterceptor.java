@@ -112,7 +112,8 @@ public class LoadBalancerChooseMethodInterceptor implements MethodInterceptor {
             return serviceInstances.stream()
                 .filter(instance -> {
                     if (instance.getMetadata().containsKey(Constant.NACOS_METADATA_XDEBUG_USER_KEY)) {
-                        return debugHeaderValues.stream().anyMatch(Constant.SYSTEM_USER_NAME::equalsIgnoreCase);
+                        String registerUser = instance.getMetadata().get(Constant.NACOS_METADATA_XDEBUG_USER_KEY);
+                        return Constant.SYSTEM_USER_NAME.equalsIgnoreCase(registerUser);
                     }
                     return true;
                 }).collect(Collectors.toList());

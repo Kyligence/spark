@@ -3,6 +3,8 @@ package io.kyligence.saas.aksdebug.feign;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import lombok.val;
+
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -30,10 +32,15 @@ public class PassThroughRequestHeaders implements RequestInterceptor {
     }
 
     private HttpServletRequest currentRequest() {
-        val requestAttr = RequestContextHolder.currentRequestAttributes();
-        if (!(requestAttr instanceof ServletRequestAttributes)) {
+        RequestAttributes requestAttr;
+        try {
+            requestAttr = RequestContextHolder.currentRequestAttributes();
+            if (!(requestAttr instanceof ServletRequestAttributes)) {
+                return null;
+            }
+            return ((ServletRequestAttributes) requestAttr).getRequest();
+        } catch (Exception e) {
             return null;
         }
-        return ((ServletRequestAttributes) requestAttr).getRequest();
     }
 }
