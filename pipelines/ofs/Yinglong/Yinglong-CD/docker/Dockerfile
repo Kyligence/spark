@@ -16,6 +16,7 @@ RUN apk update \
     && apk upgrade \
     && apk add --no-cache bash bash-doc bash-completion \
     && apk add tzdata && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && apk add krb5 \
     && echo ${TZ} > /etc/timezone \
     && apk del tzdata \
     && rm -rf /var/cache/apk/* \

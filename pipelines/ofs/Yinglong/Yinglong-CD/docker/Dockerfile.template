@@ -1,5 +1,6 @@
 FROM repo-ofs.kyligence.com/kyligence-env:hadoop_2.10.1_hive_1.2.2
 RUN mkdir -p /opt/kyligence
+RUN apk add krb5
 COPY replace_package /opt/
 RUN tar -xf /opt/replace_dir*.tar.gz --strip-components 1 -C /opt/kyligence --remove-files
 RUN mkdir -p /opt/kyligence/hadoop_conf

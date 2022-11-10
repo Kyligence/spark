@@ -31,6 +31,7 @@ pipeline {
         query = ''
         smart = ''
         frontend = ''
+        spark = ''
     }
 
     parameters {
@@ -39,7 +40,6 @@ pipeline {
         string(name: 'tag', defaultValue: 'yl-5.0.0', description: '填写版本号，格式：4.5.10，4.3.11，前两位版本号必须规范')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
-        booleanParam(name: 'include_spark', defaultValue:true, description:'是否内置spark包')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
         choice(name: 'deploy', choices: 'skip\nupgrade\ninstall', description: '部署方式:\nskip - 跳过\nupgrade - 更新\ninstall - 重新部署')
         choice(name: 'namespace', choices: 'yinglong-dev\nyinglong-dev2', description: '选择要部署的namespace')
@@ -99,11 +99,10 @@ pipeline {
                                 error 'tag 版本号不能为空'
                             }
 
-                            if (include_spark) {
-                                sh '''
-                                    sh build/script_newten/download-spark.sh
-                                '''
-                            }
+                            sh '''
+                                sh build/script_newten/download-spark.sh
+                                mv build/spark spark
+                            '''
 
                             if (!profiles) {
                                 sh '''
@@ -176,6 +175,18 @@ pipeline {
                         }
                     }
                 }
+                stage('3.3 image spark'){
+                    steps {
+                        container('docker') {
+                            dir('sourcecode'){
+                                script {
+                                    sh "ls -alt"
+                                    spark = docker.build('yinglong/yinglong-spark', "-f ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile4Spark .")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         stage('4.push images') {
@@ -188,6 +199,8 @@ pipeline {
                         docker.withRegistry(dockerRegistryUrl, registryCredential) {
                             frontend.push(tag)
                             frontend.push('latest')
+                            spark.push(tag)
+                            spark.push('latest')
                         }
                         for (m in modules) {
                             retry(2) {

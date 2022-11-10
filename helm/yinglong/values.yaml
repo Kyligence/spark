@@ -30,6 +30,11 @@ global:
   configcenter:
     disabled: false         # 使用非配置中心版本的yinglong (beta) 为xuanwu-offering 10月演示特殊设置.
 
+  spark:
+    image:
+      repository: harbor-ofs.kyligence.com/yinglong/yinglong-spark
+      tag: latest
+
 # yl-common:
 #   image:
 #     repository: harbor-ofs.kyligence.com/yinglong/yl-common

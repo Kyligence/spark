@@ -46,7 +46,11 @@ spec:
       {{- if .Values.skyWalking.enabled }}
         - name: skywalking-agent
           emptyDir: { }
+      {{- end }}
+        - name: spark
+          emptyDir: { }
       initContainers:
+      {{- if .Values.skyWalking.enabled }}
         - name: agent-container
           image: apache/skywalking-java-agent:8.7.0-alpine
           resources:
@@ -62,6 +66,20 @@ spec:
           command: [ "/bin/sh" ]
           args: [ "-c", "cp -R /skywalking/agent /agent/" ]
       {{- end }}
+        - name: spark-init
+          image: "{{ .Values.global.spark.image.repository }}:{{ .Values.global.spark.image.tag }}"
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 1
+              memory: 1Gi
+          volumeMounts:
+            - name: spark
+              mountPath: /spark
+          command: [ "/bin/sh" ]
+          args: [ "-c", "cp -R /opt/spark/* /spark/" ]
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -157,6 +175,8 @@ spec:
             - name: skywalking-agent
               mountPath: /skywalking
             {{- end }}
+            - name: spark
+              mountPath: /opt/kyligence/spark
             {{- if .Values.global.configcenter.disabled }}
             - mountPath: /opt/kyligence/conf/kylin.properties.override
               name: kylin-properties
