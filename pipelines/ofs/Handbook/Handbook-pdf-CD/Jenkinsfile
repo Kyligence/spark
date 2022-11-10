@@ -311,10 +311,10 @@ pipeline {
 
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
-                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
                                     rm -rf _book/zh-cn
                                     mv _book/zh-hans _book/zh-cn
-                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dPDFSETTINGS=/default -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/${pdf_zh}.pdf book_zh-hans.pdf
+                                    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/zh-cn/${pdf_zh}.pdf book_zh-hans.pdf
 
                                     cd _book/
                                     ls -lh zh-cn/
