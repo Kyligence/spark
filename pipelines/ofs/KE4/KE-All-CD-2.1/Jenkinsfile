@@ -307,8 +307,7 @@ def buildPackage(path, pull_result, version, kylin_ver, envStage, deployType, no
                 dir(path) {
                     // 判断
                     if(params.envStage == 'GA') {
-                        _version = version
-                        setVersions(_version, kylin_ver, noSpark)
+                        setVersions(version, kylin_ver, true)
                     }
 
                     /**
