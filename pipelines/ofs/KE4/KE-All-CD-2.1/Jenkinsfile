@@ -305,16 +305,17 @@ def buildPackage(path, pull_result, version, kylin_ver, envStage, deployType, no
                 def _version = "${version}-${envStage}"
                 def _cids = "${pull_result.release_commitid_back}-${pull_result.release_commitid_front}"
                 dir(path) {
+                    // 判断
+                    if(params.envStage == 'GA') {
+                        setVersions(version, kylin_ver, noSpark)
+                    }
+
                     /**
                      * 打包条件描述（任何满足一个条件执行重新）：
                      * 1. 打包文件不存在；
                      * 2. 手动模式中选择了overide参数的；
                      * 3. GA版打包时；
                      */
-
-                    if(params.envStage == 'GA') {
-                        setVersions(_version, kylin_ver, noSpark)
-                    }
                     if (!noSpark) {
                         package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
                         if (!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
@@ -408,7 +409,7 @@ pipeline {
         tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
         fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io;xinxin.li@kyligence.io'''
         nospark_user_eamils = 'yong.fu@kyligence.io'
-        jar_user_eamils = 'yongchao.li@kyligence.io'
+        jar_user_emails = 'yongchao.li@kyligence.io'
         // dev eamils
         dev_regular_emails = 'enwei.jiao@kyligence.io;yifan.zhang@kyligence.io'
         dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
@@ -611,7 +612,7 @@ pipeline {
                         success {
                             sendNotify('EMAIL',
                                 "[KE4][SNAPSHOT JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
-                                jar_user_eamils,
+                                jar_user_emails,
                                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Job upload the SNAPSHOT Jars into inner Product Library [repo-ofs]</p>
                                 <p>It saved in the repository of [maven-snapshots], please check it and use! Tks!</p>"""
@@ -771,7 +772,7 @@ pipeline {
                         success {
                             sendNotify('EMAIL',
                                 "[KE4][RELEASE JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
-                                jar_user_eamils,
+                                jar_user_emails,
                                 """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                                 <p>The Job upload the RELEASE Jars into inner Product Library [repo-ofs]</p>
                                 <p>It saved in the repository of [maven-release], please check it and use! Tks!</p>"""
