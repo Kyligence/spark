@@ -6,7 +6,9 @@ def modules = [
     ['name': 'ke-common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'yinglong-common', 'image': ''],
     ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'yinglong-data-loading', 'image': ''],
     ['name': 'query', 'path': 'kylin/src/query-booter', 'imageName': 'yinglong-query', 'image': ''],
-    ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': '']
+    ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': ''],
+    ['name': 'yinglong-resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'yinglong-resource', 'image': ''],
+    ['name': 'ke-ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'yinglong-ops', 'image': '']
 ]
 
 // 发布分支(前端)
@@ -326,23 +328,25 @@ pipeline {
                     string(name: 'hadoop_prefix', defaultValue: 'hadoop', description: 'hadoop environment')
                     string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
                     string(name: 'metadata_table_name', defaultValue: 'yinglong_metadata', description: 'metadata table name')
-                    string(name: 'extra_settings', defaultValue: '', description: 'helm set parameter, each set starts with --set , seprated by space')
+                    string(name: 'extra_settings', defaultValue: ' ', description: 'helm set parameter, each set starts with --set , seprated by space')
                 }
                 submitterParameter 'APPROVER'
             }
             steps {
                 echo 'Up in K8S at office env'
                 container('helm') {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    withCredentials([file(credentialsId: 'admin.kubeconfig', variable: 'KUBECONFIG')]) {
                         script {
-                            if (params.deploy == "upgrade") {
+                            sh "echo ${deploy}"
+                            if (deploy == "upgrade") {
                                 sh 'pwd && ls -alt'
                                 sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
 
                                 sh returnStatus: true , script: """
                                     helm -n ${namespace} list
                                     helm -n ${namespace} upgrade yinglong ./helm/yinglong \
-                                        --set global.image.tag=${tag} \
+                                        --set global.image.tag=${release_tag_back} \
+                                        --set yl-frontend.image.tag=${release_tag_front} \
                                         --set global.image.pullPolicy=Always \
                                         --set global.hadoopPrefix=${hadoop_prefix} \
                                         --set global.tenantId=${tenant_id} \
@@ -356,7 +360,7 @@ pipeline {
                                         --set 'yl-gateway.saas.nacos.discovery.publicGroup=yinglong' ${extra_settings}
                                     helm -n ${namespace} list
                                 """
-                            } else if (params.deploy == "install") {
+                            } else if (deploy == "install") {
                                 sh "echo 'not support now'"
                             } else {
                                 sh "echo 'skip deploy'"

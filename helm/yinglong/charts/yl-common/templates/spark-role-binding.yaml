@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Values.sparkResourceNamespace }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.serviceAccount.name }}
+    name: {{ .Values.serviceAccount.name }}-{{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
   name: {{ .Values.sparkRole }}-{{ .Release.Namespace }}

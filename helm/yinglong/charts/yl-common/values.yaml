@@ -14,7 +14,7 @@ nameOverride: ""
 fullnameOverride: "yl-common"
 
 sparkRole: "sparkRole"
-spark-role-binding: "sparkRoleBinding"
+sparkRoleBinding: "sparkRoleBinding"
 sparkResourceNamespace: "yinglong-calc"
 serviceAccount:
   # Specifies whether a service account should be created
