@@ -575,7 +575,9 @@ pipeline {
                                 println "package_info->${package_info}"
                                 // uplaodAzure(package_info, 'sourcecode2')
                                 // uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'sourcecode2', '', 'azure-4xuser')
-                                uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'sourcecode2', 'azure-4xuser')
+                                retry(3) {
+                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'sourcecode2', 'azure-4xuser')
+                                }
                             }
                         }
                     }
@@ -587,7 +589,9 @@ pipeline {
                                 println "package_info->${package_info}"
                                 // uplaodAzure(package_info, 'sourcecode2')
                                 // uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', '', 'azure-4xuser')
-                                uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
+                                retry(3) {
+                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
+                                }
                             }
                         }
                     }
@@ -595,7 +599,7 @@ pipeline {
                 stage('3.3.Deploy SNAPSHOT Jars') {
                     when {
                         expression {
-                            return params.envStage in ['QA', 'RC']
+                            return params.envStage in ['QA']
                         }
                     }
                     steps {
