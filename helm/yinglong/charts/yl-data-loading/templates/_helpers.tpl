@@ -48,7 +48,8 @@ Selector labels
 {{- define "yl-data-loading.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-data-loading.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ printf "%s-booter" (include "yl-data-loading.name" .) }}
+app: {{ .Release.Name }}
+component: {{ printf "%s-booter" (include "yl-data-loading.name" .) }}
 {{- end }}
 
 

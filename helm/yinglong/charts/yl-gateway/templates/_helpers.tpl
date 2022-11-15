@@ -48,6 +48,8 @@ Selector labels
 {{- define "yl-gateway.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-gateway.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app: {{ .Release.Name }}
+component: {{ include "yl-gateway.name" . }}
 {{- end }}
 
 {{/*

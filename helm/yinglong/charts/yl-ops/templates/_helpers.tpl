@@ -48,7 +48,8 @@ Selector labels
 {{- define "yl-ops.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-ops.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ printf "%s-booter" (include "yl-ops.name" .) }}
+app: {{ .Release.Name }}
+component: {{ printf "%s-booter" (include "yl-ops.name" .) }}
 {{- end }}
 
 {{/*

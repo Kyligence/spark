@@ -48,7 +48,8 @@ Selector labels
 {{- define "yl-frontend.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-frontend.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ include "yl-frontend.name" . }}
+app: {{ .Release.Name }}
+component: {{ include "yl-frontend.name" . }}
 {{- end }}
 
 {{/*

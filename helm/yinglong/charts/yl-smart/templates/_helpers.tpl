@@ -48,7 +48,8 @@ Selector labels
 {{- define "yl-smart.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-smart.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ printf "%s-booter" (include "yl-smart.name" .) }}
+app: {{ .Release.Name }}
+component: {{ printf "%s-booter" (include "yl-smart.name" .) }}
 {{- end }}
 
 {{/*

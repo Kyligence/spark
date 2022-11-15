@@ -24,7 +24,6 @@ spec:
       {{- end }}
       labels:
         {{- include "yl-gateway.selectorLabels" . | nindent 8 }}
-        app: saas-gateway-{{ .Release.Namespace }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

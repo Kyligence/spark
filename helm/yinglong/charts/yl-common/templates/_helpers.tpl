@@ -48,7 +48,8 @@ Selector labels
 {{- define "yl-common.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-common.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ printf "%s-booter" (include "yl-common.name" .) }}
+app: {{ .Release.Name }}
+component: {{ printf "%s-booter" (include "yl-common.name" .) }}
 {{- end }}
 
 {{/*

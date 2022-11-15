@@ -14,3 +14,4 @@ data:
   DISCOVERY_PUBLIC_GROUP: {{ .Values.global.publicGroup | quote}}
   SPRING_SESSION_STORE_TYPE: "none"
   HADOOP_CONF_DIR: "$(KYLIN_HOME)/hadoop_conf"
+  NAME_SPACE: {{ .Release.Namespace }}

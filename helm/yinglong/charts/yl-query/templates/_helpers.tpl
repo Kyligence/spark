@@ -48,7 +48,8 @@ Selector labels
 {{- define "yl-query.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "yl-query.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ printf "%s-booter" (include "yl-query.name" .) }}
+app: {{ .Release.Name }}
+component: {{ printf "%s-booter" (include "yl-query.name" .) }}
 {{- end }}
 
 {{/*
