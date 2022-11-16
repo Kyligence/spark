@@ -111,23 +111,14 @@ spec:
             - |
               {{- $skyWalking := "" -}}
               {{- if .Values.skyWalking.enabled }}
-              {{- $skyWalking = "-javaagent:/skywalking/agent/skywalking-agent.jar" }}
+              {{- $skyWalking = "-s" }}
               {{- end }}
               {{- $javaDebug := "" -}}
               {{- if .Values.debug.enabled }}
-              {{- $javaDebug = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"}}
+              {{- $javaDebug = "-d"}}
               {{- end}}
-              date
-              mkdir ${KYLIN_HOME}/logs
-              cd ${KYLIN_HOME}/server
-              nohup java {{ $skyWalking }} -server -XX:MaxRAMPercentage=80.0 -XX:MinRAMPercentage=40.0 -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+PrintReferenceGC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintAdaptiveSizePolicy -XX:+UnlockDiagnosticVMOptions -XX:+G1SummarizeConcMark -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/kyligence/logs -Xloggc:/opt/kyligence/logs/kylin.gc.%p -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=64M {{ $javaDebug }} -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -DAsyncLogger.RingBufferSize=8192 -Dfile.encoding=UTF-8 -Dlogging.path=/opt/kyligence/logs -Dspring.profiles.active=prod -Dlogging.config=file:/opt/kyligence/conf/log4j2.xml -Dkylin.hadoop.conf.dir=/opt/kyligence/hadoop_conf -Dhdp.version=current -Dloader.path="/opt/kyligence/hadoop_conf,/opt/kyligence/conf,/opt/kyligence/lib/ext,/opt/kyligence/server/jars,/opt/kyligence/spark/jars" -XX:OnOutOfMemoryError="sh /opt/kyligence/bin/guardian.sh kill" -jar /opt/kyligence/server/newten.jar --kylin.server.mode=all 2>&1 < /dev/null & 
-              echo $! >> /opt/kyligence/pid 
-              while [[ ! -f $KYLIN_HOME/logs/kylin.log ]];
-              do
-              echo "kylin not startup, will sleep 10 sec"
-              sleep 10
-              done
-              tail -f $KYLIN_HOME/logs/kylin.log
+              sh ${KYLIN_HOME}/sbin/yinglong-bootstrap.sh start {{ $skyWalking }} {{ $javaDebug }}
+              tail -f
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
