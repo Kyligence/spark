@@ -11,10 +11,10 @@ spec:
         - "cat"
       resources:
         request:
-          memory: "2Gi"
+          memory: "4Gi"
           cpu: "1000m"
         limits:
-          memory: "4Gi"
+          memory: "8Gi"
           cpu: "2000m"
       volumeMounts:
         - mountPath: "/root/.m2"
@@ -33,7 +33,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "docker"
+      image: "repo-ofs.kyligence.com/docker-bash:1.0.0"
       imagePullPolicy: "Always"
       volumeMounts:
         - mountPath: "/var/run/docker.sock"

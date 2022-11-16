@@ -1,0 +1,84 @@
+#!groovy
+
+@Library('devopslib') _
+
+// git获取spark 代码（预先触发同步git mirror）
+def gitSparkCodeKe(repo, branch) {
+    script {
+        if (repo == 'Kyligence') {
+            pullCodeFromGitMirror 'spark', branch
+        } else {
+            githubCheckout 'spark', branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git', repo
+        }
+    }
+
+}
+
+pipeline {
+    options {
+        timeout(time: 4, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo='harbor-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'harbor-docker'
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo  https://github.com/Kyligence/spark.git--> Kyligence\nhttps://github.com/apache/spark.git--> apache')
+        string(name: 'branch', defaultValue: 'kyspark-3.3.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x ')
+        string(name: 'imageRepo', defaultValue: 'harbor-ofs.kyligence.com', description: 'docker image repo')
+        string(name: 'version', defaultValue: '', description: 'eg 3.3.0-kylin-4.5.17.0 spark version and docker tag name')
+    }
+
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        gitSparkCodeKe(params.repo, params.branch)
+                    }
+                }
+            }
+        }
+        stage('package') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            sh script: """
+                                ./build/mvn versions:set -DnewVersion=${params.version}
+                                ./build/mvn -Pkubernetes,volcano,hadoop-2,hadoop2-aws,scala-2.12,hive  -DskipTests clean package    
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode') {
+                        script {
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                sh script: """
+                                ./bin/docker-image-tool.sh -r ${params.imageRepo} -t ${params.version}  build
+                                ./bin/docker-image-tool.sh -r ${params.imageRepo} -t ${params.version}  push    
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
