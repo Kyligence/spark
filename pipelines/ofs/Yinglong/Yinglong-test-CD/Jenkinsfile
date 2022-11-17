@@ -134,7 +134,8 @@ pipeline {
         frontend = ''
         release_commitid_back = ''
         release_commitid_front = ''
-    }
+        spark = ''
+   }
 
     parameters {
         choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
@@ -142,7 +143,6 @@ pipeline {
         string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices:'DEV\nQA\nRC\nGA', description:'打包阶段，如果要GA，选择GA进行流程')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
-        booleanParam(name: 'include_spark', defaultValue:false, description:'是否内置spark包')
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
     }
@@ -203,11 +203,10 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            if (include_spark) {
-                                sh '''
-                                    sh build/script_newten/download-spark.sh
-                                '''
-                            }
+                            sh '''
+                                sh build/script_newten/download-spark.sh
+                                mv build/spark spark
+                            '''
 
                             if (!profiles) {
                                 sh '''
@@ -277,6 +276,18 @@ pipeline {
                         }
                     }
                 }
+                stage('3.3 image spark'){
+                    steps {
+                        container('docker') {
+                            dir('sourcecode'){
+                                script {
+                                    sh "ls -alt"
+                                    spark = docker.build('yinglong/yinglong-spark', "-f ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile4Spark .")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         stage('4.push images') {
@@ -306,12 +317,17 @@ pipeline {
                             release_tag_back = params.version
                         }
                         println "release_tag_back: ${release_tag_back}"
-                        for (m in modules) {
-                            retry(2) {
-                                docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                    m.image.push(release_tag_back)
-                                    m.image.push('latest')
+
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            for (m in modules) {
+                                retry(2) {
+                                        m.image.push(release_tag_back)
+                                        m.image.push('latest')
                                 }
+                            }
+                            retry(2) {
+                                spark.push(release_tag_back)
+                                spark.push('latest')
                             }
                         }
                     }
