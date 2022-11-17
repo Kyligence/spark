@@ -599,7 +599,7 @@ pipeline {
                 stage('3.3.Deploy SNAPSHOT Jars') {
                     when {
                         expression {
-                            return params.envStage in ['QA']
+                            return params.envStage in ['QA', 'RC']
                         }
                     }
                     steps {
