@@ -30,7 +30,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
+      image: "maven:3.6.3-openjdk-8"
       imagePullPolicy: "IfNotPresent"
       env:
         - name: JAVA_OPTS 
