@@ -70,14 +70,14 @@ def uploadArchive(boolean withoutBuildResult) {
 def downloadArchive() {
     timestamps {
         withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
-            if (s3DoesObjectExist(bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz")) {
-                s3Download(file: 'repository.tar.gz', bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz", force: true)
-                sh script: """
-                    tar zxf repository.tar.gz 
-                    mv repository/* /jenkins-common/.kem2/repository/
-                    ls -al /jenkins-common/.kem2/repository/
-                """
-            }
+//            if (s3DoesObjectExist(bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz")) {
+//                s3Download(file: 'repository.tar.gz', bucket: 'k8s-bucket-devops', path: "ke-ci-repository/${targetBranch()}/repository.tar.gz", force: true)
+//                sh script: """
+//                    tar zxf repository.tar.gz
+//                    mv repository/* /jenkins-common/.kem2/repository/
+//                    ls -al /jenkins-common/.kem2/repository/
+//                """
+//            }
             s3Download(file: './tmp', bucket: 'k8s-bucket-devops', path: "ke-ci/${targetBranch()}/", force: true)
             sh script: """
                 if [ -d ./tmp/ke-ci/${targetBranch()} ]; then

@@ -16,6 +16,7 @@ pipeline {
     parameters {
         string(name: 'branch', defaultValue: '', description: 'Kap branch?')
         string(name: 'args', defaultValue: '', description: 'Extra JVM options for maven test')
+        string(name: 'sha1', defaultValue: '', description: '')
     }
 
     stages {
@@ -25,7 +26,7 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(3) {
-                                githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                                quicklyCheckout()
                             }
                         }
                         s3Archive('download')
@@ -84,3 +85,26 @@ pipeline {
         }
     }
 }
+
+def quicklyCheckout() {
+    if (params.sha1) {
+        println "checkout from pull request."
+        def pullNumber = matchPullNumber(params.sha1)
+        checkout([$class: 'GitSCM', branches: [[name: params.sha1]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligencegit', name: 'origin', refspec: "+refs/pull/${pullNumber}/*:refs/remotes/origin/pr/${pullNumber}/*", url: 'https://github.com/Kyligence/KAP.git']]])
+    } else if (params.branch) {
+        println "checkout from specified branch."
+        checkout([$class: 'GitSCM', branches: [[name: params.branch]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligencegit', name: 'origin', refspec: "+refs/heads/${params.branch}:refs/remotes/origin/${params.branch}", url: 'https://github.com/Kyligence/KAP.git']]])
+    } else {
+        throw new RuntimeException("unknown branch")
+    }
+}
+
+@NonCPS
+def matchPullNumber(String sha1) {
+    def m = sha1 =~ /^origin\/pr\/(\d+)\/merge$/
+    if (!m) {
+        throw new RuntimeException("invalid sha1")
+    }
+    return m.group(1)
+}
+
