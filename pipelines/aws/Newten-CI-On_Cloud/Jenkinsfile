@@ -44,9 +44,9 @@ pipeline {
 
                             retry(3) {
                                 if (!(external_version && external_version=="4.5.9")){
-                                    sh script: "mvn clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
+                                    sh script: "mvn -U clean install -T 2C -pl src/external -Dmaven.compile.fork=true -DskipTests"
                                 }
-                                sh script: "mvn clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
+                                sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
                             }
                         }
                     }
