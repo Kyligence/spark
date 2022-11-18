@@ -10,9 +10,9 @@ spec:
   containers:
     - name: "git"
       volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
       tty: true
       command:
         - "cat"

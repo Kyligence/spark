@@ -3,16 +3,16 @@ kind: "Pod"
 name: "jenkins-agent"
 spec:
   tolerations:
-  - key: "nodetype"
-    operator: "Equal"
-    value: "ke"
-    effect: "NoSchedule"
+    - key: "nodetype"
+      operator: "Equal"
+      value: "ke"
+      effect: "NoSchedule"
   containers:
     - name: "git"
       volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
       tty: true
       command:
         - "cat"
@@ -30,25 +30,25 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-8"
+      image: "maven:3.6.3-openjdk-8"
       imagePullPolicy: "IfNotPresent"
       env:
-        - name: JAVA_OPTS 
+        - name: JAVA_OPTS
           value: "-Dkubernetes.websocket.timeout=60000 -Dorg.csanchez.jenkins.plugins.kubernetes.pipeline.ContainerExecDecorator.websocketConnectionTimeout=90"
       volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
-        - mountPath: "/root/.m2/settings.xml"
-          name: "maven-settings"
-          readOnly: false
-          subPath: "settings.xml"
-        - mountPath: "/var/run/docker.sock"
-          name: "dockersock"
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository/io/kyligence
         - name: "kylin-repo"
           mountPath: /root/.m2/repository/org/apache/kylin
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
       resources:
         limits:
           memory: "56Gi"
@@ -61,7 +61,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "maven:3.8.3-openjdk-11"
+      image: "maven:3.6.3-openjdk-11"
       imagePullPolicy: "IfNotPresent"
       env:
         - name: HTTP_PROXY
@@ -69,9 +69,9 @@ spec:
         - name: HTTPS_PROXY
           value: null
       volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
         - mountPath: "/root/.m2/settings.xml"
           name: "maven-settings"
           readOnly: false
@@ -97,7 +97,7 @@ spec:
         items:
           - key: "settings.xml"
             path: "settings.xml"
-        name: "ke-maven-settings"
+        name: "aws-maven-settings"
       name: "maven-settings"
     - name: "dockersock"
       hostPath:

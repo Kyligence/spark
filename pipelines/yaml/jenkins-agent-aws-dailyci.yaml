@@ -38,9 +38,9 @@ spec:
   containers:
     - name: "git"
       volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
       tty: true
       command:
         - "cat"
@@ -61,15 +61,19 @@ spec:
       image: "maven:3.8.3-openjdk-8"
       imagePullPolicy: "IfNotPresent"
       volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
         - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
+          mountPath: /root/.m2/repository/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository/org/apache/kylin
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
         - mountPath: "/root/.m2/settings.xml"
           name: "maven-settings"
           readOnly: false
           subPath: "settings.xml"
-        - mountPath: "/var/run/docker.sock"
-          name: "dockersock"
       resources:
         limits:
           memory: "56Gi"
@@ -90,9 +94,9 @@ spec:
         - name: HTTPS_PROXY
           value: null
       volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
         - mountPath: "/root/.m2/settings.xml"
           name: "maven-settings"
           readOnly: false
@@ -111,12 +115,14 @@ spec:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
+    - name: "kylin-repo"
+      emptyDir: { }
     - configMap:
         defaultMode: 0777
         items:
           - key: "settings.xml"
             path: "settings.xml"
-        name: "ke-maven-settings"
+        name: "aws-maven-settings"
       name: "maven-settings"
     - name: "dockersock"
       hostPath:
