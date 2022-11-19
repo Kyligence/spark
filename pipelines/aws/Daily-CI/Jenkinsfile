@@ -35,6 +35,8 @@ pipeline {
                                 s3Archive('download')
                             }else if(params.branch =~ "newten-dev.*") {
                                 s3Archive4YingLong('download')
+                            }else {
+                                s3Archive('download')
                             }
                         }
                     }
