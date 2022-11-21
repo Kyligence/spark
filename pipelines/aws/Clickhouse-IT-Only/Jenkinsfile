@@ -1,0 +1,154 @@
+#!groovy
+
+@Library('devopslib@DEVOPS-1308') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/Clickhouse-IT-Only/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'newten-dev', description: '')
+        string(name: 'sha1', defaultValue: '', description: '')
+    }
+
+    stages {
+        stage("Checkout") {
+            steps {
+                dir("sourcecode") {
+                    script {
+                        retry(2) {
+                            quicklyCheckout()
+                        }
+                    }
+                }
+            }
+        }
+        stage('Compile') {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        script {
+                            try {
+                                sh script: "mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests --settings ${WORKSPACE}/pipelines/aws/Clickhouse-IT-Only/settings.xml"
+                            } catch (err) {
+                                if (err instanceof org.jenkinsci.plugins.workflow.steps.FlowInterruptedException) {
+                                    throw err
+                                }
+                                sh script: "mvn -U clean install -T 4C -Dmaven.compile.fork=true -DskipTests --settings ${WORKSPACE}/pipelines/aws/Clickhouse-IT-Only/settings.xml"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage("Testing") {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        script {
+                            retry(2) {
+                                sh script: "mvn clean test --fail-at-end -pl kylin/src/second-storage/clickhouse-it -DfailIfNoTests=false -Duser.timezone=GMT+8 -DskipBuild=true \
+                                    --settings ${WORKSPACE}/pipelines/aws/Clickhouse-IT-Only/settings.xml"
+                            }
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    container('maven') {
+                        script {
+                            try {
+                                junit skipPublishingChecks: true, testResults: "sourcecode/**/target/surefire-reports/*.xml"
+                            } catch (err) {
+                                println "Failed to publish Junit report, can be ignored~"
+                            }
+
+                            try {
+                                withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                                    s3Download(file: 'jacococli.jar', bucket: 'k8s-bucket-devops', path: "ke-ci/jacococli.jar", force: true)
+                                }
+                                sh script: """
+                                    execfiles=`find . -path '*\\/target*jacoco.exec' -exec printf "{} " \\;`
+                                    classfiles=`find . -path '*target\\/classes' -exec printf "--classfiles {} " \\;`
+                                    java -jar jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
+                                """
+                                publishCoverage adapters: [jacocoAdapter('jacoco.xml')]
+                            } catch (err) {
+                                println "Failed to publish coverage, can be ignored~"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Sonar Check') {
+            steps {
+                container('sonar') {
+                    withSonarQubeEnv(credentialsId: 'sonar_credential', installationName: 'sonar cloud') {
+                        dir('sourcecode') {
+                            retry(2) {
+                                script {
+                                    if (params.sha1) {
+                                        sh script: """
+                                            mvn sonar:sonar -T 2C \
+                                                --settings ${WORKSPACE}/pipelines/aws/Clickhouse-IT-Only/settings.xml \
+                                                -Dsonar.host.url=https://sonarcloud.io \
+                                                -Dsonar.organization=kyligence \
+                                                -Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                                -Dsonar.pullrequest.key=${ghprbPullId} \
+                                                -Dsonar.projectKey=Kyligence_clickhouse_it \
+                                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/jacoco.xml
+                                        """
+                                    } else {
+                                        sh script: """
+                                            mvn sonar:sonar -T 2C \
+                                                --settings ${WORKSPACE}/pipelines/aws/Clickhouse-IT-Only/settings.xml \
+                                                -Dsonar.host.url=https://sonarcloud.io \
+                                                -Dsonar.organization=kyligence \
+                                                -Dsonar.branch.name=${params.branch} \
+                                                -Dsonar.projectKey=Kyligence_clickhouse_it \
+                                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/jacoco.xml
+                                        """
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+def quicklyCheckout() {
+    if (params.sha1) {
+        println "checkout from pull request."
+        def pullNumber = matchPullNumber(params.sha1)
+        checkout([$class: 'GitSCM', branches: [[name: params.sha1]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligencegit', name: 'origin', refspec: "+refs/pull/${pullNumber}/*:refs/remotes/origin/pr/${pullNumber}/*", url: 'https://github.com/Kyligence/KAP.git']]])
+    } else if (params.branch) {
+        println "checkout from specified branch."
+        checkout([$class: 'GitSCM', branches: [[name: params.branch]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligencegit', name: 'origin', refspec: "+refs/heads/${params.branch}:refs/remotes/origin/${params.branch}", url: 'https://github.com/Kyligence/KAP.git']]])
+    } else {
+        throw new RuntimeException("unknown branch")
+    }
+}
+
+@NonCPS
+def matchPullNumber(String sha1) {
+    def m = sha1 =~ /^origin\/pr\/(\d+)\/merge$/
+    if (!m) {
+        throw new RuntimeException("invalid sha1")
+    }
+    return m.group(1)
+}
+
+

@@ -1,0 +1,50 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.6.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository/org/apache/kylin
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
+      resources:
+        requests:
+          memory: "12Gi"
+          cpu: "4"
+    - name: "sonar"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.6.3-openjdk-11"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
+      resources:
+        requests:
+          memory: "4Gi"
+          cpu: "2"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "kylin-repo"
+      emptyDir: { }
+    - name: "dockersock"
+      hostPath:
+        path: "/var/run/docker.sock"

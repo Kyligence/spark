@@ -1,0 +1,175 @@
+#!groovy
+
+@Library('devopslib@DEVOPS-1308') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/gcp/KE4/Newten CI On GCP/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'newten-dev', description: '')
+        string(name: 'sha1', defaultValue: '', description: '')
+        booleanParam(name: 'failFast', defaultValue: true, description:'')
+        booleanParam(name: 'skipBuild', defaultValue: true, description:'')
+    }
+
+    stages {
+        stage("Checkout") {
+            steps {
+                dir("sourcecode") {
+                    script {
+                        retry(2) {
+                            quicklyCheckout()
+                        }
+                    }
+                }
+            }
+        }
+        stage('Compile') {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        script {
+                            try {
+                                sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
+                            } catch (err) {
+                              if (err instanceof org.jenkinsci.plugins.workflow.steps.FlowInterruptedException) {
+                                  throw err
+                              }
+                              sh script: "mvn -U clean install -T 2C -Dmaven.compile.fork=true -DskipTests"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage("Prepare Testing") {
+            steps {
+                script {
+                   testNewtenDynamicParallelTestInGcp()
+                }
+            }
+            post {
+                always {
+                    container('maven') {
+                        script {
+                            publishTestResults()
+                            publishCoverage()
+                            clearRuntimeTempData()
+                        }
+                    }
+                }
+            }
+        }
+        stage('Sonar Check') {
+            steps {
+                container('sonar') {
+                    withSonarQubeEnv(credentialsId: 'sonar_key', installationName: 'sonar_cloud') {
+                        dir('sourcecode') {
+                            retry(2) {
+                                script {
+                                    if (params.sha1) {
+                                        sh script: """
+                                            mvn sonar:sonar -T 2C \
+                                                -Dsonar.host.url=https://sonarcloud.io \
+                                                -Dsonar.organization=kyligence \
+                                                -Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                                -Dsonar.pullrequest.key=${ghprbPullId} \
+                                                -Dsonar.projectKey=Kyligence_KAP \
+                                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/jacoco.xml
+                                        """
+                                    } else {
+                                        sh script: """
+                                            mvn sonar:sonar -T 2C \
+                                                -Dsonar.host.url=https://sonarcloud.io \
+                                                -Dsonar.organization=kyligence \
+                                                -Dsonar.branch.name=${params.branch} \
+                                                -Dsonar.projectKey=Kyligence_KAP \
+                                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/jacoco.xml
+                                        """
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+def quicklyCheckout() {
+    if (params.sha1) {
+        println "checkout from pull request."
+        def pullNumber = matchPullNumber(params.sha1)
+        checkout([$class: 'GitSCM', branches: [[name: params.sha1]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligence-git', name: 'origin', refspec: "+refs/pull/${pullNumber}/*:refs/remotes/origin/pr/${pullNumber}/*", url: 'https://github.com/Kyligence/KAP.git']]])
+    } else if (params.branch) {
+        println "checkout from specified branch."
+        checkout([$class: 'GitSCM', branches: [[name: params.branch]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligence-git', name: 'origin', refspec: "+refs/heads/${params.branch}:refs/remotes/origin/${params.branch}", url: 'https://github.com/Kyligence/KAP.git']]])
+    } else {
+        throw new RuntimeException("unknown branch")
+    }
+}
+
+@NonCPS
+def matchPullNumber(String sha1) {
+    def m = sha1 =~ /^origin\/pr\/(\d+)\/merge$/
+    if (!m) {
+        throw new RuntimeException("invalid sha1")
+    }
+    return m.group(1)
+}
+
+def publishTestResults() {
+    try {
+        sh "du -h /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}/agg_test_results/"
+        dir("agg_test_results") {
+            sh "cp -arf /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}/agg_test_results/* ./"
+        }
+        sh "du -h ./agg_test_results"
+        junit skipPublishingChecks: true, testResults: "agg_test_results/*-Stage-*/**/target/surefire-reports/*.xml"
+    } catch (err) {
+        println "Failed to publish Junit report, can be ignored~"
+    }
+}
+
+def publishCoverage() {
+    try {
+        sh "du -h /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}/agg_test_coverages/"
+        dir("agg_test_coverages") {
+            sh "cp -arf /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}/agg_test_coverages/* ./"
+        }
+        sh "du -h ./agg_test_coverages"
+        sh script: """
+            execfiles=`find . -path '*\\/target*jacoco.exec' -exec printf "{} " \\;`
+            classfiles=`find . -path '*target\\/classes' -exec printf "--classfiles {} " \\;`
+            java -jar /var/jacoco/jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
+        """
+        publishCoverage adapters: [jacocoAdapter('jacoco.xml')]
+    } catch (err) {
+        println "Failed to publish coverage, can be ignored~"
+    }
+}
+
+
+def clearRuntimeTempData() {
+    try {
+        sh script: """
+            if [ -d /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER} ]; then
+                du -h -d1 /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}
+                rm -rf /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}
+                du -h -d1 /var/jenkins_tmp/${JOB_NAME}/
+            fi
+        """
+    } catch (err) {
+        println "Failed to clear test runtime data, can be ignored~"
+    }
+}
