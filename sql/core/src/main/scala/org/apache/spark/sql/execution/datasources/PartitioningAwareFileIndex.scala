@@ -17,14 +17,18 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import java.io.FileNotFoundException
+
 import scala.collection.mutable
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
+import org.apache.hadoop.fs.viewfs.ViewFileSystem
+import org.apache.hadoop.hdfs.DistributedFileSystem
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.{expressions, InternalRow}
+import org.apache.spark.sql.catalyst._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, DateTimeUtils}
 import org.apache.spark.sql.types.StructType
@@ -87,13 +91,42 @@ abstract class PartitioningAwareFileIndex(
 
             case None =>
               // Directory does not exist, or has no children files
-              Nil
+              logInfo(s"can't get path from leafDirToChildrenFiles, maybe is subdir")
+              val fs = path.getFileSystem(hadoopConf)
+              val statuses: Array[FileStatus] = listFileStatus(fs, path)
+              statuses.filter(s => s.isDirectory)
+                .map(dir => listFileStatus(fs, dir.getPath))
+                .flatMap(ss => ss.filter(f => matchPathPattern(f) && isNonEmptyFile(f)))
           }
           PartitionDirectory(values, files)
       }
     }
     logTrace("Selected files after partition pruning:\n\t" + selectedPartitions.mkString("\n\t"))
     selectedPartitions
+  }
+
+  def listFileStatus(fs: FileSystem, path: Path): Array[FileStatus] = {
+    if (fs.exists(path)) {
+      val statuses: Array[FileStatus] = try {
+        fs match {
+          case _: DistributedFileSystem | _: ViewFileSystem
+            if !sparkSession.sessionState.conf.ignoreMissingFiles =>
+            val remoteIter = fs.listLocatedStatus(path)
+            new Iterator[LocatedFileStatus]() {
+              def next(): LocatedFileStatus = remoteIter.next
+              def hasNext(): Boolean = remoteIter.hasNext
+            }.toArray
+          case _ => fs.listStatus(path)
+        }
+      } catch {
+        case _: FileNotFoundException =>
+          logWarning(s"The directory $path was not found. Was it deleted very recently?")
+          Array.empty[FileStatus]
+      }
+      statuses
+    } else {
+      Array.empty[FileStatus]
+    }
   }
 
   /** Returns the list of files that will be read when scanning this relation. */
@@ -103,6 +136,7 @@ abstract class PartitioningAwareFileIndex(
   override def sizeInBytes: Long = allFiles().map(_.getLen).sum
 
   def allFiles(): Seq[FileStatus] = {
+    //
     val files = if (partitionSpec().partitionColumns.isEmpty && !recursiveFileLookup) {
       // For each of the root input paths, get the list of files inside them
       rootPaths.flatMap { path =>
@@ -125,9 +159,17 @@ abstract class PartitioningAwareFileIndex(
         // 2. The path is a file, then it will be present in leafFiles. Include this path.
         // 3. The path is a directory, but has no children files. Do not include this path.
 
-        leafDirToChildrenFiles.get(qualifiedPath)
-          .orElse { leafFiles.get(qualifiedPath).map(Array(_)) }
+        var result = leafDirToChildrenFiles.get(qualifiedPath)
+          .orElse {leafFiles.get(qualifiedPath).map(Array(_))}
           .getOrElse(Array.empty)
+        if(result.isEmpty) {
+          val fs = qualifiedPath.getFileSystem(hadoopConf)
+          val statuses: Array[FileStatus] = listFileStatus(fs, path)
+          result = statuses.filter(s => s.isDirectory)
+            .map(dir => listFileStatus(fs, dir.getPath))
+            .flatMap(ss => ss.filter(f => matchPathPattern(f)))
+        }
+        result
       }
     } else {
       leafFiles.values.toSeq
