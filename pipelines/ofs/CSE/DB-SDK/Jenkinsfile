@@ -20,7 +20,7 @@ pipeline {
         choice(name: 'moduleName',
                 choices: ['commons', 'gaussdb', 'greenplum', 'clickhouse', 'elk', 'bigquery', 'cirrodata', 'doris', 'gbase8a', 'impala', 'mysql',
                           'oracle', 'postgresql', 'presto', 'snowflake', 'starrocks', 'tidb'],
-                description: '打包升级验证的模块名称，如果是 commons 模块，则所有数据源 sdk 版本都将升级，如果只是单个模块，则只将对应数据源验证升级')
+                description: '打包升级验证的模块名称，如果是 commons 模块，则所有数据源 sdk 版本都将升级，如果只是单个模块，则只将对应数据源验证升级，发布手册请查看: https://kyligence.feishu.cn/base/bascnDWvIuA3P5j4X8h6IhhNqRe?table=tblnC81M6a7e290d&view=vewlyywfcu')
         string(name: 'KEVersion', defaultValue: '4.5.17.0', description: '指定 KE 的版本')
         string(name: 'toMail', defaultValue: 'fanfan.li@kyligence.io', description: '将函数对比结果发送给此人')
     }

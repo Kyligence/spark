@@ -18,7 +18,7 @@ pipeline {
     parameters {
         choice(name: 'moduleName',
                 choices: ['sqlAdaptor', 'cognosAdaptor', 'tableRouter'],
-                description: '打包升级验证的模块名称，如果是 commons 模块，则所有数据源 sdk 版本都将升级，如果只是单个模块，则只将对应数据源验证升级')
+                description: 'cognos SQL Adaptor & App zen Query Router 自动化验证，发布手册请查看: https://kyligence.feishu.cn/base/bascnDWvIuA3P5j4X8h6IhhNqRe?table=tblnC81M6a7e290d&view=vewlyywfcu')
         string(name: 'KEVersion', defaultValue: '4.5.17.0', description: '指定 KE 的版本')
         string(name: 'toMail', defaultValue: 'fanfan.li@kyligence.io', description: '将函数对比结果发送给此人')
     }
@@ -58,7 +58,7 @@ pipeline {
                 }
             }
         }
-        /*stage('copy_file_to_remote') {
+        stage('copy_file_to_remote') {
             steps {
                 container('build') {
                     dir("SQLAdaptor") {
@@ -150,17 +150,17 @@ pipeline {
             }
         }
 
-        *//*stage('testTableRouter') {
+        stage('testTableRouter') {
             steps {
                 container("build") {
                     dir("SQLAdaptor") {
                         sh script: """
-                            mvn test -Dspring.profiles.active=tableRouter -Dapi.kylin.url=http://10.1.2.181:7079 -Dmail.to=${params.toMail} -Dtest=io.kyligence.kap.TestCI#testCognosAdaptorCI -pl benchmark
+                            mvn test -Dspring.profiles.active=tableRouter -Dapi.kylin.url=http://10.1.2.181:7079 -Dmail.to=${params.toMail} -Dtest=io.kyligence.kap.TestCI#testQueryRouterCI -pl benchmark
                         """
                     }
                 }
             }
-        }*//*
+        }
 
         stage('Deploy') {
             steps {
@@ -174,7 +174,7 @@ pipeline {
                     }
                 }
             }
-        }*/
+        }
 
         stage("doTag") {
             steps {
