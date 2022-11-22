@@ -82,9 +82,9 @@ nacos-naming-0.nacos-headless.nacos.svc.cluster.local:8848
 {{- define "nacos.nacosServers" -}}
 {{- $fullName := include "nacos.fullname" . -}}
 {{- $nameSpace := .Release.Namespace -}}
-{{- $servicePort := .Values.config.service.port -}}
+{{- $servicePort := .Values.naming.service.port -}}
 {{- $list := list }}
-{{- range $idx := until (.Values.config.replicaCount | int) }}
+{{- range $idx := until (.Values.naming.replicaCount | int) }}
 {{- $list = append $list (print $fullName "-naming-" $idx "." $fullName "-naming-headless." $nameSpace ".svc.cluster.local:" $servicePort) }}
 {{- end }}
 {{- join "," $list }}

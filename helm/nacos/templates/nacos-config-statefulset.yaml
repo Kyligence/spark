@@ -128,14 +128,14 @@ spec:
               value: "config"
             {{- if .Values.skyWalking.enabled }}
             - name: JAVA_OPT
-              value: {{ print "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group=" (.Values.config.discovery.group | default .Release.Namespace) " -Dsaas.nacos.discovery.public-group=" (.Values.config.discovery.publicGroup | default .Release.Namespace) " -Dsaas.nacos.serverAddr=" (.Values.config.nacos.serverAddr) " -Dspring.application.name=" (.Values.config.name | default "nacos-config") }}
+              value: {{ print "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group=" (.Values.config.discovery.group | default .Release.Namespace) " -Dsaas.nacos.discovery.public-group=" (.Values.config.discovery.publicGroup | default .Release.Namespace) " -Dsaas.nacos.discovery.server-addr=" (.Values.config.nacos.serverAddr) " -Dspring.application.name=" (.Values.config.name | default "nacos-config") }}
             - name: SW_AGENT_NAME
               value: "{{ include "nacos.fullname" . }}-config"
             - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
               value: "{{ .Values.skyWalking.backendServerAddr }}"
               {{- else }}
             - name: JAVA_OPT
-              value: {{ print "-Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group=" (.Values.config.discovery.group | default .Release.Namespace) " -Dsaas.nacos.discovery.public-group=" (.Values.config.discovery.publicGroup | default .Release.Namespace) " -Dsaas.nacos.serverAddr=" (.Values.config.nacos.serverAddr) " -Dspring.application.name=" (.Values.config.name | default "nacos-config") }}
+              value: {{ print "-Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group=" (.Values.config.discovery.group | default .Release.Namespace) " -Dsaas.nacos.discovery.public-group=" (.Values.config.discovery.publicGroup | default .Release.Namespace) " -Dsaas.nacos.discovery.server-addr=" (.Values.config.nacos.serverAddr) " -Dspring.application.name=" (.Values.config.name | default "nacos-config") }}
               {{- end }}
           volumeMounts:
             - name: skywalking-agent

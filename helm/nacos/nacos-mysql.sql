@@ -324,3 +324,25 @@ CREATE TABLE `app_info` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_app_info_app_name` (`app_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8 COMMENT='应用信息';
+
+alter table app_info
+    add zh_name varchar(50) default '' not null after data_id;
+
+alter table app_info
+    add en_name varchar(50) default '' not null after zh_name;
+
+drop index uk_app_info_app_name on app_info;
+
+create unique index uk_app_info_app_name_group
+    on app_info (app_name, `group`);
+
+alter table config_library
+    add group_id varchar(255) default '' not null after data_id;
+
+drop index uk_configinfo_datagrouptenant on config_library;
+
+create unique index uk_configinfo_datagrouptenant
+    on config_library (group_id, data_id, param_name);
+
+alter table config_library
+    add visible tinyint(1) default 1 not null after system_scope;

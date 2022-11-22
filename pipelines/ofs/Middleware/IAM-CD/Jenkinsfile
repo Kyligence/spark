@@ -97,7 +97,7 @@ pipeline {
                             sh returnStatus: true , script: '''
                                 pwd
                                 ls -al
-                                cp ../pipelines/local/IAM-CD/docker/Dockerfile.template Dockerfile
+                                cp ../pipelines/ofs/Middleware/IAM-CD/docker/Dockerfile.template Dockerfile
                                 cat Dockerfile
                             '''
                         }
@@ -124,7 +124,7 @@ pipeline {
                                 echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                 cat .npmrc
                             """
-                            frontend = docker.build("iam-frontend", "-f ${env.WORKSPACE}/pipelines/local/IAM-CD/docker/frontend/Dockerfile .")
+                            frontend = docker.build("iam-frontend", "-f ${env.WORKSPACE}/pipelines/ofs/Middleware/IAM-CD/docker/frontend/Dockerfile .")
                         }
                     }
                 }

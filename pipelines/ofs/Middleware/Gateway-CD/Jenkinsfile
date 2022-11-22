@@ -79,7 +79,7 @@ pipeline {
                             sh returnStatus: true , script: '''
                                 pwd
                                 ls -al
-                                cp ../pipelines/local/Gateway-CD/docker/Dockerfile.template Dockerfile
+                                cp ../pipelines/ofs/Middleware/Gateway-CD/docker/Dockerfile.template Dockerfile
                                 cat Dockerfile
                             '''
                         }

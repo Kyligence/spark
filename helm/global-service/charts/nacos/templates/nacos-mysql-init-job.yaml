@@ -367,6 +367,8 @@ data:
     drop index uk_configinfo_datagrouptenant on config_library;
     create unique index uk_configinfo_datagrouptenant
         on config_library (group_id, data_id, param_name);
+    alter table config_library
+        add visible tinyint(1) default 1 not null after system_scope;
 ---
 apiVersion: batch/v1
 kind: Job
