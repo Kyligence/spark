@@ -1,0 +1,15 @@
+FROM kasmweb/nginx:latest
+
+ENV APP_PATH /app
+
+WORKDIR $APP_PATH
+ADD . $APP_PATH/
+
+# RUN apk update && \
+#   rm -rf /var/cache/apk/*
+
+RUN apk add --no-cache --update nodejs=14.20.0-r0 yarn=1.22.10-r0 && rm -rf /var/cache/apk/*
+
+CMD [ "yarn", "start" ]
+
+EXPOSE 3000
