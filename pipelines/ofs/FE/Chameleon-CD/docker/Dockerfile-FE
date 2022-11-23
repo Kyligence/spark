@@ -1,0 +1,12 @@
+FROM nginx:latest
+
+ENV APP_PATH /app
+ENV NGINX_PATH /etc/nginx
+
+WORKDIR $APP_PATH
+
+ADD ./dist $APP_PATH/dist/
+
+COPY default.conf.template $NGINX_PATH/templates/
+
+

@@ -1,0 +1,105 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-docker-package-agent.yaml'
+        }
+    }
+
+    environment {
+        repo = 'harbor-ofs.kyligence.com'
+        dockerRegistryUrl = "http://${repo}"
+        registryCredential = 'harbor-docker'
+        frontend = ''
+    }
+
+    parameters {
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'kyligence server starter parent repo branch')
+        string(name: 'DOCKER_TAG', defaultValue: '0.0.1', description: '填写Docker版本号，格式：1.0.0，2.0.0，前两位版本号必须规范')
+        booleanParam(name: 'DEPLOY', defaultValue:true, description:'部署到服务器')
+    }
+
+    stages {
+        stage('1.Pull Code') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        script {
+                            if (!params.GIT_BRANCH) {
+                                error 'GIT_BRANCH 参数不能为空'
+                            }
+
+                            echo 'checkout kyligence server starter parent'
+                            retry(3) {
+                                githubCheckout 'chameleon', params.GIT_BRANCH, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'Kyligence'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Build Web') {
+            steps {
+                container('build') {
+                    dir('sourcecode/packages/server') {
+                        script {
+                            sh("cp config/env-qa .env")
+
+                            sh('yarn && yarn build && yarn install --prod --network-timeout 600000')
+                        }
+                    }
+                }
+            }
+        }
+        stage('3.Build Docker Image') {
+            steps {
+                container('docker') {
+                    dir('sourcecode/packages/server') {
+                        script {
+                            frontend = docker.build('frontend/chameleon-server', "-f ${env.WORKSPACE}/pipelines/local/FE/Chameleon-CD/docker/Dockerfile-BE .")
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.Push Docker Image') {
+            steps {
+                container('docker') {
+                    script {
+                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                            frontend.push("$DOCKER_TAG")
+                            frontend.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        stage('5.Deploy Docker Image') {
+            steps {
+                container('build') {
+                    script {
+                        if (params.DEPLOY) {
+                            sshCmdWithCredentials(
+                                '''
+                                    docker pull harbor-ofs.kyligence.com/frontend/chameleon-server:latest
+                                    docker stop chameleon-server
+                                    docker rm -f chameleon-server
+                                    docker run -d -p 22090:3000 --restart=always --name chameleon-server harbor-ofs.kyligence.com/frontend/chameleon-server:latest
+                                ''',
+                                'fe',
+                                ['name':'FrontendServer', 'host':'10.1.2.111', 'allowAnyHosts': true]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
