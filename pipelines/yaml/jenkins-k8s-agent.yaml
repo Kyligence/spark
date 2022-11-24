@@ -2,6 +2,12 @@
 kind: "Pod"
 name: "jenkins-k8s-agent"
 spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "kubectl"
       image: "cnych/kubectl"

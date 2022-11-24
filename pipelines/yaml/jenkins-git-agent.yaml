@@ -2,6 +2,12 @@
 kind: "Pod"
 name: "jenkins-git-agent"
 spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "git"
       tty: true

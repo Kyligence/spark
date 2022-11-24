@@ -2,6 +2,12 @@
 kind: "Pod"
 name: "handbook-agent"
 spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "git"
       image: "bitnami/git:2.35.1-debian-10-r68"

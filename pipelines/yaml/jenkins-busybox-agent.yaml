@@ -2,6 +2,12 @@
 kind: "Pod"
 name: "jenkins-busybox-agent"
 spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "busybox"
       image: "busybox"
