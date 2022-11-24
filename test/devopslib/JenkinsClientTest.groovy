@@ -10,7 +10,7 @@ class JenkinsClientTest extends Specification {
 
     def "test basic"() {
         given:
-        def config = new JenkinsConfig("https://devopsjenkins.kyligence.io/", "zuoc", "KYLIN@2020")
+        def config = new JenkinsConfig("aws", "https://devopsjenkins.kyligence.io/", "zuoc", "KYLIN@2020")
 
         when:
         def folder = "KE4"

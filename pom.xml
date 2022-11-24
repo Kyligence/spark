@@ -48,6 +48,18 @@
         </dependency>
 
         <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk</artifactId>
+            <version>1.12.347</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-sts</artifactId>
+            <version>1.12.347</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-yaml</artifactId>
             <version>3.0.9</version>

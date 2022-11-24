@@ -1,0 +1,52 @@
+#!groovy
+import io.kyligence.devopslib.jenkins.JenkinsConfig
+import io.kyligence.devopslib.jenkins.JenkinsClientFactory
+import io.kyligence.devopslib.jenkins.etl.JenkinsExtract
+import io.kyligence.devopslib.Utils
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/ofs/DevOps/JenkinsJobExtract/jenkins-agent.yaml'
+        }
+    }
+
+    triggers {
+        cron('0 * * * *')
+    }
+
+    stages {
+        stage('Extract') {
+            steps {
+                script {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: "aws_global_s3_cp",
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+
+                        // must have
+                        setctx()
+
+                        def config = new JenkinsConfig("gcp", "https://cicd-gcp.kyligence.com/", "dev", "kylin@2022")
+                        config.setS3Accesskey(AWS_ACCESS_KEY_ID)
+                        config.setS3secretKey(AWS_SECRET_ACCESS_KEY)
+                        config.setS3StoreBucket("devops-jenkins-history")
+
+                        def client = JenkinsClientFactory.create(config)
+                        def extract = new JenkinsExtract(config, client)
+
+                        extract.execute("KE4", "KE-CI-On_Cloud")
+                        extract.execute("Devops", "check_pipeline")
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,14 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "jnlp"
+      image: "jenkins/inbound-agent:4.11-1-jdk11"
+      resources:
+        limits:
+          memory: "8Gi"
+          cpu: "4"
+        requests:
+          memory: "8Gi"
+          cpu: "4"
