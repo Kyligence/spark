@@ -1364,9 +1364,9 @@ object SQLConf {
   val RECURSIVE_FILE_LOOKUP =
     buildConf("spark.sql.sources.recursiveFileLookup")
       .doc("If dynamic partitioning is used to write the output of UNION or UNION ALL " +
-        "queries into ORC files with hive.merge.tezfiles=true, HIVE-17275 add a sub dir " +
-        "in table or partition location. If true, Spark will fetch all files on " +
-        "each location dir and sub dir.")
+        "queries into table files with hive.execution.engine=tez, HIVE-17275 add a sub dir " +
+        "in table or partition location. If true, Spark will fetch all files on each location" +
+        " dir and sub dir. Default value is false, Spark just fetch files on each location dir")
       .version("3.2.0")
       .internal()
       .booleanConf

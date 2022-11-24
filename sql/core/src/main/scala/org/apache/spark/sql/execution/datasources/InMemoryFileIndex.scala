@@ -102,7 +102,7 @@ class InMemoryFileIndex(
     cachedPartitionSpec = null
   }
 
-  private def recursiveDirChildrenFiles(files: mutable.LinkedHashSet[FileStatus])
+  def recursiveDirChildrenFiles(files: mutable.LinkedHashSet[FileStatus])
   : Map[Path, Array[FileStatus]] = {
     // rootPaths is table / partition location
     val rootParents = rootPaths.map(_.getParent).toSet
