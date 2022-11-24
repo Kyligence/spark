@@ -3,8 +3,12 @@ kind: "Pod"
 name: "jenkins-agent"
 spec:
   containers:
-    - name: "jnlp"
-      image: "jenkins/inbound-agent:4.11-1-jdk11"
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.6.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
       resources:
         limits:
           memory: "8Gi"
@@ -12,3 +16,32 @@ spec:
         requests:
           memory: "8Gi"
           cpu: "4"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "lex-mvn-settings"
+      name: "lex-mvn-settings"

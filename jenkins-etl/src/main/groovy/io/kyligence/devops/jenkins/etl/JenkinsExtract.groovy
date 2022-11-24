@@ -1,5 +1,4 @@
-package io.kyligence.devopslib.jenkins.etl
-
+package io.kyligence.devops.jenkins.etl
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
@@ -8,10 +7,11 @@ import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.fasterxml.jackson.databind.node.ObjectNode
-import io.kyligence.devopslib.Utils
-import io.kyligence.devopslib.jenkins.JenkinsClientImpl
-import io.kyligence.devopslib.jenkins.JenkinsConfig
+import groovy.util.logging.Slf4j
+import io.kyligence.devops.jenkins.client.JenkinsClientImpl
+import io.kyligence.devops.jenkins.client.JenkinsConfig
 
+@Slf4j
 class JenkinsExtract implements Serializable {
 
     private static final String ROOT_PREFIX = "original/%s"
@@ -41,21 +41,21 @@ class JenkinsExtract implements Serializable {
 
     void execute(String jobFolder, String jobName) {
         def jobRuns = client.getJobRuns(jobFolder, jobName, 0, 50)
-        Utils.log("fetch [${jobRuns.size()}] jobs in [${jobFolder}/${jobName}]")
+        log.info("fetch [${jobRuns.size()}] jobs in [${jobFolder}/${jobName}]")
         for (run in jobRuns) {
             def runNumber = run.get("id").textValue()
 
             if (!run.get("state").textValue().equals("FINISHED")) {
-                Utils.log("job [${runNumber}] unfinished, skip it.")
+                log.info("job [${runNumber}] unfinished, skip it.")
                 continue
             }
 
             if (s3client.doesObjectExist(storeBucket, "${String.format(JOB_RUNS_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/.flag")) {
-                Utils.log("job [${runNumber}] extracted, skip it.")
+                log.info("job [${runNumber}] extracted, skip it.")
                 continue
             }
 
-            Utils.log("job [${runNumber}] extracting...")
+            log.info("job [${runNumber}] extracting...")
 
             def parameters = client.getJobParameters(jobFolder, jobName, runNumber)
             ((ObjectNode) run).set("parameters", parameters)
@@ -70,10 +70,12 @@ class JenkinsExtract implements Serializable {
                 for (step in steps) {
                     if (step.get("result").textValue().equals("FAILURE")) {
                         def stepNumber = step.get("id").textValue()
-                        def stepLogStream = client.downloadJobStepLog(jobFolder, jobName, runNumber, nodeNumber, stepNumber)
-
-                        s3client.putObject(storeBucket, "${String.format(STEP_LOG_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/step_${nodeNumber}_${stepNumber}.log",
-                                stepLogStream, new ObjectMetadata())
+                        try (def stepLogStream = client.downloadJobStepLog(jobFolder, jobName, runNumber, nodeNumber, stepNumber)) {
+                            def meta = new ObjectMetadata()
+                            meta.setContentLength(stepLogStream.available())
+                            s3client.putObject(storeBucket, "${String.format(STEP_LOG_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/step_${nodeNumber}_${stepNumber}.log",
+                                    stepLogStream, meta)
+                        }
                     }
                 }
             }
@@ -93,12 +95,14 @@ class JenkinsExtract implements Serializable {
 
             s3client.putObject(storeBucket, "${String.format(JOB_RUNS_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/test.json", testSummary.toPrettyString())
 
-            def logStream = client.downloadJobRunLog(jobFolder, jobName, runNumber)
-            s3client.putObject(storeBucket, "${String.format(JOB_RUNS_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/console.log", logStream, new ObjectMetadata())
+            try (def logStream = client.downloadJobRunLog(jobFolder, jobName, runNumber)) {
+                def meta = new ObjectMetadata()
+                meta.setContentLength(logStream.available())
+                s3client.putObject(storeBucket, "${String.format(JOB_RUNS_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/console.log", logStream, meta)
+            }
 
             s3client.putObject(storeBucket, "${String.format(JOB_RUNS_KEY_PREFIX, config.getPlatform(), jobFolder, jobName, runNumber)}/.flag", "DONE")
-
-            Utils.log("job [${runNumber}] extract done!")
+            log.info("job [${runNumber}] extract done!")
         }
 
     }

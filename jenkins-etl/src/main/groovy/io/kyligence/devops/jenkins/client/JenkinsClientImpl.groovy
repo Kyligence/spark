@@ -1,13 +1,14 @@
-package io.kyligence.devopslib.jenkins
+package io.kyligence.devops.jenkins.client
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider
-import io.kyligence.devopslib.Utils
+import groovy.util.logging.Slf4j
 import retrofit2.Call
 
+@Slf4j
 class JenkinsClientImpl {
 
     private static final Configuration JSONPATH_CONF = Configuration.builder().jsonProvider(new JacksonJsonNodeJsonProvider())
@@ -63,7 +64,7 @@ class JenkinsClientImpl {
     private <T> T execute(Call<T> caller) {
         def resp = caller.execute()
         if (!resp.isSuccessful()) {
-            Utils.log("""
+            log.info("""
 ------ execute failed ------
 ${caller.request().method()}: ${caller.request().url()}
 code: ${resp.code()}

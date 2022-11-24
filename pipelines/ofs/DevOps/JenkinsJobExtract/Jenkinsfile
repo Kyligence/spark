@@ -1,10 +1,6 @@
 #!groovy
-import io.kyligence.devopslib.jenkins.JenkinsConfig
-import io.kyligence.devopslib.jenkins.JenkinsClientFactory
-import io.kyligence.devopslib.jenkins.etl.JenkinsExtract
-import io.kyligence.devopslib.Utils
 
-@Library('devopslib') _
+@Library('devopslib@wip') _
 
 pipeline {
     options {
@@ -22,28 +18,33 @@ pipeline {
     }
 
     stages {
+        stage('Compile') {
+            steps {
+                container('maven') {
+                    dir('jenkins-etl') {
+                        sh script: """
+                            mvn clean install -DskipTests
+                        """
+                    }
+                }
+            }
+        }
         stage('Extract') {
             steps {
                 script {
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: "aws_global_s3_cp",
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                    container('maven') {
+                        dir('jenkins-etl') {
+                            withCredentials([[
+                                $class: 'AmazonWebServicesCredentialsBinding',
+                                credentialsId: "aws_global_s3_cp",
+                                accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 
-                        // must have
-                        setctx()
-
-                        def config = new JenkinsConfig("gcp", "https://cicd-gcp.kyligence.com/", "dev", "kylin@2022")
-                        config.setS3Accesskey(AWS_ACCESS_KEY_ID)
-                        config.setS3secretKey(AWS_SECRET_ACCESS_KEY)
-                        config.setS3StoreBucket("devops-jenkins-history")
-
-                        def client = JenkinsClientFactory.create(config)
-                        def extract = new JenkinsExtract(config, client)
-
-                        extract.execute("KE4", "KE-CI-On_Cloud")
-                        extract.execute("Devops", "check_pipeline")
+                               sh script: """
+                                    cd target && java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar
+                               """
+                            }
+                        }
                     }
                 }
             }

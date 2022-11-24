@@ -1,21 +1,14 @@
-package io.kyligence.devopslib.jenkins
+package io.kyligence.devops.jenkins.client
 
-import com.cloudbees.groovy.cps.NonCPS
-
-import okhttp3.Cookie
-import okhttp3.FormBody
-import okhttp3.HttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
+import groovy.util.logging.Slf4j
+import okhttp3.*
 import retrofit2.Retrofit
 import retrofit2.converter.jackson.JacksonConverterFactory
-
-import io.kyligence.devopslib.Utils
 
 import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
+@Slf4j
 class JenkinsClientFactory implements Serializable {
 
     private final static String SET_COOKIE_URL = "/login"
@@ -28,7 +21,6 @@ class JenkinsClientFactory implements Serializable {
 
         Map<String, Cookie> cookies = new HashMap<>()
 
-        @NonCPS
         @Override
         void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
             cookies.each {
@@ -36,7 +28,6 @@ class JenkinsClientFactory implements Serializable {
             }
         }
 
-        @NonCPS
         @Override
         List<Cookie> loadForRequest(HttpUrl url) {
             return new ArrayList<Cookie>(cookies.values())
@@ -44,7 +35,6 @@ class JenkinsClientFactory implements Serializable {
     }
 
 
-    @NonCPS
     static JenkinsClientImpl create(JenkinsConfig config) {
         def cookieAuthenticator = new CookieJar()
         final OkHttpClient client = new OkHttpClient.Builder()
@@ -60,9 +50,11 @@ class JenkinsClientFactory implements Serializable {
                 .execute()
 
         if (!setCookie.isSuccessful()) {
-            Utils.log("set cookie failed[${setCookie.code()}]: ${setCookie.body().string()}")
+            log.info("set cookie failed[${setCookie.code()}]: ${setCookie.body().string()}")
             throw new RuntimeException()
         }
+
+        setCookie.close()
 
         def loginForm = new FormBody.Builder()
                 .add("j_username", config.username)
@@ -77,9 +69,11 @@ class JenkinsClientFactory implements Serializable {
                 .execute()
 
         if (!loginResponse.isSuccessful()) {
-            Utils.log("login failed[${loginResponse.code()}]: ${loginResponse.body().string()}")
+            log.info("login failed[${loginResponse.code()}]: ${loginResponse.body().string()}")
             throw new RuntimeException()
         }
+
+        loginResponse.close()
 
         final Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(config.baseUrl)

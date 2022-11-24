@@ -118,7 +118,7 @@ pipeline {
                         setctx()
                         def config = ByzerClientConfig.builder()
                                         .enableHttps(true)
-                                        .host("zen.kyligence.io")
+                                        .host("devops.kyligence.io")
                                         .account("cheng.zuo@kyligence.io")
                                         .password(zen_pwd)
                                         .tenant("devops")
