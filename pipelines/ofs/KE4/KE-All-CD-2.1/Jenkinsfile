@@ -121,14 +121,14 @@ def gitCodeKe(back, front, pMap) {
 
         // setVersions(version, kylin_ver, is_GA)
 
-        def _front
-        if (!front) {
-            println "No commitId_front, use the commitId_back: ${back}"
-            _front = back
-        } else {
-            println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
-            _front = front
-        }
+        // def _front
+        // if (!front) {
+        //     println "No commitId_front, use the commitId_back: ${back}"
+        //     _front = back
+        // } else {
+        //     println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
+        //     _front = front
+        // }
 
         // sh 'ls -lha && ls -lha kystudio'
         sh 'rm -rf kystudio'
@@ -136,7 +136,7 @@ def gitCodeKe(back, front, pMap) {
         dir('kystudio') {
             // sh 'pwd && ls -lha'
             def _front_remote = pMap && pMap['front_remote']
-            pullCodeFromGitMirror 'KAP_Frontend', _front, _front_remote, 'Kyligence', false
+            pullCodeFromGitMirror 'KAP_Frontend', front, _front_remote, 'Kyligence', false
         
             result.release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
             println "result.release_commitid_front: ${result.release_commitid_front}"
@@ -184,6 +184,12 @@ def pullCode(params) {
         )
         result.release_branch_front = result.paramsMap['commitId_front']
         result.release_branch_back = result.paramsMap['commitId_back']
+        if(!result.release_branch_front) { //如果前端没填自动选择
+            result.release_branch_front = getBranch(params.deployType, params.envStage, params.version)
+        }
+        if(!result.release_branch_back) {
+            error('commitId_back参数必填')
+        }
         def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, result.paramsMap)
         result.release_commitid_back = cms.release_commitid_back
         result.release_commitid_front = cms.release_commitid_front
@@ -299,37 +305,35 @@ def buildAndCopy(version, noSpark, pi, docs_commitid, customerPkg, excludeDocs) 
 def buildPackage(path, pull_result, version, kylin_ver, envStage, deployType, noSpark, docs_commitid, customerPkg, pMap) {
     println "buildPackage -> path[${path}],pull_result[${pull_result}],version[${version}],kylin_ver[${kylin_ver}],envStage[${envStage}],deployType[${deployType}],noSpark[${noSpark}],customerPkg[${customerPkg}],pMap[${pMap}]"
     def result = [:]
-    container('build') {
-        timestamps {
-            script {
-                def _version = "${version}-${envStage}"
-                def _cids = "${pull_result.release_commitid_back}-${pull_result.release_commitid_front}"
-                dir(path) {
-                    // 判断
-                    if(params.envStage == 'GA') {
-                        setVersions(version, kylin_ver, true)
-                    }
+    timestamps {
+        script {
+            def _version = "${version}-${envStage}"
+            def _cids = "${pull_result.release_commitid_back}-${pull_result.release_commitid_front}"
+            dir(path) {
+                // 判断
+                if(params.envStage == 'GA') {
+                    setVersions(version, kylin_ver, true)
+                }
 
-                    /**
-                     * 打包条件描述（任何满足一个条件执行重新）：
-                     * 1. 打包文件不存在；
-                     * 2. 手动模式中选择了overide参数的；
-                     * 3. GA版打包时；
-                     */
-                    if (!noSpark) {
-                        package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                        if (!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
-                            buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg, params.excludeDocs)
-                        }
-                        result.package_info = package_info
-                    }else {
-                        no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                        if (!checkCacheExist(no_spark_package_info) || pMap['overide'] || envStage == 'GA') {
-                            buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg, params.excludeDocs)
-                        }
-                        result.no_spark_package_info = no_spark_package_info
-                    // sh "git checkout -- ."
+                /**
+                    * 打包条件描述（任何满足一个条件执行重新）：
+                    * 1. 打包文件不存在；
+                    * 2. 手动模式中选择了overide参数的；
+                    * 3. GA版打包时；
+                    */
+                if (!noSpark) {
+                    package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
+                    if (!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
+                        buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg, params.excludeDocs)
                     }
+                    result.package_info = package_info
+                }else {
+                    no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
+                    if (!checkCacheExist(no_spark_package_info) || pMap['overide'] || envStage == 'GA') {
+                        buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg, params.excludeDocs)
+                    }
+                    result.no_spark_package_info = no_spark_package_info
+                // sh "git checkout -- ."
                 }
             }
         }
@@ -341,42 +345,40 @@ def buildPackage(path, pull_result, version, kylin_ver, envStage, deployType, no
 def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir, ke_workdir) {
     println """deployToServer -> hostIp[${hostIp}],remote_name[${remote_name}],package_name[${package_name}],
         remote_dir[${remote_dir}],kepackage_dir[${kepackage_dir}],ke_workdir[${ke_workdir}]"""
-    container('build') {
-        script {
-            def remote = [:]
-            remote.name = remote_name
-            withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
-                    usernameVariable: 'REMOTE_USERNAME',
-                    passwordVariable: 'REMOTE_PASSWORD')]) {
-                remote.user = REMOTE_USERNAME
-                remote.password = REMOTE_PASSWORD
-                    }
-            remote.host = hostIp
-            remote.allowAnyHosts = true
-            sshCommand remote: remote, command: """
-                cd ${remote_dir}
-                rm -rf dist
-                mkdir dist
-                cd dist
-                cp ${kepackage_dir}/${package_name} .
-                cd ${remote_dir}
-                rm -rf new_kedir
-                mkdir new_kedir
-                tar -zxvf dist/${package_name} --strip-components 1 -C new_kedir
-                if test -d ${ke_workdir}
-                then
-                    bash ${ke_workdir}/bin/kylin.sh stop
-                else
-                    echo "The KE server is not running"
-                fi
-                bash new_kedir/bin/upgrade.sh ${ke_workdir} --silent
-                touch ${ke_workdir}/bin/check-env-bypass
-                echo "skip check env"
-                bash ${ke_workdir}/bin/kylin.sh start
-                cat ${ke_workdir}/commit_SHA1
-                echo "upgrade gw07-ke-env finished"
-                """
-        }
+    script {
+        def remote = [:]
+        remote.name = remote_name
+        withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
+                usernameVariable: 'REMOTE_USERNAME',
+                passwordVariable: 'REMOTE_PASSWORD')]) {
+            remote.user = REMOTE_USERNAME
+            remote.password = REMOTE_PASSWORD
+                }
+        remote.host = hostIp
+        remote.allowAnyHosts = true
+        sshCommand remote: remote, command: """
+            cd ${remote_dir}
+            rm -rf dist
+            mkdir dist
+            cd dist
+            cp ${kepackage_dir}/${package_name} .
+            cd ${remote_dir}
+            rm -rf new_kedir
+            mkdir new_kedir
+            tar -zxvf dist/${package_name} --strip-components 1 -C new_kedir
+            if test -d ${ke_workdir}
+            then
+                bash ${ke_workdir}/bin/kylin.sh stop
+            else
+                echo "The KE server is not running"
+            fi
+            bash new_kedir/bin/upgrade.sh ${ke_workdir} --silent
+            touch ${ke_workdir}/bin/check-env-bypass
+            echo "skip check env"
+            bash ${ke_workdir}/bin/kylin.sh start
+            cat ${ke_workdir}/commit_SHA1
+            echo "upgrade gw07-ke-env finished"
+            """
     }
 }
 
@@ -466,12 +468,14 @@ pipeline {
                                 }
                             }
                             steps {
-                                script {
-                                    def no_spark = true
-                                    def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
-                                    no_spark_package_info = bpns.no_spark_package_info
-                                    println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
-                                    println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
+                                container('build') {
+                                    script {
+                                        def no_spark = true
+                                        def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
+                                        no_spark_package_info = bpns.no_spark_package_info
+                                        println("build noSpark [no_spark_package_info]: ${no_spark_package_info.toString()}, no_spark: ${no_spark}")
+                                        println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
+                                    }
                                 }
                             }
                         }
@@ -481,7 +485,7 @@ pipeline {
                     stages {
                         stage('Pull Normal') {
                             steps {
-                                container('build') {
+                                container('build2') {
                                     dir('sourcecode2') {
                                         script {
                                             pull_result_withspark = pullCode(params)
@@ -492,12 +496,14 @@ pipeline {
                         }
                         stage('Building Normal') {
                             steps {
-                                script {
-                                    def no_spark = false
-                                    def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
-                                    package_info = bp.package_info
-                                    println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
-                                    println("Download URL: https://package.kyligence.com/${package_info.package_file}")
+                                container('build2') {
+                                    script {
+                                        def no_spark = false
+                                        def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
+                                        package_info = bp.package_info
+                                        println("build Normal [package_info]: ${package_info.file_name}, no_spark: ${no_spark}")
+                                        println("Download URL: https://package.kyligence.com/${package_info.package_file}")
+                                    }
                                 }
                             }
                         }
@@ -508,7 +514,7 @@ pipeline {
                                 }
                             }
                             steps {
-                                container('build') {
+                                container('build2') {
                                     timestamps {
                                         script {
                                             dir('sourcecode2') {
@@ -545,7 +551,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build') {
+                        container('build2') {
                             script {
                                 println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
                                 // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
@@ -570,7 +576,7 @@ pipeline {
                 }
                 stage('3.2.Upload Normal to Azure CN 141') {
                     steps {
-                        container('build') {
+                        container('build2') {
                             script {
                                 println "package_info->${package_info}"
                                 // uplaodAzure(package_info, 'sourcecode2')
@@ -584,7 +590,7 @@ pipeline {
                 }
                 stage('3.2.Upload Normal to Azure CN 138') {
                     steps {
-                        container('build') {
+                        container('build2') {
                             script {
                                 println "package_info->${package_info}"
                                 // uplaodAzure(package_info, 'sourcecode2')
@@ -603,7 +609,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build') {
+                        container('build2') {
                             script {
                                 dir('sourcecode2') {
                                     setVersions(params.version, params.kylin_ver, false)
@@ -657,8 +663,10 @@ pipeline {
                         }
                     }
                     steps {
-                        deployToServer('159.27.120.141', 'azure_env-gw07', package_info.file_name,
-                            paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                        container('build2') {
+                            deployToServer('159.27.120.141', 'azure_env-gw07', package_info.file_name,
+                                paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                        }
                     }
                 }
                 stage('Auto Deploy KE on Azure gw09') {
@@ -668,8 +676,10 @@ pipeline {
                         }
                     }
                     steps {
-                        deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
-                            paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                        container('build2') {
+                            deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
+                                paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                        }
                     }
                 }
             }
@@ -698,7 +708,7 @@ pipeline {
                 }
             }
             steps {
-                container('build') {
+                container('build2') {
                     script {
                         def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${pull_result_withspark.release_branch_front}，后端 ${pull_result_withspark.release_branch_back};\n2. 发布版本号：${params.version}"
                         println checkMsg
@@ -764,7 +774,7 @@ pipeline {
                 }
                 stage('Jars Nexus') {
                     steps {
-                        container('build') {
+                        container('build2') {
                             script {
                                 dir('sourcecode2') {
                                     mvnDeploy()
@@ -793,7 +803,7 @@ pipeline {
                 }
             }
             steps {
-                container('build') {
+                container('build2') {
                     script {
                         def _tag = "ke-${version}"
                         dir('sourcecode2') {
@@ -833,7 +843,7 @@ pipeline {
 
     post {
         failure {
-            container('build') {
+            container('build2') {
                 feishu('失败！！ ❌')
             }
         }
