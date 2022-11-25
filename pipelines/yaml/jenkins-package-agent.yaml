@@ -54,7 +54,7 @@ spec:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
           subPath: "maven3"
-        - mountPath: "/root/.m2/settings2.xml"
+        - mountPath: "/root/.m2/settings.xml"
           name: "lex-mvn-settings"
           readOnly: false
           subPath: "settings2.xml"
