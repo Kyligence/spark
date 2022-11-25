@@ -4,10 +4,10 @@ name: "jenkins-package-agent"
 spec:
   nodeSelector:
     cicd: ''
-  # tolerations:
-  #   - key: cicd
-  #     operator: Equal
-  #     effect: NoSchedule
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "build"
       image: "repo-ofs.kyligence.com/newten-build:latest"
