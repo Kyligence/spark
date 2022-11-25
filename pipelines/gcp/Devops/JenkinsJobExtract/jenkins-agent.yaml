@@ -17,20 +17,21 @@ spec:
           memory: "8Gi"
           cpu: "4"
       volumeMounts:
-        - mountPath: "/root/.m2/repository"
-          name: "jenkins-common"
-          subPath: "m2repo"
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository/io/kyligence
-  nodeSelector:
-    cicd: ''
-  tolerations:
-    - key: cicd
-      operator: Equal
-      effect: NoSchedule
+    - image: "jenkins/inbound-agent:4.11-1-jdk11"
+      name: "jnlp"
+      resources:
+        requests:
+          memory: "1024Mi"
+          cpu: "1"
+          ephemeral-storage: "1024Mi"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
-        claimName: "jenkins-common"
+        claimName: "fileserver-claim"
     - name: "kyligence-repo"
       emptyDir: { }
