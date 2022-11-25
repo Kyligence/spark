@@ -113,7 +113,7 @@ def gitCodeKe(back, front, pMap) {
             error 'commitId_back 参数不能为空'
         }
         def _back_remote = pMap && pMap['back_remote']
-        pullCodeFromGitMirror 'KAP', back, _back_remote, 'Kyligence', false
+        pullCodeFromGitMirrorNew 'KAP', back, _back_remote, 'Kyligence', false
 
         result.release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
         println "result.release_commitid_back: ${result.release_commitid_back}"
@@ -136,7 +136,7 @@ def gitCodeKe(back, front, pMap) {
         dir('kystudio') {
             // sh 'pwd && ls -lha'
             def _front_remote = pMap && pMap['front_remote']
-            pullCodeFromGitMirror 'KAP_Frontend', front, _front_remote, 'Kyligence', false
+            pullCodeFromGitMirrorNew 'KAP_Frontend', front, _front_remote, 'Kyligence', false
         
             result.release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
             println "result.release_commitid_front: ${result.release_commitid_front}"
