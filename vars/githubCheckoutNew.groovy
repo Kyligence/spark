@@ -1,4 +1,5 @@
-def call(String project, String branch = null, String schema = 'git', String remoteHost = '10.1.2.192', refspec = '+refs/heads/*:refs/remotes/origin/*', certificate=null, repo=null) {
+def call(String project, String branch = null, String schema = 'git', String remoteHost = '10.1.2.192', 
+         refspec = '+refs/heads/*:refs/remotes/origin/*', certificate=null, repo=null) {
     println "githubCheckoutNew -> params: project: ${project}, branch: ${branch}, schema: ${schema}, remoteHost: ${remoteHost}, refspec: ${refspec}, certificate: ${certificate}, repo: ${repo}"
     timestamps {
         checkout([
