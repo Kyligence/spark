@@ -17,13 +17,9 @@ spec:
           memory: "8Gi"
           cpu: "4"
       volumeMounts:
-        - mountPath: "/root/.m2"
+        - mountPath: "/root/.m2/repository"
           name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/root/.m2/settings.xml"
-          name: "lex-mvn-settings"
-          readOnly: false
-          subPath: "settings.xml"
+          subPath: "maven3/repository"
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository/io/kyligence
   nodeSelector:
@@ -38,10 +34,3 @@ spec:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
-    - configMap:
-        defaultMode: 0777
-        items:
-          - key: "settings.xml"
-            path: "settings.xml"
-        name: "lex-mvn-settings"
-      name: "lex-mvn-settings"
