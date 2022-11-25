@@ -19,7 +19,7 @@ spec:
       volumeMounts:
         - mountPath: "/root/.m2/repository"
           name: "jenkins-common"
-          subPath: "maven3/repository"
+          subPath: "m2repo"
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository/io/kyligence
   nodeSelector:
