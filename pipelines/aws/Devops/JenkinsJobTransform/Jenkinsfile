@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/gcp/Devops/JenkinsJobExtract/jenkins-agent.yaml'
+            yamlFile 'pipelines/aws/Devops/JenkinsJobTransform/jenkins-agent.yaml'
         }
     }
 
@@ -36,7 +36,7 @@ pipeline {
                         dir('jenkins-etl') {
                             withCredentials([[
                                 $class: 'AmazonWebServicesCredentialsBinding',
-                                credentialsId: "aws_global_s3",
+                                credentialsId: "aws_global_s3_cp",
                                 accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 
@@ -47,7 +47,7 @@ pipeline {
                                             -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
                                             -DJENKINS_USERNAME=${jenkins_username} \
                                             -DJENKINS_PASSWORD=${jenkins_password} \
-                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar extract gcp
+                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform aws
                                    """
                                 }
                             }

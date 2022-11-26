@@ -41,7 +41,7 @@ class JenkinsExtract implements Serializable {
 
     void execute(String jobFolder, String jobName) {
         def jobRuns = client.getJobRuns(jobFolder, jobName, 0, 50)
-        log.info("fetch [${jobRuns.size()}] jobs in [${jobFolder}/${jobName}]")
+        log.info("fetch [${jobRuns.size()}] ${config.getPlatform()} jobs in [${jobFolder}/${jobName}]")
         for (run in jobRuns) {
             def runNumber = run.get("id").textValue()
 

@@ -44,6 +44,7 @@ class JenkinsTransform {
 
             builder.append(header.stream().collect(Collectors.joining(","))).append("\n")
 
+            log.info("total rows: ${rows.size()}")
             for (row in rows) {
                 builder.append(row.stream().map(r -> r.getValue()).collect(Collectors.joining(","))).append("\n")
             }
@@ -85,9 +86,13 @@ class JenkinsTransform {
         log.info("total jobs: ${jobs.size()}")
 
         for (job in jobs) {
-            log.info("transform job: ${job}...")
             def objs = listObjects(job)
+            if (objs.stream().noneMatch(it -> it.getKey().endsWith(".flag"))) {
+                log.info("job [${job}] unfinished, skip it.")
+                continue
+            }
 
+            log.info("transform job: [${job}]...")
             def analysis = new JenkinsAnalysis(jobFolder, jobName)
 
             // .flag -> console.log -> run.json -> step_logs/* -> test.json

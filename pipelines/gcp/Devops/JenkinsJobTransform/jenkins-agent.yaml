@@ -1,0 +1,37 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.6.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      resources:
+        limits:
+          memory: "8Gi"
+          cpu: "4"
+        requests:
+          memory: "8Gi"
+          cpu: "4"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+    - image: "jenkins/inbound-agent:4.11-1-jdk11"
+      name: "jnlp"
+      resources:
+        requests:
+          memory: "1024Mi"
+          cpu: "1"
+          ephemeral-storage: "1024Mi"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "fileserver-claim"
+    - name: "kyligence-repo"
+      emptyDir: { }

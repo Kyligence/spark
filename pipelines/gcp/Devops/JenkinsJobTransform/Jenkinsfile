@@ -9,7 +9,7 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/gcp/Devops/JenkinsJobExtract/jenkins-agent.yaml'
+            yamlFile 'pipelines/gcp/Devops/JenkinsJobTransform/jenkins-agent.yaml'
         }
     }
 
@@ -47,7 +47,7 @@ pipeline {
                                             -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
                                             -DJENKINS_USERNAME=${jenkins_username} \
                                             -DJENKINS_PASSWORD=${jenkins_password} \
-                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar extract gcp
+                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform gcp
                                    """
                                 }
                             }
