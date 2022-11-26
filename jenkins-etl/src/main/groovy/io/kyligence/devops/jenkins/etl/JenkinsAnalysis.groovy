@@ -93,6 +93,7 @@ class JenkinsAnalysis {
         } else if (objName.endsWith("console.log")) {
             def logContent = IOUtils.toString(obj.getObjectContent(), StandardCharsets.UTF_8)
             columns.add(Column.valueOf("dnsResolveFailed", logContent.contains("Could not resolve host: github.com") ? "1" : "0"))
+            columns.add(Column.valueOf("k8sRuntimesFailed", logContent ==~ /io\.fabric8\.kubernetes\.client\.KubernetesClientException: not ready after [0-9]+ MILLISECONDS/ ? "1" : "0"))
 
         } else {
             obj.getObjectContent().abort()
