@@ -40,9 +40,17 @@ pipeline {
                                 accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 
-                               sh script: """
-                                    cd target && java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar
-                               """
+                                withCredentials([usernamePassword(credentialsId: 'devopsid', passwordVariable: 'jenkins_password', usernameVariable: 'jenkins_username')]) {
+                                   sh script: """
+                                        cd target && \
+                                        java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                            -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                            -DJENKINS_URL=http://cicd-gcp.kyligence.com/ \
+                                            -DJENKINS_USERNAME=${jenkins_username} \
+                                            -DJENKINS_PASSWORD=${jenkins_password} \
+                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar extract
+                                   """
+                                }
                             }
                         }
                     }

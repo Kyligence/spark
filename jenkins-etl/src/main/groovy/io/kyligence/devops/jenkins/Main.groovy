@@ -4,15 +4,32 @@ import io.kyligence.devops.jenkins.client.JenkinsClientFactory
 import io.kyligence.devops.jenkins.client.JenkinsClientImpl
 import io.kyligence.devops.jenkins.client.JenkinsConfig
 import io.kyligence.devops.jenkins.etl.JenkinsExtract
+import io.kyligence.devops.jenkins.etl.JenkinsTransform
 
 class Main {
 
     static void main(String[] args) {
+        if (args[0].equals("extract")) {
+            extractGCP()
+            extractAWS()
+        } else if (args[0].equals("transform")) {
+            transformGCP()
+        } else {
+            throw new IllegalArgumentException()
+        }
+
+    }
+
+    static void extractGCP() {
         final String s3Accesskey = System.getProperty("AWS_ACCESS_KEY_ID");
         final String s3secretKey = System.getProperty("AWS_SECRET_ACCESS_KEY");
         final String s3bucket = System.getProperty("AWS_STORE_BUCKET", "devops-jenkins-history");
 
-        final JenkinsConfig config = new JenkinsConfig("gcp", "http://cicd-gcp.kyligence.com/", "dev", "kylin@2022");
+        final String jenkinsUrl = System.getProperty("JENKINS_URL")
+        final String jenkinsUsername = System.getProperty("JENKINS_USERNAME")
+        final String jenkinsPassword = System.getProperty("JENKINS_PASSWORD")
+
+        final JenkinsConfig config = new JenkinsConfig("gcp", jenkinsUrl, jenkinsUsername, jenkinsPassword);
         config.setS3Accesskey(s3Accesskey);
         config.setS3secretKey(s3secretKey);
         config.setS3StoreBucket(s3bucket);
@@ -20,6 +37,44 @@ class Main {
         final JenkinsExtract extract = new JenkinsExtract(config, client);
 
         extract.execute("KE4", "Newten_CI_On_GCP");
-        extract.execute("Devops", "check_pipeline");
     }
+
+    static void extractAWS() {
+        final String s3Accesskey = System.getProperty("AWS_ACCESS_KEY_ID");
+        final String s3secretKey = System.getProperty("AWS_SECRET_ACCESS_KEY");
+        final String s3bucket = System.getProperty("AWS_STORE_BUCKET", "devops-jenkins-history");
+
+        final String jenkinsUrl = System.getProperty("JENKINS_URL")
+        final String jenkinsUsername = System.getProperty("JENKINS_USERNAME")
+        final String jenkinsPassword = System.getProperty("JENKINS_PASSWORD")
+
+        final JenkinsConfig config = new JenkinsConfig("aws", jenkinsUrl, jenkinsUsername, jenkinsPassword);
+        config.setS3Accesskey(s3Accesskey);
+        config.setS3secretKey(s3secretKey);
+        config.setS3StoreBucket(s3bucket);
+        final JenkinsClientImpl client = JenkinsClientFactory.create(config);
+        final JenkinsExtract extract = new JenkinsExtract(config, client);
+
+        extract.execute("KE4", "Newten_CI_On_GCP");
+    }
+
+    static void transformGCP() {
+        final String s3Accesskey = System.getProperty("AWS_ACCESS_KEY_ID");
+        final String s3secretKey = System.getProperty("AWS_SECRET_ACCESS_KEY");
+        final String s3bucket = System.getProperty("AWS_STORE_BUCKET", "devops-jenkins-history");
+
+        final String jenkinsUrl = System.getProperty("JENKINS_URL")
+        final String jenkinsUsername = System.getProperty("JENKINS_USERNAME")
+        final String jenkinsPassword = System.getProperty("JENKINS_PASSWORD")
+
+        final JenkinsConfig config = new JenkinsConfig("gcp", jenkinsUrl, jenkinsUsername, jenkinsPassword);
+        config.setS3Accesskey(s3Accesskey);
+        config.setS3secretKey(s3secretKey);
+        config.setS3StoreBucket(s3bucket);
+        final JenkinsTransform transform = new JenkinsTransform(config,);
+
+        transform.execute("KE4", "Newten_CI_On_GCP");
+    }
+
+
 }

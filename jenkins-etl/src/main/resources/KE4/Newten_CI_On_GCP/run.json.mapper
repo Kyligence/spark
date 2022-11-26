@@ -1,0 +1,19 @@
+name=$.pipeline
+id=$.id
+startTime=$.startTime
+endTime=$.endTime
+duration=$.durationInMillis
+result=$.result
+gitRepo=$.parameters[?(@.name=='ghprbGhRepository')].value
+prNumber=$.parameters[?(@.name=='ghprbPullId')].value
+prTitle=$.parameters[?(@.name=='ghprbPullTitle')].value
+sourceBranch=$.parameters[?(@.name=='ghprbSourceBranch')].value
+targetBranch=$.parameters[?(@.name=='ghprbTargetBranch')].value
+commitAuthor=$.parameters[?(@.name=='ghprbActualCommitAuthor')].value
+checkoutState=length("\\$.nodes[?(@.displayName=='Checkout' && @.result!='SUCCESS')]")
+compileState=length("\\$.nodes[?(@.displayName=='Compile' && @.result!='SUCCESS')]")
+testingState=length("\\$.nodes[?(@.displayName=='Testing' && @.result!='SUCCESS')]")
+sonarState=length("\\$.nodes[?(@.displayName=='Sonar Check' && @.result!='SUCCESS')]")
+
+
+

@@ -9,10 +9,10 @@ class JenkinsExtractTest extends Specification {
 
     def "test"() {
         given:
-        def config = new JenkinsConfig("gcp", "http://cicd-gcp.kyligence.com/", "dev", "kylin@2022")
-        config.setS3Accesskey("AKIAWVFXNJCDA76HVQSY")
-        config.setS3secretKey("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")
-        config.setS3StoreBucket("devops-jenkins-history")
+        def config = new JenkinsConfig("gcp", "http://cSDFASFSADFe.com/", "XXXXXXX", "XXXXXX")
+        config.setS3Accesskey("SFSAFASF")
+        config.setS3secretKey("hwM2C4zVfX/SADFASDFASDF")
+        config.setS3StoreBucket("devASDFASDFSFSDF-history")
 
         def client = JenkinsClientFactory.create(config)
         def extract = new JenkinsExtract(config, client)

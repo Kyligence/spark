@@ -19,6 +19,10 @@ spec:
           mountPath: /root/.m2/repository/org/apache/kylin
         - mountPath: "/var/run/docker.sock"
           name: "dockersock"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
       resources:
         requests:
           memory: "12Gi"
@@ -33,6 +37,10 @@ spec:
         - name: "jenkins-common"
           mountPath: /root/.m2/repository
           subPath: "maven_repo"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
       resources:
         requests:
           memory: "4Gi"
@@ -48,3 +56,10 @@ spec:
     - name: "dockersock"
       hostPath:
         path: "/var/run/docker.sock"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "aws-maven-settings"
+      name: "maven-settings"
