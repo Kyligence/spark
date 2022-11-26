@@ -8,7 +8,9 @@ import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider
 import groovy.transform.EqualsAndHashCode
+import org.apache.commons.io.IOUtils
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 
 class JenkinsAnalysis {
@@ -87,6 +89,10 @@ class JenkinsAnalysis {
                     throw new IllegalArgumentException()
             }
 
+
+        } else if (objName.endsWith("console.log")) {
+            def logContent = IOUtils.toString(obj.getObjectContent(), StandardCharsets.UTF_8)
+            columns.add(Column.valueOf("dnsResolveFailed", logContent.contains("Could not resolve host: github.com") ? "1" : "0"))
 
         } else {
             obj.getObjectContent().abort()
