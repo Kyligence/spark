@@ -1,7 +1,7 @@
 name=$.pipeline
 id=$.id
-startTime=removeSuffix("\\$.startTime", 5)
-endTime=removeSuffix("\\$.endTime", 5)
+startTime=replace(removeSuffix("\\$.startTime", 5), "T", " ")
+endTime=replace(removeSuffix("\\$.endTime", 5), "T", " ")
 duration=$.durationInMillis
 result=$.result
 gitRepo=$.parameters[?(@.name=='ghprbGhRepository')].value

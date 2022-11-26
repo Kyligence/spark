@@ -4,7 +4,6 @@ import com.amazonaws.services.s3.model.S3Object
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.jayway.jsonpath.Configuration
-import com.jayway.jsonpath.DocumentContext
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider
@@ -35,38 +34,8 @@ class JenkinsAnalysis {
 
 
         @Override
-        public String toString() {
+        String toString() {
             return "${name}[${value}]"
-        }
-    }
-
-    private static class EvaluateContext {
-
-        private ObjectMapper objectMapper = new ObjectMapper()
-
-        private DocumentContext docCtx
-
-        EvaluateContext(DocumentContext docCtx) {
-            this.docCtx = docCtx
-        }
-
-        ArrayNode length(String jsonpath) {
-            final ArrayNode colValue = docCtx.read(jsonpath)
-            return objectMapper.createArrayNode().add(colValue.size())
-        }
-
-        ArrayNode removeSuffix(String jsonpath, int suffixLen) {
-            if (suffixLen <= 0) {
-                throw new IllegalArgumentException("suffixLen <= 0")
-            }
-
-            final ArrayNode colValue = docCtx.read(jsonpath)
-            if (colValue.isEmpty()) {
-                return colValue
-            }
-
-            def v = colValue?.get(0)?.textValue()
-            return objectMapper.createArrayNode().add(v.substring(0, v.length() - suffixLen))
         }
     }
 
@@ -94,16 +63,15 @@ class JenkinsAnalysis {
     void analyze(S3Object obj) {
         def objName = Paths.get(obj.getKey()).getFileName().toString()
         if (objName.endsWith(".json")) {
-            def objContent = objectMapper.readTree(obj.getObjectContent())
+            def docCtx = JsonPath.using(JSONPATH_CONF).parse(objectMapper.readTree(obj.getObjectContent()))
+            def functions = new EvaluateFunctions(docCtx)
 
             def closure = (Map.Entry<String, String> it) -> {
-                def docCtx = JsonPath.using(JSONPATH_CONF).parse(objContent)
-
                 def colName = it.getKey()
                 def valueExpression = it.getValue()
 
                 final ArrayNode colValue = valueExpression.startsWith("\$") ?
-                        docCtx.<ArrayNode> read(valueExpression) : (ArrayNode) Eval.x(new EvaluateContext(docCtx), "x.${valueExpression}")
+                        docCtx.<ArrayNode> read(valueExpression) : (ArrayNode) functions.eval(valueExpression)
 
                 columns.add(Column.valueOf(colName, colValue?.get(0)?.toString()))
             }

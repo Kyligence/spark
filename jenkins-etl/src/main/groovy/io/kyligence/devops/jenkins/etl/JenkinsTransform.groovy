@@ -67,7 +67,6 @@ class JenkinsTransform {
 
     private final Csv csv
 
-
     JenkinsTransform(JenkinsConfig config) {
         this.config = config
         this.storeBucket = config.getS3StoreBucket()
