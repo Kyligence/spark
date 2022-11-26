@@ -40,19 +40,33 @@ class JenkinsAnalysis {
         }
     }
 
-    private static class Evaluate {
+    private static class EvaluateContext {
 
         private ObjectMapper objectMapper = new ObjectMapper()
 
         private DocumentContext docCtx
 
-        Evaluate(DocumentContext docCtx) {
+        EvaluateContext(DocumentContext docCtx) {
             this.docCtx = docCtx
         }
 
         ArrayNode length(String jsonpath) {
             final ArrayNode colValue = docCtx.read(jsonpath)
             return objectMapper.createArrayNode().add(colValue.size())
+        }
+
+        ArrayNode removeSuffix(String jsonpath, int suffixLen) {
+            if (suffixLen <= 0) {
+                throw new IllegalArgumentException("suffixLen <= 0")
+            }
+
+            final ArrayNode colValue = docCtx.read(jsonpath)
+            if (colValue.isEmpty()) {
+                return colValue
+            }
+
+            def v = colValue?.get(0)?.textValue()
+            return objectMapper.createArrayNode().add(v.substring(0, v.length() - suffixLen))
         }
     }
 
@@ -89,7 +103,7 @@ class JenkinsAnalysis {
                 def valueExpression = it.getValue()
 
                 final ArrayNode colValue = valueExpression.startsWith("\$") ?
-                        docCtx.<ArrayNode> read(valueExpression) : (ArrayNode) Eval.x(new Evaluate(docCtx), "x.${valueExpression}")
+                        docCtx.<ArrayNode> read(valueExpression) : (ArrayNode) Eval.x(new EvaluateContext(docCtx), "x.${valueExpression}")
 
                 columns.add(Column.valueOf(colName, colValue?.get(0)?.toString()))
             }

@@ -97,11 +97,6 @@ class JenkinsTransform {
 
             // .flag -> console.log -> run.json -> step_logs/* -> test.json
             objs.forEach {
-                // TODO 暂时只处理 run.json
-                if (!it.getKey().endsWith("run.json")) {
-                    return
-                }
-
                 try (def obj = s3client.getObject(config.getS3StoreBucket(), it.getKey())) {
                     analysis.analyze(obj)
                 }

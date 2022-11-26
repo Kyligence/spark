@@ -1,1 +1,4 @@
-total_testcases=$.total
+totalTestcases=$.total
+failedTestcases=$.failed
+passedTestcases=$.passed
+skippedTestcases=$.skipped
