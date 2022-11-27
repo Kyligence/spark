@@ -75,7 +75,7 @@ class JenkinsAnalysis {
                 final ArrayNode colValue = valueExpression.startsWith("\$") ?
                         docCtx.<ArrayNode> read(valueExpression) : (ArrayNode) functions.eval(valueExpression)
 
-                columns.add(Column.valueOf(colName, colValue?.get(0)?.toString()))
+                columns.add(Column.valueOf(colName, normalized(colValue?.get(0)?.toString())))
             }
 
             switch (objName) {
@@ -98,6 +98,26 @@ class JenkinsAnalysis {
         } else {
             obj.getObjectContent().abort()
         }
+    }
+
+    private String normalized(String val) {
+        if (val == null || val.isEmpty()) {
+            return val
+        }
+
+        def ret = val
+        if (ret.startsWith("\"")) {
+            ret = ret.substring(1)
+        }
+
+        if (ret.endsWith("\"")) {
+            ret = ret.substring(0, ret.length() - 1)
+        }
+
+        ret = ret.replace(",", "，")
+
+        return ret
+
     }
 
     List<Column> analysisResult() {
