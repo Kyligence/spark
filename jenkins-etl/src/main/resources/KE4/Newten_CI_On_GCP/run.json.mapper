@@ -10,10 +10,10 @@ prTitle=$.parameters[?(@.name=='ghprbPullTitle')].value
 sourceBranch=$.parameters[?(@.name=='ghprbSourceBranch')].value
 targetBranch=$.parameters[?(@.name=='ghprbTargetBranch')].value
 commitAuthor=$.parameters[?(@.name=='ghprbActualCommitAuthor')].value
-checkoutState=length("\\$.nodes[?(@.displayName=='Checkout' && @.result!='SUCCESS')]")
-compileState=length("\\$.nodes[?(@.displayName=='Compile' && @.result!='SUCCESS')]")
-testingState=length("\\$.nodes[?(@.displayName=='Testing' && @.result!='SUCCESS')]")
-sonarState=length("\\$.nodes[?(@.displayName=='Sonar Check' && @.result!='SUCCESS')]")
+checkoutFailed=length("\\$.nodes[?(@.displayName=='Checkout' && @.result=='FAILURE')]")
+compileFailed=length("\\$.nodes[?(@.displayName=='Compile' && @.result=='FAILURE')]")
+testingFailed=length("\\$.nodes[?(@.displayName=='Testing' && @.result=='FAILURE')]")
+sonarFailed=length("\\$.nodes[?(@.displayName=='Sonar Check' && @.result=='FAILURE')]")
 
 
 

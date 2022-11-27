@@ -81,7 +81,7 @@ Map<String, List<String>> evalTestModules() {
                 """, returnStdout: true)
                         .trim()
                         .split("\n")
-                        .findAll({ !it.startsWith("Downloaded from") })
+                        .findAll({ !it.startsWith("Downloaded from") && !it.startsWith("Downloading from") })
                         .collect({ parentModule.isEmpty() ? it.trim() : "${parentModule}/${it.trim()}" })
 
                 println "child modules: ${childModules}"
