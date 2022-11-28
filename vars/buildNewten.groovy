@@ -54,8 +54,8 @@ def insertDocs(version, docs_commitid) {
     if (docs_version >= 'v4.5') {
         println("downloading docs...")
         sh """
-            wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${docs_version}/${docs_commitid}/en/Kyligence_Enterprise_User_Manual-en.pdf --directory-prefix=build/docs
-            wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${docs_version}/${docs_commitid}/zh-cn/Kyligence_Enterprise_User_Manual-zh.pdf --directory-prefix=build/docs
+            wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${docs_version}/${docs_commitid}/en/Kyligence_Enterprise_User_Manual-en.pdf --directory-prefix=build/docs --no-check-certificate
+            wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${docs_version}/${docs_commitid}/zh-cn/Kyligence_Enterprise_User_Manual-zh.pdf --directory-prefix=build/docs --no-check-certificate
         """
 
         sh "ls -lh build/docs"
