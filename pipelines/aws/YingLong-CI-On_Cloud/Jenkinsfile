@@ -27,7 +27,7 @@ pipeline {
                         timestamps {
                             quicklyCheckout()
                         }
-                        s3Archive4YingLong('download')
+                        s3Archive('download')
                     }
                 }
             }
@@ -56,7 +56,7 @@ pipeline {
                     timestamps {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
-                    s3Archive4YingLong('upload-without-build_result')
+                    s3Archive('upload-without-build_result')
                 }
             }
         }

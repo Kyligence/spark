@@ -81,13 +81,23 @@ def downloadArchive() {
             s3Download(file: './tmp', bucket: 'k8s-bucket-devops', path: "ke-ci/${targetBranch()}/", force: true)
             if(fileExists('./kylin/pom.xml')) {
                 sh script: """
-                    if [ -d ./tmp/ke-ci/${targetBranch()} ]; then
-                        mv ./tmp/ke-ci/${targetBranch()} ./kylin/src/examples/test_data
+                    if [ -d ./tmp/ke-ci/${targetBranch()}/kylin ]; then
+                        mv ./tmp/ke-ci/${targetBranch()}/kylin ./kylin/src/examples/test_data
                         ls -al ./kylin/src/examples/test_data
                     fi
                     rm -rf ./tmp
                 """
-            } else {
+            }
+            if(fileExists('./kyligence/pom.xml')) {
+                sh script: """
+                    if [ -d ./tmp/ke-ci/${targetBranch()}/kyligence ]; then
+                        mv ./tmp/ke-ci/${targetBranch()}/kyligence ./kyligence/src/examples/test_data
+                        ls -al ./kyligence/src/examples/test_data
+                    fi
+                    rm -rf ./tmp
+                """
+            }
+            if(fileExists('./src/pom.xml')) {
                 sh script: """
                     if [ -d ./tmp/ke-ci/${targetBranch()} ]; then
                         mv ./tmp/ke-ci/${targetBranch()} ./src/examples/test_data

@@ -31,13 +31,7 @@ pipeline {
                             }
                         }
                         script {
-                            if(params.branch == 'newten') {
-                                s3Archive('download')
-                            }else if(params.branch =~ "newten-dev.*") {
-                                s3Archive4YingLong('download')
-                            }else {
-                                s3Archive('download')
-                            }
+                            s3Archive('download')
                         }
                     }
                 }
@@ -62,7 +56,7 @@ pipeline {
         }
         stage('Testing') {
             steps {
-                dynamicNewtenParallelTest()
+                dynamicNewtenParallelTest2()
             }
             post {
                 always {
@@ -71,11 +65,7 @@ pipeline {
                     }
                     container('maven') {
                         script {
-                            if(params.branch == 'newten') {
-                                s3Archive('upload')
-                            }else if(params.branch == "newten-dev") {
-                                s3Archive4YingLong('upload')
-                            }
+                            s3Archive('upload')
                         }
                     }
                 }

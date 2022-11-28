@@ -26,7 +26,7 @@ pipeline {
                         script {
                             githubCheckout 'KAP', params.branch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
                         }
-                        s3Archive4YingLong('download')
+                        s3Archive('download')
                     }
                 }
             }
@@ -57,7 +57,7 @@ pipeline {
                     timestamps {
                         junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
                     }
-                    s3Archive4YingLong('upload-without-build_result')
+                    s3Archive('upload-without-build_result')
                 }
             }
         }
