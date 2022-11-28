@@ -2,6 +2,12 @@
 kind: "Pod"
 name: "jenkins-package-agent"
 spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "build"
       image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
@@ -85,12 +91,6 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
-  nodeSelector:
-    cicd: ''
-  tolerations:
-    - key: cicd
-      operator: Equal
-      effect: NoSchedule
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:

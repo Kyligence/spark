@@ -4,24 +4,24 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
     } catch(ex){
         println "git apply fail: ${ex.toString()}"
     }
-    sh "pwd && ls -lha"
+    // sh "pwd && ls -lha"
     sh """
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/grafana-6.2.4.linux-amd64.tar.gz --directory-prefix=build/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/hive_1_2_2.tar.gz --directory-prefix=build/
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/grafana-6.2.4.linux-amd64.tar.gz --directory-prefix=build/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/hive_1_2_2.tar.gz --directory-prefix=build/ --no-check-certificate
 
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/influxdb-1.6.4.x86_64.rpm --directory-prefix=build/
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/influxdb-1.6.4.x86_64.rpm --directory-prefix=build/ --no-check-certificate
 
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.7-1PGDG.rhel6.x86_64.rpm --directory-prefix=build/postgresql/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.7-1PGDG.rhel6.x86_64.rpm --directory-prefix=build/postgresql/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.7-1PGDG.rhel6.x86_64.rpm --directory-prefix=build/postgresql/
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.7-1PGDG.rhel6.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.7-1PGDG.rhel6.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.7-1PGDG.rhel6.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
 
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.7-1PGDG.rhel7.x86_64.rpm --directory-prefix=build/postgresql/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.7-1PGDG.rhel7.x86_64.rpm --directory-prefix=build/postgresql/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.7-1PGDG.rhel7.x86_64.rpm --directory-prefix=build/postgresql/
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.7-1PGDG.rhel7.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.7-1PGDG.rhel7.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.7-1PGDG.rhel7.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
 
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
-        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
+        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
     """
     sh "npm cache verify"
 
