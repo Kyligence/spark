@@ -89,9 +89,9 @@ def setVersions(version, kylin_ver, is_GA) {
     }
     sh """
         mvn versions:set -DnewVersion=${_kylin_ver} -pl kylin
-        mvn versions:set -DnewVersion=${_version}
 
         sed -i 's/<kylin.module.version>.*<\\/kylin.module.version>/<kylin.module.version>${_kylin_ver}<\\/kylin.module.version>/g' pom.xml
+        mvn versions:set -DnewVersion=${_version}
     """
 }
 
@@ -382,6 +382,33 @@ def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir,
     }
 }
 
+def notifyToTester(title,ip) {
+    println """notifyToTester -> title[${title}],ip[${ip}]"""
+    def _title = ''
+    def _content = """
+        <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+        <p>The Job upload the package ${package_info.file_name} to the Azure server: [${ip}]</p>
+        <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
+    """
+    switch(title) {
+        case 'upload':
+            _title = 'Upload'
+            break
+        case 'deploy':
+            _title = 'Deploy'
+            _content = _content + """
+                <p>It's run in the url: </p>
+                <p><a href="http://${ip}:7072/kylin':''}">http://${ip}:7072/kylin</a></p>"""
+            break
+    }
+    sendNotify('EMAIL',
+        "SUCCESSFUL to ${_title} into the Azure CN server'",
+        // "liming.meng@kyligence.io",
+        tester_emails,
+        _content
+    )
+}
+
 pipeline {
     options {
         timeout(time: 4, unit: 'HOURS')
@@ -408,10 +435,10 @@ pipeline {
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
         // tester emails
-        tester_emails = '''minhua.feng@kyligence.io;hao.huang@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;guang.you@kyligence.io;junhui.deng@kyligence.io;
-        fengjiao.wang@kyligence.io;ao.li@kyligence.io;huiling.li@kyligence.io;chenqing.zhu@kyligence.io;jiang.ren@kyligence.io;lu.sun@kyligence.io;xinxin.li@kyligence.io'''
+        tester_emails = '''minhua.feng@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;chenqing.zhu@kyligence.io;
+        junhui.deng@kyligence.io;huiling.li@kyligence.io;xinxin.li@kyligence.io;zhongjun.chen@kyligence.io;hanhan.zhang@kyligence.io'''
         nospark_user_eamils = 'yong.fu@kyligence.io'
-        jar_user_emails = 'yongchao.li@kyligence.io'
+        jar_user_emails = 'yongchao.li@kyligence.io;fanfan.li@kyligence.io'
         // dev eamils
         dev_regular_emails = 'enwei.jiao@kyligence.io;yifan.zhang@kyligence.io'
         dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
@@ -587,6 +614,11 @@ pipeline {
                             }
                         }
                     }
+                    post {
+                        success {
+                            notifyToTester('upload', '159.27.120.141')
+                        }
+                    }
                 }
                 stage('3.2.Upload Normal to Azure CN 138') {
                     steps {
@@ -599,6 +631,11 @@ pipeline {
                                     uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
                                 }
                             }
+                        }
+                    }
+                    post {
+                        success {
+                            notifyToTester('upload', '159.27.120.138')
                         }
                     }
                 }
@@ -668,6 +705,11 @@ pipeline {
                                 paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
                         }
                     }
+                    post {
+                        success {
+                            notifyToTester('deploy', '159.27.120.141')
+                        }
+                    }
                 }
                 stage('Auto Deploy KE on Azure gw09') {
                     when {
@@ -681,23 +723,11 @@ pipeline {
                                 paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
                         }
                     }
-                }
-            }
-            post {
-                success {
-                    sendNotify('EMAIL',
-                        "SUCCESSFUL to Deploy into the Azure CN server'",
-                        // "liming.meng@kyligence.io",
-                        tester_emails,
-                        """
-                        <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
-                        <p>The Job upload the package ${package_info.file_name} to the Azure server: [159.27.120.141/159.27.120.138]</p>
-                        <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
-                        <p>It's run in the url: </p>
-                        <p><a href="${paramsDeploy['override_141']?'http://159.27.120.141:7072/kylin':''}">http : //159.27.120.141 : 7072/kylin</a></p>
-                        <p><a href="${paramsDeploy['override_138']?'http://159.27.120.138:7072/kylin':''}">http : //159.27.120.138 : 7072/kylin</a></p>
-                        """
-                    )
+                    post {
+                        success {
+                            notifyToTester('deploy', '159.27.120.138')
+                        }
+                    }
                 }
             }
         }

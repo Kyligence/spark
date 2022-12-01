@@ -1,0 +1,575 @@
+#!groovy
+
+@Library('devopslib') _
+
+import hudson.model.*;
+import jenkins.model.*;
+
+properties([
+    parameters([
+        [
+            $class: 'ChoiceParameter',
+            name: 'regtype',
+            choiceType: 'PT_SINGLE_SELECT',
+            filterable: false,
+            script:
+            [
+                $class: 'GroovyScript',
+                script:
+                [
+                    classpath: [],
+                    sandbox: true,
+                    script:
+                    """
+                    return ["ga", "sp", "daily", "other"]
+                    """
+                ],
+                fallbackScript:
+                [
+                    classpath: [],
+                    sandbox: false,
+                    script: ''
+                ],
+            ]
+        ],
+        string(name: 'kc_version',       defaultValue: '4.5.21',                                                                               description: "KC版本号"),
+        string(name: 'ke_version',       defaultValue: '4.6.1.0',                                                                              description: "KE版本号"),
+        string(name: 'ke_job_url',       defaultValue: '',                                                                                     description: "当提供ke包的job_id时, 可以加速构建过程(省去1个小时的打包时间). \n https://cicd-ofs.kyligence.com/job/KE4/view/正式交付/job/KE-All-CD-2.0/1360/"),
+        string(name: 'upgrade_package',  defaultValue: 's3://download.kyligence.io/product/kap/4.0.x/Kyligence-Enterprise-4.5.19.0-GA.tar.gz', description: "升级回滚包路径(最小跨度), 下面列出最常用的版本\ns3://download.kyligence.io/product/kap/4.0.x/Kyligence-Enterprise-4.5.1.3081-GA.tar.gz\ns3://download.kyligence.io/product/kap/4.0.x/Kyligence-Enterprise-4.5.17.0-GA.tar.gz"),
+        string(name: 'spark_file',       defaultValue: 'spark-newten-3.2.0-4.6.1.0-cloud-hadoop3.tgz',                                         description: "Spark的包，存放在S3的kyligence-ci/packages/spark-cloud下."),
+        string(name: 'notify',           defaultValue: 'tong.zheng@kyligence.io',                                                              description: "结果通知, 可填写两个不同类型的值. \n - 个人账号: tong.zheng@kyligence.io \n - 飞书群的webhook地址: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx-826d-48fd-9c81-xxxxxxxxxxxx \n - 卡片通知: 填写群名称(需要先邀请Quard机器人入群)")
+    ])
+])
+
+pipeline {
+
+    // 日报流程
+
+    // TODO:
+    // 1. aws 自动生成 kyligence_cloud_aws_3_0_quard.json 文件.
+    // 2. aws 和 azure 自动回收环境.
+    // 3. 报告写feishu文档
+    // 4. 跑完之后启动切分支出来
+
+    options {
+        timestamps()
+    }
+
+    agent {
+        node {
+            // label 'quard@mapr6.1'        // 临时使用
+
+        }
+    }
+
+    environment{
+        githubrepo="zhengtong0898"
+        githubbranch="quard-4.x-ci"
+        githubtoken="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"
+
+        quard_jenkins_server="http://10.1.2.38:8080"
+        quard_jenkins_username="quard"
+        quard_jenkins_token="11d3a455b9af7fce8ad4f84265bb926295"
+
+        feishu_app_id="cli_a384621def7c100c"
+        feishu_app_secret="pN2wI1O9fRnvUBkbkBt6Tf8iudbkVnCP"
+    }
+
+    stages {
+        stage("Prepare") {
+            steps {
+                dir('quard') {
+                    checkout([
+                        $class:             'GitSCM',
+                        branches:           [[name: env.githubbranch]],
+                        userRemoteConfigs:  [[url: "https://${env.githubtoken}@github.com/${env.githubrepo}/kyQA-Quard.git"]],
+                        browser:            [
+                                                $class: 'GithubWeb',
+                                                repoUrl: 'https://github.com/$'],
+                        extensions:         [
+                                                [$class: 'CleanBeforeCheckout'],
+                                                [$class: 'CloneOption', depth: 0, noTags: false, shallow: false, timeout: 60]
+                                            ]
+                    ])
+                }
+
+                script {
+                    sh script: '''
+                        if [[ ! -d "venv" ]]; then
+                            python3 -m venv venv
+                            venv/bin/pip install -r ./quard/requirements.txt --no-index --find-links=/mnt/jenkins/quard_newten/pip_source
+                        fi
+                        source venv/bin/activate
+                        pip install -r ./quard/requirements.txt --no-index --find-links=/mnt/jenkins/quard_newten/pip_source
+
+                        rm -f quard.tar.gz
+                        tar zcf quard.tar.gz quard/
+                        scp quard.tar.gz quard@10.0.0.24:/mnt/jenkins/quard_newten/dist/
+                    '''
+                }
+            }
+        }
+
+        stage("Build KE") {
+            parallel {
+                stage("Local") {
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                   source ../venv/bin/activate
+
+                                   parameters_1="{\\"deployWay\\": \\"Manual Select\\", \\"deployType\\": \\"Regular\\", \\"version\\": \\"${ke_version}\\", \\"envStage\\": \\"QA\\", \\"customerPkg\\": \\"NORMAL\\", \\"docs_commitid\\": \\"latest\\", \\"scanApi\\": \\"\\"}"
+                                   parameters_2="{\\"commitId_back\\": \\"newten-dev\\", \\"commitId_front\\": \\"newten-dev\\", \\"overide\\": false, \\"back_remote\\": false, \\"front_remote\\": false, \\"skipNoSpark\\": false}"
+                                   python3 pipelines/kc_package/pipeline.py build --server="https://cicd-ofs.kyligence.com" --username="tong.zheng" --token="117ce9d93aec1e60245e35890d1e2fe6c7" --job-name="KE4/KE-All-CD-2.0" --download-type="ke_and_nospark" --parameters="${parameters_1}" --input-submit-parameters="${parameters_2}" --job-url="${ke_job_url}" --version="${ke_version}" --regtype="${regtype}" --repo="KAP"
+
+                                   # download ke
+                                   cat download.txt
+                                   package_name=$(head -n 1 download.txt | awk -F ',' '{print $1}')
+                                   download_url=$(head -n 1 download.txt | awk -F ',' '{print $NF}')
+                                   wget ${download_url} --no-check-certificate >> wget.log 2>&1
+
+                                   # update license
+                                   rm -rf Kyligence-Enterprise-Quard*
+                                   mkdir -p Kyligence-Enterprise-Quard
+                                   tar zxf ${package_name} -C Kyligence-Enterprise-Quard --strip-component 1
+                                   cp /mnt/jenkins/quard_newten/license/LICENSE Kyligence-Enterprise-Quard/
+                                   tar zcf Kyligence-Enterprise-Quard.tar.gz Kyligence-Enterprise-Quard/
+
+                                   # copy file to netdisk
+                                   cp Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/dist/
+
+                                   # copy ke file to azure cdh6.3.2
+                                   scp Kyligence-Enterprise-Quard.tar.gz quard@10.0.0.24:/mnt/jenkins/quard_newten/dist/
+
+                                   # copy ke file to cdh5.16、cdh5.8
+                                   rm -rf /mnt/jenkins/quard_newten/packages/4X_CDH5.16_ALL/r9999
+                                   rm -rf /mnt/jenkins/quard_newten/packages/4X_CDH5.8_ALL/r9999
+                                   mkdir -p /mnt/jenkins/quard_newten/packages/4X_CDH5.16_ALL/r9999
+                                   mkdir -p /mnt/jenkins/quard_newten/packages/4X_CDH5.8_ALL/r9999
+                                   cp Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/packages/4X_CDH5.16_ALL/r9999
+                                   cp Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/packages/4X_CDH5.8_ALL/r9999
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage("Upgrade") {
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    mkdir -p upgrade_dir
+                                    cd upgrade_dir
+                                    # use system default python env to run awscli
+                                    package_name=$(echo "${upgrade_package}" | awk -F '/' '{print $NF}')
+                                    package_version=$(echo "${package_name}" | sed -E 's/.*-([\\.0-9]+)-.*/\\1/g')
+
+                                    # download ke
+                                    export http_proxy="http://127.0.0.1:7890"
+                                    export https_proxy="http://127.0.0.1:7890"
+                                    aws s3 cp ${upgrade_package} ./ >> aws_s3_cp.log 2>&1
+                                    unset http_proxy https_proxy
+
+                                    # update license
+                                    rm -rf Kyligence-Enterprise-Quard/
+                                    mkdir -p Kyligence-Enterprise-Quard/
+                                    tar zxf ${package_name} -C Kyligence-Enterprise-Quard --strip-component 1
+                                    cp /mnt/jenkins/quard_newten/license/LICENSE Kyligence-Enterprise-Quard/
+                                    tar zcf Kyligence-Enterprise-Quard.tar.gz Kyligence-Enterprise-Quard/
+
+                                    # copy old ke file to cdh5.16、cdh5.8
+                                    rm -rf /mnt/jenkins/quard_newten/packages/4X_CDH5.16_ALL/${package_version}/
+                                    rm -rf /mnt/jenkins/quard_newten/packages/4X_CDH5.8_ALL/${package_version}/
+                                    mkdir -p /mnt/jenkins/quard_newten/packages/4X_CDH5.16_ALL/${package_version}/
+                                    mkdir -p /mnt/jenkins/quard_newten/packages/4X_CDH5.8_ALL/${package_version}/
+                                    cp Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/packages/4X_CDH5.16_ALL/${package_version}/
+                                    cp Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/packages/4X_CDH5.8_ALL/${package_version}/
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Build KC") {
+            when { expression { return params.regtype == "ga" } }
+            steps {
+                dir('quard') {
+                    script {
+                        sh script: '''
+                            source ../venv/bin/activate
+
+                            packages=$(cat download.txt | wc -l)
+                            if [[ ${packages} -ne 2 ]]; then
+                                exit 1;
+                            fi
+
+                            branch="origin/release/${kc_version}"
+
+                            parameters="{\\"branch\\": \\"${branch}\\", \\"version\\": \\"${kc_version}-hadoop3\\"}"
+                            python3 pipelines/kc_package/pipeline.py build --server="https://devopsjenkins.kyligence.io" --username="zhengtong" --token="11105c009432d67a34e2859e0d26506a9e" --job-name="KC/0-KCDEV/Template-ZT-hadoop3" --download-type="none" --parameters="${parameters}"
+
+                            parameters="{\\"branch\\": \\"${branch}\\", \\"version\\": \\"${kc_version}-hadoop3\\"}"
+                            python3 pipelines/kc_package/pipeline.py build --server="https://devopsjenkins.kyligence.io" --username="zhengtong" --token="11105c009432d67a34e2859e0d26506a9e" --job-name="KC/0-KCDEV/Monitor-ZT-hadoop3" --download-type="none" --parameters="${parameters}"
+
+                            parameters="{\\"branch\\": \\"${branch}\\", \\"version\\": \\"${kc_version}-hadoop3\\", \\"deploy_version\\": \\"${version}-Beta\\"}"
+                            python3 pipelines/kc_package/pipeline.py build --server="https://devopsjenkins.kyligence.io" --username="zhengtong" --token="11105c009432d67a34e2859e0d26506a9e" --job-name="KC/0-KCDEV/Main-ZT-hadoop3-new" --download-type="none" --parameters="${parameters}"
+
+                            package_name=$(tail -n 1 download.txt | awk -F ',' '{print $1}')
+                            parameters="{\\"newten_type\\": \\"hadoop3\\", \\"branch\\": \\"${branch}\\", \\"kap_tar_file\\": \\"${package_name}\\", \\"spark_tar_file\\": \\"${spark_file}\\", \\"version\\": \\"${kc_version}\\"}"
+                            python3 pipelines/kc_package/pipeline.py build --server="https://devopsjenkins.kyligence.io" --username="zhengtong" --token="11105c009432d67a34e2859e0d26506a9e" --job-name="KC/0-KCDEV/Newten-Package-Quard-4517" --download-type="none" --parameters="${parameters}"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage("Test") {
+
+            parallel {
+
+                stage("AWS") {
+                    when { expression { return params.regtype == "ga" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    # python3 pipelines/kc_package/pipeline.py build --server="http://18.237.142.119:8080" --username="quard" --token="11635c963a650c0eb9fdfc8cfe6fd18d07" --job-name="AWSGlobal" --parameters="{\\"version\\": \\"${ke_version}-hadoop3\\"}
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("Azure") {
+                    when { expression { return params.regtype == "ga" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    # python3 pipelines/kc_package/pipeline.py build --server="http://10.0.0.43:8080" --username="quard" --token="11ccdc7adf97ce953dfa674138ef0e5136" --job-name="AzureChinaCloud" --parameters="{\\"version\\": \\"${ke_version}-hadoop3\\"}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("cdh632") {
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_CDH6.3.2_AZURE_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"full\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="http://10.0.0.43:8080" --username="quard" --token="11ccdc7adf97ce953dfa674138ef0e5136" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("cdh514") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_CDH5.14_HA"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("cdh516") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_CDH5.16_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("cdh58") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_CDH5.8_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("cdh60") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_CDH6.0_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("cdp716") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_CDH7.1.6_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("fic90") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_FI-C90_RW"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("hadoop272") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_HADOOP2.7.2_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("hdp24") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_HDP2.4_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("hdp31") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_HDP3.1_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("mapr61") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_MAPR6.1_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("mrs302") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_MRS3.0.2_RW"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("tdh622all") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_TDH6.2.2_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"Kyligence\\", \\"quard_branch\\": \\"quard-4.x-thd\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("tdh622thd") {
+                    when { expression { return params.regtype != "sp" } }
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    job_name="4X_TDH6.2.2_THD"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"compatibility\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"Kyligence\\", \\"quard_branch\\": \\"quard-4.x-thd\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"retry\\": \\"2\\", \\"select_tests\\": \\"transaction\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("Upgrade5.16") {
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    package_name=$(echo "${upgrade_package}" | awk -F '/' '{print $NF}')
+                                    package_version=$(echo "${package_name}" | sed -E 's/.*-([\\.0-9]+)-.*/\\1/g')
+                                    old_version="${package_version}"
+                                    new_version="r9999"
+                                    job_name="4X_CDH5.16_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"upgrade\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"is_upgrade\\": \\"true\\", \\"jenkinsfile_path\\": \\"src/tests/upgrade/JENKINSFILE\\", \\"reuse_num\\": \\"${old_version}\\", \\"upgrade_num\\": \\"${new_version}\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }
+
+                stage("Downgrade5.8") {
+                    steps {
+                        dir('quard') {
+                            script {
+                                sh script: '''
+                                    source ../venv/bin/activate
+                                    package_name=$(echo "${upgrade_package}" | awk -F '/' '{print $NF}')
+                                    package_version=$(echo "${package_name}" | sed -E 's/.*-([\\.0-9]+)-.*/\\1/g')
+                                    old_version="${package_version}"
+                                    new_version="r9999"
+                                    job_name="4X_CDH5.8_ALL"
+                                    parameters="{\\"regtype\\": \\"${regtype}\\", \\"subtype\\": \\"upgrade\\", \\"version\\": \\"${ke_version}\\", \\"quard_repo\\": \\"zhengtong0898\\", \\"quard_branch\\": \\"quard-4.x-ci\\", \\"reuse_current_ke\\":\\"false\\", \\"compatibility\\":\\"true\\", \\"is_upgrade\\": \\"true\\", \\"jenkinsfile_path\\": \\"src/tests/upgrade/JENKINSFILE\\", \\"reuse_num\\": \\"${new_version}\\", \\"upgrade_num\\": \\"${old_version}\\"}"
+                                    python3 pipelines/kc_package/pipeline.py build --server="${quard_jenkins_server}" --username="${quard_jenkins_username}" --token="${quard_jenkins_token}" --job-name="${job_name}" --parameters="${parameters}"
+                                '''
+                            }
+                        }
+                    }
+                }                
+            }
+        }
+    }
+
+    post {
+        always {
+            dir('quard') {
+                sh script: '''
+                    source ../venv/bin/activate
+
+                    cat report.json
+
+                    # 创建issue
+                    python3 pipelines/kc_package/pipeline.py issue \
+                            --jira-server="https://olapio.atlassian.net" \
+                            --jira-user="tong.zheng@kyligence.io" \
+                            --jira-token="bMyQbU0TBpAmJL3fpaHT7189" \
+                            --report-file="report.json" \
+                            --project-id="10040" \
+                            --issue-type-id="10002" \
+                            --label="Quard" \
+                            --label="Regression_Bug" \
+                            --priority-id="4" \
+                            --title="[Quard][失败用例][{today}][{regtype_cn}] {test_case}"
+
+                    # 创建飞书文档
+                    deactivate
+                    csv_file="quard_plan_result_total.csv"
+                    export http_proxy="http://127.0.0.1:7890"
+                    export https_proxy="http://127.0.0.1:7890"
+                    aws s3 cp s3://flag2/quard/plan_result/${csv_file} ./ >> aws_s3_cp.log 2>&1
+                    unset http_proxy https_proxy
+                    source ../venv/bin/activate
+                    python3 pipelines/kc_package/pipeline.py document --app-id="${feishu_app_id}" --app-secret="${feishu_app_secret}" --report-file="report.json" --csv-file="${csv_file}"
+                    deactivate
+                    export http_proxy="http://127.0.0.1:7890"
+                    export https_proxy="http://127.0.0.1:7890"
+                    aws s3 cp ./${csv_file} s3://flag2/quard/plan_result/${csv_file} >> aws_s3_cp.log 2>&1
+                    unset http_proxy https_proxy
+                    source ../venv/bin/activate
+
+                    # 发送通知
+                    if [ ! -z $(echo "${notify}" | grep "@kyligence.io") ]; then
+                        python3 pipelines/kc_package/pipeline.py notify --type="user" --app-id="${feishu_app_id}" --app-secret="${feishu_app_secret}" --user-email="${notify}" --report-file="report.json"
+                    elif [ ! -z $(echo "${notify}" | grep "https://") ]; then
+                        python3 pipelines/kc_package/pipeline.py notify --type="group" --app-id="${feishu_app_id}" --app-secret="${feishu_app_secret}" --webhook="${notify}" --report-file="report.json"
+                    else  # 根据群聊名称来发送通知
+                        python3 pipelines/kc_package/pipeline.py notify --type="interactive" --app-id="${feishu_app_id}" --app-secret="${feishu_app_secret}" --chat-name="${notify}" --report-file="report.json"
+                    fi
+                '''
+            }
+        }
+    }
+    
+}

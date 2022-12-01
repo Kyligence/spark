@@ -5,7 +5,7 @@
  * @param fromRemote skip the mirror and pull the code from the remote
  */
 def call(String project, String branch, Boolean fromRemote=false, String repo='Kyligence', String refspec = '+refs/heads/*:refs/remotes/origin/*', Boolean syncGitMirror=true, String certificate=null) {
-    println "pullCodeFromGitMirrorNew -> params: project: ${project}, branch/commit: ${branch}, fromRemote: ${fromRemote}, repo: ${repo}, syncGitMirror: ${syncGitMirror}, certificate: ${certificate}"
+    // println "pullCodeFromGitMirrorNew -> params: project: ${project}, branch/commit: ${branch}, fromRemote: ${fromRemote}, repo: ${repo}, refspec: ${refspec}, syncGitMirror: ${syncGitMirror}, certificate: ${certificate}"
     if (!branch) {
         error 'branch 参数不能为空'
     }

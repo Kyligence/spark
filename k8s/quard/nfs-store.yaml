@@ -1,0 +1,34 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: quard-pv
+  labels:
+    pv: nfs-quard
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /Jenkins  # 指定nfs的挂载点
+    server: 10.1.2.110  # 指定nfs服务地址
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: quard-pvc
+  namespace: cicd
+spec:
+  accessModes:
+    - ReadWriteMany
+  # 指定 storageClass 的名字，这里使用默认的 standard
+  storageClassName: ''
+  resources:
+    requests:
+      storage: 100Gi
+  selector:
+    matchLabels:
+      pv: nfs-quard
