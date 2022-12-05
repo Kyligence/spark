@@ -150,7 +150,7 @@ def publishCoverage() {
         sh "du -h ./agg_test_coverages"
         sh script: """
             execfiles=`find . -path '*\\/target*jacoco.exec' -exec printf "{} " \\;`
-            classfiles=`find . -path '*target\\/classes' -exec printf "--classfiles {} " \\;`
+            classfiles=`find . -path '*target\\/classes' ! -path '*clickhouse*' -exec printf "--classfiles {} " \\;`
             java -jar /var/jacoco/jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
         """
         publishCoverage adapters: [jacocoAdapter('jacoco.xml')]
