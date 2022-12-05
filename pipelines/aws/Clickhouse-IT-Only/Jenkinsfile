@@ -54,7 +54,12 @@ pipeline {
                     dir("sourcecode") {
                         script {
                             retry(2) {
-                                sh script: "mvn clean test --fail-at-end -pl kylin/src/second-storage/clickhouse-it -DfailIfNoTests=false -Duser.timezone=GMT+8 -DskipBuild=true"
+                                sh script: "mvn clean test --fail-at-end \
+                                -pl kylin/src/second-storage/core \
+                                -pl kylin/src/second-storage/core-ui \
+                                -pl kylin/src/second-storage/clickhouse \
+                                -pl kylin/src/second-storage/clickhouse-it \
+                                -DfailIfNoTests=false -Duser.timezone=GMT+8 -DskipBuild=true"
                             }
                         }
                     }
@@ -76,7 +81,7 @@ pipeline {
                                 }
                                 sh script: """
                                     execfiles=`find . -path '*\\/target*jacoco.exec' -exec printf "{} " \\;`
-                                    classfiles=`find . -path '*target\\/classes' -path '*clickhouse*' -exec printf "--classfiles {} " \\;`
+                                    classfiles=`find . -path '*target\\/classes' -path '*second-storage*' -exec printf "--classfiles {} " \\;`
                                     java -jar jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
                                 """
                                 publishCoverage adapters: [jacocoAdapter('jacoco.xml')]

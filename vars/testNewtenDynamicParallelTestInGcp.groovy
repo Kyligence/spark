@@ -105,10 +105,10 @@ Map<String, List<String>> evalTestModules() {
             }
 
             // remove clickhouse-it modules
-            def clickhouse_it_module = allSubModules.findAll({ it.contains('src/second-storage/clickhouse-it') }).getAt(0)
+            def clickhouse_it_module = allSubModules.findAll({ it.contains('src/second-storage') })
             if (clickhouse_it_module) {
                 println "clickhouse-it modules: ${clickhouse_it_module}"
-                allSubModules.removeAll([clickhouse_it_module])
+                allSubModules.removeAll(clickhouse_it_module)
             }
 
             Collections.reverse(allSubModules)
