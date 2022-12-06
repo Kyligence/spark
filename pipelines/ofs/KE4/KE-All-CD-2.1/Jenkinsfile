@@ -497,6 +497,7 @@ pipeline {
                             steps {
                                 container('build') {
                                     script {
+                                        sh 'cat /root/.m2/settings.xml'
                                         def no_spark = true
                                         def bpns = buildPackage('sourcecode1', pull_result_nospark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                         no_spark_package_info = bpns.no_spark_package_info
@@ -525,6 +526,7 @@ pipeline {
                             steps {
                                 container('build2') {
                                     script {
+                                        sh 'cat /root/.m2/settings.xml'
                                         def no_spark = false
                                         def bp = buildPackage('sourcecode2', pull_result_withspark, params.version, params.kylin_ver, params.envStage, params.deployType, no_spark, params.docs_commitid, params.customerPkg, paramsMap)
                                         package_info = bp.package_info
