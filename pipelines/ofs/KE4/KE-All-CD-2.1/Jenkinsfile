@@ -382,7 +382,7 @@ def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir,
     }
 }
 
-def notifyToTester(title,ip) {
+def notifyToTester(title, ip, failure = false) {
     println """notifyToTester -> title[${title}],ip[${ip}]"""
     def _title = ''
     def _content = """
@@ -401,12 +401,20 @@ def notifyToTester(title,ip) {
                 <p><a href="http://${ip}:7072/kylin':''}">http://${ip}:7072/kylin</a></p>"""
             break
     }
-    sendNotify('EMAIL',
-        "SUCCESSFUL to ${_title} into the Azure CN server'",
-        // "liming.meng@kyligence.io",
-        tester_emails,
-        _content
-    )
+    
+    if(!failure) {
+        sendNotify('EMAIL',
+            "SUCCESSFUL to ${_title} into the Azure CN server'",
+            tester_emails,
+            _content
+        )
+    } else {
+        sendNotify('EMAIL',
+            "Fail to ${_title} into the Azure CN server'",
+            devops_emails,
+            _content
+        )
+    }
 }
 
 pipeline {
@@ -432,8 +440,12 @@ pipeline {
         package_path = ''
         // 文件名(给测试过程中的名字)
         file_name = ''
+        fail_upload = false
+        fail_deploy = false
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
+        // devops emails
+        devops_emails = 'liming.meng@kyligence.io;qingfeng.tian@kyligence.io;cheng.zuo@kyligence.io;tao.xing@kyligence.io;'
         // tester emails
         tester_emails = '''minhua.feng@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;chenqing.zhu@kyligence.io;
         junhui.deng@kyligence.io;huiling.li@kyligence.io;xinxin.li@kyligence.io;zhongjun.chen@kyligence.io;hanhan.zhang@kyligence.io'''
@@ -629,20 +641,21 @@ pipeline {
                                 println "package_info->${package_info}"
                                 // uplaodAzure(package_info, 'sourcecode2')
                                 // uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', '', 'azure-4xuser')
-                                retry(3) {
-                                    try {
-                                        uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
-                                    } catch(ex) {
-                                        echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
-                                        echo ex.getMessage()
-                                    }
+                                // retry(3) {
+                                try {
+                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
+                                } catch(ex) {
+                                    echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                                    echo ex.getMessage()
+                                    fail_upload = true
                                 }
+                                // }
                             }
                         }
                     }
                     post {
                         success {
-                            notifyToTester('upload', '159.27.120.138')
+                            notifyToTester('upload', '159.27.120.138', fail_upload)
                         }
                     }
                 }
@@ -733,13 +746,14 @@ pipeline {
                                 } catch(ex) {
                                     echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
                                     echo ex.getMessage()
+                                    fail_deploy = true
                                 }
                             }
                         }
                     }
                     post {
                         success {
-                            notifyToTester('deploy', '159.27.120.138')
+                            notifyToTester('deploy', '159.27.120.138', fail_deploy)
                         }
                     }
                 }
