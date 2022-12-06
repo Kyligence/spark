@@ -440,7 +440,7 @@ pipeline {
         nospark_user_eamils = 'yong.fu@kyligence.io'
         jar_user_emails = 'yongchao.li@kyligence.io;fanfan.li@kyligence.io'
         // dev eamils
-        dev_regular_emails = 'enwei.jiao@kyligence.io;yifan.zhang@kyligence.io'
+        dev_regular_emails = 'lu.cao@kyligence.io;yifan.zhang@kyligence.io'
         dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
         dev_front_emails = 'qian.xia@kyligence.io'
         // product emails
@@ -630,7 +630,12 @@ pipeline {
                                 // uplaodAzure(package_info, 'sourcecode2')
                                 // uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', '', 'azure-4xuser')
                                 retry(3) {
-                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
+                                    try {
+                                        uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
+                                    } catch(ex) {
+                                        echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                                        echo ex.getMessage()
+                                    }
                                 }
                             }
                         }
@@ -721,8 +726,13 @@ pipeline {
                     }
                     steps {
                         container('build2') {
-                            deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
-                                paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                            try {    
+                                deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
+                                    paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                            } catch(ex) {
+                                echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                                echo ex.getMessage()
+                            }
                         }
                     }
                     post {
