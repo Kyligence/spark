@@ -95,14 +95,6 @@ def setVersions(version, kylin_ver, is_GA) {
     """
 }
 
-def mvnDeploy() {
-    sh 'mvn deploy -Pdev -DskipTests -T 4C'
-
-    dir('kylin') {
-        sh 'mvn deploy -Pdev -DskipTests -T 4C'
-    }
-}
-
 // git获取KE代码（预先触发同步git mirror）
 def gitCodeKe(back, front, pMap) {
     print "gitCodeKe -> back[${back}],front[${front}],pMap[${pMap}]"
@@ -117,18 +109,6 @@ def gitCodeKe(back, front, pMap) {
 
         result.release_commitid_back = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
         println "result.release_commitid_back: ${result.release_commitid_back}"
-        // result.release_commitid_back = release_commitid_back
-
-        // setVersions(version, kylin_ver, is_GA)
-
-        // def _front
-        // if (!front) {
-        //     println "No commitId_front, use the commitId_back: ${back}"
-        //     _front = back
-        // } else {
-        //     println "checkout KAP_Frontend to kystudio, use the commitid: ${front}"
-        //     _front = front
-        // }
 
         // sh 'ls -lha && ls -lha kystudio'
         sh 'rm -rf kystudio'
@@ -670,7 +650,7 @@ pipeline {
                             script {
                                 dir('sourcecode2') {
                                     setVersions(params.version, params.kylin_ver, false)
-                                    mvnDeploy()
+                                    sh 'mvn deploy -Pdev -DskipTests -T 4C'
                                 }
                             }
                         }
@@ -812,8 +792,8 @@ pipeline {
                             // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
                             retry(2) {
                                 // uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                                // uploadHelper('AWSS3', ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'sourcecode2', 'cn-west-1', 'aws_global_s3_cp')
-                                uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-west-1', 'aws_global_s3_cp', 'sourcecode2')
+                                // uploadHelper('AWSS3', ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'sourcecode2', 'us-west-1', 'aws_global_s3_cp')
+                                uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'us-west-1', 'aws_global_s3_cp', 'sourcecode2')
                             }
                         }
                     }
@@ -835,7 +815,7 @@ pipeline {
                         container('build2') {
                             script {
                                 dir('sourcecode2') {
-                                    mvnDeploy()
+                                    sh 'mvn deploy -Pdev -DskipTests -T 4C'
                                 }
                             }
                         }
