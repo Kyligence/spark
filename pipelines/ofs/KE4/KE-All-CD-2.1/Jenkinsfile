@@ -726,12 +726,14 @@ pipeline {
                     }
                     steps {
                         container('build2') {
-                            try {    
-                                deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
-                                    paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
-                            } catch(ex) {
-                                echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
-                                echo ex.getMessage()
+                            script {
+                                try {    
+                                    deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
+                                        paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                                } catch(ex) {
+                                    echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                                    echo ex.getMessage()
+                                }
                             }
                         }
                     }
