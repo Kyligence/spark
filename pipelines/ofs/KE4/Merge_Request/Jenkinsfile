@@ -1,0 +1,74 @@
+#!groovy
+
+import org.kohsuke.github.GitHub
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+        }
+    }
+
+    parameters {
+        string(name: 'backend_from', defaultValue: 'Kyligence:newten-dev', description: '指定后端开发分支')
+        string(name: 'backend_to', defaultValue: 'newten', description: '指定后端主分支')
+        string(name: 'frontend_from', defaultValue: 'Kyligence:newten-dev', description: '指定前端开发分支')
+        string(name: 'frontend_to', defaultValue: 'newten', description: '指定前端主分支')
+        string(name: 'reason', defaultValue: '', description: '合并原因')
+    }
+
+    stages {
+        stage('Create Pull Request') {
+            steps {
+                script {
+                    if (!params.reason) {
+                        throw new IllegalArgumentException("必须填 reason 参数")
+                    }
+
+                    withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
+                        def github = GitHub.connect(login, token)
+
+                        def backend = github.getRepository("Kyligence/KAP")
+                        def frontend = github.getRepository("Kyligence/KAP_Frontend")
+
+                        def backend_pullrequest = createPullRequest(backend, params.backend_from, params.backend_to, params.reason)
+                        def frontend_pullrequest = createPullRequest(frontend, params.frontend_from, params.frontend_to, params.reason)
+
+                        def refresh = 0
+                        while(refresh < 30 && (backend_pullrequest.getMergeable() == null || frontend_pullrequest.getMergeable() == null)) {
+                            println "refresh mergeable state..."
+                            sleep 5
+                            refresh += 5
+                        }
+
+                        def backend_mergeable = backend_pullrequest.getMergeable() ?: "Unknown"
+                        def frontend_mergeable = frontend_pullrequest.getMergeable() ?: "Unknown"
+
+                        currentBuild.description = """
+                            <div><a href="${backend_pullrequest.getHtmlUrl()}" rel="nofollow noopener noreferrer">PR #${backend_pullrequest.getNumber()}</a>: ${backend_pullrequest.getTitle()}, mergeable[${backend_mergeable}], mergeable_state[${backend_pullrequest.getMergeableState()}]</div>
+                            <div><a href="${frontend_pullrequest.getHtmlUrl()}" rel="nofollow noopener noreferrer">PR #${frontend_pullrequest.getNumber()}</a>: ${frontend_pullrequest.getTitle()}, mergeable[${frontend_mergeable}], mergeable_state[${frontend_pullrequest.getMergeableState()}]</div>
+                        """
+                    }
+
+                }
+            }
+        }
+    }
+}
+
+def createPullRequest(repo, from, to, reason) {
+    def body = """
+### info
+merge ${from} into ${to}
+
+### reason
+${reason}
+
+from jenkins job [${BUILD_NUMBER}](${BUILD_URL})
+    """
+
+    return repo.createPullRequest("Pull Request From Jenkins", from, to, body)
+}
