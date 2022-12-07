@@ -531,7 +531,7 @@ pipeline {
                         stage('Scan Public API') {
                             when {
                                 expression {
-                                    return params.envStage in ['RC','GA'] || params.scanApi == true
+                                    return params.scanApi == true
                                 }
                             }
                             steps {
