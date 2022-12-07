@@ -1,0 +1,89 @@
+#!groovy
+
+@Library('devopslib') _
+
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name) {
+    timestamps {
+        println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
+        withAWS(region: region, credentials: credentials) {
+            s3Upload(bucket: bucket, path: path, file: ga_name)
+        }
+    }
+}
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-agent-petoolbox.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'PE-Toolbox repo')
+        string(name: 'branch', defaultValue: 'master', description: 'branch')
+        string(name: 'version', defaultValue: '', description: 'version')
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                if (params.repo == 'Kyligence') {
+                                    pullCodeFromGitMirror 'PE-Toolbox', params.branch
+                                } else {
+                                    githubCheckout 'PE-Toolbox', params.branch, 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git', params.repo
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Package') {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            sh script: """
+                            ls -la
+                            bash ./package.sh 
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('Upload') {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            def _version = params.version
+                            if (_version) {
+                                sh script: './mvnw help:evaluate -Dexpression=project.version -q -DforceStdout'
+                                sh script: """
+                                echo "Deploy version is setting to ${params.version}"
+                                ./mvnw versions:set -DnewVersion=${params.version}
+                                """
+                            } else {
+                                _version = sh(returnStdout: true, script: "./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout")
+                            }
+                            println("upload to AWS S3: pe-toolbox-${_version}-bin.zip")
+                            uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "petoolbox/pe-toolbox-${_version}-bin.zip", "packaging/target/pe-toolbox-bin.zip")
+                            println("Download URL: https://download-resource.s3.cn-north-1.amazonaws.com.cn/petoolbox/pe-toolbox-${_version}-bin.zip")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

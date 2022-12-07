@@ -1,0 +1,102 @@
+#!groovy
+
+@Library('devopslib') _
+
+// 上传制品包到Aws S3存储
+def uploadAwsS3(region, credentials, bucket, path, ga_name) {
+    timestamps {
+        println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}")
+        withAWS(region: region, credentials: credentials) {
+            s3Upload(bucket: bucket, path: path, file: ga_name)
+        }
+    }
+}
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-agent-petoolbox.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'jifa repo')
+        string(name: 'branch', defaultValue: 'kyjifa', description: 'jifa branch')
+        string(name: 'version', defaultValue: '', description: 'jifa version, must be specified')
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror 'kyjifa', params.branch
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Gradle Install') {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        retry(10) {
+                            script {
+                                sh script: "ls -la"
+                                sh script: """
+                                    cd scripts
+                                    bash build_worker.sh
+                                """
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            sh script: "ls -la artifacts"
+                            sh script: """
+                                cp -r frontend/build artifacts/webroot
+                                cd artifacts
+                                unzip worker-1.0.zip
+                                mv worker-1.0 jifa-worker
+                                mv webroot/ jifa-worker/
+                                tar -czvf jifa-worker-${params.version}.tgz jifa-worker
+                            """
+                            sh script: "ls -la artifacts"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Upload') {
+            when { expression { return params.version } }
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            println("upload to AWS S3: jifa-worker-${params.version}.tgz")
+                            uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "petoolbox/jifa-worker-${params.version}.tgz", "artifacts/jifa-worker-${params.version}.tgz")
+                            println("Download URL: https://download-resource.s3.cn-north-1.amazonaws.com.cn/petoolbox/jifa-worker-${params.version}.tgz")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+

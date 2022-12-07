@@ -1,0 +1,64 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 2, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-agent-petoolbox.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'repo', defaultValue: 'Kyligence', description: 'kyarthas repo')
+        string(name: 'branch', defaultValue: 'kyarthas-3.6.7', description: 'branch')
+        string(name: 'version', defaultValue: '', description: 'version')
+    }
+
+    stages {
+        stage("Checkout Source Code") {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            retry(3) {
+                                pullCodeFromGitMirror 'kyarthas', params.branch
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build and Deploy') {
+            steps {
+                container("pe") {
+                    dir("sourcecode") {
+                        script {
+                            if (params.version) {
+                                sh script: './mvnw help:evaluate -Dexpression=project.version -q -DforceStdout'
+                                sh script: """
+                                echo "Deploy version is setting to ${params.version}"
+                                ./mvnw versions:set -DnewVersion=${params.version}
+                                """
+                            }
+
+                            sh script: """
+                            ls -la
+                            ./mvnw clean deploy -DskipTests -Pdev
+                            """
+
+                            println("Tunnel server fatjar download URL: https://repo-ofs.kyligence.com/repository/maven-releases/com/taobao/arthas/arthas-tunnel-server/${params.version}/arthas-tunnel-server-\"${params.version}\"-fatjar.jar")
+                            println("Kyarthas zip download URL: https://repo-ofs.kyligence.com/repository/maven-releases/com/taobao/arthas/arthas-packaging/${params.version}/arthas-packaging-${params.version}-bin.zip")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+

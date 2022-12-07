@@ -1,0 +1,40 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+spec:
+  containers:
+    - name: "pe"
+      tty: true
+      command:
+        - "cat"
+      image: "ygjia/pe-build:v4-20221101"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.gradle"
+          name: "jenkins-common"
+          subPath: "gradle7"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
+
+      resources:
+        requests:
+          memory: "12Gi"
+          cpu: "6"
+          ephemeral-storage: "7Gi"
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "lex-mvn-settings"
+      name: "lex-mvn-settings"
