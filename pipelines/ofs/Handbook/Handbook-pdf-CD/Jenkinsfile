@@ -40,7 +40,7 @@ def type_mapping = ['KC 4.6': ['project': 'Cloud_Manual', 'version':'v4.6', 'pat
 
                     'KM 1.1':['project': 'KM-Manual', 'version':'v1.1', 'path': 'manager/v1.1', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_1_1-zh', 'pdf_name_en':'Kyligence_Manager_1_1-en'],
                     'KM 4.3':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.3', 'path': 'manager/v4.3', 'branch': 'km-4.3.x', 'pdf_name_zh':'Kyligence_Manager_4_3-zh', 'pdf_name_en':'Kyligence_Manager_4_3-en'],
-                    'KM 4.5':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.5', 'path': 'manager/v4.5', 'branch': 'KM-4.5.x', 'pdf_name_zh':'Kyligence_Manager_4_5-zh', 'pdf_name_en':'Kyligence_Manager_4_5-en'],
+                    'KM 4.5':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.5', 'path': 'manager/v4.5', 'branch': 'km-4.5.x', 'pdf_name_zh':'Kyligence_Manager_4_5-zh', 'pdf_name_en':'Kyligence_Manager_4_5-en'],
                     'KM 4.6':['project': 'Kyligence-Manager-2-Manual', 'version':'v4.6', 'path': 'manager/v4.6', 'branch': 'master', 'pdf_name_zh':'Kyligence_Manager_4_6-zh', 'pdf_name_en':'Kyligence_Manager_4_6-en'],
 
                     'MDX 1.2':['project': 'MDX-Manual', 'version':'v1.2', 'path': 'mdx/v1.2', 'branch': '1.2', 'pdf_name_zh':'Kyligence_mdx_1_2-zh-cn', 'pdf_name_en':'Kyligence_mdx_1_2-en'],
