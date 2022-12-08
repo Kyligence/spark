@@ -800,12 +800,14 @@ pipeline {
                 }
                 stage('GA Nexus') {
                     steps {
-                        script {
-                            println("upload to Nexus repo-ofs: ${ga_name}")
-                            retry(2) {
-                                // uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
-                                // uploadHelper('NEXUS', ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
-                                uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
+                        container('build') {
+                            script {
+                                println("upload to Nexus repo-ofs: ${ga_name}")
+                                retry(2) {
+                                    // uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
+                                    // uploadHelper('NEXUS', ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
+                                    uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
+                                }
                             }
                         }
                     }
