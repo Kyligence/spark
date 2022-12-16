@@ -1,0 +1,45 @@
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/samples/helmer/jenkins-agent.yaml'
+        }
+    }
+
+    stages {
+        stage('push to harbor') {
+            steps {
+                container('helm') {
+                    timestamps {
+                        withCredentials([usernamePassword(credentialsId: 'helm-to-harbor', passwordVariable: 'password', usernameVariable: 'username')]) {
+                          sh '''
+                            helm version
+                            helm plugin list
+                            helm  create mychart_$(date +%Y-%m-%d-%H%M)
+                            helm repo add --username $username --password $password harbor-local  https://harbor-ofs.kyligence.com/chartrepo/xt-test
+                            helm cm-push mychart_$(date +%Y-%m-%d-%H%M)/ harbor-local
+                          '''  
+                        }  
+                    }
+                }
+            }
+        }
+        stage('pull from harbor') {
+            steps {
+                container('helm') {
+                    timestamps {
+                        sh '''
+                          helm repo update
+                          helm pull harbor-local/mychart_$(date +%Y-%m-%d-%H%M)
+                        '''  
+                    }
+                }
+            }
+        }
+    }
+}
