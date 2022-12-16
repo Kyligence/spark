@@ -14,12 +14,9 @@ pipeline {
     }
 
     parameters {
-        string(name: 'repo', defaultValue: 'custom-user-manager-4x', description: 'git repository（GitHub ID）：default custom-user-manager-4x')
-        choice(name: 'branch', choices: ['changan-4x', 'aums', 'cmft'], description: 'git manager branch')
-        string(name: 'version', defaultValue: '', description: 'manager version\n for example: 1.0.4')
+        choice(name: 'module', choices: ['all', 'chongqingchangan', 'yinlianshangwu', 'yum', 'zhaoshangjinke'], description: '指定运行的模块名称')
         string(name: 'keVersion', defaultValue: '', description: 'ke version\n for example: 4.5.17.0')
         choice(name: 'option', choices: ['isDeploy', 'isIT'], description: 'deploy or integration test')
-        string(name: 'extraOption', defaultValue: 'normal', description: 'normal/sleep')
     }
 
     environment {
@@ -27,35 +24,43 @@ pipeline {
     }
 
     stages {
-        stage("Checkout Test Web Source Code") {
+        stage("Checkout Source Code") {
             steps {
                 container("build") {
-                    dir("sourcecode") {
+                    dir("custom-user-manager-4x") {
                         script {
                             retry(3) {
-                                githubCheckout "custom-user-manager-4x", "master", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
+                                githubCheckout 'custom-user-manager-4x', 'main', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'Kyligence'
                             }
                         }
                     }
                 }
             }
         }
+
+        stage('Maven Install') {
+            steps {
+                container("build") {
+                    sh "cat /root/.m2/settings.xml"
+                    dir("custom-user-manager-4x") {
+                        script {
+                            sh script: """
+                                    git branch
+                                    mvn -Dkap.version=5.0.0-ke-${params.keVersion} clean install -DskipTests
+                                """
+                        }
+                    }
+                }
+            }
+        }
+
         stage('copy_file_to_remote') {
             steps {
                 container('build') {
-                    dir("sourcecode") {
+                    dir("custom-user-manager-4x") {
                         timestamps {
                             script {
-                                cmd = "mkdir -p /root/manager"
-                                echo "cmd: ${cmd}"
-                                sshCmdWithCredentials(
-                                        cmd,
-                                        'shuiaileiroot',
-                                        ['name': 'localhost', 'host': '10.1.2.181', 'allowAnyHosts': true]
-                                )
-                            }
-                            script {
-                                cmd = "rm -rf /root/manager/bin"
+                                cmd = "rm -rf /opt/custom-user-manager-4x"
                                 echo "cmd: ${cmd}"
                                 sshCmdWithCredentials(
                                         cmd,
@@ -65,8 +70,8 @@ pipeline {
                             }
                             script {
                                 def remote = [:]
-                                def file_name = "./../sourcecode/bin"
-                                def remote_path = "/root/manager"
+                                def file_name = "./../custom-user-manager-4x"
+                                def remote_path = "/opt"
                                 def remote_ip = "10.1.2.181"
                                 remote.name = 'server_test_env'
                                 def credentials = "shuiaileiroot"
@@ -80,46 +85,9 @@ pipeline {
                                 remote.allowAnyHosts = true
                                 sshPut remote: remote, from: file_name, into: remote_path
                                 sshCommand remote: remote, command: """
-                                ls -lh ${remote_path}
-                                """
+                    ls -lh ${remote_path}
+                """
                             }
-                        }
-                    }
-                }
-            }
-        }
-
-        stage("Checkout Source Code") {
-            steps {
-                container("build") {
-                    dir("sourcecode") {
-                        script {
-                            retry(3) {
-                                githubCheckout "${params.repo}", "${params.branch ?: 'changan-4x'}", 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*'
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        stage('Maven Install') {
-            steps {
-                container("build") {
-                    sh "cat /root/.m2/settings.xml"
-                    dir("sourcecode") {
-                        script {
-                            sh script: """
-                                echo "skip tests"
-                                mvn clean install -DskipTests
-                            """
-                        }
-                        script {
-                            def newVersion = params.version + "-SNAPSHOT"
-                            sh script: """
-                            echo "start deploy SNAPSHOT ${newVersion}"
-                            mvn versions:set -DnewVersion=${newVersion}
-                            mvn clean deploy  -DskipTests
-                        """
                         }
                     }
                 }
@@ -128,36 +96,36 @@ pipeline {
         stage('test_prepare') {
             when {
                 expression {
-                    return params.option == 'isIT'
+                    return params.module != 'zhaoshangjinke'
                 }
             }
             steps {
                 container("build") {
-                    dir("sourcecode") {
+                    dir("custom-user-manager-4x") {
                         script {
-                            def branch = "${params.branch ?: 'changan-4x'}"
-                            def version = "${params.version}"
+                            def installDir = "/opt"
                             def keVersion = "${params.keVersion}"
-                            echo "branch: ${branch}"
-                            echo "version: ${version}"
-                            cmd = "sh /root/manager/bin/manager_test.sh test " + branch + " " + keVersion + " " + version
+                            def module= "${params.module}" == 'all' ? "chongqingchangan" : "${params.module}"
+                            def host = "10.1.2.181"
+                            def moduleVersion = sh(script: " mvn help:evaluate -Dexpression=sub.version -pl ${module} | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
+                            cmd = "sh " + installDir + "/custom-user-manager-4x/benchmark/src/main/resources/script/prepareKEEnvironment.sh  " + keVersion + " " + moduleVersion + " " + module
                             echo "cmd: ${cmd}"
                             sshCmdWithCredentials(
                                     cmd,
                                     'shuiaileiroot',
-                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
+                                    ['name': 'localhost', 'host': host, 'allowAnyHosts': true]
                             )
                             echo "ssh cmd send success"
                             echo "Listen for the KE running status"
-                            def url= 'http://10.1.2.181:7383/kylin/api/system/license'
+                            def url = "http://10.1.2.181:7080/kylin/api/system/license"
                             def i = 0
                             retry(10) {
                                 echo "Get KE Status ${++i} "
-                                try{
-                                    def response = httpRequest \
-                                            httpMode: 'GET' ,
-                                    contentType: 'APPLICATION_JSON',
-                                    url: url
+                                try {
+                                    def response = httpRequest     \
+                                                httpMode: 'GET',
+                                            contentType: 'APPLICATION_JSON',
+                                            url: url
                                     def status = response.status
                                     echo "status: ${status}"
                                 } catch (e) {
@@ -171,34 +139,23 @@ pipeline {
                 }
             }
         }
-        stage('test') {
+        stage('testCI') {
             when {
                 expression {
-                    return params.option == 'isIT'
+                    return params.module != 'zhaoshangjinke'
                 }
             }
             steps {
                 container("build") {
-                    dir("sourcecode") {
-                        script {
-                            def branch = "${params.branch ?: 'changan-4x'}"
-                            def sleepTest = "${params.extraOption ?: 'normal'}"
-                            echo "branch: ${branch}"
-                            echo "sleepTest: ${sleepTest}"
-                            echo "start happy pass test."
-                            cmd = "sh /root/manager/bin/happy_pass.sh " + branch + " " + sleepTest
-                            echo "cmd: ${cmd}"
-                            sshCmdWithCredentials(
-                                    cmd,
-                                    'shuiaileiroot',
-                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
-                            )
-                            echo "happy pass test finished."
-                        }
+                    dir("custom-user-manager-4x") {
+                        sh script: """
+                            mvn test -Dtest=io.kyligence.kap.TestCI#testCI -pl benchmark
+                        """
                     }
                 }
             }
         }
+
         stage('Deploy') {
             when {
                 expression {
@@ -207,57 +164,11 @@ pipeline {
             }
             steps {
                 container("build") {
-                    sh "cat /root/.m2/settings.xml"
-                    dir("sourcecode") {
+                    dir("custom-user-manager-4x") {
                         script {
                             sh script: """
-                            echo "start deploy ${params.isDeploy}"
-                            mvn versions:set -DnewVersion=${version}
-                            mvn clean deploy  -DskipTests
-                        """
-                        }
-                    }
-                }
-            }
-        }
-        stage('record') {
-            when {
-                expression {
-                    return params.option == 'isDeploy'
-                }
-            }
-            steps {
-                container("build") {
-                    dir("sourcecode") {
-                        script {
-                            def branch = "${params.branch ?: 'changan-4x'}"
-                            def version = "${params.version}"
-                            def keVersion = "${params.keVersion}"
-                            echo "branch: ${branch}"
-                            echo "version: ${version}"
-                            cmd = "sh /root/manager/bin/manager_test.sh record " + branch + " " + keVersion + " " + version
-                            echo "cmd: ${cmd}"
-                            sshCmdWithCredentials(
-                                    cmd,
-                                    'shuiaileiroot',
-                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
-                            )
-                            echo "ssh cmd send success"
-                        }
-                        script {
-                            def branch = "${params.branch ?: 'changan-4x'}"
-                            def version = "${params.version}"
-                            def keVersion = "${params.keVersion}"
-                            echo "branch: ${branch}"
-                            echo "start record."
-                            cmd = "sh /root/manager/bin/happy_pass.sh " + branch + " record " + keVersion + " " + version
-                            echo "cmd: ${cmd}"
-                            sshCmdWithCredentials(
-                                    cmd,
-                                    'shuiaileiroot',
-                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
-                            )
-                            echo "record finished."
+                                   sh benchmark/src/main/resources/script/deployRelease.sh ${params.keVersion}
+                                """
                         }
                     }
                 }
@@ -272,10 +183,19 @@ pipeline {
             }
             steps {
                 container("build") {
-                    dir("sourcecode") {
+                    dir("custom-user-manager-4x") {
                         script {
-                            def _tag = "tag-" + params.branch + "-" + params.version
-                            githubHelper 'TAG', params.branch, 'custom-user-manager-4x', _tag
+                            def sdkVersion = ''
+                            if (params.module == 'all') {
+                                sdkVersion = sh(script: " mvn help:evaluate -Dexpression=revision | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
+                            } else {
+                                sdkVersion = sh(script: " mvn help:evaluate -Dexpression=sub.version -pl ${params.module} | grep -v \"INFO\" | grep -v \"WARNING\" | tail -n 1 ", returnStdout:true).trim()
+                            }
+                            echo "sdkVersion: ${sdkVersion}"
+                            if (!sdkVersion.contains("-SNAPSHOT")) {
+                                def _tag = "v-" + params.module + "-" + sdkVersion
+                                githubHelper 'TAG', "main", 'custom-user-manager-4x', _tag
+                            }
                         }
                     }
                 }
