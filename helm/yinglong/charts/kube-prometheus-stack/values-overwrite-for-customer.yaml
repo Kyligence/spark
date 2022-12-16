@@ -1,0 +1,289 @@
+global:
+  imagePullSecrets:
+  - name: docker-secret
+prometheusOperator:
+  image:
+    repository: harbor-ofs.kyligence.com/xuanwu/prometheus-operator
+    tag: v0.59.1
+    sha: ""
+    pullPolicy: Always
+  prometheusConfigReloader:
+    image:
+      repository: harbor-ofs.kyligence.com/xuanwu/prometheus-operator-prometheus-config-reloader
+      tag: v0.59.1
+      sha: ""    
+  admissionWebhooks:
+    patch:
+      image:
+        repository: harbor-ofs.kyligence.com/xuanwu/dyrnq-kube-webhook-certgen
+        tag: v1.3.0
+        sha: ""
+        pullPolicy: Always
+
+alertmanager: 
+  alertmanagerSpec:
+    ## Image of Alertmanager
+    image:
+      repository: harbor-ofs.kyligence.com/xuanwu/prometheus-alertmanager
+      tag: v0.24.0
+  
+prometheus:
+  service:
+    type: NodePort
+  prometheusSpec:
+    image:
+      repository: harbor-ofs.kyligence.com/xuanwu/prometheus
+      tag: v2.38.0
+
+    enableRemoteWriteReceiver: true
+    podAntiAffinity: "hard"
+    serviceMonitorSelectorNilUsesHelmValues: "false"
+    podMonitorSelectorNilUsesHelmValues: "false"
+    ## If anti-affinity is enabled sets the topologyKey to use for anti-affinity.
+    ## This can be changed to, for example, failure-domain.beta.kubernetes.io/zone
+    ##
+    podAntiAffinityTopologyKey: kubernetes.io/hostname
+    remoteWrite: {}
+    # it's thanos url, no need in custom environment
+    # - url: http://kube-prometheus-thanos-receive.xuanwu-monitor.svc.cluster.local:19291/api/v1/receive
+
+    containers: 
+    - name: prometheus
+      args:
+        - "--web.console.templates=/etc/prometheus/consoles"
+        - "--web.console.libraries=/etc/prometheus/console_libraries"
+        - "--config.file=/etc/prometheus/config_out/prometheus.env.yaml"
+        - "--web.enable-remote-write-receiver"
+        - "--storage.tsdb.path=/prometheus"
+        - "--web.enable-lifecycle"
+        - "--storage.tsdb.no-lockfile"
+        - "--web.enable-admin-api"
+        - "--web.route-prefix=/"
+        - "--web.config.file=/etc/prometheus/web_config/web-config.yaml"
+        - "--storage.tsdb.min-block-duration=1h"
+        - "--storage.tsdb.max-block-duration=1h"
+        - "--storage.tsdb.retention.size=2048MB"
+        - "--storage.tsdb.retention.time=1h"      
+    storageSpec: 
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-hostpath
+          resources:
+            requests:
+              storage: 20Gi
+
+    # NOTE: need to set when use StorageClass local-path in GCP
+    securityContext:
+      runAsGroup: 2000
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 2000
+
+    additionalScrapeConfigs: 
+    - job_name: 'spark-pods-jmx'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_jmx_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_jmx_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_jmx_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name     
+    - job_name: 'spark-driver-executors-pods'
+      kubernetes_sd_configs:
+      - role: pod
+      metrics_path: /metrics/executors/prometheus
+      scrape_interval: 15s
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_executors_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_executors_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_executors_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name     
+      metric_relabel_configs:
+      - source_labels: [ __name__ ]
+        target_label: __name__
+        regex: metrics_application_[0-9]+_[0-9]+_(.+)
+        replacement: spark_$1
+      - source_labels: [ __name__ ]
+        target_label: __name__
+        regex: metrics_(.+)
+        replacement: spark_$1  
+          
+thanos:
+  # no need in customer environment
+  enabled: false
+  alertmanagerSpec:
+    image:
+      repository: harbor-ofs.kyligence.com/xuanwu/prometheus-alertmanager
+      tag: v0.24.0
+      sha: ""  
+  image:
+    registry: harbor-ofs.kyligence.com
+    repository: xuanwu/bitnami-thanos
+    tag: 0.28.0-scratch-r0
+
+  queryFrontend:
+    enabled: false
+    service: 
+      type: NodePort
+
+  query: 
+   dnsDiscovery:
+    sidecarsService: kube-prometheus-prometheus-thanos
+    sidecarsNamespace: monitoring  
+
+  bucketweb:
+    enabled: false
+    service: 
+      type: NodePort    
+
+  compactor:
+    enabled: false
+    persistence: 
+      enabled: false
+      storageClass: openebs-hostpath
+      accessModes: 
+        - ReadWriteOnce
+      size: 20Gi
+
+  storegateway:
+    enabled: false
+    extraFlags:
+      - --sync-block-duration=3m
+      - --chunk-pool-size=1GB    
+    persistence: 
+      enabled: false
+      storageClass: openebs-hostpath
+      accessModes: 
+        - ReadWriteOnce
+      size: 20Gi
+
+
+
+  receive:
+    enabled: false
+    service: 
+      additionalHeadless: true
+    mode: dual-mode
+    replicationFactor: 1
+    replicaCount: 1
+    persistence: 
+      enabled: false
+      storageClass: openebs-hostpath
+      accessModes: 
+        - ReadWriteOnce
+      size: 20Gi
+
+  receiveDistributor:
+    enabled: false
+
+  minio:
+    enabled: false
+    image:
+      registry: docker.io
+      repository: bitnami/minio
+      tag: 2022.8.22-debian-11-r0
+    service: 
+      type: NodePort
+    persistence: 
+      enabled: false
+      storageClass: openebs-hostpath
+      accessModes: 
+        - ReadWriteOnce
+      size: 20Gi
+    auth: 
+      rootPassword: admin123
+  
+  
+  objstoreConfig: |-
+    type: s3
+    config:
+      bucket: thanos
+      endpoint: {{ .Release.Name }}-minio.{{ .Release.Namespace }}.svc.cluster.local:9000
+      access_key: admin
+      secret_key: admin123
+      insecure: true                
+
+prometheus-node-exporter:
+  imagePullSecrets:
+  - name: docker-secret
+  service: 
+    port: 9102
+    targetPort: 9102 
+  image:
+    repository: harbor-ofs.kyligence.com/xuanwu/prometheus-node-exporter
+    tag: v1.3.1
+    pullPolicy: Always
+
+kube-state-metrics:
+  imagePullSecrets:
+  - name: docker-secret
+  image:
+    repository: harbor-ofs.kyligence.com/xuanwu/bitnami-kube-state-metrics
+    tag: 2.6.0
+    pullPolicy: Always
+
+grafana:
+  service: 
+    type: NodePort
+  image:
+    repository: harbor-ofs.kyligence.com/xuanwu/grafana
+    tag: 9.1.4
+    pullPolicy: Always
+    pullSecrets:
+      - docker-secret
+  testFramework:
+    enabled: true
+    image: harbor-ofs.kyligence.com/xuanwu/bats
+    tag: v1.4.1
+    imagePullPolicy: Always
+  sidecar:
+    image:
+      repository: harbor-ofs.kyligence.com/xuanwu/kiwigrid-k8s-sidecar
+      tag: 1.19.2
+    imagePullPolicy: Always
+  ingress:
+    enabled: false
+    annotations: {}
+    extraPaths: 
+    - path: /
+      pathType: Prefix
+      service:
+        name: kube-prometheus-grafana
+
+spark-dashboard:
+  enabled: true
+
+volcano-dashboard:
+  enabled: true

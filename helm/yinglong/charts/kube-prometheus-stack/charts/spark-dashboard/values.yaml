@@ -1,0 +1,25 @@
+grafana:
+  image: "grafana/grafana:9.1.1"
+  service:
+    type: "NodePort"
+    port: 3000
+    targetPort: 3000
+influxdb:
+  image: "influxdb:1.8.10"
+  disableReporting: "true"
+  dbName: "graphite"
+  service:
+#   type: "LoadBalancer"   
+#   lbSourceRange: "128.141.0.0/16"
+    type: "NodePort"
+    influx:
+      port: 8086
+      targetPort: 8086
+    graphite:
+      port: 2003
+      targetPort: 2003
+  storage:
+#    class: "MyStorageClass"
+#    type: "ReadWriteOnce"
+     size: "1Gi"
+

@@ -1,0 +1,66 @@
+annotations:
+  artifacthub.io/links: |
+    - name: Chart Source
+      url: https://github.com/prometheus-community/helm-charts
+    - name: Upstream Project
+      url: https://github.com/prometheus-operator/kube-prometheus
+  artifacthub.io/operator: "true"
+apiVersion: v2
+appVersion: 0.1.0
+dependencies:
+- condition: thanos.enabled
+  name: thanos
+  repository: file://./charts/thanos
+  version: 11.5.1
+- condition: spark-dashboard.enabled
+  name: spark-dashboard
+  repository: file://./charts/spark-dashboard
+  version: 11.5.1
+- condition: volcano-dashboard.enabled
+  name: volcano-dashboard
+  repository: file://./charts/volcano-dashboard
+  version: 0.1.0
+- condition: kubeStateMetrics.enabled
+  name: kube-state-metrics
+  repository: file://./charts/kube-state-metrics
+  version: 4.18.*
+- condition: nodeExporter.enabled
+  name: prometheus-node-exporter
+  repository: file://./charts/prometheus-node-exporter
+  version: 4.2.*
+- condition: grafana.enabled
+  name: grafana
+  repository: file://./charts/grafana
+  version: 6.38.*
+description: kube-prometheus-stack collects Kubernetes manifests, Grafana dashboards,
+  and Prometheus rules combined with documentation and scripts to provide easy to
+  operate end-to-end Kubernetes cluster monitoring with Prometheus using the Prometheus
+  Operator.
+home: https://github.com/prometheus-operator/kube-prometheus
+icon: https://raw.githubusercontent.com/prometheus/prometheus.github.io/master/assets/prometheus_logo-cb55bb5c346.png
+keywords:
+- operator
+- prometheus
+- kube-prometheus
+kubeVersion: '>=1.16.0-0'
+maintainers:
+- email: andrew@quadcorps.co.uk
+  name: andrewgkew
+- email: cedric@desaintmartin.fr
+  name: desaintmartin
+- email: gianrubio@gmail.com
+  name: gianrubio
+- email: github.gkarthiks@gmail.com
+  name: gkarthiks
+- email: kube-prometheus-stack@sisti.pt
+  name: GMartinez-Sisti
+- email: scott@r6by.com
+  name: scottrigby
+- email: miroslav.hadzhiev@gmail.com
+  name: Xtigyro
+name: kube-prometheus-stack
+sources:
+- https://github.com/prometheus-community/helm-charts
+- https://github.com/prometheus-operator/kube-prometheus
+type: application
+version: 0.1.0

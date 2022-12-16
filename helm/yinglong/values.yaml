@@ -1,15 +1,18 @@
 # Default values for yinglong.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-
+monitor:
+  enabled: false
 global:
   hadoopPrefix: hadoop
   hdfs: {}
     # workingDir: 
 
   image:
+    registry: harbor-ofs.kyligence.com/yinglong
     tag: "latest"
     pullPolicy: IfNotPresent
+    logTag: "latest"
 
   metadata:
     url: "*****" # yinglong所在的mysql的URL地址, (用户名和密码在参数上)

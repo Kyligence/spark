@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yl-log.fullname" . }}-backup-config
+  labels:
+  {{- include "yl-log.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    archive:
+      namePattern: {{ .Values.backupConfig.configYaml.archive.namePattern | quote }}
+      s3:
+        bucket: {{ .Values.backupConfig.configYaml.archive.s3.bucket | quote }}
+        region: {{ .Values.backupConfig.configYaml.archive.s3.region | quote }}
+      type: {{ .Values.backupConfig.configYaml.archive.type | quote }}
+      workingDir: {{ .Values.backupConfig.configYaml.archive.workingDir | quote }}
+    data:
+      loki:
+        address: {{ .Values.backupConfig.configYaml.data.loki.address | quote }}

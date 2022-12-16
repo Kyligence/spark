@@ -1,0 +1,148 @@
+apiVersion: v1
+data:
+  config.yaml: |-
+    server:
+      port: ":8080"
+      workingDir: /var/log/xuanwu-log
+    data:
+      loki:
+        address: http://loki-loki-distributed-querier.loki:3100
+kind: ConfigMap
+metadata:
+  name: yl-log-api-config
+  namespace: yl-log
+---
+apiVersion: v1
+data:
+  config.yaml: |-
+    data:
+      loki:
+        address: http://loki-loki-distributed-querier.loki:3100
+    queries:
+    - query: "{job=\"fluent-bit\",app=\"yinglong\"}"
+      schedule:
+        interval: 3
+        max: 8
+    archive:
+      type: zip
+      workingDir: /var/log/xuanwu-log
+      namePattern: "%s.log"
+      s3:
+        bucket: donggetest
+        region: us-west-2
+kind: ConfigMap
+metadata:
+  name: xuanwu-log-backup-config
+  namespace: xuanwu-log
+---
+apiVersion: v1
+data:
+  AccessKey: VE9DSEFOR0UK
+  AccessKeyID: VE9DSEFOR0UK
+kind: Secret
+metadata:
+  name: xuanwu-log-backup-secret
+  namespace: xuanwu-log
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xuanwu-log-api-service
+  namespace: xuanwu-log
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: log
+    component: api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: log
+    component: api
+  name: xuanwu-log-api
+  namespace: xuanwu-log
+spec:
+  selector:
+    matchLabels:
+      app: log
+      component: api
+  template:
+    metadata:
+      labels:
+        app: log
+        component: api
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/config/config.yaml
+        - -config.backup=/etc/backup/config.yaml
+        image: dontan001/xuanwu-log:api
+        imagePullPolicy: Always
+        name: api
+        resources:
+          limits:
+            cpu: "1"
+            memory: 128Mi
+          requests:
+            cpu: "1"
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /etc/config
+          name: config
+        - mountPath: /etc/backup
+          name: configbackup
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: xuanwu-log-api-config
+        name: config
+      - configMap:
+          defaultMode: 420
+          name: xuanwu-log-backup-config
+        name: configbackup
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: xuanwu-log-backup-cronjob
+  namespace: xuanwu-log
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - args:
+            - -config.file=/etc/config/config.yaml
+            env:
+            - name: ACCESSKEYID
+              valueFrom:
+                secretKeyRef:
+                  key: AccessKeyID
+                  name: xuanwu-log-backup-secret
+                  optional: true
+            - name: ACCESSKEY
+              valueFrom:
+                secretKeyRef:
+                  key: AccessKey
+                  name: xuanwu-log-backup-secret
+                  optional: true
+            image: dontan001/xuanwu-log:schedule
+            imagePullPolicy: Always
+            name: backup
+            volumeMounts:
+            - mountPath: /etc/config
+              name: config
+          restartPolicy: OnFailure
+          volumes:
+          - configMap:
+              defaultMode: 420
+              name: xuanwu-log-backup-config
+            name: config
+  schedule: 0 */1 * * *
