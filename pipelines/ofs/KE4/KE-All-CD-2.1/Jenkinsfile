@@ -20,6 +20,8 @@ def fcid = ''
 def paramsMap = [:]
 def pull_result_nospark = [:]
 def pull_result_withspark = [:]
+def pull_code_result = [:]
+def deploy_status = [:]
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
@@ -143,9 +145,10 @@ def pullCode(params) {
         def _branch = getBranch(params.deployType, params.envStage, params.version)
         result.release_branch_front = _branch
         result.release_branch_back = _branch
-        def cms = gitCodeKe(_branch, _branch, null)
-        result.release_commitid_back = cms.release_commitid_back
-        result.release_commitid_front = cms.release_commitid_front
+        result.paramsMap = null
+        // def cms = gitCodeKe(_branch, _branch, null)
+        // result.release_commitid_back = cms.release_commitid_back
+        // result.release_commitid_front = cms.release_commitid_front
     } else if (params.deployWay == 'Manual Select') {
         // 2.2 根据手动输入参数设定分支
         result.paramsMap = input(
@@ -170,9 +173,9 @@ def pullCode(params) {
         if(!result.release_branch_back) {
             error('commitId_back参数必填')
         }
-        def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, result.paramsMap)
-        result.release_commitid_back = cms.release_commitid_back
-        result.release_commitid_front = cms.release_commitid_front
+        // def cms = gitCodeKe(result.release_branch_back, result.release_branch_front, result.paramsMap)
+        // result.release_commitid_back = cms.release_commitid_back
+        // result.release_commitid_front = cms.release_commitid_front
     } else {
         error(message: '请选择足够的信息来确认代码分支')
     }
@@ -328,12 +331,10 @@ def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir,
     script {
         def remote = [:]
         remote.name = remote_name
-        withCredentials([usernamePassword(credentialsId: 'azure-4xuser',
-                usernameVariable: 'REMOTE_USERNAME',
-                passwordVariable: 'REMOTE_PASSWORD')]) {
+        withCredentials([usernamePassword(credentialsId: 'azure-4xuser', usernameVariable: 'REMOTE_USERNAME', passwordVariable: 'REMOTE_PASSWORD')]) {
             remote.user = REMOTE_USERNAME
             remote.password = REMOTE_PASSWORD
-                }
+        }
         remote.host = hostIp
         remote.allowAnyHosts = true
         sshCommand remote: remote, command: """
@@ -357,7 +358,7 @@ def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir,
             echo "skip check env"
             bash ${ke_workdir}/bin/kylin.sh start
             cat ${ke_workdir}/commit_SHA1
-            echo "upgrade gw07-ke-env finished"
+            echo "upgrade ke-env finished"
             """
     }
 }
@@ -420,8 +421,6 @@ pipeline {
         package_path = ''
         // 文件名(给测试过程中的名字)
         file_name = ''
-        fail_upload = false
-        fail_deploy = false
         // github token
         GIT_JEKNINS_TOKEN = credentials('jenkins-token')
         // devops emails
@@ -452,7 +451,7 @@ pipeline {
     }
 
     stages {
-        stage('0.Sync Git Mirror') {
+        stage('1.Sync Git Mirror') {
             steps {
                 script{
                     syncGitMirror('KAP')
@@ -460,9 +459,16 @@ pipeline {
                 }
             }
         }
-        stage('1.Parallel Building') {
+        stage('2.Select Branch') {
+            steps {
+                script {
+                     pull_code_result = pullCode(params)
+                }
+            }
+        }
+        stage('3.Parallel Building') {
             parallel {
-                stage('1.NoSpark') {
+                stage('NoSpark') {
                     stages {
                         stage('Pull NoSpark') {
                             when {
@@ -474,7 +480,11 @@ pipeline {
                                 container('build') {
                                     dir('sourcecode1') {
                                         script {
-                                            pull_result_nospark = pullCode(params)
+                                            // pull_result_nospark = pullCode(params)
+                                            def cms = gitCodeKe(pull_code_result.release_branch_back, pull_code_result.release_branch_front, pull_code_result.paramsMap)
+                                            pull_code_result.release_commitid_back = cms.release_commitid_back
+                                            pull_code_result.release_commitid_front = cms.release_commitid_front
+                                            pull_result_nospark = pull_code_result
                                         }
                                     }
                                 }
@@ -501,14 +511,18 @@ pipeline {
                         }
                     }
                 }
-                stage('2.Normal') {
+                stage('Normal') {
                     stages {
                         stage('Pull Normal') {
                             steps {
                                 container('build2') {
                                     dir('sourcecode2') {
                                         script {
-                                            pull_result_withspark = pullCode(params)
+                                            // pull_result_withspark = pullCode(params)
+                                            def cms = gitCodeKe(pull_code_result.release_branch_back, pull_code_result.release_branch_front, pull_code_result.paramsMap)
+                                            pull_code_result.release_commitid_back = cms.release_commitid_back
+                                            pull_code_result.release_commitid_front = cms.release_commitid_front
+                                            pull_result_withspark = pull_code_result
                                         }
                                     }
                                 }
@@ -563,9 +577,9 @@ pipeline {
                 }
             }
         }
-        stage('3.Dev/QA Upload') {
+        stage('4.Dev/QA Upload') {
             parallel {
-                stage('3.1.Upload Nospark to AWS S3') {
+                stage('Upload Nospark to AWS S3') {
                     when {
                         expression {
                             return params.envStage in ['QA', 'RC', 'GA'] && !paramsMap['skipNoSpark']
@@ -575,9 +589,6 @@ pipeline {
                         container('build2') {
                             script {
                                 println("upload to AWS S3 in Global: ${no_spark_package_info.file_name}")
-                                // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
-                                // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/ke-without-spark/${no_spark_package_info.file_name}", no_spark_package_info.file_name)
-                                // uploadHelper('AWSS3', no_spark_package_info.file_name, "packages/ke-without-spark/${no_spark_package_info.file_name}", 'kyligencecloud-ci', 'sourcecode1', 'us-west-2', 'aws_global_s3_cp')
                                 uploadHelper.uploadAwsS3(no_spark_package_info.file_name, "packages/ke-without-spark/${no_spark_package_info.file_name}", 'kyligencecloud-ci', 'us-west-2', 'aws_global_s3_cp', 'sourcecode1')
                                 println("Download URL: https://package.kyligence.com/${no_spark_package_info.package_file}")
                             }
@@ -595,51 +606,7 @@ pipeline {
                         }
                     }
                 }
-                stage('3.2.Upload Normal to Azure CN 141') {
-                    steps {
-                        container('build2') {
-                            script {
-                                println "package_info->${package_info}"
-                                // uplaodAzure(package_info, 'sourcecode2')
-                                // uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'sourcecode2', '', 'azure-4xuser')
-                                retry(3) {
-                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'sourcecode2', 'azure-4xuser')
-                                }
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            notifyToTester('upload', '159.27.120.141')
-                        }
-                    }
-                }
-                stage('3.2.Upload Normal to Azure CN 138') {
-                    steps {
-                        container('build2') {
-                            script {
-                                println "package_info->${package_info}"
-                                // uplaodAzure(package_info, 'sourcecode2')
-                                // uploadHelper('SERVER', package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', '', 'azure-4xuser')
-                                // retry(3) {
-                                try {
-                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
-                                } catch(ex) {
-                                    echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
-                                    echo ex.getMessage()
-                                    fail_upload = true
-                                }
-                                // }
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            notifyToTester('upload', '159.27.120.138', fail_upload)
-                        }
-                    }
-                }
-                stage('3.3.Deploy SNAPSHOT Jars') {
+                stage('Deploy SNAPSHOT Jars') {
                     when {
                         expression {
                             return params.envStage in ['QA', 'RC']
@@ -667,9 +634,92 @@ pipeline {
                         }
                     }
                 }
+                stage('Upload Normal to 141 on Azure CN') {
+                    when {
+                        expression {
+                            return params.deployType in ['Regular', 'KE-4.5.x', 'KE-4.3.x']
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                println "package_info->${package_info}"
+                                retry(3) {
+                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.141', 'sourcecode2', 'azure-4xuser')
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            notifyToTester('upload', '159.27.120.141')
+                        }
+                    }
+                }
+                stage('Upload Normal to 138 on Azure CN') {
+                    when {
+                        expression {
+                            return params.deployType in ['Regular', 'KE-4.5.x', 'KE-4.3.x']
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                println "package_info->${package_info}"
+                                deploy_status.svr138 = [:]
+                                try {
+                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.120.138', 'sourcecode2', 'azure-4xuser')
+                                    deploy_status.svr138.fail_upload = false
+                                } catch(ex) {
+                                    echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                                    echo ex.getMessage()
+                                    deploy_status.svr138.fail_upload = true
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            notifyToTester('upload', '159.27.120.138', deploy_status.svr138.fail_upload)
+                        }
+                    }
+                }
+                stage('Upload Normal to 165 on Azure CN') {
+                    when {
+                        expression {
+                            return params.deployType in ['SP-4.6.x', 'SP-4.5.x', 'SP-4.3.x']
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                println "package_info->${package_info}"
+                                deploy_status.svr165 = [:]
+                                try {
+                                    uploadHelper.uplaodServer(package_info.file_name, '/home/4xuser/data/devops', '159.27.81.165', 'sourcecode2', 'azure-4xuser')
+                                    deploy_status.svr165.fail_upload = false
+                                } catch(ex) {
+                                    // echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                                    echo ex.getMessage()
+                                    deploy_status.svr165.fail_upload = true
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            notifyToTester('upload', '159.27.81.165', deploy_status.svr165.fail_upload)
+                        }
+                    }
+                }
             }
         }
-        stage('4.Approve Deploy') {
+        stage('5.1 Approve Normal Deploy') {
+            when {
+                expression {
+                    return params.deployType in ['Regular', 'KE-4.5.x', 'KE-4.3.x']
+                }
+            }
             steps {
                 script {
                     def checkMsg = '部署到 Azure 服务器？'
@@ -681,8 +731,8 @@ pipeline {
                         // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
                         submitterParameter: 'APPROVER',
                         parameters: [
-                            string(name: 'remote_dir', defaultValue: '/home/4xuser/data/4.5test', description: 'gw07 KE work dir'),
-                            string(name: 'kepackage_dir', defaultValue: '/home/4xuser/data/devops', description: 'gw07 KE4.5 stroage dir'),
+                            string(name: 'remote_dir', defaultValue: '/home/4xuser/data/4.5test', description: 'KE work dir'),
+                            string(name: 'kepackage_dir', defaultValue: '/home/4xuser/data/devops', description: 'KE4.5 stroage dir'),
                             string(name: 'ke_workdir', defaultValue:'Kyligence-Enterprise-newten-current', description: 'ke work dir'),
                             booleanParam(name: 'override_141', defaultValue: false, description: '是否覆盖【159.27.120.141】环境'),
                             booleanParam(name: 'override_138', defaultValue: false, description: '是否覆盖【159.27.120.138】环境')
@@ -691,9 +741,14 @@ pipeline {
                 }
             }
         }
-        stage('5.Deploy to Azure') {
+        stage('5.2 Deploy Normal') {
+            when {
+                expression {
+                    return params.deployType in ['Regular', 'KE-4.5.x', 'KE-4.3.x']
+                }
+            }
             parallel {
-                stage('Auto Deploy KE on Azure gw07') {
+                stage('Deploy to 141 on Azure CN') {
                     when {
                         expression {
                             return paramsDeploy['override_141']
@@ -711,7 +766,7 @@ pipeline {
                         }
                     }
                 }
-                stage('Auto Deploy KE on Azure gw09') {
+                stage('Deploy to 138 on Azure CN') {
                     when {
                         expression {
                             return paramsDeploy['override_138']
@@ -720,22 +775,80 @@ pipeline {
                     steps {
                         container('build2') {
                             script {
-                                try {    
+                                println "deploy_status: ${deploy_status}"
+                                deploy_status.svr138 = [:]
+                                try {
                                     deployToServer('159.27.120.138', 'azure_env_gw09', package_info.file_name,
                                         paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                                    deploy_status.svr138.fail_deploy = false
                                 } catch(ex) {
                                     echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
                                     echo ex.getMessage()
-                                    fail_deploy = true
+                                    deploy_status.svr138.fail_deploy = true
                                 }
                             }
                         }
                     }
                     post {
                         success {
-                            notifyToTester('deploy', '159.27.120.138', fail_deploy)
+                            notifyToTester('deploy', '159.27.120.138', deploy_status.svr138.fail_deploy)
                         }
                     }
+                }
+            }
+        }
+        stage('5.1 Approve SP Deploy') {
+            when {
+                expression {
+                    return params.deployType in ['SP-4.6.x', 'SP-4.5.x', 'SP-4.3.x']
+                }
+            }
+            steps {
+                script {
+                    def checkMsg = '部署到 Azure 服务器？'
+                    println checkMsg
+                    // sh 'printenv'
+                    paramsDeploy = input(
+                        message: checkMsg,
+                        ok: '确认！',
+                        // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
+                        submitterParameter: 'APPROVER',
+                        parameters: [
+                            string(name: 'remote_dir', defaultValue: '/home/4xuser/data/public_sp', description: 'KE work dir'),
+                            string(name: 'kepackage_dir', defaultValue: '/home/4xuser/data/devops', description: 'KE4.5 stroage dir'),
+                            string(name: 'ke_workdir', defaultValue:'Kyligence-Enterprise-newten-sp-dev', description: 'ke work dir'),
+                            booleanParam(name: 'override_165', defaultValue: false, description: '是否覆盖【159.27.81.165】环境')
+                        ]
+                    )
+                }
+            }
+        }
+        stage('5.2 Deploy to 165 on Azure CN') {
+            when {
+                expression {
+                    return params.deployType in ['SP-4.6.x', 'SP-4.5.x', 'SP-4.3.x'] && paramsDeploy['override_165']
+                }
+            }
+            steps {
+                container('build2') {
+                    script {
+                        println "deploy_status: ${deploy_status}"
+                        deploy_status.svr165 = [:]
+                        try {    
+                            deployToServer('159.27.81.165', 'azure_snoopy-gw11', package_info.file_name,
+                                paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
+                            deploy_status.svr165.fail_deploy = false
+                        } catch(ex) {
+                            // echo "The server is shutdown at 22:00 until 8:30 the next day, please check you time when you run it."
+                            echo ex.getMessage()
+                            deploy_status.svr165.fail_deploy = true
+                        }
+                    }
+                }
+            }
+            post {
+                success {
+                    notifyToTester('deploy', '159.27.81.165', deploy_status.svr165.fail_deploy)
                 }
             }
         }
@@ -775,11 +888,8 @@ pipeline {
                 stage('GA AWS CN') {
                     steps {
                         script {
-                            println("upload to AWS S3 in CN: ${ga_name}")
-                            // 上传S3：https://console.amazonaws.cn/s3/buckets/download.kyligence.io?region=cn-north-1&prefix=product/kap/4.0.x/&showversions=false
+                            println("upload to S3 in AWS CN: ${ga_name}")
                             retry(2) {
-                                // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                                // uploadHelper('AWSS3', ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'sourcecode2', 'cn-north-1', 'aws_cn_s3_cp')
                                 uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp', 'sourcecode2')
                             }
                         }
@@ -788,11 +898,8 @@ pipeline {
                 stage('GA AWS Global') {
                     steps {
                         script {
-                            println("upload to AWS S3 in Global: ${ga_name}")
-                            // 上传S3：https://s3.console.aws.amazon.com/s3/buckets/download.kyligence.io?region=us-west-1&prefix=product/kap/4.0.x/&showversions=false
+                            println("upload to S3 in AWS Global: ${ga_name}")
                             retry(2) {
-                                // uploadAwsS3('us-west-1', 'aws_global_s3_cp', 'download.kyligence.io', "product/kap/4.0.x/${ga_name}", ga_name)
-                                // uploadHelper('AWSS3', ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'sourcecode2', 'us-west-1', 'aws_global_s3_cp')
                                 uploadHelper.uploadAwsS3(ga_name, "product/kap/4.0.x/${ga_name}", 'download.kyligence.io', 'us-west-1', 'aws_global_s3_cp', 'sourcecode2')
                             }
                         }
@@ -804,8 +911,6 @@ pipeline {
                             script {
                                 println("upload to Nexus repo-ofs: ${ga_name}")
                                 retry(2) {
-                                    // uploadNexus('raw-ke-ga-tar-hosted', 'product/ke/4.0.x', ga_name)
-                                    // uploadHelper('NEXUS', ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
                                     uploadHelper.uploadNexus(ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
                                 }
                             }
