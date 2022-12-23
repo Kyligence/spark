@@ -382,19 +382,20 @@ def notifyToTester(title, ip, failure = false) {
                 <p><a href="http://${ip}:7072/kylin':''}">http://${ip}:7072/kylin</a></p>"""
             break
     }
-    
-    if(!failure) {
-        sendNotify('EMAIL',
-            "SUCCESSFUL to ${_title} into the Azure CN server'",
-            tester_emails,
-            _content
-        )
-    } else {
-        sendNotify('EMAIL',
-            "Fail to ${_title} into the Azure CN server'",
-            devops_emails,
-            _content
-        )
+    script{
+        if(!failure) {
+            sendNotify('EMAIL',
+                "SUCCESSFUL to ${_title} into the Azure CN server'",
+                tester_emails,
+                _content
+            )
+        } else {
+            sendNotify('EMAIL',
+                "Fail to ${_title} into the Azure CN server'",
+                devops_emails,
+                _content
+            )
+        }
     }
 }
 
@@ -652,7 +653,7 @@ pipeline {
                     }
                     post {
                         success {
-                            notifyToTester('upload', '159.27.120.141')
+                            notifyToTester('upload', '159.27.120.141', false)
                         }
                     }
                 }
@@ -762,7 +763,7 @@ pipeline {
                     }
                     post {
                         success {
-                            notifyToTester('deploy', '159.27.120.141')
+                            notifyToTester('deploy', '159.27.120.141', false)
                         }
                     }
                 }
