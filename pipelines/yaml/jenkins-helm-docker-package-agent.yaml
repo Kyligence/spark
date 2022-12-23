@@ -10,7 +10,7 @@ spec:
       effect: NoSchedule
   containers:
     - name: "build"
-      image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
+      image: "repo-ofs.kyligence.com/newten-build:latest"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
@@ -39,7 +39,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "harbor-ofs.kyligence.com/library/docker:1.0"
+      image: "repo-ofs.kyligence.com/docker:latest"
       imagePullPolicy: "Always"
       volumeMounts:
         - mountPath: "/var/run/docker.sock"
