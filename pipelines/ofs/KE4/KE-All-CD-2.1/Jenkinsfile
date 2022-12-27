@@ -366,8 +366,9 @@ def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir,
 def notifyToTester(title, ip, failure = false) {
     println """notifyToTester -> title[${title}],ip[${ip}]"""
     def _title = ''
+    def _status = failure ? 'FAIL' : 'SUCCESSFUL'
     def _content = """
-        <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+        <p>${_status}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
         <p>The Job upload the package ${package_info.file_name} to the Azure server: [${ip}]</p>
         <p>It saved in the path of [/home/4xuser/data/devops], please check it and use! </p>
     """
@@ -382,10 +383,10 @@ def notifyToTester(title, ip, failure = false) {
                 <p><a href="http://${ip}:7072/kylin':''}">http://${ip}:7072/kylin</a></p>"""
             break
     }
-    
+
     if(!failure) {
         sendNotify('EMAIL',
-            "SUCCESSFUL to ${_title} into the Azure CN server'",
+            "${_status} to ${_title} into the Azure CN server'",
             tester_emails,
             _content
         )
