@@ -23,7 +23,7 @@ global:
       serverAddrNoHttp: nacos-naming-svc.yinglong:8848
     # serverAddr:
   
-  tenantId: "" # 部署一个yinglong-release需要的租户ID
+  tenantId: "9223372036854775707" # 部署一个yinglong-release需要的租户ID
   publicGroup: ""   # 租户中心在nacos-naming中的组
 
   zookeeper: {}
@@ -37,6 +37,13 @@ global:
     image:
       repository: harbor-ofs.kyligence.com/yinglong/yinglong-spark
       tag: latest
+      pullPolicy:
+
+  sparkPod:
+    image:
+      repository: repo-ofs.kyligence.com/spark
+      tag: 3.3.0-kylin-4.5.17.0-SNAPSHOT
+    uploadPath: s3a://yinglong-dep
 
 # yl-common:
 #   image:

@@ -92,13 +92,6 @@ saas:
   gateway:
     integrate:
       iam: true
-  nacos:
-    discovery:
-      group: dev
-      publicGroup: dev
-      serverAddr: nacos-naming-svc:8848
-    config:
-      serverAddr: nacos-config-svc:8848
 
 skyWalking:
   enabled: true

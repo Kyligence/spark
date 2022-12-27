@@ -68,6 +68,7 @@ spec:
       {{- end }}
         - name: spark-init
           image: "{{ .Values.global.spark.image.repository }}:{{ .Values.global.spark.image.tag }}"
+          imagePullPolicy: {{ .Values.global.spark.image.pullPolicy | default .Values.global.image.pullPolicy }}
           resources:
             limits:
               cpu: 1
