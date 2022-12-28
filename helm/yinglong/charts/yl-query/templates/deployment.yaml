@@ -90,6 +90,8 @@ spec:
           env:
             - name: APP_NAME
               value: yinglong-query-booter
+            - name: SPARK_CONF_DIR
+              value: /opt/kyligence/spark/conf
             - name: HOST_IP
               valueFrom:
                 fieldRef:
