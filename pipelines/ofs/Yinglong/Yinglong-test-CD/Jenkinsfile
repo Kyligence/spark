@@ -321,8 +321,8 @@ pipeline {
                         docker.withRegistry(dockerRegistryUrl, registryCredential) {
                             for (m in modules) {
                                 retry(2) {
-                                        m.image.push(release_tag_back)
-                                        m.image.push('latest')
+                                    m.image.push(release_tag_back)
+                                    m.image.push('latest')
                                 }
                             }
                             retry(2) {

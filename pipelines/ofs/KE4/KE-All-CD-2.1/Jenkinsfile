@@ -436,7 +436,7 @@ pipeline {
         dev_sp_emails = 'wei.chen@kyligence.io;yifan.zhang@kyligence.io'
         dev_front_emails = 'qian.xia@kyligence.io'
         // product emails
-        product_emails = 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;kaiqi.xue@kyligence.io;lina.liu@kyligence.io;xinxing.wu@kyligence.io;zhao.han@kyligence.io;yang.li@kyligence.io'
+        product_emails = 'yong.zhao@kyligence.io;li.feng2@kyligence.io;kaiqi.xue@kyligence.io;lina.liu@kyligence.io;xinxing.wu@kyligence.io;zhao.han@kyligence.io;yang.li@kyligence.io;yihua.wu@kyligence.io'
     }
 
     parameters {
@@ -978,13 +978,14 @@ pipeline {
                     sendNotify(
                         'EMAIL',
                         "[KE4][GA] ${version} SUCCESSFUL GA",
-                        // "liming.meng@kyligence.io",
                         product_emails,
                         """
                         <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
                         <p>The Backend repo of [KAP] commitId: ${bcid}</p>
                         <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
                         <p>Automatically tag [ke-${version}] the front and back branches.</p>
+                        <br />
+                        <p>Download URL: <a href="https://repo-ofs.kyligence.com/repository/raw-public/product/ke/4.0.x/${ga_name}">${ga_name}</a></p>
                         """
                     )
                 }
