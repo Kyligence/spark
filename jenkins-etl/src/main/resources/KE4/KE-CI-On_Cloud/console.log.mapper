@@ -1,0 +1,4 @@
+dnsResolveFailed=Could not resolve host: github.com
+k8sRuntimesFailed=~io\\.fabric8\\.kubernetes\\.client\\.KubernetesClientException: not ready after [0-9]+ MILLISECONDS
+abortedByDev=Aborted by dev
+timeout=Timeout has been exceeded

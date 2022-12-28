@@ -7,7 +7,6 @@ import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.Option
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider
-import groovy.transform.EqualsAndHashCode
 import org.apache.commons.io.IOUtils
 
 import java.nio.charset.StandardCharsets
@@ -15,7 +14,6 @@ import java.nio.file.Paths
 
 class JenkinsAnalysis {
 
-    @EqualsAndHashCode
     static class Column implements Comparable<Column> {
         String name
         String value
@@ -34,6 +32,26 @@ class JenkinsAnalysis {
             return this.name.compareToIgnoreCase(o.name)
         }
 
+        boolean isEffectiveValue() {
+            return this.value != null && this.value != "" && this.value != "0"
+        }
+
+        @Override
+        boolean equals(o) {
+            if (this.is(o)) return true
+            if (getClass() != o.class) return false
+
+            Column column = (Column) o
+
+            if (name != column.name) return false
+
+            return true
+        }
+
+        @Override
+        int hashCode() {
+            return name.hashCode()
+        }
 
         @Override
         String toString() {
@@ -53,6 +71,8 @@ class JenkinsAnalysis {
 
     private final Properties runJsonMapper = new Properties()
     private final Properties testJsonMapper = new Properties()
+    private final Properties consoleLogMapper = new Properties()
+    private final Properties stepLogMapper = new Properties()
 
     JenkinsAnalysis(String jobFolder, String jobName) {
         this.jobFolder = jobFolder
@@ -60,6 +80,13 @@ class JenkinsAnalysis {
 
         runJsonMapper.load(getClass().getClassLoader().getResourceAsStream("${jobFolder}/${jobName}/run.json.mapper"))
         testJsonMapper.load(getClass().getClassLoader().getResourceAsStream("${jobFolder}/${jobName}/test.json.mapper"))
+        consoleLogMapper.load(getClass().getClassLoader().getResourceAsStream("${jobFolder}/${jobName}/console.log.mapper"))
+        stepLogMapper.load(getClass().getClassLoader().getResourceAsStream("${jobFolder}/${jobName}/step.log.mapper"))
+
+        // init steplog columns, because step log may be empty
+        stepLogMapper.entrySet().forEach(it -> {
+            columns.add(Column.valueOf(String.valueOf(it.getKey()), "0"))
+        })
     }
 
     void analyze(S3Object obj) {
@@ -89,16 +116,46 @@ class JenkinsAnalysis {
                     throw new IllegalArgumentException()
             }
 
-
-        } else if (objName.endsWith("console.log")) {
+        } else if (objName.endsWith(".log")) {
             def logContent = IOUtils.toString(obj.getObjectContent(), StandardCharsets.UTF_8)
-            columns.add(Column.valueOf("dnsResolveFailed", logContent.contains("Could not resolve host: github.com") ? "1" : "0"))
-            columns.add(Column.valueOf("k8sRuntimesFailed", logContent ==~ /io\.fabric8\.kubernetes\.client\.KubernetesClientException: not ready after [0-9]+ MILLISECONDS/ ? "1" : "0"))
+
+            def closure = (Map.Entry<String, String> it) -> {
+                def colName = it.getKey()
+                def text = it.getValue()
+
+                if (text.startsWith("~")) {
+                    addColumn(Column.valueOf(colName, logContent ==~ /(?s).*${text.substring(1)}.*/ ? "1" : "0"))
+                } else {
+                    addColumn(Column.valueOf(colName, logContent.contains(text) ? "1" : "0"))
+                }
+            }
+
+            if (objName == "console.log") {
+                consoleLogMapper.entrySet().forEach(closure)
+            } else if (objName ==~ /step_[0-9]+_[0-9]+\.log/) {
+                stepLogMapper.entrySet().forEach(closure)
+            } else {
+                throw new IllegalArgumentException()
+            }
 
         } else {
             obj.getObjectContent().abort()
         }
     }
+
+    private void addColumn(final Column col) {
+        if (!columns.contains(col)) {
+            columns.add(col)
+            return
+        }
+
+        def old = columns.get(columns.indexOf(col))
+        if (!old.isEffectiveValue() && col.isEffectiveValue()) {
+            columns.remove(old)
+            columns.add(col)
+        }
+    }
+
 
     private String normalized(String val) {
         if (val == null || val.isEmpty()) {

@@ -51,6 +51,10 @@ class JenkinsTransform {
 
             return IOUtils.toInputStream(builder, StandardCharsets.UTF_8)
         }
+
+        List<List<JenkinsAnalysis.Column>> getRows() {
+            return new ArrayList<List<JenkinsAnalysis.Column>>(this.rows)
+        }
     }
 
     private static final String ROOT_PREFIX = "original/%s"
@@ -67,7 +71,13 @@ class JenkinsTransform {
 
     private final Csv csv
 
+    private final List<AbstractPostAnalyzer> postAnalyzers = new ArrayList<>()
+
     JenkinsTransform(JenkinsConfig config) {
+        this(config, new ArrayList<Class<? extends AbstractPostAnalyzer>>())
+    }
+
+    JenkinsTransform(JenkinsConfig config, List<Class<? extends AbstractPostAnalyzer>> postAnalyzerClasses) {
         this.config = config
         this.storeBucket = config.getS3StoreBucket()
 
@@ -78,6 +88,12 @@ class JenkinsTransform {
                 .build();
 
         this.csv = new Csv()
+
+        postAnalyzerClasses.forEach(it -> {
+            this.postAnalyzers.add(it.newInstance(this.config, s3client))
+        })
+
+
     }
 
     void execute(String jobFolder, String jobName) {
@@ -108,6 +124,10 @@ class JenkinsTransform {
         def meta = new ObjectMetadata()
         meta.setContentLength(dataStream.available())
         s3client.putObject(config.getS3StoreBucket(), "${String.format(DATA_KEY_PREFIX, config.getPlatform(), jobFolder, jobName)}/data.csv", dataStream, meta)
+
+        postAnalyzers.forEach(it -> {
+            it.process(csv)
+        })
 
     }
 

@@ -3,8 +3,7 @@ package io.kyligence.devops.jenkins
 import io.kyligence.devops.jenkins.client.JenkinsClientFactory
 import io.kyligence.devops.jenkins.client.JenkinsClientImpl
 import io.kyligence.devops.jenkins.client.JenkinsConfig
-import io.kyligence.devops.jenkins.etl.JenkinsExtract
-import io.kyligence.devops.jenkins.etl.JenkinsTransform
+import io.kyligence.devops.jenkins.etl.*
 
 class Main {
 
@@ -71,7 +70,7 @@ class Main {
         final JenkinsClientImpl client = JenkinsClientFactory.create(config);
         final JenkinsExtract extract = new JenkinsExtract(config, client);
 
-        extract.execute("KE4", "KE-CI-On_Cloud");
+        extract.execute("KE4", "Clickhouse-IT-Only");
     }
 
     static void transformGCP() {
@@ -86,7 +85,7 @@ class Main {
         config.setS3Accesskey(s3Accesskey);
         config.setS3secretKey(s3secretKey);
         config.setS3StoreBucket(s3bucket);
-        final JenkinsTransform transform = new JenkinsTransform(config,);
+        final JenkinsTransform transform = new JenkinsTransform(config, [NewtenBasicPostAnalyzer.class, ModuleTestStatePostAnalyzer.class, ModuleTestDurationPostAnalyzer.class]);
 
         transform.execute("KE4", "Newten_CI_On_GCP");
     }
@@ -105,7 +104,7 @@ class Main {
         config.setS3StoreBucket(s3bucket);
         final JenkinsTransform transform = new JenkinsTransform(config,);
 
-        transform.execute("KE4", "KE-CI-On_Cloud");
+        transform.execute("KE4", "Clickhouse-IT-Only");
     }
 
 

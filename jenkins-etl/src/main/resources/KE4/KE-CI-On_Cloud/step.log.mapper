@@ -1,0 +1,4 @@
+kapItState=mvn clean test --fail-at-end -pl kyligence/src/kap-it
+kylinItState=mvn clean test --fail-at-end -pl kylin/src/kylin-it
+kylinModelingServiceState=mvn clean test --fail-at-end -pl kylin/src/modeling-service
+kylinCoreMetadataState=mvn clean test --fail-at-end -pl kylin/src/core-metadata

@@ -2,6 +2,7 @@ name=$.pipeline
 id=$.id
 startTime=replace(removeSuffix("\\$.startTime", 5), "T", " ")
 endTime=replace(removeSuffix("\\$.endTime", 5), "T", " ")
+runDate=removeSuffix("\\$.startTime", 18)
 duration=$.durationInMillis
 result=$.result
 gitRepo=$.parameters[?(@.name=='ghprbGhRepository')].value
@@ -14,6 +15,62 @@ checkoutFailed=length("\\$.nodes[?(@.displayName=='Checkout' && @.result=='FAILU
 compileFailed=length("\\$.nodes[?(@.displayName=='Compile' && @.result=='FAILURE')]")
 testingFailed=length("\\$.nodes[?(@.displayName=='Testing' && @.result=='FAILURE')]")
 sonarFailed=length("\\$.nodes[?(@.displayName=='Sonar Check' && @.result=='FAILURE')]")
+
+#Module Test Duration
+keItTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/kap-it -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'.*/ && @.result=='SUCCESS')].durationInMillis
+NAutoBuildAndQueryTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/kap-it -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'.*/ && @.result=='SUCCESS')].durationInMillis
+kylinQueryServerTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/query-server.*/ && @.result=='SUCCESS')].durationInMillis
+kylinDataLoadingServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/data-loading-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinQueryServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/query-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSystoolsTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/systools.*/ && @.result=='SUCCESS')].durationInMillis
+kylinStreamingSdkTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/streaming-sdk.*/ && @.result=='SUCCESS')].durationInMillis
+kylinToolTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/tool.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSparkITTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/spark-it.*/ && @.result=='SUCCESS')].durationInMillis
+kylinQueryTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/query.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCoreStorageTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/core-storage.*/ && @.result=='SUCCESS')].durationInMillis
+keToolExtentionsTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/tool-extensions.*/ && @.result=='SUCCESS')].durationInMillis
+keExternalCatalogSdkTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/external-catalog\\/external-catalog-sdk.*/ && @.result=='SUCCESS')].durationInMillis
+keEngineSparkExtensionTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/spark-project\\/engine-spark-extension.*/ && @.result=='SUCCESS')].durationInMillis
+keSourceJdbcExtensionTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/spark-project\\/source-jdbc-extension.*/ && @.result=='SUCCESS')].durationInMillis
+keSmartBooterTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/smart-booter.*/ && @.result=='SUCCESS')].durationInMillis
+keSmartServerTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/smart-server .*/ && @.result=='SUCCESS')].durationInMillis
+keSmartServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/smart-service.*/ && @.result=='SUCCESS')].durationInMillis
+keLicenseServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/license-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCommonServerTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/common-server.*/ && @.result=='SUCCESS')].durationInMillis
+kylinJobServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/job-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinDatasourceServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/datasource-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinDatasourceSdkTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/datasource-sdk.*/ && @.result=='SUCCESS')].durationInMillis
+kylinAssemblyTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/assembly.*/ && @.result=='SUCCESS')].durationInMillis
+kylinStreamingTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/streaming.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSourceJdbcTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/source-jdbc.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSparderTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/sparder.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSparkCommonTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/spark-common.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSoftAffinityCacheTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/kylin-soft-affinity-cache.*/ && @.result=='SUCCESS')].durationInMillis
+kylinServerTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/server.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSourceHiveTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/source-hive.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCoreMetricsTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/core-metrics.*/ && @.result=='SUCCESS')].durationInMillis
+kylinDistributedLockExtTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/distributed-lock-ext.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCoreMetadataTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/core-metadata.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCoreCommonTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/core-common.*/ && @.result=='SUCCESS')].durationInMillis
+kylinQueryCommonTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/query-common.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCoreJobTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/core-job.*/ && @.result=='SUCCESS')].durationInMillis
+kylinMetadataServerTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/metadata-server.*/ && @.result=='SUCCESS')].durationInMillis
+kylinStreamingServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/streaming-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCommonServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/common-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinModelingServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/modeling-service.*/ && @.result=='SUCCESS')].durationInMillis
+kylinEngineBuildSdkTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/engine-build-sdk.*/ && @.result=='SUCCESS')].durationInMillis
+kylinSparkDDLPluginTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/spark-ddl-plugin.*/ && @.result=='SUCCESS')].durationInMillis
+kylinEngineSparkTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/spark-project\\/engine-spark.*/ && @.result=='SUCCESS')].durationInMillis
+keSmartTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/smart.*/ && @.result=='SUCCESS')].durationInMillis
+keAssemblyTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/assembly.*/ && @.result=='SUCCESS')].durationInMillis
+kylinCommonBooterTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/common-booter.*/ && @.result=='SUCCESS')].durationInMillis
+kylinQueryBooterTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/query-booter.*/ && @.result=='SUCCESS')].durationInMillis
+kylinDataLoadingBooterTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/data-loading-booter.*/ && @.result=='SUCCESS')].durationInMillis
+kylinDataLoadingServerTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/data-loading-server.*/ && @.result=='SUCCESS')].durationInMillis
+kylinItTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kylin\\/src\\/kylin-it.*/ && @.result=='SUCCESS')].durationInMillis
+kylinQueryExtensionsTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/query-extensions.*/ && @.result=='SUCCESS')].durationInMillis
+keEnterpriseServiceTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/enterprise-service.*/ && @.result=='SUCCESS')].durationInMillis
+keCoreMetadataExtensionsTestDuration=$..steps[?(@.displayDescription =~ /.*mvn clean test --fail-at-end \\s* -pl kyligence\\/src\\/core-metadata-extensions.*/ && @.result=='SUCCESS')].durationInMillis
 
 
 

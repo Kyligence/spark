@@ -1,0 +1,8 @@
+dnsResolveFailed=Could not resolve host: github.com
+k8sRuntimesFailed=~io\\.fabric8\\.kubernetes\\.client\\.KubernetesClientException: not ready after [0-9]+ MILLISECONDS
+abortedByDev=Aborted by
+timeout=Timeout has been exceeded
+checkstyleFailed=~Failed during checkstyle execution: There (are|is) \\d+ error[s]? reported by Checkstyle
+invalidSyntaxFailed=~Compilation failure
+resolveDepFailed=Could not resolve dependencies for project
+invalidPomFailed=Some problems were encountered while processing the POMs
