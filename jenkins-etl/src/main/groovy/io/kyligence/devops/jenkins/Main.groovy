@@ -102,7 +102,7 @@ class Main {
         config.setS3Accesskey(s3Accesskey);
         config.setS3secretKey(s3secretKey);
         config.setS3StoreBucket(s3bucket);
-        final JenkinsTransform transform = new JenkinsTransform(config,);
+        final JenkinsTransform transform = new JenkinsTransform(config, [ClickhouseItBasicPostAnalyzer.class]);
 
         transform.execute("KE4", "Clickhouse-IT-Only");
     }
