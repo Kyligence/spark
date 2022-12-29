@@ -26,3 +26,6 @@ dependencies:
   - condition: monitor.enabled
     name: kube-prometheus-stack
     repository: file://./charts/kube-prometheus-stack
+  - condition: yl-log.enabled
+    name: yl-log
+    repository: file://./charts/yl-log

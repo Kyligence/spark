@@ -3,6 +3,8 @@
 # Declare variables to be passed into your templates.
 monitor:
   enabled: false
+yl-log:
+  enabled: true
 global:
   hadoopPrefix: hadoop
   hdfs: {}
