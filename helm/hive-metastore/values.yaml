@@ -1,0 +1,110 @@
+# Default values for hdfs.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: repo-ofs.kyligence.com/hadoop
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "2.10.1"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# mysql:
+#   address: 10.1.9.111
+#   port: 3306
+#   hiveDB: hive-tmp
+#   username: hive
+#   password: vX/BHV11
+mysql:
+  address: 10.1.2.171
+  port: 4306
+  hiveDB: hive_tmp
+  username: root
+  password: 123456
+
+s3:
+  endpoint: http://10.1.9.101:7480
+  ak: WAXC3I4MY90TH6OR7NFL
+  sk: VJ0CBjdMCqVu2kXVxx0m5ioqOJ04yGtgqZBumakq
+  bucket: hive-tmp
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+
+jmx:
+  enabled: true
+  image: 
+    repository: repo-ofs.kyligence.com/jmx-prometheus-javaagent
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "0.16.1"
+
+hive:
+  imagePullSecrets: docker-registry-secret
+  image: 
+    repository: repo-ofs.kyligence.com/hive
+    pullPolicy: IfNotPresent
+    tag: "1.2.2-hadoop-2.10.1"
+
+
+hive_metastore:
+  replicaCount: 1
+  port: 9083
+
+hive_server2:
+  replicaCount: 1
+  port: 10000
