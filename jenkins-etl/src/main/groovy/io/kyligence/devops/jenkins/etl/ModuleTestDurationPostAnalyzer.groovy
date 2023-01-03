@@ -26,13 +26,14 @@ class ModuleTestDurationPostAnalyzer extends AbstractPostAnalyzer {
             }
 
             def idCol = findColumnByName(row, "id")
+            def runDateCol = findColumnByName(row, "runDate")
 
             row.forEach(col -> {
                 if (!col.getName().endsWith(SUFFIX)) {
                     return
                 }
 
-                result.addRow([idCol, JenkinsAnalysis.Column.valueOf("moduleName", col.getName().replace(SUFFIX, "")), JenkinsAnalysis.Column.valueOf("testDuration", col.getValue())])
+                result.addRow([idCol, runDateCol, JenkinsAnalysis.Column.valueOf("moduleName", col.getName().replace(SUFFIX, "")), JenkinsAnalysis.Column.valueOf("testDuration", col.getValue())])
             })
         })
 
