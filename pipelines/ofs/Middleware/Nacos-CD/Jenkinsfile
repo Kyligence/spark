@@ -70,6 +70,8 @@ pipeline {
                             sh """
                                 sed -i "s/ARG NACOS_VERSION=.*/ARG NACOS_VERSION=${params.tag}/" build/Dockerfile
                                 sed -i "s/RUN wget.*/COPY  nacos-server-${params.tag}.tar.gz \\/home /" build/Dockerfile
+                                echo nacos.deploy.mode=${params.mode} >> build/conf/application.properties
+                                cat build/conf/application.properties
                                 ls -al build/
                                 cat build/Dockerfile
                                 pwd
