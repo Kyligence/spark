@@ -5,7 +5,7 @@
 def branches = []
 pipeline {
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 12, unit: 'HOURS')
     }
 
     agent {
@@ -14,7 +14,7 @@ pipeline {
         }
     }
     stages {
-        stage ('clone') {
+        stage('clone') {
             steps {
                 container('git') {
                     sh "echo '#!/bin/bash' >> credential-helper.sh"
@@ -25,26 +25,27 @@ pipeline {
                                                 usernameVariable: 'GIT_USERNAME',
                                                 passwordVariable: 'GIT_PASSWORD')]) {
                         script {
-                            sh(script: """ 
+                            sh(script: '''
                                 |git config --global credential.helper "/bin/bash credential-helper.sh"
                                 |git clone https://github.com/Kyligence/KAP
                                 |# git fetch --all
-                                """.stripMargin())
+                                '''.stripMargin())
                             branches = sh(script: """
                                 |git ls-remote origin | awk '{print \$2}'
                                 """.stripMargin(), returnStdout: true).trim().split('\n')
                         }
-                    }
+                                                }
                 }
             }
         }
-        stage ('trigger') {
+        stage('trigger') {
             steps {
                 container('git') {
                     script {
+                        println "branches -> ${branches}"
                         // def branches = sh(script:"git ls-remote origin", returnStdout: true).trim().split('\n')
-                       // def targetBranches = ['newten', 'newten-qa', 'newten-dev', 'ke-4.3.x', 'ke-4.3.x-dev']
-                        def targetBranches = ['newten', 'newten-dev', 'newten-sp-dev', 'ke-4.5.x-dev', 'ke-4.5.x', 'yinglong-dev']
+                        // def targetBranches = ['newten', 'newten-qa', 'newten-dev', 'ke-4.3.x', 'ke-4.3.x-dev']
+                        def targetBranches = ['newten-dev', 'newten-sp-dev', 'ke-4.5.x-dev', 'ke-4.5.x', 'yinglong-dev', 'newten']
                         branches.each { branch ->
                             def matcher = branch =~ /ke-4\..\.x-(\d\d\d\d\d\d\d\d)-hotfix/ || branch =~ /ke-4\..-qa/
                             if (!matcher.find()) {
@@ -53,16 +54,18 @@ pipeline {
                             print matcher[0]
                             def date = matcher[0][1] as Integer
                             def currentDate = new Date(System.currentTimeMillis())
-                            if ((currentDate.year + 1900)*10000 + (currentDate.month+1)*100 + currentDate.date <= date) {
+                            if ((currentDate.year + 1900) * 10000 + (currentDate.month + 1) * 100 + currentDate.date <= date) {
                                 targetBranches.add(matcher[0][0])
                             }
                         }
+                        println "targetBranches -> ${targetBranches}"
                         targetBranches.each { branch ->
                             print "trigger ${branch}"
                             build job: 'Daily-CI', wait: false, parameters: [
                                     string(name: 'repo', value: 'Kyligence'),
                                     string(name: 'branch', value: branch),
                                     string(name: 'args', value: '-DskipBuild=false')]
+                            sleep(60 * 60 * 1.5)
                         }
                     }
                 }
