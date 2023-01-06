@@ -29,14 +29,14 @@ pipeline {
                 }
             }
         }
-        stage('Extract') {
+        stage('Transform') {
             steps {
                 script {
                     container('maven') {
                         dir('jenkins-etl') {
                             withCredentials([[
                                 $class: 'AmazonWebServicesCredentialsBinding',
-                                credentialsId: "aws_global_s3",
+                                credentialsId: "aws_cn_dev_s3",
                                 accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 

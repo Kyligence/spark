@@ -35,7 +35,7 @@ class JenkinsExtract implements Serializable {
         s3client = AmazonS3ClientBuilder
                 .standard()
                 .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(config.getS3Accesskey(), config.getS3secretKey())))
-                .withRegion(Regions.US_WEST_2)
+                .withRegion(Regions.CN_NORTH_1)
                 .build();
     }
 

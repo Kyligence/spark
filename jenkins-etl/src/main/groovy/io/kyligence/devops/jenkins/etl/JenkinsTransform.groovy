@@ -23,7 +23,7 @@ class JenkinsTransform {
 
         private List<String> header
 
-        void addRow(List<JenkinsAnalysis.Column> row) {
+        synchronized void addRow(List<JenkinsAnalysis.Column> row) {
             if (header == null) {
                 header = row.collect {
                     it.getName()
@@ -39,7 +39,7 @@ class JenkinsTransform {
             rows.add(row)
         }
 
-        InputStream toStream() {
+        synchronized InputStream toStream() {
             def builder = new StringBuilder()
 
             builder.append(header.stream().collect(Collectors.joining(","))).append("\n")
@@ -52,7 +52,7 @@ class JenkinsTransform {
             return IOUtils.toInputStream(builder, StandardCharsets.UTF_8)
         }
 
-        List<List<JenkinsAnalysis.Column>> getRows() {
+        synchronized List<List<JenkinsAnalysis.Column>> getRows() {
             return new ArrayList<List<JenkinsAnalysis.Column>>(this.rows)
         }
     }
@@ -84,7 +84,7 @@ class JenkinsTransform {
         this.s3client = AmazonS3ClientBuilder
                 .standard()
                 .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(config.getS3Accesskey(), config.getS3secretKey())))
-                .withRegion(Regions.US_WEST_2)
+                .withRegion(Regions.CN_NORTH_1)
                 .build();
 
         this.csv = new Csv()
@@ -100,11 +100,11 @@ class JenkinsTransform {
         def jobs = listFolders(String.format(JOB_KEY_PREFIX, config.getPlatform(), jobFolder, jobName))
         log.info("total jobs: ${jobs.size()}")
 
-        for (job in jobs) {
+        jobs.parallelStream().forEach(job -> {
             def objs = listObjects(job)
             if (objs.stream().noneMatch(it -> it.getKey().endsWith(".flag"))) {
                 log.info("job [${job}] unfinished, skip it.")
-                continue
+                return
             }
 
             log.info("transform job: [${job}]...")
@@ -118,7 +118,7 @@ class JenkinsTransform {
             }
 
             csv.addRow(analysis.analysisResult())
-        }
+        })
 
         def dataStream = csv.toStream()
         def meta = new ObjectMetadata()
