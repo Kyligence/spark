@@ -1,5 +1,6 @@
 package io.kyligence.devops.jenkins.etl
 
+import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
@@ -85,6 +86,7 @@ class JenkinsTransform {
                 .standard()
                 .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(config.getS3Accesskey(), config.getS3secretKey())))
                 .withRegion(Regions.CN_NORTH_1)
+                .withClientConfiguration(new ClientConfiguration().withSocketTimeout(5 * 60 * 1000).withRequestTimeout(5 * 60 * 1000))
                 .build();
 
         this.csv = new Csv()
