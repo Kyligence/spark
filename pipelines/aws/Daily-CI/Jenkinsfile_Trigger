@@ -5,7 +5,7 @@
 def branches = []
 pipeline {
     options {
-        timeout(time: 12, unit: 'HOURS')
+        timeout(time: 18, unit: 'HOURS')
     }
 
     agent {

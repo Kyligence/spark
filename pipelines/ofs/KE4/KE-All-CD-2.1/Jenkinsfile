@@ -339,6 +339,7 @@ def deployToServer(hostIp, remote_name, package_name, remote_dir, kepackage_dir,
         remote.allowAnyHosts = true
         sshCommand remote: remote, command: """
             cd ${remote_dir}
+            set -e
             rm -rf dist
             mkdir dist
             cd dist
