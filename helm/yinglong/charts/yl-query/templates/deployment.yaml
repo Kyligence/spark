@@ -151,15 +151,6 @@ spec:
             - mountPath: /opt/kyligence/hadoop_conf/hivemetastore-site.xml
               name: yarn-xml
               subPath: hive-site.xml
-            - mountPath: /opt/kyligence/hadoop_conf/hdfs-site.xml
-              name: yarn-xml
-              subPath: hdfs-site.xml
-            - mountPath: /opt/kyligence/hadoop_conf/yarn-site.xml
-              name: yarn-xml
-              subPath: yarn-site.xml
-            - mountPath: /opt/kyligence/hadoop_conf/fair-scheduler.xml
-              name: yarn-xml
-              subPath: fair-scheduler.xml
             - mountPath: /opt/kyligence/conf/log4j2.xml
               name: newten-conf
               subPath: log4j2.xml

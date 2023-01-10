@@ -47,6 +47,14 @@ global:
       tag: 3.3.0-kylin-4.5.17.0-SNAPSHOT
     uploadPath: s3a://yinglong-dep
 
+  s3:
+    endpoint: http://10.1.9.101:7480
+    ak: WAXC3I4MY90TH6OR7NFL
+    sk: VJ0CBjdMCqVu2kXVxx0m5ioqOJ04yGtgqZBumakq
+    bucket: yinglong
+  metastore:
+    uris: hadoop-hive-metastore.yinglong:9083
+
 # yl-common:
 #   image:
 #     repository: harbor-ofs.kyligence.com/yinglong/yl-common
