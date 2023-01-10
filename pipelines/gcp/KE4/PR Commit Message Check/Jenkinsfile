@@ -1,0 +1,44 @@
+#!groovy
+
+import org.kohsuke.github.GitHub
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+        }
+    }
+
+    stages {
+        stage('Check Commit Message') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
+
+                        def pattern = "^\\s*(AL|KE){1}\\-[0-9]+\\s.*\$"
+                        def github = GitHub.connect(login, token)
+                        def repo = github.getRepository("Kyligence/KAP")
+                        def pr = repo.getPullRequest(Integer.valueOf(params.ghprbPullId))
+
+                       def title =  pr.getTitle()
+                       println "verify pr title[${title}]..."
+                       if (title ==~ /${pattern}/) {
+                           return
+                       }
+
+                        for (def commit in pr.listCommits()) {
+                            def msg = commit.getCommit().getMessage()
+                            println "verify commit message[${msg}]..."
+                            if (!(msg ==~ /${pattern}/)) {
+                                throw new IllegalStateException("PR title 或 Commit message 不合法，请使用 'AL-xxxx' 或者 'KE-xxxx' 开头")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
