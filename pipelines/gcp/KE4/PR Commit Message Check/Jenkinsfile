@@ -18,16 +18,16 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
 
-                        def pattern = "^\\s*(AL|KE){1}\\-[0-9]+\\s.*\$"
+                        def pattern = "^\\s*(AL|KE){1}\\-[0-9]+.*\$"
                         def github = GitHub.connect(login, token)
                         def repo = github.getRepository("Kyligence/KAP")
                         def pr = repo.getPullRequest(Integer.valueOf(params.ghprbPullId))
 
-                       def title =  pr.getTitle()
-                       println "verify pr title[${title}]..."
-                       if (title ==~ /${pattern}/) {
-                           return
-                       }
+                        def title =  pr.getTitle()
+                        println "verify pr title[${title}]..."
+                        if (title ==~ /${pattern}/) {
+                            return
+                        }
 
                         for (def commit in pr.listCommits()) {
                             def msg = commit.getCommit().getMessage()
