@@ -997,7 +997,7 @@ pipeline {
     post {
         failure {
             container('build2') {
-                feishu('失败！！ ❌')
+                feishu('KE-All-CD-2.1打包失败！！ ❌')
             }
         }
     }

@@ -104,6 +104,14 @@ pipeline {
             }
         }
     }
+
+    post {
+        failure {
+            container('jnlp') {
+                feishu('GCP上CI执行失败！！ ❌')
+            }
+        }
+    }
 }
 
 def quicklyCheckout() {

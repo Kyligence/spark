@@ -72,7 +72,7 @@ spec:
     post {
         failure {
             container('jnlp') {
-                feishu('失败！！ ❌')
+                feishu('检查网络链接，发现失败！！ ❌')
             }
         }
     }
