@@ -144,33 +144,7 @@ EOF
                 }
             }
         }
-        stage('3.Dev/QA Upload') {
-            parallel {
-                stage('3.1.Upload to Azure CN') {
-                    steps {
-                        script {
-                            println 'update to Test Env : TODO'
-                        }
-                    }
-                }
-                stage('3.2.Upload to Nexus') {
-                    steps {
-                        container('build') {
-                            timestamps {
-                                script {
-                                    println 'Upload to Nexus'
-                                    sh script: """
-                                        echo ${package_info.file_name}
-                                    """
-                                    uploadHelper.uploadNexus(package_info.file_name, package_info.package_path, 'raw-tars-hosted')
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        stage('4.Approve GA') {
+        stage('3.Approve GA') {
             when {
                 expression {
                     return params.envStage == 'GA' && exist_package
@@ -193,7 +167,7 @@ EOF
                 }
             }
         }
-        stage('5.GA Upload') {
+        stage('4.GA Upload') {
             when {
                 expression {
                     return params.envStage == 'GA' && exist_package && !paramsGA['skipUpload']
@@ -240,7 +214,7 @@ EOF
                 }
             }
         }
-        stage('6.Released') {
+        stage('5.Released') {
             when {
                 expression {
                     return params.envStage == 'GA' && exist_package
