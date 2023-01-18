@@ -15,9 +15,11 @@ pipeline {
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'bi-adapter repo')
-        string(name: 'branch', defaultValue: 'main', description: 'branch')
-        booleanParam(name: 'skipTests', defaultValue: false, description: 'skip tests')
+        string(name: 'branch', defaultValue: 'master', description: 'branch')
+        string(name: 'version', defaultValue: '', description: 'input sdk version')
+        booleanParam(name: 'skipTests', defaultValue: false, description: 'skip ut tests')
         booleanParam(name: 'isDeploy', defaultValue: false, description: 'is deploy')
+        booleanParam(name: 'isDeploySolution', defaultValue: false, description: 'is deploy to solution')
     }
 
     environment {
@@ -55,7 +57,10 @@ pipeline {
                                 """
                             }
                         }
-                       
+                        sh script: """
+                            echo "start deploy SNAPSHOT ${params.isDeploy}"
+                            mvn clean deploy  -DskipTests -Pcse
+                        """
                     }
                 }
             }
@@ -72,12 +77,55 @@ pipeline {
                     dir("sourcecode") {
                         sh script: """
                             echo "start deploy ${params.isDeploy}"
-                            mvn clean deploy -Pdev
+                            mvn versions:set -DnewVersion=${version}
+                            mvn clean deploy  -DskipTests -Pcse
                         """
                     }
                 }
             }
-        }   
-        
+        }
+        stage('tag') {
+            when {
+                expression {
+                    return params.isDeploy
+                }
+            }
+            steps {
+                container("build") {
+                    dir("sourcecode") {
+                        script {
+                            def branch = "${branch ?: params.branch ?: 'master'}"
+                            def version = "${params.version}"
+                            cmd = "sh /root/KETEST/do_tag.sh inspection-tool " + branch + " " + version
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name':'localhost','host':'10.1.2.181', 'allowAnyHosts': true]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        stage('deploy to solution') {
+            when {
+                expression {
+                    return params.isDeploySolution && params.isDeploy
+                }
+            }
+            steps {
+                script {
+                    def version = "${params.version}"
+                    cmd = "sh /home/solution/public/inspection-web/restart-by-jenkins.sh jenkins " + version
+                    echo "cmd: ${cmd}"
+                    sshCmdWithCredentials(
+                            cmd,
+                            'jiahangsolution',
+                            ['name':'solution','host':'10.1.3.61', 'allowAnyHosts': true]
+                    )
+                }
+            }
+        }
     }
 }
