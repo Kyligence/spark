@@ -450,6 +450,7 @@ pipeline {
         string(defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）', name: 'docs_commitid')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         booleanParam(name: 'excludeDocs', defaultValue: false, description: '勾选时，将不包含手册')
+        booleanParam(name: 'autoDeploy', defaultValue: false, description: '无需审批直接部署（用于 Daily Build）')
     }
 
     stages {

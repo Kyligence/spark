@@ -1,0 +1,36 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 23, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    // triggers {
+    //     cron('0 0 0 ? * *')
+    // }
+
+    stages {
+        stage('JobA') {
+            steps {
+                ansiColor('xterm') {
+                    build job: 'KE-All-CD-2.1', parameters: [
+                        string(name: 'deployWay', value: 'Auto Select'),
+                        string(name: 'deployType', value: 'Regular'),
+                        string(name: 'version', value: '4.6.5.0'),
+                        string(name: 'kylin_ver', value: '5.0.0'),
+                        string(name: 'envStage', value: 'DEV'),
+                        string(name: 'customerPkg', value: 'NORMAL'),
+                        string(name: 'docs_commitid', value: 'latest')]
+                }
+            }
+        }
+    }
+}
