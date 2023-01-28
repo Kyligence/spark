@@ -3,12 +3,12 @@
 @Library('devopslib') _
 
 def modules = [
-    ['name': 'ke-common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'yinglong-common', 'image': ''],
-    ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'yinglong-data-loading', 'image': ''],
-    ['name': 'query', 'path': 'kyligence/src/ke-query-booter', 'imageName': 'yinglong-query', 'image': ''],
-    ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': ''],
-    ['name': 'yinglong-resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'yinglong-resource', 'image': ''],
-    ['name': 'ke-ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'yinglong-ops', 'image': '']
+    ['name': 'ke-common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'common', 'image': ''],
+    ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'data-loading', 'image': ''],
+    ['name': 'query', 'path': 'kyligence/src/ke-query-booter', 'imageName': 'query', 'image': ''],
+    ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'smart', 'image': ''],
+    ['name': 'yinglong-resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'resource', 'image': ''],
+    ['name': 'ke-ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'ops', 'image': '']
 ]
 
 // 发布分支(前端)
@@ -256,7 +256,7 @@ pipeline {
                                             echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                             cat .npmrc
                                         """
-                                        frontend = docker.build('yinglong/yinglong-frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile .")
+                                        frontend = docker.build('enterprise/frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile .")
                                     }
                                 }
                             }
@@ -270,7 +270,7 @@ pipeline {
                                 for (m in modules) {
                                     dir("sourcecode/${m.path}") {
                                         retry(2) {
-                                            m.image = docker.build("yinglong/${m.imageName}")
+                                            m.image = docker.build("enterprise/${m.imageName}")
                                         }
                                     }
                                 }
@@ -284,7 +284,7 @@ pipeline {
                             dir('sourcecode'){
                                 script {
                                     sh "ls -alt"
-                                    spark = docker.build('yinglong/yinglong-spark', "-f ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile4Spark .")
+                                    spark = docker.build('enterprise/spark', "-f ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile4Spark .")
                                 }
                             }
                         }
