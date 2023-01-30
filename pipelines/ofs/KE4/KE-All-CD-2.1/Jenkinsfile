@@ -402,7 +402,7 @@ def notifyToTester(title, ip, failure = false) {
 
 pipeline {
     options {
-        timeout(time: 12, unit: 'HOURS')
+        timeout(time: 18 unit: 'HOURS')
         ansiColor('xterm')
     }
 
@@ -837,7 +837,7 @@ pipeline {
                     script {
                         println "deploy_status: ${deploy_status}"
                         deploy_status.svr165 = [:]
-                        try {    
+                        try {
                             deployToServer('159.27.81.165', 'azure_snoopy-gw11', package_info.file_name,
                                 paramsDeploy['remote_dir'], paramsDeploy['kepackage_dir'], paramsDeploy['ke_workdir'])
                             deploy_status.svr165.fail_deploy = false
@@ -998,7 +998,7 @@ pipeline {
     post {
         failure {
             container('build2') {
-                feishu('KE-All-CD-2.1打包失败！！ ❌')
+                feishu('KE-All-CD-2.1打包失败！！')
             }
         }
     }

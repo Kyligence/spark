@@ -28,7 +28,8 @@ pipeline {
                         string(name: 'kylin_ver', value: '5.0.0'),
                         string(name: 'envStage', value: 'DEV'),
                         string(name: 'customerPkg', value: 'NORMAL'),
-                        string(name: 'docs_commitid', value: 'latest')]
+                        string(name: 'docs_commitid', value: 'latest'),
+                        booleanParam(name: 'autoDeploy', value: true)]
                 }
             }
         }
