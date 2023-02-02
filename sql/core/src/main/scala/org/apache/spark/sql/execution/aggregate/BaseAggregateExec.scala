@@ -27,6 +27,7 @@ import org.apache.spark.sql.execution.{AliasAwareOutputPartitioning, ExplainUtil
  */
 trait BaseAggregateExec extends UnaryExecNode with AliasAwareOutputPartitioning {
   def requiredChildDistributionExpressions: Option[Seq[Expression]]
+  def isStreaming: Boolean = false
   def groupingExpressions: Seq[NamedExpression]
   def aggregateExpressions: Seq[AggregateExpression]
   def aggregateAttributes: Seq[Attribute]
