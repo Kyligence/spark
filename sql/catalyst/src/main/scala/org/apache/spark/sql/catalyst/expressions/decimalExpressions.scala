@@ -105,6 +105,23 @@ object MakeDecimal {
 }
 
 /**
+ * An expression used to wrap the children when promote the precision of DecimalType to avoid
+ * promote multiple times.
+ */
+case class PromotePrecision(child: Expression) extends UnaryExpression {
+  override def dataType: DataType = child.dataType
+  override def eval(input: InternalRow): Any = child.eval(input)
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode =
+    child.genCode(ctx)
+  override def prettyName: String = "promote_precision"
+  override def sql: String = child.sql
+  override lazy val canonicalized: Expression = child.canonicalized
+
+  override protected def withNewChildInternal(newChild: Expression): Expression =
+    copy(child = newChild)
+}
+
+/**
  * Rounds the decimal to given scale and check whether the decimal can fit in provided precision
  * or not. If not, if `nullOnOverflow` is `true`, it returns `null`; otherwise an
  * `ArithmeticException` is thrown.
