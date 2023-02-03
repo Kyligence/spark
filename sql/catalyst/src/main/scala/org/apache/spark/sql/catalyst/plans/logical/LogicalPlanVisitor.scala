@@ -64,8 +64,9 @@ trait LogicalPlanVisitor[T] {
 
   def visitGlobalLimit(p: GlobalLimit): T
 
-  def visitOffset(p: Offset): T
-
+  def visitOffset(p: Offset): T =
+    throw new UnsupportedOperationException(s"Unable to convert the LogicalPlan ${p.nodeName}")
+  
   def visitIntersect(p: Intersect): T
 
   def visitJoin(p: Join): T
