@@ -5060,4 +5060,14 @@ class AstBuilder extends DataTypeAstBuilder with SQLConfHelper with Logging {
       ctx: PosParameterLiteralContext): Expression = withOrigin(ctx) {
     PosParameter(ctx.QUESTION().getSymbol.getStartIndex)
   }
+
+  override def visitDropLogicalView(ctx: DropLogicalViewContext): AnyRef = withOrigin(ctx) {
+    DropView(
+      createUnresolvedView(
+        ctx.identifierReference(),
+        commandName = "DROP VIEW",
+        allowTemp = true,
+        relationTypeMismatchHint = Some("Please use DROP TABLE instead.")),
+      ctx.EXISTS != null)
+  }
 }

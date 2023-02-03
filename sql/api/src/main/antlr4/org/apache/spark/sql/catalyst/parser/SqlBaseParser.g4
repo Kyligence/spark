@@ -151,6 +151,7 @@ statement
     | ALTER TABLE identifierReference RECOVER PARTITIONS                 #recoverPartitions
     | DROP TABLE (IF EXISTS)? identifierReference PURGE?               #dropTable
     | DROP VIEW (IF EXISTS)? identifierReference                       #dropView
+    | DROP LOGICAL VIEW (IF EXISTS)? identifierReference               #dropLogicalView
     | CREATE (OR REPLACE)? (GLOBAL? TEMPORARY)?
         VIEW (IF NOT EXISTS)? identifierReference
         identifierCommentList?
@@ -158,6 +159,18 @@ statement
          (PARTITIONED ON identifierList) |
          (TBLPROPERTIES propertyList))*
         AS query                                                       #createView
+    | CREATE LOGICAL VIEW identifierReference
+                identifierCommentList?
+                (commentSpec |
+                 (PARTITIONED ON identifierList) |
+                 (TBLPROPERTIES propertyList))*
+                AS query                                               #createLogicalView
+    | REPLACE LOGICAL VIEW identifierReference
+                identifierCommentList?
+                (commentSpec |
+                  (PARTITIONED ON identifierList) |
+                  (TBLPROPERTIES propertyList))*
+                AS query                                               #replaceLogicalView
     | CREATE (OR REPLACE)? GLOBAL? TEMPORARY VIEW
         tableIdentifier (LEFT_PAREN colTypeList RIGHT_PAREN)? tableProvider
         (OPTIONS propertyList)?                                        #createTempViewUsing
