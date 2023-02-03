@@ -153,21 +153,6 @@ private[sql] object BucketTransform {
     case _ =>
       None
   }
-
-  def unapply(transform: Transform): Option[(Int, NamedReference)] =
-    transform match {
-      case NamedTransform("bucket", Seq(
-      Lit(value: Int, IntegerType),
-      Ref(partCols: Seq[String]),
-      Ref(sortCols: Seq[String]))) =>
-        Some((value, FieldReference(partCols)))
-      case NamedTransform("bucket", Seq(
-      Lit(value: Int, IntegerType),
-      Ref(partCols: Seq[String]))) =>
-        Some((value, FieldReference(partCols)))
-      case _ =>
-        None
-    }
 }
 
 private[sql] final case class ApplyTransform(
