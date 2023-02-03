@@ -151,6 +151,15 @@ pipeline {
                         sh script: """
                             mvn test -Dtest=io.kyligence.kap.TestCI#testCI -pl benchmark
                         """
+                        script {
+                            cmd = "netstat -tunlp | grep 7080 | awk '{print \$7}' | grep -P '[\\d]+' -o | xargs kill -9"
+                            echo "cmd: ${cmd}"
+                            sshCmdWithCredentials(
+                                    cmd,
+                                    'shuiaileiroot',
+                                    ['name': 'localhost', 'host': '10.1.2.181', 'allowAnyHosts': true]
+                            )
+                        }
                     }
                 }
             }
