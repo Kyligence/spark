@@ -1,4 +1,5 @@
 import java.util.concurrent.LinkedBlockingQueue
+import org.kohsuke.github.GitHub
 
 def call() {
     Map<String, List<String>> testModules = evalTestModules()
@@ -72,21 +73,34 @@ Map<String, List<String>> evalTestModules() {
     container('maven') {
         dir("sourcecode") {
             def parentModules = ["", "kylin"]
-            for (String parentModule in parentModules) {
-                def childModules = sh(script: """
-                    if [ ! -z ${parentModule} ]; then
-                        cd ${parentModule}
-                    fi
-                    mvn help:evaluate -Dexpression=project.modules | grep -v "^\\[" | grep -v "<\\/*strings>" | sed 's/<\\/*string>//g' | sed 's/[[:space:]]//'
-                """, returnStdout: true)
-                        .trim()
-                        .split("\n")
-                        .findAll({ !it.startsWith("Downloaded from") && !it.startsWith("Downloading from") && !it.startsWith("Downloadingfrom") && !it.startsWith("Progress") })
-                        .collect({ parentModule.isEmpty() ? it.trim() : "${parentModule}/${it.trim()}" })
 
-                println "child modules: ${childModules}"
-                allSubModules.addAll(childModules)
+
+            def changeFiles = []
+            withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
+                def github = GitHub.connect(login, token)
+                def repo = github.getRepository("Kyligence/KAP")
+                def pr = repo.getPullRequest(Integer.valueOf(params.ghprbPullId))
+
+                def changeFilesReq = pr.listFiles().iterator()
+                while (changeFilesReq.hasNext()) {
+                    def file = changeFilesReq.next()
+                    if (file.getStatus() in ["added", "removed", "modified", "renamed"]) {
+                        changeFiles.add(file.getFilename())
+                    }
+                }
             }
+
+            changeFiles = changeFiles.stream().distinct().collect()
+            println("change files: ${changeFiles}")
+
+            def changeModules = sh(script: "java -jar /tools/mat-0.1.2.jar -b -r -lm -d `pwd` -cl ${changeFiles.join(",")} | grep -A 2 'build command:'", returnStdout: true)
+                    .trim()
+                    .split("\n")
+                    .last()
+                    .split(",")
+                    .collect({it.trim()})
+            println("change modules: ${changeModules}")
+            allSubModules.addAll(changeModules)
 
             allSubModules.removeAll(parentModules)
             println "all submodules: ${allSubModules}"

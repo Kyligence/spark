@@ -23,6 +23,9 @@ spec:
         - name: "jenkins-common"
           mountPath: /var/jacoco
           subPath: "jacoco"
+        - name: "jenkins-common"
+          mountPath: /tools
+          subPath: "tools"
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository/io/kyligence
         - name: "kylin-repo"
