@@ -1,0 +1,23 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: kylin.init.yaml
+data:
+  KYLIN_METADATA_URL: {{ .Values.global.metadata.url | quote }}
+  KYLIN_ENV_HDFS_WORKING_DIR: {{ .Values.global.hdfs.workingDir | default (printf "/kylin/%s"  (.Release.Namespace)) | quote }}
+  TZ: {{ .Values.global.tz | quote }}
+  NACOS_DISCOVERY_SERVER_ADDR: {{ (printf "http://%s" (.Values.global.nacos.discovery.serverAddrNoHttp)) | quote }}
+  NACOS_DISCOVERY_SERVER_ADDR_NO_HTTP: {{ .Values.global.nacos.discovery.serverAddrNoHttp | quote }}
+  NACOS_CONFIG_SERVER_ADDR: {{ (printf "http://%s" (.Values.global.nacos.config.serverAddrNoHttp)) | quote }}
+  NACOS_CONFIG_SERVER_ADDR_NO_HTTP: {{ .Values.global.nacos.config.serverAddrNoHttp | quote }}
+  TENANT_ID: "{{ .Values.global.tenantId }}"
+  KYLIN_LEGACY_CONFIG: {{ .Values.global.configcenter.disabled | quote }}
+  DISCOVERY_PUBLIC_GROUP: {{ .Values.global.publicGroup | quote}}
+  SPRING_SESSION_STORE_TYPE: "none"
+  HADOOP_CONF_DIR: "$(KYLIN_HOME)/hadoop_conf"
+  NAME_SPACE: {{ .Release.Namespace }}
+  SPARK_IMAGE: {{ .Values.global.sparkPod.image.repository }}:{{ .Values.global.sparkPod.image.tag }}
+  SPARK_NAMESPACE: {{ .Values.sparkResourceNamespace | default .Release.Namespace }}
+  SPARK_SERVICE_ACCOUNT_NAME: {{ .Values.serviceAccount.name }}-{{ .Release.Namespace }}
+  SPARK_UPLOAD_PATH: {{ .Values.global.sparkPod.uploadPath }}
+  RELEASE_NAME: {{ .Release.Name }}

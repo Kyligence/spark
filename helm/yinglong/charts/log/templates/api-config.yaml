@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "log.fullname" . }}-api-config
+  labels:
+  {{- include "log.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    data:
+      loki:
+        address: {{ .Values.apiConfig.configYaml.data.loki.address | quote }}
+    server:
+      port: {{ .Values.apiConfig.configYaml.server.port | quote }}
+      workingDir: {{ .Values.apiConfig.configYaml.server.workingDir | quote }}

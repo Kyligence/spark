@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 monitor:
   enabled: false
-yl-log:
+log:
   enabled: true
 global:
   hadoopPrefix: hadoop
@@ -55,42 +55,42 @@ global:
   metastore:
     uris: hadoop-hive-metastore.yinglong:9083
 
-# yl-common:
+# common:
 #   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/yl-common
+#     repository: harbor-ofs.kyligence.com/yinglong/common
 #     tag: yl-5.0.10
-#   fullnameOverride: yl-common-with-a-very-long-name
+#   fullnameOverride: common-with-a-very-long-name
 
-# yl-data-loading:
+# data-loading:
 #   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/yl-data-loading
+#     repository: harbor-ofs.kyligence.com/yinglong/data-loading
 #     tag: yl-5.0.10
-#   fullnameOverride: yl-data-loading-with-a-very-long-name
+#   fullnameOverride: data-loading-with-a-very-long-name
 
-# yl-query:
+# query:
 #   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/yl-query
+#     repository: harbor-ofs.kyligence.com/yinglong/query
 #     tag: yl-5.0.10
-#   fullnameOverride: yl-query-with-a-very-long-name
+#   fullnameOverride: query-with-a-very-long-name
 
-# yl-smart:
+# smart:
 #   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/yl-smart
-#     tag: yl-5.0.10
-
-# yl-resource:
-#   image:
-#     repository: repo-ofs.kyligence.com/kyligence/yl-resource
+#     repository: harbor-ofs.kyligence.com/yinglong/smart
 #     tag: yl-5.0.10
 
-# yl-ops:
+# resource:
 #   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/yl-ops
+#     repository: repo-ofs.kyligence.com/kyligence/resource
+#     tag: yl-5.0.10
+
+# ops:
+#   image:
+#     repository: harbor-ofs.kyligence.com/yinglong/ops
 #     tag: yl-5.0.10   
 
-# yl-frontend:
+# frontend:
 #   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/yl-frontend
+#     repository: harbor-ofs.kyligence.com/yinglong/frontend
 #     tag: yl-5.0.10
 #   gateway:
 #     serverAddr: gateway:8080
@@ -105,7 +105,7 @@ global:
 #           - path: /
 #             pathType: ImplementationSpecific
 
-# yl-gateway:
+# gateway:
 #   image:
 #     repository: repo-ofs.kyligence.com/gateway
 #     tag: "5.0.1-private"

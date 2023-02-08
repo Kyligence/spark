@@ -1,0 +1,13 @@
+apiVersion: v2
+appVersion: "5.0.1-private"
+dependencies:
+- name: loki-distributed
+  repository: https://grafana.github.io/helm-charts
+  version: 0.56.5
+- name: fluent-bit
+  repository: https://grafana.github.io/helm-charts
+  version: 2.3.1
+description: A Helm chart for Kubernetes
+name: log
+type: application
+version: 0.1.0

@@ -3,12 +3,12 @@
 @Library('devopslib') _
 
 def modules = [
-    ['name': 'ke-common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'common', 'image': ''],
+    ['name': 'common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'common', 'image': ''],
     ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'data-loading', 'image': ''],
     ['name': 'query', 'path': 'kyligence/src/ke-query-booter', 'imageName': 'query', 'image': ''],
-    ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'smart', 'image': ''],
-    ['name': 'yinglong-resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'resource', 'image': ''],
-    ['name': 'ke-ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'ops', 'image': '']
+    ['name': 'smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'smart', 'image': ''],
+    ['name': 'resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'resource', 'image': ''],
+    ['name': 'ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'ops', 'image': '']
 ]
 
 // 发布分支(前端)
@@ -256,6 +256,7 @@ pipeline {
                                             echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                             cat .npmrc
                                         """
+
                                         frontend = docker.build('enterprise/frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile .")
                                     }
                                 }
@@ -349,7 +350,7 @@ pipeline {
                 ok '确认！'
                 parameters {
                     choice(name: 'deploy', choices: 'skip\nupgrade\ninstall', description: '部署方式:\nskip - 跳过\nupgrade - 更新\ninstall - 重新部署')
-                    choice(name: 'namespace', choices: 'yinglong-qa\nyinglong-test', description: '选择要部署的namespace')
+                    choice(name: 'namespace', choices: 'yinglong-dev\nyinglong-dev2\nyinglong-qa\nyinglong-test', description: '选择要部署的namespace')
                     string(name: 'hadoop_prefix', defaultValue: 'hadoop', description: 'hadoop environment')
                     string(name: 'tenant_id', defaultValue: '', description: 'tenant id')
                     string(name: 'metadata_table_name', defaultValue: 'yinglong_metadata', description: 'metadata table name')
