@@ -80,6 +80,10 @@ def gitCodeKe(back, front, pMap) {
         println "release_commitid_back: ${release_commitid_back}"
         result.release_commitid_back = release_commitid_back
 
+        release_commitid_back_full = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+        println "release_commitid_back_full: ${release_commitid_back_full}"
+        result.release_commitid_back_full = release_commitid_back_full
+
         def _front
         if (!front) {
             println "No commitId_front, use the commitId_back: ${back}"
@@ -135,6 +139,7 @@ pipeline {
         smart = ''
         frontend = ''
         release_commitid_back = ''
+        release_commitid_back_full = ''
         release_commitid_front = ''
         spark = ''
    }
@@ -168,6 +173,7 @@ pipeline {
                                 release_branch_back = _branch
                                 def cms = gitCodeKe(_branch, _branch, paramsMap)
                                 release_commitid_back = cms.release_commitid_back
+                                release_commitid_back_full = cms.release_commitid_back_full
                                 release_commitid_front = cms.release_commitid_front
                             } else if (params.deployWay == 'Manual Select') {
                                 // 2.2 根据手动输入参数设定分支
@@ -188,10 +194,19 @@ pipeline {
                                 release_branch_back = paramsMap['commitId_back']
                                 def cms = gitCodeKe(release_branch_back, release_branch_front, paramsMap)
                                 release_commitid_back = cms.release_commitid_back
+                                release_commitid_back_full = cms.release_commitid_back_full
                                 release_commitid_front = cms.release_commitid_front
                             } else {
                                 println 'no code pulled'
                             }
+
+                            sh """
+                                echo "${release_commitid_back_full}@KAP"
+                                echo "Kyligence Enterprise ${params.version}"
+                                echo "${release_commitid_back_full}@KAP" > commit_SHA1
+                                echo "Build with JENKINS at" `date "+%Y-%m-%d %H:%M:%S"` >> commit_SHA1
+                                echo "Kyligence Enterprise ${params.version}" > VERSION
+                            """
                         }
                     }
                 }
@@ -225,6 +240,8 @@ pipeline {
                                     sh """
                                         pwd
                                         ls -al
+                                        cp ../../../VERSION VERSION
+                                        cp ../../../commit_SHA1 commit_SHA1
                                         cp ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile Dockerfile
                                         sed -i "s#&&replace_package&&#target/${m.name}*.tar.gz#g" Dockerfile
                                         sed -i "s#&&replace_dir&&#${m.name}#g" Dockerfile
