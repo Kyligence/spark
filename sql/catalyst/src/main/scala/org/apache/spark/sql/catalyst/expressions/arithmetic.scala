@@ -427,8 +427,11 @@ case class Add(
 
   override lazy val canonicalized: Expression = {
     // TODO: do not reorder consecutive `Add`s with different `failOnError`
-    val reorderResult =
-      orderCommutative({ case Add(l, r, _) => Seq(l, r) }).reduce(Add(_, _, failOnError))
+    val reorderResult = buildCanonicalizedPlan(
+      { case Add(l, r, _) => Seq(l, r) },
+      { case (l: Expression, r: Expression) => Add(l, r, failOnError)},
+      Some(failOnError)
+    )
     if (resolved && reorderResult.resolved && reorderResult.dataType == dataType) {
       reorderResult
     } else {
@@ -566,7 +569,11 @@ case class Multiply(
 
   override lazy val canonicalized: Expression = {
     // TODO: do not reorder consecutive `Multiply`s with different `failOnError`
-    orderCommutative({ case Multiply(l, r, _) => Seq(l, r) }).reduce(Multiply(_, _, failOnError))
+    buildCanonicalizedPlan(
+      { case Multiply(l, r, _) => Seq(l, r) },
+      { case (l: Expression, r: Expression) => Multiply(l, r, failOnError)},
+      Some(failOnError)
+    )
   }
 }
 
