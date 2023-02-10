@@ -55,7 +55,9 @@ global:
   metastore:
     uris: hadoop-hive-metastore.yinglong:9083
 
-# frontend:
+frontend:
+  image:
+    tag: "latest"
 #   iam:
 #     serverAddr: https://iam.dev.kyligence.com/   # 租户中心的访问地址.
 #   config:
