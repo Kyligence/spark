@@ -14,3 +14,64 @@ data:
       gateway:
         integrate:
           iam: {{.Values.saas.gateway.integrate.iam}}
+
+  route.json: |
+    [
+        {
+            "id": "nacos-router",
+            "uri": "lb://nacos-config",
+            "predicates": [
+                "Path=/nacos/api/**"
+            ]
+        },
+        {
+            "id": "iam-router",
+            "uri": "lb://saas-kyiam-ka",
+            "filters": [
+                "StripPrefix=1"
+            ],
+            "predicates": [
+                "Path=/ka-iam/api/**"
+            ]
+        },
+        {
+            "id": "data-loading-router",
+            "uri": "lb://data-loading",
+            "predicates": [
+                "Path=/kylin/driver_ui/**,/kylin/api/jobs/**,/kylin/api/streaming_jobs/**"
+            ],
+            "order": 3
+        },
+        {
+            "id": "smart-router",
+            "uri": "lb://smart",
+            "predicates": [
+                "Path=/kylin/api/projects/{project}/favorite_rules,/kylin/api/projects/statistics,/kylin/api/projects/acceleration,/kylin/api/projects/acceleration_tag,/kylin/api/models/validation,/kylin/api/models/model_validation,/kylin/api/models/{model_name}/recommendations,/kylin/api/models/suggest_model,/kylin/api/models/can_answered_by_existed_model,/kylin/api/query/favorite_queries/**,/kylin/api/recommendations/**"
+            ],
+            "order": 4
+        },
+        {
+            "id": "query-router",
+            "uri": "lb://query",
+            "predicates": [
+                "Path=/kylin/api/query/**,/kylin/api/async_query/**,/kylin/sparder/**,/kylin/history_server/**,/kylin/api/tables_and_columns,/kylin/api/query_sql_blacklist/**"
+            ],
+            "order": 5
+        },
+        {
+            "id": "ops-router",
+            "uri": "lb://ops",
+            "predicates": [
+                "Path=/kylin/api/system/metadata/dump,/kylin/api/system/diag**,/kylin/api/system/diag/**,/kylin/api/system/maintenance_mode,/kylin/api/system/servers,/kylin/api/system/do_metadata_backup,/kylin/api/system/get_project_metadata_backup_list,/kylin/api/system/get_system_metadata_backup_list,/kylin/api/system/cancel_metadata_backup,/kylin/api/system/delete_metadata_backup,/kylin/api/system/do_restore_metadata,/kylin/api/system/has_metadata_restore_in_progress,/kylin/api/system/cleanup_garbage"
+            ],
+            "order": 6
+        },
+        {
+            "id": "common-router",
+            "uri": "lb://common",
+            "predicates": [
+                "Path=/kylin/api/**"
+            ],
+            "order": 7
+        }
+    ]

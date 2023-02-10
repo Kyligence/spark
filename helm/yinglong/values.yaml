@@ -11,7 +11,7 @@ global:
     # workingDir: 
 
   image:
-    registry: harbor-ofs.kyligence.com/yinglong
+    registry: harbor-ofs.kyligence.com/enterprise
     tag: "latest"
     pullPolicy: IfNotPresent
     logTag: "latest"
@@ -55,45 +55,7 @@ global:
   metastore:
     uris: hadoop-hive-metastore.yinglong:9083
 
-# common:
-#   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/common
-#     tag: yl-5.0.10
-#   fullnameOverride: common-with-a-very-long-name
-
-# data-loading:
-#   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/data-loading
-#     tag: yl-5.0.10
-#   fullnameOverride: data-loading-with-a-very-long-name
-
-# query:
-#   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/query
-#     tag: yl-5.0.10
-#   fullnameOverride: query-with-a-very-long-name
-
-# smart:
-#   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/smart
-#     tag: yl-5.0.10
-
-# resource:
-#   image:
-#     repository: repo-ofs.kyligence.com/kyligence/resource
-#     tag: yl-5.0.10
-
-# ops:
-#   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/ops
-#     tag: yl-5.0.10   
-
 # frontend:
-#   image:
-#     repository: harbor-ofs.kyligence.com/yinglong/frontend
-#     tag: yl-5.0.10
-#   gateway:
-#     serverAddr: gateway:8080
 #   iam:
 #     serverAddr: https://iam.dev.kyligence.com/   # 租户中心的访问地址.
 #   config:
@@ -108,8 +70,7 @@ global:
 # gateway:
 #   image:
 #     repository: repo-ofs.kyligence.com/gateway
-#     tag: "5.0.1-private"
-#   fullnameOverride: gateway
+#     tag: "repo-ofs.kyligence.com/gateway:5.1.2-DEV-03e40ed"
 #   config: # redis参数必须和租户中心的gateway所使用的redis一致.
 #     redis:
 #       host: redis-master.yinglong.svc.cluster.local

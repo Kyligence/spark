@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: harbor-ofs.kyligence.com/yinglong/resource
+  repository:
   pullPolicy:
   tag:
 
