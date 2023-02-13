@@ -2,6 +2,8 @@
 
 import org.kohsuke.github.GitHub
 
+def ISSUE_KEYS = []
+
 pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -18,27 +20,54 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
 
-                        def pattern = "^\\s*(AL|KE){1}\\-[0-9]+.*\$"
+                        def pattern = "^\\s*(?<KEY>(?<PREFIX>AL|KE){1}\\-[0-9]+).*\$"
                         def github = GitHub.connect(login, token)
                         def repo = github.getRepository("Kyligence/KAP")
                         def pr = repo.getPullRequest(Integer.valueOf(params.ghprbPullId))
 
                         def title =  pr.getTitle()
                         println "verify pr title[${title}]..."
-                        if (title ==~ /${pattern}/) {
+
+                        def titleMatcher = title =~ /${pattern}/
+                        if (titleMatcher.matches()) {
+                            ISSUE_KEYS.add(titleMatcher.group('KEY'))
                             return
                         }
 
                         for (def commit in pr.listCommits()) {
                             def msg = commit.getCommit().getMessage()
                             println "verify commit message[${msg}]..."
-                            if (!(msg ==~ /${pattern}/)) {
+
+                            def msgMatcher = msg =~ /${pattern}/
+                            if (!msgMatcher.matches()) {
                                 throw new IllegalStateException("PR title 或 Commit message 不合法，请使用 'AL-xxxx' 或者 'KE-xxxx' 开头")
                             }
+
+                            ISSUE_KEYS.add(msgMatcher.group('KEY'))
                         }
                     }
                 }
             }
         }
+
+        stage('Check Jira Issue Type') {
+            steps {
+                script {
+                    println "Issue Keys: ${ISSUE_KEYS}"
+                    withEnv(['JIRA_SITE=olapio']) {
+                        for (key in ISSUE_KEYS) {
+                            def issue = jiraGetIssue idOrKey: key
+                            if (issue.data.fields.issuetype.name in ['Story', 'Bug', '故事', '缺陷']) {
+                                println "Issue ${key} 类型为 ${issue.data.fields.issuetype.name}，通过！"
+                                continue
+                            }
+
+                            throw new IllegalStateException("Issue ${key} 不允许提交代码，因为它的类型是：${issue.data.fields.issuetype.name}。必须是 Story 或者 Bug 类型才能提交代码")
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }
