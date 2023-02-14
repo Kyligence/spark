@@ -274,7 +274,7 @@ pipeline {
                                             cat .npmrc
                                         """
 
-                                        frontend = docker.build('enterprise/frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile .")
+                                        frontend = docker.build('enterprise/frontend', "--network=host -f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile .")
                                     }
                                 }
                             }
@@ -288,7 +288,7 @@ pipeline {
                                 for (m in modules) {
                                     dir("sourcecode/${m.path}") {
                                         retry(2) {
-                                            m.image = docker.build("enterprise/${m.imageName}")
+                                            m.image = docker.build("enterprise/${m.imageName}", "--network=host")
                                         }
                                     }
                                 }
