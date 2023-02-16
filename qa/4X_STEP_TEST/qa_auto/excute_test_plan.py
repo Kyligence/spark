@@ -76,8 +76,8 @@ def ke_deploy(jenkins_job, ke_tar_name):
 
 def deploy_check(all_ke_clusters):
     cluster_foribid = []
-    time.sleep(900)
-    # time.sleep(10)
+    # time.sleep(900)
+    time.sleep(10)
     ke_deploy_done = 0
     j = 0
     for platform_id in all_ke_clusters:
@@ -243,14 +243,14 @@ def run_setup_case(platform_id, case_id,all_ke_clusters,header):
     return run_status
 
 
-def check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list,check_time,header):
+def check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list,check_time,header,step_ip="10.1.3.18"):
     while True:
         time.sleep(check_time)
         test_plan_batch = step_api.test_plan_batches_get(product_line_id, plan_name,header, plan_excute_no)[0]
         batch_status = test_plan_batch['status']
         batch_report_id = test_plan_batch['id']
         failure_num = len(step_api.test_records_get(batch_report_id, 3,header))
-        batch_report_url = 'http://10.1.3.18:5000/en/auspicious/test-execution/' + str(batch_report_id)
+        batch_report_url = f"http://{step_ip}:5000/en/auspicious/test-execution/{batch_report_id}"
         batch_content = f"**总用例数目:** {test_plan_batch['case_num']} ,**已完成用例数目:** {test_plan_batch['completed_num']},**失败用例数目:** {failure_num}"
         if batch_status == 'running':
             feishu_robot_card(plan_name, batch_content + '\n**测试计划执行中**', "green", batch_report_url)
@@ -279,7 +279,7 @@ def check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke
         return 'retry'
 
 
-def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=3600):
+def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=600, step_ip="10.1.3.18"):
     feishu_robot_card(plan_name, f"**测试计划：** {plan_name}\n**类型为：** {tar_type}")
 
     ''' 查找KE包，复制KE包
@@ -318,7 +318,7 @@ def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=36
     if cluster_status==0:
         feishu_robot_card("环境初始化", f" **环境初始化结束 {plan_name} 开始执行**")
         plan_excute_no = step_api.test_plan_run(plan_id,header)
-        plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list, check_time,header)
+        plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list, check_time,header,step_ip)
         for i in range(0, 3):
             if plan_excute_status == 'retry':
                 break
@@ -329,21 +329,21 @@ def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=36
                 test_plan_batch = step_api.test_plan_batches_get(product_line_id, plan_name, plan_excute_no,header)[0]
                 plan_batch_id = test_plan_batch['id']
                 plan_excute_no = step_api.test_plan_errot_retry(plan_batch_id,header)
-                check_time = 900
-                plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list,check_time,header)
+                # check_time = 900
+                plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list,check_time,header,step_ip)
     else:
         feishu_robot_card("环境初始化", " **所有KE节点均初始化失败，请检查**",'red')
         pass
 
 
-def jenkins_job_continue(plan_name, plan_excute_no , step_username, step_password ,check_time=3600):
+def jenkins_job_continue(plan_name, plan_excute_no , step_username, step_password ,check_time=3600, step_ip="10.1.3.18"):
     feishu_robot_card(plan_name, f"**测试计划监测重启：** {plan_name}\n ")
     header = step_api.get_header(step_username, step_password)
     sa = step_api.StepAPI("KE4X",header)
     plan_info, plan_id, product_line_id = get_plan_info(sa, plan_name,header)
     all_platform_name,all_ke_clusters = get_platform(sa, plan_info,header)
     case_list = get_setup_case(sa,plan_info,header)
-    plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list, check_time,header)
+    plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list, check_time,header,step_ip)
     for i in range(0, 3):
         if plan_excute_status == 'retry':
             break
@@ -356,19 +356,19 @@ def jenkins_job_continue(plan_name, plan_excute_no , step_username, step_passwor
             plan_excute_no = step_api.test_plan_errot_retry(plan_batch_id,header)
             #重试的时候900秒通知一次
             check_time = 900
-            plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list,check_time,header)
+            plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list,check_time,header,step_ip)
 
 def job_run():
     try:
         plan_type = sys.argv[1]
         if plan_type=="first":
-            plan_name,tar_type,check_time,step_username,step_password =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6]
-            print(plan_name,tar_type,check_time,step_username,step_password)
-            jenkins_job(plan_name,tar_type,step_username,step_password,int(check_time))
+            plan_name,tar_type,check_time,step_username,step_password,step_ip =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7]
+            print(plan_name,tar_type,check_time,step_username,step_password,step_ip)
+            jenkins_job(plan_name,tar_type,step_username,step_password,int(check_time),step_ip)
         else:
-            plan_name,plan_excute_no,check_time,step_username,step_password =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6]
-            print(plan_name, plan_excute_no, check_time,step_username,step_password)
-            jenkins_job_continue(plan_name,plan_excute_no,step_username,step_password,int(check_time))
+            plan_name,plan_excute_no,check_time,step_username,step_password,step_ip  =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7]
+            print(plan_name, plan_excute_no, check_time,step_username,step_password,step_ip)
+            jenkins_job_continue(plan_name,plan_excute_no,step_username,step_password,int(check_time),step_ip)
     except IndexError:
         feishu_robot_card("jenkins 任务", '**参数输入异常，缺少参数**')
 
@@ -377,3 +377,4 @@ job_run()
 # jenkins_job_continue('S_Daily_4.6.2.0_20221116_AZURE_日报测试','202211241443394129272875',600)
 # # jenkins_job()
 # jenkins_job('S_GA_4.6.4.0_0109_AZURE_脚本测试', 'QA', 600)
+# jenkins_job('S_Daily_4.6.2.0_20221110_AZURE_日报测试', 'QA', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)

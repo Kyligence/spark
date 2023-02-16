@@ -46,8 +46,13 @@ test_pwd = "Aa123456!"
 test_project = "learn_kylin"
 test_data_path = os.getcwd()+'/../test_data/'
 
-step_ip = 'http://10.1.3.18:5000'
-step_report_ip ='http://10.1.2.105:5000'
+# pro
+# step_ip = 'http://10.1.3.18:5000'
+# step_report_ip ='http://10.1.2.105:5000'
+
+# dev
+step_ip = 'http://10.1.3.29:5000'
+step_report_ip ='http://10.1.2.104:5000'
 
 step_user = open(test_data_path+'step/step_info').read().split('||')[0]
 step_pwd = open(test_data_path+'step/step_info').read().split('||')[1]
