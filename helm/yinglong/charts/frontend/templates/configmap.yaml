@@ -8,6 +8,7 @@ data:
       listen       80;
       listen  [::]:80;
       server_name  localhost;
+      client_max_body_size 0m;
 
       # Gateway
       location /ka-iam/api {
