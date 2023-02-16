@@ -44,7 +44,6 @@ def get_ke_tar(plan_name, tar_type,ke_version):
         ke_tar_name = ''
     return ke_tar_name
 
-
 def copy_tar_to_jenkins(ke_tar_name,ke_version):
     command = 'cp ' + remote_path + ke_tar_name + ' ' + des_path
     command2 = 'ls /mnt/jenkins_azure/step/' + ke_tar_name + ' -ltrh'
@@ -72,7 +71,6 @@ def ke_deploy(jenkins_job, ke_tar_name):
     server = jenkins.Jenkins('http://10.1.2.38:8080', username='quard', password='quard@2020')
     server.build_job(jenkins_job, {'ke_package': des_path2 + ke_tar_name})
     feishu_robot_card("KE部署任务", f'**获取到KE安装包：**： {ke_tar_name} \n触发Jenkins任务：{jenkins_job}')
-
 
 def deploy_check(all_ke_clusters):
     cluster_foribid = []
@@ -103,7 +101,6 @@ def deploy_check(all_ke_clusters):
         step_api.platform_forbid(cluster,header)
         feishu_robot_card("STEP节点禁用", '**KE节点: **' + cluster + '  --已禁用', 'grey', cluster)
 
-
 def user_login(cluster):
     url = cluster + '/kylin/api/user/authentication'
     data = {}
@@ -122,6 +119,8 @@ def user_login(cluster):
 
 
 def feishu_robot_card(title, card_content, card_template='green', card_url=''):
+    # print(f"feishu_robot_card::::>> title->{title}, card_content->{card_content} ")
+    # return 
     if card_url:
         card_url_content = "链接：<a>" + card_url + "</a>"
     else:
