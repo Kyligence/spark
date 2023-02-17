@@ -56,7 +56,14 @@ pipeline {
                         script {
                             sh script: """
                                 ./build/mvn versions:set -DnewVersion=${params.version}
-                                ./build/mvn -Pkubernetes,volcano,hadoop-2,hadoop2-aws,scala-2.12,hive  -DskipTests clean package    
+                                ./build/mvn -Pkubernetes,volcano,hadoop-2.10,hadoop2-aws,scala-2.12,hive  -DskipTests clean package    
+                                wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/spark-image-dependencies.tar.gz
+                                tar -zxvf spark-image-dependencies.tar.gz
+                                cp spark-image-dependencies/*.jar assembly/target/scala-2.12/jars/
+                                wget https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
+                                tar -zxvf hive_1_2_2.tar.gz
+                                pwd
+                                ls
                             """
                         }
                     }
