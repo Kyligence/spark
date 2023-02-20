@@ -210,6 +210,7 @@ abstract class BaseSessionStateBuilder(
         DataSourceAnalysis +:
         ApplyCharTypePadding +:
         ReplaceCharWithVarchar +:
+        RepartitionWritingDataSource +:
         customPostHocResolutionRules
 
     override val extendedCheckRules: Seq[LogicalPlan => Unit] =

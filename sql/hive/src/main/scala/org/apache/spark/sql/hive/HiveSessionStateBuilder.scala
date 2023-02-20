@@ -105,6 +105,7 @@ class HiveSessionStateBuilder(
         ApplyCharTypePadding +:
         HiveAnalysis +:
         ReplaceCharWithVarchar +:
+        RepartitionWritingDataSource +:
         customPostHocResolutionRules
 
     override val extendedCheckRules: Seq[LogicalPlan => Unit] =
