@@ -7,14 +7,16 @@ RUN mkdir -p /opt/kyligence \
 
 FROM openjdk:8-jdk-alpine
 RUN mkdir -p /opt/kyligence
-COPY --from=build /opt/kyligence /opt/kyligence
-COPY VERSION /opt/kyligence/
-COPY commit_SHA1 /opt/kyligence/
-# RUN echo "https://mirror.tuna.tsinghua.edu.cn/alpine/v3.4/main/" > /etc/apk/repositories
 
 ENV TZ Asia/Shanghai
 ENV KYLIN_HOME /opt/kyligence
-RUN apk update \
+
+COPY --from=build /opt/kyligence /opt/kyligence
+COPY VERSION /opt/kyligence/
+COPY commit_SHA1 /opt/kyligence/
+RUN echo "https://mirrors.sustech.edu.cn/alpine/v3.10/main" > /etc/apk/repositories ; \
+    echo "https://mirrors.sustech.edu.cn/alpine/v3.10/community" >> /etc/apk/repositories ; \
+    apk update \
     && apk upgrade \
     && apk add --no-cache bash bash-doc bash-completion \
     && apk add tzdata && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
