@@ -10,7 +10,7 @@ RUN mkdir -p /opt/kyligence
 COPY --from=build /opt/kyligence /opt/kyligence
 COPY VERSION /opt/kyligence/
 COPY commit_SHA1 /opt/kyligence/
-RUN echo "https://mirror.tuna.tsinghua.edu.cn/alpine/v3.4/main/" > /etc/apk/repositories
+# RUN echo "https://mirror.tuna.tsinghua.edu.cn/alpine/v3.4/main/" > /etc/apk/repositories
 
 ENV TZ Asia/Shanghai
 ENV KYLIN_HOME /opt/kyligence
