@@ -31,7 +31,8 @@ import org.apache.spark.util.Utils
  * A rule to coalesce the shuffle partitions based on the map output statistics, which can
  * avoid many small reduce tasks that hurt performance.
  */
-case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleReadRule {
+case class CoalesceShufflePartitions(session: SparkSession, isDataWritingStage: Boolean = false)
+  extends AQEShuffleReadRule {
 
   override val supportedShuffleOrigins: Seq[ShuffleOrigin] =
     Seq(ENSURE_REQUIREMENTS, REPARTITION_BY_COL, REBALANCE_PARTITIONS_BY_NONE,
@@ -127,12 +128,16 @@ case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleRe
   // if it happens, the advisory partition size will be set in ShuffleQueryStageExec
   // only one shuffle stage is expected in such cases
   private def advisoryPartitionSize(shuffleStages: Seq[ShuffleStageInfo]): Long = {
-    val defaultAdvisorySize = conf.getConf(SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES)
-    shuffleStages match {
-      case Seq(stage) =>
-        stage.shuffleStage.advisoryPartitionSize.getOrElse(defaultAdvisorySize)
-      case _ =>
-        defaultAdvisorySize
+    if (isDataWritingStage) {
+      conf.getConf(SQLConf.DATAWRITE_PARTITION_SIZE_IN_BYTES)
+    } else {
+      val defaultAdvisorySize = conf.getConf(SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES)
+      shuffleStages match {
+        case Seq(stage) =>
+          stage.shuffleStage.advisoryPartitionSize.getOrElse(defaultAdvisorySize)
+        case _ =>
+          defaultAdvisorySize
+      }
     }
   }
 
