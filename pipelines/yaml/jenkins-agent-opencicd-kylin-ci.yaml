@@ -44,4 +44,4 @@ spec:
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
-        claimName: "fileserver1-claim"
+        claimName: "fileserver-claim"
