@@ -62,7 +62,7 @@ data:
             "id": "ops-router",
             "uri": "lb://ops",
             "predicates": [
-                "Path=/kylin/api/system/metadata/dump,/kylin/api/system/diag**,/kylin/api/system/diag/**,/kylin/api/system/maintenance_mode,/kylin/api/system/servers,/kylin/api/system/do_metadata_backup,/kylin/api/system/get_project_metadata_backup_list,/kylin/api/system/get_system_metadata_backup_list,/kylin/api/system/cancel_metadata_backup,/kylin/api/system/delete_metadata_backup,/kylin/api/system/do_restore_metadata,/kylin/api/system/has_metadata_restore_in_progress,/kylin/api/system/cleanup_garbage"
+                "Path=/kylin/api/system/metadata/dump,/kylin/api/system/diag**,/kylin/api/system/diag/**,/kylin/api/system/maintenance_mode,/kylin/api/system/servers,/kylin/api/system/do_metadata_backup,/kylin/api/system/get_metadata_backup_list,/kylin/api/system/cancel_metadata_backup,/kylin/api/system/delete_metadata_backup,/kylin/api/system/do_restore_metadata,/kylin/api/system/metadata_restore_task_status,/kylin/api/system/metadata_backup_store_dir,/kylin/api/system/has_metadata_restore_in_progress,/kylin/api/system/cleanup_garbage"
             ],
             "order": 6
         },
