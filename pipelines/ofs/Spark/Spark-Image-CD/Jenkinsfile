@@ -14,6 +14,9 @@ def gitSparkCodeKe(repo, branch) {
 
 }
 
+def hadoopParam = 'hadoop-3'
+def dependencyTarName = 'spark-image-dependencies-hadoop3'
+
 pipeline {
     options {
         timeout(time: 4, unit: 'HOURS')
@@ -26,7 +29,7 @@ pipeline {
     }
 
     environment {
-        repo='harbor-ofs.kyligence.com'
+        repo = 'harbor-ofs.kyligence.com'
         dockerRegistryUrl = "http://${repo}"
         registryCredential = 'harbor-docker'
     }
@@ -36,6 +39,7 @@ pipeline {
         string(name: 'branch', defaultValue: 'kyspark-3.3.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x ')
         string(name: 'imageRepo', defaultValue: 'harbor-ofs.kyligence.com', description: 'docker image repo')
         string(name: 'version', defaultValue: '', description: 'eg 3.3.0-kylin-4.5.17.0 spark version and docker tag name')
+        choice(name: 'hadoopVersion', choices: 'hadoop3\nhadoop2\nhadoop3-with-glue', description: 'hadoop的版本:hadoop2+aws2.10/hadoop3+hadoop-aws-3.2.2/hadoop3+hadoop-aws-3.2.2+glue')
     }
 
 
@@ -54,12 +58,19 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
+                            if (params.hadoopVersion == 'hadoop2') {
+                                hadoopParam = 'hadoop-2.10,hadoop2-aws'
+                                dependencyTarName = "spark-image-dependencies-hadoop2"
+                            }
+                            if (params.hadoopVersion == 'hadoop3-with-glue') {
+                                dependencyTarName = "spark-image-dependencies-hadoop3-with-glue"
+                            }
                             sh script: """
                                 ./build/mvn versions:set -DnewVersion=${params.version}
-                                ./build/mvn -Pkubernetes,volcano,hadoop-2.10,hadoop2-aws,scala-2.12,hive  -DskipTests clean package    
-                                wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/spark-image-dependencies.tar.gz
-                                tar -zxvf spark-image-dependencies.tar.gz
-                                cp spark-image-dependencies/*.jar assembly/target/scala-2.12/jars/
+                                ./build/mvn -Pkubernetes,volcano,${hadoopParam},scala-2.12,hive  -DskipTests clean package    
+                                wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/spark-image-dependency/${dependencyTarName}.tar.gz
+                                tar -zxvf ${dependencyTarName}.tar.gz
+                                cp ${dependencyTarName}/*.jar assembly/target/scala-2.12/jars/
                                 wget https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
                                 tar -zxvf hive_1_2_2.tar.gz
                                 pwd
