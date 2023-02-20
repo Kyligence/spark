@@ -37,14 +37,9 @@ global:
 
   spark:
     image:
-      repository: harbor-ofs.kyligence.com/yinglong/yinglong-spark
-      tag: latest
-      pullPolicy:
-
-  sparkPod:
-    image:
-      repository: repo-ofs.kyligence.com/spark
-      tag: 3.3.0-kylin-4.5.17.0-SNAPSHOT
+      repository: harbor-ofs.kyligence.com/spark/spark
+      tag: 3.3.0-kylin-4.6.4.0-SNAPSHOT
+      pullPolicy: Always
     uploadPath: s3a://yinglong-dep
 
   s3:
@@ -69,10 +64,10 @@ frontend:
 #           - path: /
 #             pathType: ImplementationSpecific
 
-# gateway:
-#   image:
-#     repository: repo-ofs.kyligence.com/gateway
-#     tag: "repo-ofs.kyligence.com/gateway:5.1.2-DEV-03e40ed"
+ gateway:
+   image:
+     repository: repo-ofs.kyligence.com/gateway
+     tag: "5.1.2-DEV-beab30ca"
 #   config: # redis参数必须和租户中心的gateway所使用的redis一致.
 #     redis:
 #       host: redis-master.yinglong.svc.cluster.local

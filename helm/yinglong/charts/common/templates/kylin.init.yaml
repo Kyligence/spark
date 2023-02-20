@@ -16,8 +16,8 @@ data:
   SPRING_SESSION_STORE_TYPE: "none"
   HADOOP_CONF_DIR: "$(KYLIN_HOME)/hadoop_conf"
   NAME_SPACE: {{ .Release.Namespace }}
-  SPARK_IMAGE: {{ .Values.global.sparkPod.image.repository }}:{{ .Values.global.sparkPod.image.tag }}
+  SPARK_IMAGE: {{ .Values.global.spark.image.repository }}:{{ .Values.global.spark.image.tag }}
   SPARK_NAMESPACE: {{ .Values.sparkResourceNamespace | default .Release.Namespace }}
   SPARK_SERVICE_ACCOUNT_NAME: {{ .Values.serviceAccount.name }}-{{ .Release.Namespace }}
-  SPARK_UPLOAD_PATH: {{ .Values.global.sparkPod.uploadPath }}
+  SPARK_UPLOAD_PATH: {{ .Values.global.spark.uploadPath }}
   RELEASE_NAME: {{ .Release.Name }}

@@ -84,7 +84,7 @@ spec:
               value: "{{ .Values.tenantName }}"
             {{- if .Values.skyWalking.enabled }}
             - name: JAVA_TOOL_OPTIONS
-              value: "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group={{ .Values.global.tenantId }} -Dsaas.nacos.discovery.public-group={{ .Values.global.publicGroup }} -Dsaas.nacos.discovery.server-addr={{ .Values.global.nacos.discovery.serverAddrNoHttp }}  -Dsaas.nacos.config.server-addr={{ .Values.global.nacos.config.serverAddrNoHttp }} -Dkyligence.saas-gateway.deploy-model=KA"
+              value: "-javaagent:/skywalking/agent/skywalking-agent.jar -Dspring.profiles.active=nacos -Dsaas.nacos.discovery.group={{ .Values.global.tenantId }} -Dsaas.nacos.discovery.public-group={{ .Values.global.publicGroup }} -Dsaas.nacos.discovery.server-addr={{ .Values.global.nacos.discovery.serverAddrNoHttp }}  -Dsaas.nacos.config.server-addr={{ .Values.global.nacos.config.serverAddrNoHttp }} -Dkyligence.saas-gateway.deploy-model=KA -Dkylin.nacos.gateway.external-route-paths=/etc/saas-gateway/route.json"
             - name: SW_AGENT_NAME
               value: "Kyligence"
             - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
