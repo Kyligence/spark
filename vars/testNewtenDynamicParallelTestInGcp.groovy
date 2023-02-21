@@ -1,7 +1,12 @@
-import java.util.concurrent.LinkedBlockingQueue
 import org.kohsuke.github.GitHub
 
+import java.util.concurrent.LinkedBlockingQueue
+
+
 def call() {
+    final int MAX_UTEST_WORKERS = 2
+    final int MAX_ITEST_WORKERS = 3
+
     Map<String, List<String>> testModules = evalTestModules()
     println("test modules: ${testModules}")
     def taskWorkers = [:]
@@ -13,7 +18,12 @@ def call() {
             continue
         }
 
-        def workerCount = (taskQueue.size() / 10) >= 4 ? 4 : (taskQueue.size() / 10 + 1)
+        def workerCount = { if (key == 'UTest') MAX_UTEST_WORKERS else MAX_ITEST_WORKERS }()
+
+        if (taskQueue.size() < workerCount) {
+             workerCount = 1
+        }
+
         for (int i = 1; i <= workerCount; i++) {
             taskWorkers += createWorker("${key}-Stage-${i}", taskQueue)
         }
@@ -68,7 +78,7 @@ def preprocessSourcecode() {
 
 
 Map<String, List<String>> evalTestModules() {
-    def allSubModules = []
+    List<String> allSubModules = []
 
     container('maven') {
         dir("sourcecode") {
@@ -98,25 +108,12 @@ Map<String, List<String>> evalTestModules() {
                     .split("\n")
                     .last()
                     .split(",")
-                    .collect({it.trim()})
+                    .collect({ it.trim() })
             println("change modules: ${changeModules}")
             allSubModules.addAll(changeModules)
 
             allSubModules.removeAll(parentModules)
             println "all submodules: ${allSubModules}"
-
-            def kapItModules = []
-            def kapIt = allSubModules.findAll({ it.contains('src/kap-it') }).getAt(0)
-            if (kapIt) {
-                // remove kap-it modules
-                allSubModules.removeAll([kapIt])
-
-                // expand kap-it modules
-                kapItModules.addAll([
-                        "${kapIt} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'",
-                        "${kapIt} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"
-                ])
-            }
 
             // remove clickhouse-it modules
             def clickhouse_it_module = allSubModules.findAll({ it.contains('src/second-storage') })
@@ -125,16 +122,60 @@ Map<String, List<String>> evalTestModules() {
                 allSubModules.removeAll(clickhouse_it_module)
             }
 
+            // get slow modules
+            def slowModules = slowModules(allSubModules)
+            println("slow modules: ${slowModules}")
+
             Collections.reverse(allSubModules)
-            return ["UTest": allSubModules, "KapIT": kapItModules]
+
+            return ["UTest": allSubModules, "ITest": slowModules]
         }
 
     }
 }
 
+List<String> slowModules(List<String> allModules) {
+
+    // 特别注意： slow modules 中的模块顺序最好是按照从大到小排列，这样能保证消费时间相对均匀
+    List<String> slowModules = []
+
+    // kylin-it 一般需要 40 mins
+    def kylinIt = allModules.findAll({ it.contains('src/kylin-it') }).getAt(0)
+    if (kylinIt) {
+        // remove kylin-it modules
+        allModules.removeAll([kylinIt])
+
+        slowModules.addAll([kylinIt])
+    }
+
+    // 分别是 30+ 和 20+ mins
+    def kapIt = allModules.findAll({ it.contains('src/kap-it') }).getAt(0)
+    if (kapIt) {
+        // remove kap-it modules
+        allModules.removeAll([kapIt])
+
+        // expand kap-it modules
+        slowModules.addAll(["${kapIt} -Dtest='!io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"])
+        slowModules.addAll(["${kapIt} -Dtest='io.kyligence.kap.newten.auto.NAutoBuildAndQueryTest'"])
+    }
+
+    // 一般是 20 mins
+    def sparkIt = allModules.findAll({ it.contains('spark-it') }).getAt(0)
+    if (sparkIt) {
+        // remove spark-it modules in all modules list
+        allModules.removeAll([sparkIt])
+
+        slowModules.addAll([sparkIt])
+    }
+
+    return slowModules
+}
+
 def createWorker(String workerName, LinkedBlockingQueue taskQueue) {
     return [(workerName): {
-        podTemplate(yaml: readTrusted('pipelines/gcp/KE4/Newten CI On GCP/jenkins-agent.yaml')) {
+        def workerAgent = workerName.startsWith('UTest') ? "worker-low-agent.yaml" : "worker-high-agent.yaml"
+
+        podTemplate(yaml: readTrusted("pipelines/gcp/KE4/Newten CI On GCP/${workerAgent}")) {
             node(POD_LABEL) {
                 container('maven') {
                     script {
@@ -163,6 +204,11 @@ def preprocessTestData(String target) {
 
 def runTest(String workerName, LinkedBlockingQueue taskQueue) {
     def jvmArgs = params.skipBuild ? "-DskipBuild=true" : ""
+
+    if (workerName.startsWith("UTest")) {
+        jvmArgs = "${jvmArgs} -DargLine='-Xms2G -Xmx5G'"
+    }
+
     def task = taskQueue.poll()
     def retry = 0
     try {

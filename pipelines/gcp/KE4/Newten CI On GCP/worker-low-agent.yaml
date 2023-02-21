@@ -1,6 +1,6 @@
 ---
 kind: "Pod"
-name: "jenkins-agent"
+name: "worker01-agent"
 spec:
   containers:
     - name: "maven"
@@ -33,33 +33,14 @@ spec:
       resources:
         requests:
           memory: "6Gi"
-          cpu: "3"
-          ephemeral-storage: "5Gi"
-    - name: "sonar"
-      tty: true
-      command:
-        - "cat"
-      image: "maven:3.6.3-openjdk-11"
-      imagePullPolicy: "IfNotPresent"
-      volumeMounts:
-        - name: "jenkins-common"
-          mountPath: /root/.m2/repository
-          subPath: "maven_repo"
-        - mountPath: "/root/.m2/settings.xml"
-          name: "maven-settings"
-          readOnly: false
-          subPath: "settings.xml"
-      resources:
-        requests:
-          memory: "4Gi"
           cpu: "2"
           ephemeral-storage: "5Gi"
     - image: "jenkins/inbound-agent:4.11-1-jdk11"
       name: "jnlp"
       resources:
         requests:
-          memory: "2048Mi"
-          cpu: "1"
+          memory: "512Mi"
+          cpu: "0.5"
           ephemeral-storage: "1024Mi"
       volumeMounts:
         - name: "jenkins-tmp"
