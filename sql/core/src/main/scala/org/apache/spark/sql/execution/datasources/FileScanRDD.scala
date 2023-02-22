@@ -65,6 +65,7 @@ class FileScanRDD(
 
   private val ignoreCorruptFiles = sparkSession.sessionState.conf.ignoreCorruptFiles
   private val ignoreMissingFiles = sparkSession.sessionState.conf.ignoreMissingFiles
+  private val collectQueryMetricsEnabled = sparkSession.sessionState.conf.collectQueryMetricsEnabled
 
   override def compute(split: RDDPartition, context: TaskContext): Iterator[InternalRow] = {
     val currTaskLocality = context.getLocalProperty("SAMetrics.taskLocality")
@@ -170,20 +171,22 @@ class FileScanRDD(
             }
           } else {
             currentIterator = readCurrentFile()
-            try {
-              if (currentFile != null
-                && currentFile.staticsForKylin != null) {
-                if (currentFile.staticsForKylin(0) > 0) {
-                  inputMetrics.incTotalBloomBlocks(currentFile.staticsForKylin(0))
-                  inputMetrics.incSkipBloomBlocks(currentFile.staticsForKylin(1))
-                  inputMetrics.incSkipRows(currentFile.staticsForKylin(2))
+            if (collectQueryMetricsEnabled) {
+              try {
+                if (currentFile != null
+                  && currentFile.staticsForKylin != null) {
+                  if (currentFile.staticsForKylin(0) > 0) {
+                    inputMetrics.incTotalBloomBlocks(currentFile.staticsForKylin(0))
+                    inputMetrics.incSkipBloomBlocks(currentFile.staticsForKylin(1))
+                    inputMetrics.incSkipRows(currentFile.staticsForKylin(2))
+                  }
+                  inputMetrics.incFooterReadTime(currentFile.staticsForKylin(3))
+                  inputMetrics.incFooterReadNumber(1L)
                 }
-                inputMetrics.incFooterReadTime(currentFile.staticsForKylin(3))
-                inputMetrics.incFooterReadNumber(1L)
+              } catch {
+                case e: Throwable =>
+                  logWarning("Error when collect query status", e)
               }
-            } catch {
-              case e: Throwable =>
-                logWarning("Error when collect query status", e)
             }
           }
 
