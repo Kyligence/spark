@@ -32,8 +32,8 @@ spec:
           mountPath: /root/.m2/repository/org/apache/kylin
       resources:
         requests:
-          memory: "6Gi"
-          cpu: "3"
+          memory: "10Gi"
+          cpu: "4"
           ephemeral-storage: "5Gi"
     - name: "sonar"
       tty: true
