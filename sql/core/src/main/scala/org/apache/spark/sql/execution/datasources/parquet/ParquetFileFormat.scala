@@ -266,6 +266,7 @@ class ParquetFileFormat
       val sharedConf = broadcastedHadoopConf.value.value
 
       S3FileUtils.tryOpenClose(sharedConf, filePath)
+      val time1 = System.currentTimeMillis()
       lazy val footerFileMetaData =
         ParquetFooterReader.readFooter(sharedConf, filePath, SKIP_ROW_GROUPS).getFileMetaData
       val datetimeRebaseMode = DataSourceUtils.datetimeRebaseMode(
@@ -322,6 +323,7 @@ class ParquetFileFormat
         ParquetInputFormat.setFilterPredicate(hadoopAttemptContext.getConfiguration, pushed.get)
       }
       val taskContext = Option(TaskContext.get())
+      val time2 = System.currentTimeMillis()
       if (enableVectorizedReader) {
         val vectorizedReader = new VectorizedParquetRecordReader(
           convertTz.orNull,
@@ -337,6 +339,25 @@ class ParquetFileFormat
         vectorizedReader.initBatch(partitionSchema, file.partitionValues)
         if (returningBatch) {
           vectorizedReader.enableReturningBatches()
+        }
+        val time3 = System.currentTimeMillis()
+        if ((time3 - time1) > 100) {
+          logWarning(s"Reading parquet footer cost much time: ${time2 - time1} ms "
+            + s"and ${time3 - time2} ms")
+        }
+        try {
+          // we should init here (even if it had initial value)
+          file.staticsForKylin = new Array[Long](4)
+          if (vectorizedReader.reader.kylinQueryInfo.getTotalBloomBlocks != 0) {
+            val info = vectorizedReader.reader.kylinQueryInfo
+            file.staticsForKylin(0) = info.getTotalBloomBlocks
+            file.staticsForKylin(1) = info.getSkipBloomBlocks
+            file.staticsForKylin(2) = info.getSkipBloomRows
+          }
+          file.staticsForKylin(3) = time3 - time1
+        } catch {
+          case e: Throwable =>
+            logWarning(s"Error when record the statics for bloom", e)
         }
 
         // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
@@ -362,6 +383,11 @@ class ParquetFileFormat
 
         val fullSchema = requiredSchema.toAttributes ++ partitionSchema.toAttributes
         val unsafeProjection = GenerateUnsafeProjection.generate(fullSchema, fullSchema)
+        val time3 = System.currentTimeMillis()
+        if ((time3 - time1) > 100) {
+          logWarning(s"Reading parquet footer cost much time: ${time2 - time1} ms "
+            + s"and ${time3 - time2} ms")
+        }
 
         if (partitionSchema.length == 0) {
           // There is no partition columns

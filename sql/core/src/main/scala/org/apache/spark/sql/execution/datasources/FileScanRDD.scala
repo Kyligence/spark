@@ -47,7 +47,8 @@ case class PartitionedFile(
     filePath: String,
     start: Long,
     length: Long,
-    @transient locations: Array[String] = Array.empty) {
+    @transient locations: Array[String] = Array.empty,
+    @transient var staticsForKylin: Array[Long] = new Array[Long](4)) {
   override def toString: String = {
     s"path: $filePath, range: $start-${start + length}, partition values: $partitionValues"
   }
@@ -169,6 +170,21 @@ class FileScanRDD(
             }
           } else {
             currentIterator = readCurrentFile()
+            try {
+              if (currentFile != null
+                && currentFile.staticsForKylin != null) {
+                if (currentFile.staticsForKylin(0) > 0) {
+                  inputMetrics.incTotalBloomBlocks(currentFile.staticsForKylin(0))
+                  inputMetrics.incSkipBloomBlocks(currentFile.staticsForKylin(1))
+                  inputMetrics.incSkipRows(currentFile.staticsForKylin(2))
+                }
+                inputMetrics.incFooterReadTime(currentFile.staticsForKylin(3))
+                inputMetrics.incFooterReadNumber(1L)
+              }
+            } catch {
+              case e: Throwable =>
+                logWarning("Error when collect query status", e)
+            }
           }
 
           try {
