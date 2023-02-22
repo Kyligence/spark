@@ -30,6 +30,8 @@ spec:
           mountPath: /root/.m2/repository/io/kyligence
         - name: "kylin-repo"
           mountPath: /root/.m2/repository/org/apache/kylin
+        - name: "spark-repo"
+          mountPath: /root/.m2/repository/org/apache/spark
       resources:
         requests:
           memory: "10Gi"
@@ -75,6 +77,8 @@ spec:
     - name: "kyligence-repo"
       emptyDir: { }
     - name: "kylin-repo"
+      emptyDir: { }
+    - name: "spark-repo"
       emptyDir: { }
     - configMap:
         defaultMode: 0777
