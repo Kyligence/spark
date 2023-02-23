@@ -347,16 +347,16 @@ class ParquetFileFormat
             + s"and ${secondFooterEndTime - firstFooterEndTime} ms")
         }
         try {
-          if(collectQueryMetricsEnabled) {
+          if (collectQueryMetricsEnabled) {
             // we should init here (even if it had initial value)
-            file.staticsForKylin = new Array[Long](4)
-            if (vectorizedReader.reader.kylinQueryInfo.getTotalBloomBlocks != 0) {
-              val info = vectorizedReader.reader.kylinQueryInfo
-              file.staticsForKylin(0) = info.getTotalBloomBlocks
-              file.staticsForKylin(1) = info.getSkipBloomBlocks
-              file.staticsForKylin(2) = info.getSkipBloomRows
+            file.queryMetrics = new Array[Long](4)
+            val info = vectorizedReader.reader.queryMetrics
+            if (info.getTotalBloomBlocks != 0) {
+              file.queryMetrics(0) = info.getTotalBloomBlocks
+              file.queryMetrics(1) = info.getSkipBloomBlocks
+              file.queryMetrics(2) = info.getSkipBloomRows
             }
-            file.staticsForKylin(3) = secondFooterEndTime - startTime
+            file.queryMetrics(3) = secondFooterEndTime - startTime
           }
         } catch {
           case e: Throwable =>
@@ -387,8 +387,8 @@ class ParquetFileFormat
         val fullSchema = requiredSchema.toAttributes ++ partitionSchema.toAttributes
         val unsafeProjection = GenerateUnsafeProjection.generate(fullSchema, fullSchema)
         val footerEndTime = System.currentTimeMillis()
-        if ( (footerEndTime - startTime) > 100) {
-          logWarning(s"Reading parquet footer cost much time: ${firstFooterEndTime - startTime} ms "
+        if ((footerEndTime - startTime) > 100) {
+          logWarning(s"Reading parquet footer may cost much time: ${firstFooterEndTime - startTime} ms "
             + s"and ${footerEndTime - firstFooterEndTime} ms")
         }
 
