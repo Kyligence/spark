@@ -386,10 +386,10 @@ class ParquetFileFormat
 
         val fullSchema = requiredSchema.toAttributes ++ partitionSchema.toAttributes
         val unsafeProjection = GenerateUnsafeProjection.generate(fullSchema, fullSchema)
-        val time3 = System.currentTimeMillis()
-        if ( (time3 - startTime) > 100) {
+        val footerEndTime = System.currentTimeMillis()
+        if ( (footerEndTime - startTime) > 100) {
           logWarning(s"Reading parquet footer cost much time: ${firstFooterEndTime - startTime} ms "
-            + s"and ${time3 - firstFooterEndTime} ms")
+            + s"and ${footerEndTime - firstFooterEndTime} ms")
         }
 
         if (partitionSchema.length == 0) {

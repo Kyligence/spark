@@ -3556,7 +3556,7 @@ object SQLConf {
       .createWithDefault(false)
 
   val COLLECT_QUERY_METRICS_ENABLED =
-    buildConf("spark.sql.collect.query.metrics.enabled")
+    buildConf("spark.sql.collect-query-metrics.enabled")
       .internal()
       .doc("When true, collect footer and BloomFilter metrics.")
       .version("3.2.0")
