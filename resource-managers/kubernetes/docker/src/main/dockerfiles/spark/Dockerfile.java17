@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-ARG java_image_tag=8-jdk-slim
+# We need to build from debian:bullseye-slim because openjdk switches its underlying OS
+# from debian to oraclelinux from openjdk:12
+FROM debian:bullseye-slim
 
-FROM eclipse-temurin:${java_image_tag}
-
-ARG spark_uid=root
+ARG spark_uid=185
 
 # Before building the docker image, first build and make a Spark distribution following
 # the instructions in https://spark.apache.org/docs/latest/building-spark.html.
@@ -31,7 +31,7 @@ RUN set -ex && \
     cat /etc/resolv.conf && \
     apt-get update && \
     ln -s /lib /lib64 && \
-    apt install -y bash tini libc6 libpam-modules krb5-user libnss3 procps net-tools && \
+    apt install -y bash tini libc6 libpam-modules krb5-user libnss3 procps openjdk-17-jre && \
     mkdir -p /opt/spark && \
     mkdir -p /opt/spark/examples && \
     mkdir -p /opt/spark/work-dir && \
@@ -40,11 +40,9 @@ RUN set -ex && \
     ln -sv /bin/bash /bin/sh && \
     echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su && \
     chgrp root /etc/passwd && chmod ug+rw /etc/passwd && \
-    rm -rf /var/cache/apt/* && rm -rf /var/lib/apt/lists/*
+    rm -rf /var/cache/apt/*
 
 COPY jars /opt/spark/jars
-# Copy RELEASE file if exists
-COPY RELEAS[E] /opt/spark/RELEASE
 COPY bin /opt/spark/bin
 COPY sbin /opt/spark/sbin
 COPY kubernetes/dockerfiles/spark/entrypoint.sh /opt/
@@ -54,7 +52,7 @@ COPY kubernetes/tests /opt/spark/tests
 COPY data /opt/spark/data
 COPY hive_1_2_2 /opt/spark/hive_1_2_2
 
-ENV SPARK_HOME=/opt/spark
+ENV SPARK_HOME /opt/spark
 
 WORKDIR /opt/spark/work-dir
 RUN chmod g+w /opt/spark/work-dir
