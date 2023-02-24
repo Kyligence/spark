@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pvc-sync-job
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      volumes:
+        - name: resource
+          persistentVolumeClaim:
+            claimName: ext-resource
+        - configMap:
+            name: s3-conf
+          name: s3cfg
+      containers:
+        - name: pvc-sync-job
+          image: d3fk/s3cmd:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: 800m
+              memory: 1000Mi
+            requests:
+              cpu: 500m
+              memory: 300Mi
+          volumeMounts:
+            - name: resource
+              mountPath: /opt/resource
+            - mountPath: "/root/.s3cfg"
+              name: s3cfg
+              subPath: s3cfg
+          command:
+            - /bin/sh
+            - -x
+            - -c
+            - |
+              rm -rf /opt/resource/*
+              s3cmd get -r s3://${BUCKET}${KYLIN_ENV_HDFS_WORKING_DIR}/${KYLIN_METADATA_URL%%@*}/_resource/ /opt/resource
+              touch /opt/resource/done
+          env:
+            - name: KYLIN_METADATA_URL
+              value: "{{ .Values.global.metadata.url }}"
+            - name: KYLIN_ENV_HDFS_WORKING_DIR
+              value: "{{ .Values.global.hdfs.workingDir | default (printf "/kylin/%s"  (.Release.Namespace)) }}"
+            - name: BUCKET
+              value: "{{ .Values.global.s3.bucket }}"
+      restartPolicy: Never

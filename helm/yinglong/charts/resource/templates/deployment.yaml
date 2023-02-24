@@ -28,9 +28,9 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       volumes:
-        - name: lib-ext
+        - name: resource
           persistentVolumeClaim:
-            claimName: yinglong-lib-ext
+            claimName: ext-resource
         - configMap:
             name: {{ .Values.global.hadoopPrefix }}-yarn-xml
           name: yarn-xml
@@ -144,8 +144,8 @@ spec:
             - mountPath: /opt/kyligence/hadoop_conf/hivemetastore-site.xml
               name: yarn-xml
               subPath: hive-site.xml
-            - name: lib-ext
-              mountPath: /opt/kyligence/lib/ext
+            - name: resource
+              mountPath: /opt/resource
             {{- if .Values.skyWalking.enabled }}
             - name: skywalking-agent
               mountPath: /skywalking

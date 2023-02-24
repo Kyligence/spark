@@ -35,6 +35,10 @@ data:
             <name>fs.s3a.endpoint</name>
             <value>{{ .Values.global.s3.endpoint }}</value>
         </property>
+        <property>
+            <name>fs.s3a.aws.enabled</name>
+            <value>false</value>
+        </property>
     </configuration>
   hive-site.xml: |
     <configuration>

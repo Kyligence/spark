@@ -38,7 +38,7 @@ global:
   spark:
     image:
       repository: harbor-ofs.kyligence.com/spark/spark
-      tag: 3.3.0-kylin-4.6.4.0-SNAPSHOT
+      tag: 3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3
       pullPolicy: Always
     uploadPath: s3a://yinglong-dep
 
