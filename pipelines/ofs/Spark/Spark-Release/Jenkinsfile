@@ -65,7 +65,7 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
 
 pipeline {
     options {
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 5, unit: 'HOURS')
     }
 
     agent {
@@ -76,11 +76,11 @@ pipeline {
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo  https://github.com/Kyligence/spark.git--> Kyligence\nhttps://github.com/apache/spark.git--> apache')
-        string(name: 'branch', defaultValue: 'kyspark-3.2.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x ')
+        string(name: 'branch', defaultValue: 'kyspark-3.2.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x \n kyspark-2.2.1.x-3.x ')
         string(name: 'release_version', defaultValue: '', description: 'spark release version for example: 3.2.0-kylin-4.5.16.0')
         choice(name: 'deployType', choices: 'DEV\nQA\nGA', description: '研发自测用自己分支打包，选择DEV，会在version后面加上 -DEV-SNAPSHOT，并且不会发包给kc，\n' +
                 '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n GA后基于稳定分支发包，选择GA，version 不做处理')
-        choice(name: 'sparkVersion', choices: 'spark3\nspark2.4', description: 'spark 大版本，spark2.4 发包不会推到云上')
+        choice(name: 'sparkVersion', choices: 'spark3\nspark2.4\nspark2.2', description: 'spark 大版本，spark2.4/2.2 发包不会推到云上')
     }
 
     stages {
@@ -131,11 +131,18 @@ pipeline {
                             if (params.sparkVersion == 'spark3' && params.deployType in ['QA', 'GA']) {
                                 publishToKC = true
                             }
+                            def kubernetesParm = '-Pkubernetes'
+                            if (params.sparkVersion == 'spark2.2') {
+                                kubernetesParm = ''
+                            }
                             sh script: """
                                 #1、package kyspark
                                 ./build/mvn versions:set -DnewVersion=${releaseVersion}
-                                ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
-                                # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -DskipTests=true
+                                ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                #delpoy to public repo for kylin 
+                                ./build/mvn deploy -settings /root/.m2/settings.xml -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
+                     
+                                # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
                             """
                         }
                     }
@@ -161,8 +168,13 @@ pipeline {
                                     if (params.sparkVersion == 'spark2.4') {
                                         hadoopVersion = 'hadoop-2.6'
                                     }
+                                    def kubernetesParm = '-Pkubernetes'
+                                    if (params.sparkVersion == 'spark2.2') {
+                                        hadoopVersion = 'hadoop-2.6'
+                                        kubernetesParm = ''
+                                    }
                                     sh script: """
-                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn -Pkubernetes
+                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn ${kubernetesParm}
                                         if [ 'spark3' = '${params.sparkVersion}' ]; then
                                             cp ../depedencies/log4j/*.jar dist/jars/
                                         fi
@@ -190,9 +202,13 @@ pipeline {
                             dir('on-perm-nohadoop') {
                                 script {
                                     def releaseName = releaseVersion.replace('-kylin', '')
+                                    def kubernetesParm = '-Pkubernetes'
+                                    if (params.sparkVersion == 'spark2.2') {
+                                        kubernetesParm = ''
+                                    }
                                     sh script: """
                                         sleep 10
-                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn -Pkubernetes -pl assembly
+                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -pl assembly
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                     """
