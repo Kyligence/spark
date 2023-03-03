@@ -1,6 +1,6 @@
 ---
 kind: "Pod"
-name: "jenkins-agent"
+name: "worker01-agent"
 spec:
   containers:
     - name: "maven"
@@ -30,37 +30,16 @@ spec:
           mountPath: /root/.m2/repository/io/kyligence
         - name: "kylin-repo"
           mountPath: /root/.m2/repository/org/apache/kylin
-        - name: "spark-repo"
-          mountPath: /root/.m2/repository/org/apache/spark
       resources:
         requests:
-          memory: "6Gi"
-          cpu: "3"
-          ephemeral-storage: "5Gi"
-    - name: "sonar"
-      tty: true
-      command:
-        - "cat"
-      image: "maven:3.6.3-openjdk-11"
-      imagePullPolicy: "IfNotPresent"
-      volumeMounts:
-        - name: "jenkins-common"
-          mountPath: /root/.m2/repository
-          subPath: "maven_repo"
-        - mountPath: "/root/.m2/settings.xml"
-          name: "maven-settings"
-          readOnly: false
-          subPath: "settings.xml"
-      resources:
-        requests:
-          memory: "4Gi"
-          cpu: "2"
+          memory: "10Gi"
+          cpu: "4"
           ephemeral-storage: "5Gi"
     - image: "jenkins/inbound-agent:4.11-1-jdk11"
       name: "jnlp"
       resources:
         requests:
-          memory: "2048Mi"
+          memory: "1024Mi"
           cpu: "1"
           ephemeral-storage: "1024Mi"
       volumeMounts:
@@ -77,8 +56,6 @@ spec:
     - name: "kyligence-repo"
       emptyDir: { }
     - name: "kylin-repo"
-      emptyDir: { }
-    - name: "spark-repo"
       emptyDir: { }
     - configMap:
         defaultMode: 0777
