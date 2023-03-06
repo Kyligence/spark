@@ -2,12 +2,12 @@ package io.kyligence.devops.jenkins.etl
 
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.ObjectMetadata
+import groovy.json.JsonSlurper
 import groovy.util.logging.Slf4j
 import io.kyligence.devops.jenkins.client.JenkinsConfig
 
 @Slf4j
 class NewtenBasicPostAnalyzer extends AbstractPostAnalyzer {
-
 
     NewtenBasicPostAnalyzer(JenkinsConfig config, AmazonS3 s3client) {
         super(config, s3client)
@@ -17,11 +17,17 @@ class NewtenBasicPostAnalyzer extends AbstractPostAnalyzer {
         log.info("processing basic.csv...")
         final JenkinsTransform.Csv result = new JenkinsTransform.Csv()
 
+        def github = new JsonSlurper().parse(new File(System.getenv("WORKSPACE") + "/jenkins-etl/github_accounts.json"))
+
         data.getRows().forEach(row -> {
             def r = new ArrayList<JenkinsAnalysis.Column>()
             row.forEach(col -> {
                 if (col.getName().endsWith("TestState") || col.getName().endsWith("TestDuration")) {
                     return
+                }
+
+                if (col.getName().equals("commitAuthor")) {
+                    col.setValue(String.valueOf(github[col.getValue()] ?: col.getValue()))
                 }
 
                 r.add(col)

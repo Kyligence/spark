@@ -1,0 +1,61 @@
+#!groovy
+
+import groovy.json.JsonOutput
+import org.jenkinsci.plugins.configfiles.GlobalConfigFiles
+import org.jenkinsci.plugins.configfiles.json.JsonConfig
+import org.kohsuke.github.GitHub
+import org.kohsuke.github.GHOrganization;
+import org.kohsuke.github.GHUser;
+
+
+@NonCPS
+def modifyConf(m) {
+    def conf = GlobalConfigFiles.get().getById("github-accounts")
+    if (conf == null) {
+        throw new IllegalStateException("github-accounts 配置文件不存在，请手动创建，格式为 Json")
+    }
+
+    GlobalConfigFiles.get().save(new JsonConfig(conf.id, conf.name, conf.comment, JsonOutput.prettyPrint(JsonOutput.toJson(m)), conf.providerId))
+}
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+        }
+    }
+
+    stages {
+        stage('检查并存储 Kyligence Github 账号信息') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
+                        def pattern = "^(?<firstName>[A-Za-z]+\\s)+(?<chineseName>[^\\x00-\\xff]+)\$"
+
+                        def github = GitHub.connect(login, token)
+                        final GHOrganization org = github.getOrganization("Kyligence");
+
+                        def m = [:]
+                        def invalid = []
+                        for (final GHUser user in org.listMembers()) {
+                            def matcher = user.getName() =~ pattern
+                            if (!matcher.matches()) {
+                                invalid.add("${user.getLogin()}'s name '${user.getName()}' is not valid, visit ${user.getHtmlUrl()}")
+                            }
+
+                            m.put(user.getLogin(), user.getName() ?: user.getLogin())
+                        }
+
+                        println("============== invalid names ==============")
+                        println(invalid.join("\n"))
+
+                        modifyConf(m)
+                    }
+                }
+            }
+        }
+    }
+}

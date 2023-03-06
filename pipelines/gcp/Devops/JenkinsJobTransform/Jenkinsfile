@@ -41,14 +41,16 @@ pipeline {
                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 
                                 withCredentials([usernamePassword(credentialsId: 'devopsid', passwordVariable: 'jenkins_password', usernameVariable: 'jenkins_username')]) {
-                                   sh script: """
-                                        cd target && \
-                                        java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-                                            -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-                                            -DJENKINS_USERNAME=${jenkins_username} \
-                                            -DJENKINS_PASSWORD=${jenkins_password} \
-                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform gcp
-                                   """
+                                   configFileProvider([configFile(fileId: 'github-accounts', targetLocation: 'github_accounts.json', variable: '_f')]) {
+                                       sh script: """
+                                            cd target && \
+                                            java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                                -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                                -DJENKINS_USERNAME=${jenkins_username} \
+                                                -DJENKINS_PASSWORD=${jenkins_password} \
+                                                jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform gcp
+                                       """
+                                   }
                                 }
                             }
                         }

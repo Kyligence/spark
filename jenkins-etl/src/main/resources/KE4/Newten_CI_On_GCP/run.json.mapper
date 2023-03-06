@@ -10,7 +10,7 @@ prNumber=$.parameters[?(@.name=='ghprbPullId')].value
 prTitle=$.parameters[?(@.name=='ghprbPullTitle')].value
 sourceBranch=$.parameters[?(@.name=='ghprbSourceBranch')].value
 targetBranch=$.parameters[?(@.name=='ghprbTargetBranch')].value
-commitAuthor=$.parameters[?(@.name=='ghprbActualCommitAuthor')].value
+commitAuthor=$.parameters[?(@.name=='ghprbPullAuthorLogin')].value
 checkoutFailed=length("\\$.nodes[?(@.displayName=='Checkout' && @.result=='FAILURE')]")
 compileFailed=length("\\$.nodes[?(@.displayName=='Compile' && @.result=='FAILURE')]")
 testingFailed=length("\\$.nodes[?(@.displayName=='Testing' && @.result=='FAILURE')]")
