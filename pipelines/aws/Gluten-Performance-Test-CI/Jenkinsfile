@@ -1,0 +1,261 @@
+#!groovy
+
+@Library('devopslib') _
+
+
+def triggerMethod = ""
+
+pipeline {
+    options {
+        timestamps() // 在日志中打印时间
+        disableConcurrentBuilds() // 禁止并行
+        skipDefaultCheckout() // 删除隐式的checkout scm 语句
+        timeout(time: 6, unit: 'HOURS')
+    }
+
+    agent{
+        label "gluten_driver"
+    }
+
+    parameters {
+        string(name: 'serviceType', defaultValue: 'GlutenWithCHStandard', description: 'service to run test,choose one from: GlutenWithCHStandard Starrocks VanillaSparkOptimized')
+        string(name: 'sourceType', defaultValue: 'RemoteNullableParquet', description: 'data source type,choose one from: RemoteNullableParquet LocalNullableParquet LocalNullableMergetree LocalNotNullMergertree')
+        string(name: 'libchUrl', defaultValue: 's3://huangliang-gluten-perftool/libch_baseline.so', description: 'libch.so package address,support s3 only')
+        string(name: 'vanillaSparkUrl', defaultValue: '', description: 'customized vanilla spark tgz package address,support s3 only.leave it empty to use default prepared package')
+        string(name: 'testGroup', defaultValue: 'baseline', description: 'custom group for this test run, used when generate comparison report')
+        string(name: 'glutenPRNo', defaultValue: '', description: 'glutenPRNo.if you want to use main branch,leave this parameter empty')
+        string(name: 'glutenCommitID', defaultValue: '', description: 'apply this commit on gluten main branch')
+        string(name: 'baseTag', defaultValue: '', description: 'this tag refers to one of your test runnings used as a baseline to compare with your current running.It is composed of testGroup and running timestamp which can be found in conbench')
+    }
+
+
+     stages {
+
+        stage('Checkout SCM') {
+            steps {
+            // mutiline string parameters,defined in jenkins configure
+                sh script: 'echo \${sparkSessionConf} > /tmp/spark_session_conf'
+                sh script: 'echo \${starrocksSessionConf} > /tmp/starrocks_session_conf'
+                retry(5) {
+                    checkout scm
+                }
+            }
+        }
+
+
+        stage('Check trigger method, timer or event') {
+            environment {
+                CAUSE = "${currentBuild.getBuildCauses()[0].shortDescription}"
+            }
+             steps {
+                echo "Build caused by ${env.CAUSE}"
+                script{
+                    echo "${env.CAUSE}"
+                    if ("${env.CAUSE}" == "Started by timer"){
+                        echo "timer triggered"
+                        triggerMethod = "timer"
+                        sh script: 'echo timer > /tmp/trigger'
+                    } else if ("${env.CAUSE}".contains( "Started by user" )){
+                        echo "mannual triggered"
+                        triggerMethod = "mannual"
+                        sh script: 'echo mannual > /tmp/trigger'
+                    } else{
+                        echo "event triggered"
+                        triggerMethod = "event"
+                        sh script: 'echo event > /tmp/trigger'
+                    }
+                }
+             }
+        }
+
+        stage('Check service type and data source') {
+            steps {
+                echo "service type is: ${params.serviceType}"
+                echo "source type is: ${params.sourceType}"
+                script{
+                    sh script: 'echo \${serviceType} > /tmp/service'
+                    def testGroup = params.testGroup
+                    sh script: 'echo \${testGroup} > /tmp/libch_tag'
+
+                    def vanillaSparkUrl = params.vanillaSparkUrl
+                    if (params.serviceType == "VanillaSparkOptimized") {
+                        sh script: 'echo \${vanillaSparkUrl} > /tmp/vanilla_spark_url'
+                    }
+
+                    def sourceType = params.sourceType
+                    sh script: 'echo \${sourceType} > /tmp/source_type'
+
+                    def baseTag = params.baseTag
+                    sh script: 'echo \${baseTag} > /tmp/base_tag'
+
+                }
+            }
+
+        }
+
+        stage('Checkout gluten source code') {
+            when {
+                equals expected: 'GlutenWithCHStandard',
+                actual: params.serviceType
+            }
+            steps {
+                dir('gluten') {
+                    retry(5) {
+                        script {
+                            echo "clone gluten"
+                            def prBranch = "main"
+                            def prNo = ""
+                            if ("${triggerMethod}" == "event") {
+                                if ("${ghprbTargetBranch}" == "main") { // check whether it is gluten branch, for webhook could  be set on ch backend repo also
+                                    prNo = "${ghprbPullId}"
+                                }
+
+                            }
+                            if ("${triggerMethod}" == "mannual") {
+                                prNo = params.glutenPRNo
+
+                            }
+
+
+                            if (prNo) {
+                                if (prNo.isNumber()) {
+                                    prBranch = "origin/pr/${prNo}/merge"
+                                }
+                            }
+                            githubCheckout 'gluten', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit', 'oap-project'
+                            if (prBranch == "main" && "${triggerMethod}" == "mannual") {
+                                def glutenCommitID = params.glutenCommitID
+                                if (glutenCommitID != "") {
+                                    sh script: 'git checkout \${glutenCommitID}'
+                                }
+                            }
+                            if ("${triggerMethod}" != "timer") {
+                                echo "gluten prNo:${prNo}"
+                                sh script: 'echo \${prNo} > /tmp/gluten_prno'
+                            } else{
+                                echo "gluten commits in the last day:"
+                                sh script: 'git rev-list -n 1 --since="1 days ago" HEAD | tee /tmp/gluten_commit_ids'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Checkout partial clickhouse source code') {
+            when {
+                equals expected: 'GlutenWithCHStandard',
+                actual: params.serviceType
+            }
+            steps {
+                dir('clickhouse') {
+                    retry(5) {
+                        script {
+                            if ("${triggerMethod}" != "mannual") {
+                                echo "clone clickhouse source code without submodule"
+                                githubCheckout 'ClickHouse', 'clickhouse_backend', 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligencegit'
+                                echo "chbackend commits in the last day:"
+                                sh script: 'git rev-list -n 1 --since="1 days ago" HEAD | tee /tmp/chbackend_commit_ids'
+                            } else {
+                                echo "no need to clone clickhouse source code for we get libch.so from url directly later"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+         stage('Determine whether to go on test') {
+            when {
+                equals expected: 'GlutenWithCHStandard',
+                actual: params.serviceType
+            }
+             steps {
+                 script {
+                     if ("${triggerMethod}" == "timer") {
+                        GLUTEN_COMMIT_IDS = sh (script: "cat /tmp/gluten_commit_ids", returnStdout: true).trim()
+                        CHBACKEND_COMMIT_IDS = sh (script: "cat /tmp/chbackend_commit_ids", returnStdout: true).trim()
+                        if (GLUTEN_COMMIT_IDS == "") {
+                            if (CHBACKEND_COMMIT_IDS == "") {
+                                sh """
+                                    echo "no commits in the last day,so stop this test pipeline"
+                                    exit 100
+                                """
+                            }
+                        }
+                     }
+                 }
+             }
+         }
+
+        stage('Build gluten') {
+            when {
+                equals expected: 'GlutenWithCHStandard',
+                actual: params.serviceType
+            }
+            steps {
+                dir('gluten') {
+                    script {
+                        sh script: 'sudo apt-get install -y maven'
+                        sh script: 'export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=2g";mvn clean install -Pbackends-clickhouse -Phadoop-2.7.4 -Pspark-3.2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip'
+                        sh script: 'cp backends-clickhouse/target/gluten-*-jar-with-dependencies.jar ~/gluten-1.0.0-SNAPSHOT-jar-with-dependencies.jar'
+                    }
+                }
+            }
+        }
+
+        stage('Get libch.so') {
+            when {
+                equals expected: 'GlutenWithCHStandard',
+                actual: params.serviceType
+            }
+            steps {
+                dir('clickhouse') {
+                    retry(5) {
+                        script {
+                            if ("${triggerMethod}" == "timer") {
+                                echo "timer triggered,so just download compiled libch.so from nexus lib"
+                                withCredentials([usernamePassword(credentialsId: 'nexus-upload', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                    sh """
+                                    curl -u "${user}":"${passwd}" \
+                                    "https://devopsnexus.kyligence.io/repository/raw-tars-hosted/io.kyligence.clickhouse/clickhouse_backend/latest/libch.so" \
+                                    -o libch.so
+                                    mv libch.so ~/
+                                    """
+                                }
+                            } else if ("${triggerMethod}" == "event") {
+                                echo "event triggered,so we need get all submodules and compile libch ourselves"
+                                echo "start git proxy to make submodule download more stable"
+                                sh '/home/ubuntu/setup/tools_not_to_delete/startLocalSocksProxy.sh > startLocalSocksProxy.log 2>&1'
+                                sh 'git submodule update --init --recursive;'
+                                echo "stop git proxy to save cost"
+                                sh '/home/ubuntu/setup/tools_not_to_delete/stopLocalSocksProxy.sh > stopLocalSocksProxy.log 2>&1'
+
+                                sh '''mkdir -p build && cd build || exit;
+                                cmake -G Ninja  "-DCMAKE_C_COMPILER=$(command -v clang-12)" "-DCMAKE_CXX_COMPILER=$(command -v clang++-12)" "-DCMAKE_BUILD_TYPE=Release" "-DENABLE_PROTOBUF=1" "-DWERROR=OFF" "-DENABLE_JEMALLOC=0" \${WORKSPACE}/clickhouse/;
+                                ninja ch;'''
+                                sh 'mv utils/local-engine/libch.so ~/'
+                            } else {
+                                echo "mannual triggered,so just download compiled libch.so from user defined url,support s3 only"
+                                def libchUrl = params.libchUrl
+                                sh """
+                                aws s3 cp \${libchUrl} ~/libch.so
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        stage('Call mainProcessOnCI') {
+            steps {
+                retry(1) {
+                    script {
+                        sh script: 'cd pipelines/aws/Gluten-Performance-Test-CI/performance-compare/scripts_ci;bash mainProcessOnCI.sh'
+                    }
+                }
+            }
+        }
+    }
+}
