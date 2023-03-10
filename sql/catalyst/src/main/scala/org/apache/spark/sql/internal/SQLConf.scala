@@ -4530,6 +4530,14 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val COLLECT_QUERY_METRICS_ENABLED =
+    buildConf("spark.sql.collect-query-metrics.enabled")
+      .internal()
+      .doc("When true, collect footer and BloomFilter metrics.")
+      .version("3.2.0")
+      .booleanConf
+      .createWithDefault(true)
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -5004,6 +5012,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
   }
 
   def writeLegacyParquetFormat: Boolean = getConf(PARQUET_WRITE_LEGACY_FORMAT)
+
+  def collectQueryMetricsEnabled: Boolean = getConf(COLLECT_QUERY_METRICS_ENABLED)
 
   def parquetRecordFilterEnabled: Boolean = getConf(PARQUET_RECORD_FILTER_ENABLED)
 
