@@ -1,6 +1,7 @@
 #!groovy
 
 import org.kohsuke.github.GitHub
+import groovy.json.JsonSlurper
 
 def ISSUE_KEYS = []
 
@@ -8,7 +9,6 @@ pipeline {
     options {
         timeout(time: 1, unit: 'HOURS')
     }
-
     agent {
         kubernetes {
         }
@@ -68,6 +68,21 @@ pipeline {
                 }
             }
         }
-
+        stage('Check Author') {
+            steps {
+                script {
+                    println "Check Author"
+                    configFileProvider([configFile(fileId: 'github-accounts', targetLocation: 'github_accounts.json', variable: '_f')]) {
+                        def inputFile = readFile("${WORKSPACE}/github_accounts.json")
+                        def inputJSON = new JsonSlurper().parseText(inputFile)
+                        if (inputJSON.containsKey("${ghprbPullAuthorLogin}")){
+                            println "Author ${ghprbPullAuthorLogin} 为白名单用户，通过！"
+                        } else {
+                            throw new IllegalStateException("Author ${ghprbPullAuthorLogin} 不在白名单中")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
