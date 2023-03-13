@@ -168,13 +168,11 @@ pipeline {
                                     if (params.sparkVersion == 'spark2.4') {
                                         hadoopVersion = 'hadoop-2.6'
                                     }
-                                    def kubernetesParm = '-Pkubernetes'
                                     if (params.sparkVersion == 'spark2.2') {
                                         hadoopVersion = 'hadoop-2.6'
-                                        kubernetesParm = ''
                                     }
                                     sh script: """
-                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn ${kubernetesParm}
+                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn 
                                         if [ 'spark3' = '${params.sparkVersion}' ]; then
                                             cp ../depedencies/log4j/*.jar dist/jars/
                                         fi
@@ -202,13 +200,9 @@ pipeline {
                             dir('on-perm-nohadoop') {
                                 script {
                                     def releaseName = releaseVersion.replace('-kylin', '')
-                                    def kubernetesParm = '-Pkubernetes'
-                                    if (params.sparkVersion == 'spark2.2') {
-                                        kubernetesParm = ''
-                                    }
                                     sh script: """
                                         sleep 10
-                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -pl assembly
+                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                     """
