@@ -54,6 +54,12 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
         cp -r ../hive_1_2_2  dist/
         cp ../depedencies/${dependencyDir}/* dist/jars/
         cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
+        #https://olapio.atlassian.net/browse/KC-13052,special handle for azure
+        if [ 'cloud-hadoop3' = '${cloudType}' ]; then
+            cp dist/jars/azure-identity-extensions*.jar dist/hive_1_2_2/
+            cp dist/jars/mysql-connector*.jar dist/hive_1_2_2/
+            cp dist/jars/postgresql*.jar dist/hive_1_2_2/
+        fi
         mv dist spark-newten-${releaseName}-${cloudType}
         tar czf spark-newten-${releaseName}-${cloudType}.tgz spark-newten-${releaseName}-${cloudType}
      """
