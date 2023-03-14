@@ -26,6 +26,7 @@ pipeline {
         string(name: 'glutenPRNo', defaultValue: '', description: 'glutenPRNo.if you want to use main branch,leave this parameter empty')
         string(name: 'glutenCommitID', defaultValue: '', description: 'apply this commit on gluten main branch')
         string(name: 'baseTag', defaultValue: '', description: 'this tag refers to one of your test runnings used as a baseline to compare with your current running.It is composed of testGroup and running timestamp which can be found in conbench')
+        string(name: 'glutenBot', defaultValue: 'https://open.feishu.cn/open-apis/bot/v2/hook/5f28fd33-08f1-49af-9738-cf93e3fafefd', description: 'gluten robot, send message to feishu chat group')
     }
 
 
@@ -255,6 +256,24 @@ pipeline {
                         sh script: 'cd pipelines/aws/Gluten-Performance-Test-CI/performance-compare/scripts_ci;bash mainProcessOnCI.sh'
                     }
                 }
+            }
+        }
+    }
+    post {
+        success {
+            script {
+                testReportResult = sh(returnStdout:true, script: "cat /tmp/gluten_report_link").trim()
+                feishu.glutenNotification("${testReportResult}", "${glutenBot}")
+            }
+        }
+        failure {
+            script {
+                feishu.glutenNotification("Gluten jenkins build FAILED!", "${glutenBot}")
+            }
+        }
+        aborted {
+            script {
+                feishu.glutenNotification("Gluten jenkins build ABORTED!", "${glutenBot}")
             }
         }
     }

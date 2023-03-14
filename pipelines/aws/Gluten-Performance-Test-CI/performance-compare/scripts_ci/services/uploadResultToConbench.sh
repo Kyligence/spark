@@ -134,6 +134,14 @@ cp aggregated.csv compare/report/report.html compare/report/all-queries.html ${r
 report_url=$(cat /tmp/driver_ip):5678/${base_tag}____${current_tag}/report.html
 result_aggregated_csv_url=$(cat /tmp/driver_ip):5678/${base_tag}____${current_tag}/aggregated.csv
 
+# echo report url to /tmp/gluten_report, this is for alert notification
+cat compare/report/report.html 2> /dev/null | grep "Exception"
+if [ "$?" -eq 0 ]; then
+    echo -e "Gluten sql test FAIL\nReport link: ${report_url}" > /tmp/gluten_report_link
+else
+    echo "Gluten sql test PASS" > /tmp/gluten_report_link
+fi
+
 # load detail csv
 declare -A detail_map
 while read line
