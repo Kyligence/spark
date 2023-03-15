@@ -9,7 +9,7 @@ def modules = [
         ['name': 'yinglong-smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'yinglong-smart', 'image': ''],
         ['name': 'yinglong-resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'yinglong-resource', 'image': ''],
         ['name': 'ke-ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'yinglong-ops', 'image': '']
-]
+    ]
 
 pipeline {
     options {
@@ -168,7 +168,6 @@ pipeline {
                                             println(m.toString())
                                             sh 'ls -lh '
                                             m.image = docker.build("yinglong/${m.imageName}")
-                                            sh "docker save "
                                         }
                                     }
                                 }
@@ -190,7 +189,7 @@ pipeline {
                 }
             }
         }
-        stage('4.1.push images') {
+        stage('4.push images') {
             when {
                 environment name: 'push', value: 'true'
             }
@@ -210,38 +209,6 @@ pipeline {
                                     m.image.push('latest')
                                 }
                             }
-                        }
-                    }
-                }
-            }
-        }
-        stage('4.2.push helm'){
-            steps {
-                container('helm-push') {
-                    timestamps {
-                        withCredentials([usernamePassword(credentialsId: 'harbor-devops', passwordVariable: 'password', usernameVariable: 'username')]) {
-                            script {
-                                sh script: """
-                                    cd ${env.WORKSPACE}/helm/yinglong
-                                    helm package .
-                                    ls -lh .
-                                    helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
-                                    helm cm-push yinglong-*.tgz harbor-ofs
-                                """
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        stage('4.3.make offline') {
-            steps {
-                container('docker') {
-                    dir('sourcecode') {
-                        script {
-                            sh script: """
-                                docker save 
-                            """
                         }
                     }
                 }

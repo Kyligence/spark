@@ -1,16 +1,29 @@
 #!groovy
 
-@Library('devopslib') _
+@Library('devopslib@DEVOPS-1648') _
+
+def IS_DEBUG = false
 
 def modules = [
-    ['name': 'common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'common', 'image': ''],
-    ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'data-loading', 'image': ''],
-    ['name': 'query', 'path': 'kyligence/src/ke-query-booter', 'imageName': 'query', 'image': ''],
-    ['name': 'smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'smart', 'image': ''],
-    ['name': 'resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'resource', 'image': ''],
-    ['name': 'ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'ops', 'image': '']
+        ['name': 'common', 'path': 'kyligence/src/ke-common-booter', 'imageName': 'common', 'image': ''],
+        ['name': 'data-loading', 'path': 'kylin/src/data-loading-booter', 'imageName': 'data-loading', 'image': ''],
+        ['name': 'query', 'path': 'kyligence/src/ke-query-booter', 'imageName': 'query', 'image': ''],
+        ['name': 'smart', 'path': 'kyligence/src/smart-booter', 'imageName': 'smart', 'image': ''],
+        ['name': 'resource', 'path': 'kyligence/src/resource-booter', 'imageName': 'resource', 'image': ''],
+        ['name': 'ops', 'path': 'kyligence/src/ops-booter', 'imageName': 'ops', 'image': '']
+]
+// 以下是依赖的容器镜像，name 作为 tar 包名称，imageName 需要精确到 tag 版本号
+def defModules = [
+        ['name': 'busybox', imageName: 'busybox'],
+        ['name': 'gateway', imageName: 'repo-ofs.kyligence.com/gateway:5.1.2-DEV-beab30ca'],
+//        ['name': 'python-hadoop-hive', imageName: 'repo-ofs.kyligence.com/qa/python-hadoop-hive-dev:latest'],
+        ['name': 'spark', imageName: 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3'],
+        ['name': 'skywalking-java-agent', imageName: 'apache/skywalking-java-agent:8.10.0-alpine'],
+//        ['name': 'auspicious-resource-executor', imageName: 'harbor-ofs.kyligence.com/auspicious/auspicious-resource-executor:latest']
 ]
 
+// 包信息对象
+def package_info = [:]
 // 发布分支(前端)
 def release_branch_front = ''
 // 发布分支(后端)
@@ -72,7 +85,7 @@ def gitCodeKe(back, front, pMap) {
 
         if (pMap['back_remote']) {
             githubCheckout 'KAP', back, 'https', 'github.com'
-        }else {
+        } else {
             pullCodeFromGitMirror 'KAP', back
         }
 
@@ -100,7 +113,7 @@ def gitCodeKe(back, front, pMap) {
             sh 'pwd && ls -lha'
             if (pMap['front_remote']) {
                 githubCheckout 'KAP_Frontend', _front, 'https', 'github.com'
-            }else {
+            } else {
                 pullCodeFromGitMirror 'KAP_Frontend', _front
             }
 
@@ -118,6 +131,67 @@ def gitCodeKe(back, front, pMap) {
     return result
 }
 
+//
+def getPackageInfo(version, envStage, fcid, bcid, deployType) {
+    println "getPackageInfo -> version[${version}],envStage[${envStage}],fcid[${fcid}],bcid[${bcid}],deployType[${deployType}]"
+    def package_path = ''
+    def branchCollection = ['5.0.x', '5.0.x-sp']
+    switch (deployType) {
+        case 'Regular':
+            package_path = "artifacts/${branchCollection[0]}/${envStage}"
+            break
+        case 'SP-5.0.x':
+            package_path = "artifacts/${branchCollection[1]}/${envStage}"
+            break
+    }
+    println "package_path: ${package_path}"
+
+    file_name = "YL-${version}-${bcid}.tar.gz"
+    package_file = "newten-cicd/${package_path}/${file_name}"
+    ga_name = "Kyligence-Enterprise-${version}.tar.gz"
+
+    println "file_name: ${file_name}"
+    println "package_file: ${package_file}"
+    println "ga_name: ${ga_name}"
+
+    def obj = [:]
+    obj.package_path = package_path
+    obj.package_file = package_file
+    obj.file_name = file_name
+    obj.ga_name = ga_name
+
+    switch (envStage) {
+        case 'DEV':
+        case 'QA':
+        case 'RC':
+            obj.tag_front = "${version}-${envStage}-${fcid}"
+            obj.tag_back = "${version}-${envStage}-${bcid}"
+            break
+        case 'ALPHA':
+        case 'BETA':
+            obj.tag_back = "${version}-${envStage}"
+            break
+        case 'GA':
+            obj.tag_back = version
+            obj.file_name = ga_name
+            obj.package_file = "newten-cicd/${package_path}/${ga_name}"
+            break
+    }
+    println obj.toString()
+    return obj
+}
+
+// docker save 离线镜像并制作压缩包
+def dockerSave(imageName) {
+    sh script: """
+        pwd
+        docker save harbor-ofs.kyligence.com/enterprise/${imageName} > ${imageName}.tar
+        ls -lth
+        mv ${imageName}.tar ${env.WORKSPACE}/sourcecode/offline
+        ls -lth ${env.WORKSPACE}/sourcecode/offline
+    """
+}
+
 pipeline {
     options {
         timeout(time: 12, unit: 'HOURS')
@@ -131,7 +205,7 @@ pipeline {
 
     environment {
         repo = 'harbor-ofs.kyligence.com'
-        dockerRegistryUrl = "http://${repo}"
+        dockerRegistryUrl = "https://${repo}"
         registryCredential = 'harbor-devops'
         common = ''
         data_loading = ''
@@ -142,16 +216,16 @@ pipeline {
         release_commitid_back_full = ''
         release_commitid_front = ''
         spark = ''
-   }
+    }
 
     parameters {
         choice(name: 'deployWay', choices: 'Auto Select\nManual Select', description: '发布方式: \nAuto Select-根据发布类型自动选择分支; \nManual Select-手动选择分支、CommitId;')
         choice(name: 'deployType', choices: 'Regular\nSP-5.0.x', description: '交付版本流程:\nRegular - 指主线发布\nSP-5.0.x - 指每周的版本发布5.0.x系列')
         string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
-        choice(name: 'envStage', choices:'DEV\nQA\nRC\nALPHA\nBETA\nGA', description:'打包阶段，如果要GA，选择GA进行流程')
+        choice(name: 'envStage', choices: 'DEV\nQA\nRC\nALPHA\nBETA\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
-        booleanParam(name: 'build', defaultValue:true, description:'是否构建')
-        booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
+        booleanParam(name: 'build', defaultValue: true, description: '是否构建')
+        booleanParam(name: 'push', defaultValue: true, description: '推送镜像')
     }
 
     stages {
@@ -178,17 +252,17 @@ pipeline {
                             } else if (params.deployWay == 'Manual Select') {
                                 // 2.2 根据手动输入参数设定分支
                                 paramsMap = input(
-                                    message: '请选择要开始的版本?',
-                                    ok: '确认！',
-                                    parameters: [
-                                        string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
-                                        string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）'),
-                                        booleanParam(name: 'overide', defaultValue: false, description: '全新打包，覆盖现有同名包'),
-                                        booleanParam(name: 'back_remote', defaultValue: false, description: '后端拉取远程分支（绕开 git mirror）'),
-                                        booleanParam(name: 'front_remote', defaultValue: false, description: '前端拉取远程分支（绕开 git mirror）')
-                                    ],
-                                    // submitter:'liming.meng,admin',
-                                    submitterParameter: 'APPROVER'
+                                        message: '请选择要开始的版本?',
+                                        ok: '确认！',
+                                        parameters: [
+                                                string(name: 'commitId_back', defaultValue: '', description: '后端Repo(KAP)的branch或者commitid（必填）注：填commitid的时候前端的必填'),
+                                                string(name: 'commitId_front', defaultValue: '', description: '前端repo(KAP_Frontend)的branch或者commitid（后端填分支名时，该参数可以不填）'),
+                                                booleanParam(name: 'overide', defaultValue: false, description: '全新打包，覆盖现有同名包'),
+                                                booleanParam(name: 'back_remote', defaultValue: false, description: '后端拉取远程分支（绕开 git mirror）'),
+                                                booleanParam(name: 'front_remote', defaultValue: false, description: '前端拉取远程分支（绕开 git mirror）')
+                                        ],
+                                        // submitter:'liming.meng,admin',
+                                        submitterParameter: 'APPROVER'
                                 )
                                 release_branch_front = paramsMap['commitId_front']
                                 release_branch_back = paramsMap['commitId_back']
@@ -209,6 +283,11 @@ pipeline {
                             """
                         }
                     }
+                    dir('global') {
+                        script {
+                            githubCheckout 'xuanwu-charts', 'main', 'https', 'github.com'
+                        }
+                    }
                 }
             }
         }
@@ -220,10 +299,15 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            sh '''
+                            package_info = getPackageInfo(params.version, params.envStage, release_commitid_front, release_commitid_back, params.deployType)
+                            sh """
                                 sh build/script_newten/download-spark.sh
                                 mv build/spark spark
-                            '''
+                                if [ ! -d offline  ];then
+                                    mkdir -p offline
+                                fi
+                                mkdir -p /var/cicd/${package_info.package_path}
+                            """
 
                             if (!profiles) {
                                 sh '''
@@ -281,7 +365,7 @@ pipeline {
                         }
                     }
                 }
-                stage('3.2.images') {
+                stage('3.2.images yinglong') {
                     steps {
                         container('docker') {
                             script {
@@ -296,10 +380,10 @@ pipeline {
                         }
                     }
                 }
-                stage('3.3 image spark'){
+                stage('3.3 image spark') {
                     steps {
                         container('docker') {
-                            dir('sourcecode'){
+                            dir('sourcecode') {
                                 script {
                                     sh "ls -alt"
                                     spark = docker.build('enterprise/spark', "-f ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile4Spark .")
@@ -310,52 +394,100 @@ pipeline {
                 }
             }
         }
-        stage('4.push images') {
+        stage('4.1.tag & push images') {
             when {
                 environment name: 'push', value: 'true'
             }
             steps {
                 container('docker') {
                     script {
-                        println "release_commitid_front: ${release_commitid_front}"
-
-                        release_tag_front = "${params.envStage}-${release_commitid_front}"
-                        release_tag_back = "${params.envStage}-${release_commitid_back}"
-
-                        switch(params.envStage) {
-                            case 'ALPHA':
-                                release_tag_front = "${params.version}-ALPHA"
-                                release_tag_back = "${params.version}-ALPHA"
-                                break
-                            case 'BETA':
-                                release_tag_front = "${params.version}-BETA"
-                                release_tag_back = "${params.version}-BETA"
-                                break
-                            case 'GA':
-                                release_tag_front = params.version
-                                release_tag_back = params.version
-                                break
-                        }
-
-                        println "release_tag_front: ${release_tag_front}"
-                        retry(2) {
-                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                frontend.push(release_tag_front)
-                                frontend.push('latest')
-                            }
-                        }
-                        println "release_tag_back: ${release_tag_back}"
-                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                            for (m in modules) {
-                                retry(2) {
-                                    m.image.push(release_tag_back)
-                                    m.image.push('latest')
+                        dir('sourcecode') {
+                            println "package_info.tag_front: ${package_info.tag_front}"
+                            retry(2) {
+                                docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                    frontend.push(package_info.tag_front)
+                                    frontend.push('latest')
+                                    dockerSave("frontend:${package_info.tag_front}")
                                 }
                             }
-                            retry(2) {
-                                spark.push(release_tag_back)
-                                spark.push('latest')
+                            println "package_info.tag_back: ${package_info.tag_back}"
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                for (m in modules) {
+                                    retry(2) {
+                                        m.image.push(package_info.tag_back)
+                                        m.image.push('latest')
+                                        dockerSave("${m.imageName}:${package_info.tag_back}")
+                                    }
+                                }
+                                retry(2) {
+                                    spark.push(package_info.tag_back)
+                                    spark.push('latest')
+                                    dockerSave("spark:${package_info.tag_back}")
+                                }
                             }
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.2.push helm') {
+            steps {
+                container('helm-pusher') {
+                    timestamps {
+                        withCredentials([usernamePassword(credentialsId: 'harbor-devops', passwordVariable: 'password', usernameVariable: 'username')]) {
+                            script {
+                                dir('global') {
+                                    sh script: """
+                                        pwd
+                                        ls -lh .
+                                        helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
+                                        helm package global-service
+                                        ls -lh .
+                                        helm cm-push *.tgz harbor-ofs
+                                        cp *.tgz ${env.WORKSPACE}/sourcecode/offline
+                                    """
+                                }
+                                dir('sourcecode') {
+                                    sh script: """
+                                        cd ${env.WORKSPACE}/helm
+                                        sed -i 's/5.0.0-ALPHA/${package_info.tag_back}/g' yinglong/Chart.yaml
+                                        cat yinglong/Chart.yaml
+                                        helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
+                                        helm package yinglong
+                                        ls -lh .
+                                        helm cm-push *.tgz harbor-ofs
+                                        cp *.tgz ${env.WORKSPACE}/sourcecode/offline
+                                    """
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('4.3.make offline & upload S3') {
+            steps {
+                container('docker') {
+                    script {
+                        dir('sourcecode/offline') {
+                            defModules.eachWithIndex { LinkedHashMap<String, String> entry, int i ->
+                                sh script: """
+                                    docker pull ${entry['imageName']}
+                                    docker save ${entry['imageName']}  > ${entry['name']}.tar
+                                """
+                            }
+
+                            sh script: """
+                                pwd
+                                ls -lh .
+                                tar -cvf ${package_info.file_name} ./*
+                                cp ${package_info.file_name} /var/cicd/${package_info.package_path}
+                            """
+                        }
+                        // upload to S3
+                        println("upload to S3 in AWS CN: ${package_info.file_name}")
+                        retry(2) {
+                            uploadHelper.uploadAwsS3(package_info.file_name, "product/yinglong/5.0.x/${package_info.file_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp', 'sourcecode/offline')
                         }
                     }
                 }
@@ -385,11 +517,11 @@ pipeline {
                                 sh 'pwd && ls -alt'
                                 sh "mkdir -p ~/.kube && cp ${KUBECONFIG} ~/.kube/config"
 
-                                sh returnStatus: true , script: """
+                                sh returnStatus: true, script: """
                                     helm -n ${namespace} list
                                     helm -n ${namespace} upgrade yinglong ./helm/yinglong \
-                                        --set global.image.tag=${release_tag_back} \
-                                        --set yl-frontend.image.tag=${release_tag_front} \
+                                        --set global.image.tag=${package_info.tag_back} \
+                                        --set yl-frontend.image.tag=${package_info.tag_front} \
                                         --set global.image.pullPolicy=Always \
                                         --set global.hadoopPrefix=${hadoop_prefix} \
                                         --set global.tenantId=${tenant_id} \

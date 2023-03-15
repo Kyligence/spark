@@ -4,7 +4,7 @@ pipeline {
     options {
         timeout(time: 10, unit: 'MINUTES')
     }
-    
+
     agent {
         kubernetes {
             yamlFile 'pipelines/samples/helmer/jenkins-agent.yaml'
@@ -12,19 +12,47 @@ pipeline {
     }
 
     stages {
+        stage('yinglong helm') {
+            steps {
+                container('helm') {
+                    timestamps {
+                        withCredentials([usernamePassword(credentialsId: 'harbor-devops', passwordVariable: 'password', usernameVariable: 'username')]) {
+                            script {
+                                sh script: """
+                                    cd ${env.WORKSPACE}/helm
+                                    sed -i 's/5.0.0-ALPHA/5.1.0/g' yinglong/Chart.yaml
+                                    cat yinglong/Chart.yaml
+                                    helm package yinglong
+                                    helm package gateway
+                                    helm package iam
+                                    helm package nacos
+                                    helm pakcage nacos-frontend
+                                    ls -lh .
+                                    pwd
+                                    gzip -rc *.tgz > yinglong-offline.tgz
+                                    ls -lh .                                    
+                                    # helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/yinglong
+                                    # helm cm-push yinglong-*.tgz harbor-ofs 
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
         stage('push to harbor') {
             steps {
                 container('helm') {
                     timestamps {
-                        withCredentials([usernamePassword(credentialsId: 'helm-to-harbor', passwordVariable: 'password', usernameVariable: 'username')]) {
+                        withCredentials([usernamePassword(credentialsId: 'harbor-devops', passwordVariable: 'password', usernameVariable: 'username')]) {
                           sh '''
                             helm version
                             helm plugin list
                             helm  create mychart_$(date +%Y-%m-%d-%H%M)
                             helm repo add --username $username --password $password harbor-local  https://harbor-ofs.kyligence.com/chartrepo/xt-test
-                            helm cm-push mychart_$(date +%Y-%m-%d-%H%M)/ harbor-local
-                          '''  
-                        }  
+                            helm cm-push mychart_$(date +%Y-%m-%d-%H%M) harbor-local
+                          '''
+                        }
                     }
                 }
             }
@@ -36,7 +64,7 @@ pipeline {
                         sh '''
                           helm repo update
                           helm pull harbor-local/mychart_$(date +%Y-%m-%d-%H%M)
-                        '''  
+                        '''
                     }
                 }
             }

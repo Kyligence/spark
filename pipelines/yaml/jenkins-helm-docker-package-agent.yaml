@@ -50,13 +50,16 @@ spec:
         - mountPath: "/etc/docker/daemon.json"
           name: "lex-docker"
           subPath: "daemon.json"
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
       resources:
         request:
-          memory: "1Gi"
-          cpu: "100m"
-        limits:
           memory: "2Gi"
           cpu: "500m"
+        limits:
+          memory: "8Gi"
+          cpu: "4"
     - name: "kubectl"
       image: "cnych/kubectl"
       imagePullPolicy: "IfNotPresent"
@@ -91,6 +94,19 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+    - name: "helm-pusher"
+      image: "bsord/helm-push:latest"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          cpu: "100m"
+          memory: "500Mi"
+        limits:
+          cpu: "300m"
+          memory: "800Mi"
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
