@@ -10,7 +10,7 @@ spec:
       effect: NoSchedule
   containers:
     - name: "build"
-      image: "repo-ofs.kyligence.com/newten-build:latest"
+      image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
@@ -40,7 +40,7 @@ spec:
           name: "jenkins-common"
           subPath: "newten-cicd"
     - name: "build2"
-      image: "repo-ofs.kyligence.com/newten-build:latest"
+      image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
