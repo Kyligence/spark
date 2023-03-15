@@ -124,9 +124,10 @@ def gitCodeKe(back, front, pMap) {
             result.release_commitid_front = sh(returnStdout: true, script: "git rev-parse --short HEAD | sed -e 's/\r//g'").trim()
             println "result.release_commitid_front: ${result.release_commitid_front}"
             // result.release_commitid_front = release_commitid_front
+            // https://repo-ofs.kyligence.com/repository/npm-public/
             sh """
                 rm -f .npmrc
-                echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
+                echo "registry = 'https://devopsnexus.kyligence.io/repository/kyligence-npm/'" > .npmrc
                 cat .npmrc
             """
         }
