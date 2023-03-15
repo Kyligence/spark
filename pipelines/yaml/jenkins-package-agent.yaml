@@ -33,9 +33,7 @@ spec:
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository2/io/kyligence
         - name: "kylin-repo"
-          mountPath: /root/.m2/repository2/org/apache/kylin
-        - name: "spark-repo"
-          mountPath: /root/.m2/repository2/org/apache/spark
+          mountPath: /root/.m2/repository2/org/apache
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
@@ -63,9 +61,7 @@ spec:
         - name: "kyligence-repo"
           mountPath: /root/.m2/repository2/io/kyligence
         - name: "kylin-repo"
-          mountPath: /root/.m2/repository2/org/apache/kylin
-        - name: "spark-repo"
-          mountPath: /root/.m2/repository2/org/apache/spark
+          mountPath: /root/.m2/repository2/org/apache
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
@@ -93,8 +89,6 @@ spec:
     - name: "kyligence-repo"
       emptyDir: { }
     - name: "kylin-repo"
-      emptyDir: { }
-    - name: "spark-repo"
       emptyDir: { }
     - name:  "kube-config"
       hostPath:
