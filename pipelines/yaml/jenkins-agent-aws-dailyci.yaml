@@ -112,7 +112,7 @@ spec:
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
-        claimName: "fileserver-claim1"
+        claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
     - name: "kylin-repo"
