@@ -26,7 +26,7 @@ spec:
           memory: "1Gi"
           cpu: "1000m"
     - name: "build"
-      image: "harbor-ofs.kyligence.com/library/handbook:1.13"
+      image: "harbor-ofs.kyligence.com/library/handbook:1.11"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
