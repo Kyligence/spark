@@ -39,7 +39,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "repo-ofs.kyligence.com/docker-bash:1.0.0"
+      image: "harbor-ofs.kyligence.com/library/docker-bash:1.0.0"
       imagePullPolicy: "Always"
       volumeMounts:
         - mountPath: "/var/run/docker.sock"
@@ -68,7 +68,7 @@ spec:
           name: "jenkins-common"
           subPath: "newten-cicd"
     - name: "python3"
-      image: "repo-ofs.kyligence.com/py3:alpine3.15.feishu.v1"
+      image: "harbor-ofs.kyligence.com/library/py3:alpine3.15.feishu.v1"
       imagePullPolicy: "IfNotPresent"
       tty: true
       command:
