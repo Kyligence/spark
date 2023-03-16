@@ -1,1 +1,1 @@
-docker build -t repo-ofs.kyligence.com/handbook2:2.0 .
+docker build -t harbor-ofs.kyligence.com/library/handbook2:2.0 .

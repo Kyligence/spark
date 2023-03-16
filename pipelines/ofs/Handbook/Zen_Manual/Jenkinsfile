@@ -5,7 +5,6 @@
 final String NOTIFY_TO = "na.pan@kyligence.io;chen.gui@kyligence.io;luqian.chen@kyligence.io;xue.tang@kyligence.io;sijie.chen@kyligence.io"
 final String CACHE_DIR = "/var/devops/cache/Zen_Manual"
 
-def commitid = ''
 
 pipeline {
     options {
@@ -32,7 +31,6 @@ pipeline {
                         script {
                             retry(3) {
                                 pullCodeFromGitMirror "Zen_Manual", "${params.branch}", false, "${params.repo}"
-                                commitid = sh(script:'git rev-parse --short HEAD', returnStdout: true).trim()
                             }
                         }
                     }
@@ -45,6 +43,7 @@ pipeline {
                 container('build') {
                     dir('zen-quickstart') {
                         script {
+                            commitid = sh(script:'git rev-parse --short HEAD', returnStdout: true).trim()
                             println "commitid: ${commitid}"
 
                             cached = sh(script: """
