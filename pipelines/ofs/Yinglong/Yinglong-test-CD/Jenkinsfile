@@ -301,8 +301,6 @@ pipeline {
                         script {
                             package_info = getPackageInfo(params.version, params.envStage, release_commitid_front, release_commitid_back, params.deployType)
                             sh """
-                                sh build/script_newten/download-spark.sh
-                                mv build/spark spark
                                 if [ ! -d offline  ];then
                                     mkdir -p offline
                                 fi
