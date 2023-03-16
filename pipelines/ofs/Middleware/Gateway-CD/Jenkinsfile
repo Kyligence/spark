@@ -92,7 +92,7 @@ pipeline {
                 container('docker') {
                     dir('sourcecode') {
                         script {
-                            gateway = docker.build 'gateway'
+                            gateway = docker.build('xuanwu/gateway')
                         }
                     }
                 }
