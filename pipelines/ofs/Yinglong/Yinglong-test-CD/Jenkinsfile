@@ -378,18 +378,6 @@ pipeline {
                         }
                     }
                 }
-                stage('3.3 image spark') {
-                    steps {
-                        container('docker') {
-                            dir('sourcecode') {
-                                script {
-                                    sh "ls -alt"
-                                    spark = docker.build('enterprise/spark', "-f ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile4Spark .")
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
         stage('4.1.tag & push images') {
@@ -416,11 +404,6 @@ pipeline {
                                         m.image.push('latest')
                                         dockerSave("${m.imageName}:${package_info.tag_back}")
                                     }
-                                }
-                                retry(2) {
-                                    spark.push(package_info.tag_back)
-                                    spark.push('latest')
-                                    dockerSave("spark:${package_info.tag_back}")
                                 }
                             }
                         }
