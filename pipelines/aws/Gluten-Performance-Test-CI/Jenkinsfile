@@ -4,6 +4,7 @@
 
 
 def triggerMethod = ""
+def newCommitCheckoutResult = "0"
 
 pipeline {
     options {
@@ -177,10 +178,7 @@ pipeline {
                         CHBACKEND_COMMIT_IDS = sh (script: "cat /tmp/chbackend_commit_ids", returnStdout: true).trim()
                         if (GLUTEN_COMMIT_IDS == "") {
                             if (CHBACKEND_COMMIT_IDS == "") {
-                                sh """
-                                    echo "no commits in the last day,so stop this test pipeline"
-                                    exit 100
-                                """
+                                newCommitCheckoutResult = sh(returnStatus: true, script: "echo 'no commits in the last day, so stop this test pipeline'; exit 100")
                             }
                         }
                      }
@@ -268,7 +266,12 @@ pipeline {
         }
         failure {
             script {
-                feishu.glutenNotification("Gluten jenkins build FAILED!", "${glutenBot}")
+                if ( "${newCommitCheckoutResult}" == "100" ) {
+                    feishu.glutenNotification("Gluten jenkins build: No new commits to build, exit test", "${glutenBot}")
+                }
+                else {
+                    feishu.glutenNotification("Gluten jenkins build FAILED!", "${glutenBot}")
+                }
             }
         }
         aborted {
