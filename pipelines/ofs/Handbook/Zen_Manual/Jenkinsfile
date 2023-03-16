@@ -43,6 +43,7 @@ pipeline {
                 container('build') {
                     dir('zen-quickstart') {
                         script {
+                            sh(script: "git config --global --add safe.directory ${WORKSPACE}")
                             commitid = sh(script:'git rev-parse --short HEAD', returnStdout: true).trim()
                             println "commitid: ${commitid}"
 
