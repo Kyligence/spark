@@ -41,4 +41,4 @@ spec:
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
-        claimName: "jenkins-common"
+        claimName: "jenkins-pvc-nfs"

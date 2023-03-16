@@ -37,7 +37,7 @@ spec:
   volumes:
   - name: "volume-0"
     persistentVolumeClaim:
-      claimName: "jenkins-common"
+      claimName: "jenkins-pvc-nfs"
       readOnly: false
 """
           }
@@ -104,7 +104,7 @@ spec:
   volumes:
   - name: "volume-0"
     persistentVolumeClaim:
-      claimName: "jenkins-common"
+      claimName: "jenkins-pvc-nfs"
       readOnly: false
   - name: "dockersock"
     hostPath:
