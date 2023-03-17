@@ -70,7 +70,7 @@ class Main {
         final JenkinsClientImpl client = JenkinsClientFactory.create(config);
         final JenkinsExtract extract = new JenkinsExtract(config, client);
 
-        extract.execute("KE4", "Clickhouse-IT-Only");
+        extract.execute("KC", "Lightning-PR-CHECK");
     }
 
     static void transformGCP() {
@@ -102,9 +102,9 @@ class Main {
         config.setS3Accesskey(s3Accesskey);
         config.setS3secretKey(s3secretKey);
         config.setS3StoreBucket(s3bucket);
-        final JenkinsTransform transform = new JenkinsTransform(config, [ClickhouseItBasicPostAnalyzer.class]);
+        final JenkinsTransform transform = new JenkinsTransform(config, [LightningBasicPostAnalyzer.class]);
 
-        transform.execute("KE4", "Clickhouse-IT-Only");
+        transform.execute("KC", "Lightning-PR-CHECK");
     }
 
 

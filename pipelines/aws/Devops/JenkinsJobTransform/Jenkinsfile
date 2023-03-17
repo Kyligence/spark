@@ -4,7 +4,7 @@
 
 pipeline {
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS')
     }
 
     agent {
@@ -36,19 +36,21 @@ pipeline {
                         dir('jenkins-etl') {
                             withCredentials([[
                                 $class: 'AmazonWebServicesCredentialsBinding',
-                                credentialsId: "aws_global_s3_cp",
+                                credentialsId: "aws_cn_dev_s3",
                                 accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 
                                 withCredentials([usernamePassword(credentialsId: 'devopsid', passwordVariable: 'jenkins_password', usernameVariable: 'jenkins_username')]) {
-                                   sh script: """
-                                        cd target && \
-                                        java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-                                            -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-                                            -DJENKINS_USERNAME=${jenkins_username} \
-                                            -DJENKINS_PASSWORD=${jenkins_password} \
-                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform aws
-                                   """
+                                    configFileProvider([configFile(fileId: 'github-accounts', targetLocation: 'github_accounts.json', variable: '_f')]) {
+                                       sh script: """
+                                            cd target && \
+                                            java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                                -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                                -DJENKINS_USERNAME=${jenkins_username} \
+                                                -DJENKINS_PASSWORD=${jenkins_password} \
+                                                jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform aws
+                                       """
+                                    }
                                 }
                             }
                         }

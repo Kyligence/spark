@@ -1,0 +1,17 @@
+name=$.pipeline
+id=$.id
+startTime=replace(removeSuffix("\\$.startTime", 5), "T", " ")
+endTime=replace(removeSuffix("\\$.endTime", 5), "T", " ")
+runDate=removeSuffix("\\$.startTime", 18)
+duration=$.durationInMillis
+result=$.result
+gitRepo=$.parameters[?(@.name=='ghprbGhRepository')].value
+prNumber=$.parameters[?(@.name=='ghprbPullId')].value
+prTitle=$.parameters[?(@.name=='ghprbPullTitle')].value
+sourceBranch=$.parameters[?(@.name=='ghprbSourceBranch')].value
+targetBranch=$.parameters[?(@.name=='ghprbTargetBranch')].value
+commitAuthor=$.parameters[?(@.name=='ghprbPullAuthorLogin')].value
+javaLintFailed=length("\\$.nodes[?(@.displayName=='Java Lint' && @.result=='FAILURE')]")
+utFailed=length("\\$.nodes[?(@.displayName=='UT Test' && @.result=='FAILURE')]")
+utReportFailed=length("\\$.nodes[?(@.displayName=='UT Report' && @.result=='FAILURE')]")
+
