@@ -206,6 +206,10 @@ pipeline {
                             dir('on-perm-nohadoop') {
                                 script {
                                     def releaseName = releaseVersion.replace('-kylin', '')
+                                    def kubernetesParm = '-Pkubernetes'
+                                    if (params.sparkVersion == 'spark2.2') {
+                                        kubernetesParm = ''
+                                    }
                                     sh script: """
                                         sleep 10
                                         dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly

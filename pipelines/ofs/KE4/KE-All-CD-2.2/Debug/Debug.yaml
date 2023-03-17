@@ -1,0 +1,11 @@
+dailyBuild:
+  name: daily-ci
+  dailyTasks:
+  - jobName: 'KE-All-CD-2.1-debug'
+    params:
+      deployWay: 'Auto Select'
+      deployType: 'Regular'
+      version: '4.6.5.0'
+      kylinVersion: '5.0.0'
+      envStage: 'QA'
+      customerPkg: 'NORMAL'

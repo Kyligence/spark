@@ -1,0 +1,172 @@
+#!groovy
+
+@Library('devopslib') _
+
+def IS_DEBUG = false
+
+pipeline {
+    options {
+        timeout(time: 18, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    environment {
+        // GA过程参数
+        paramsGA = ''
+        jar_user_emails = 'yongchao.li@kyligence.io;fanfan.li@kyligence.io'
+    }
+
+    parameters {
+        string(name: 'version', defaultValue: '4.6.6.0', description: '填写版本号，格式：4.6.0.0，4.5.10.0，4.3.11.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
+        string(name: 'release_branch_front', defaultValue: '', description: '前端分支')
+        string(name: 'release_branch_back', defaultValue: '', description: '后端分支')
+        string(name: 'ga_name', defaultValue: '', description: 'GA 包名')
+    }
+
+    stages {
+        // GA
+        stage('6.Approve GA') {
+            steps {
+                container('build2') {
+                    script {
+                        def checkMsg = "该版本可以GA吗？\n确认项：\n1.分支情况，前端 ${ params.release_branch_front}，后端 ${params.release_branch_back};\n2.发布版本号：${params.version}"
+                        println checkMsg
+                        // sh 'printenv'
+                        paramsGA = input(
+                                message: checkMsg,
+                                ok: '确认！',
+                                submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
+                                submitterParameter: 'APPROVER',
+                                parameters: [
+                                        booleanParam(name: 'skipUpload', defaultValue: false, description: '是否跳过上传')
+                                ]
+                        )
+//                        ga_name = package_info.ga_name
+                    }
+                }
+            }
+        }
+        stage('7.GA Upload') {
+            when {
+                expression {
+                    return !paramsGA['skipUpload'] && !IS_DEBUG
+                }
+            }
+            parallel {
+                stage('GA AWS CN') {
+                    steps {
+                        script {
+                            println("upload to S3 in AWS CN: ${params.ga_name}")
+                            retry(2) {
+                                uploadHelper.uploadAwsS3(params.ga_name, "product/kap/4.0.x/${params.ga_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp', 'sourcecode2')
+                            }
+                        }
+                    }
+                }
+                stage('GA AWS Global') {
+                    steps {
+                        script {
+                            println("upload to S3 in AWS Global: ${params.ga_name}")
+                            retry(2) {
+                                uploadHelper.uploadAwsS3(params.ga_name, "product/kap/4.0.x/${params.ga_name}", 'download.kyligence.io', 'us-west-1', 'aws_global_s3_cp', 'sourcecode2')
+                            }
+                        }
+                    }
+                }
+                stage('GA Nexus') {
+                    steps {
+                        container('build') {
+                            script {
+                                println("upload to Nexus repo-ofs: ${params.ga_name}")
+                                retry(2) {
+                                    uploadHelper.uploadNexus(params.ga_name, 'product/ke/4.0.x', 'raw-ke-ga-tar-hosted', 'sourcecode2')
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Jars Nexus') {
+                    when {
+                        expression {
+                            return params.envStage == 'GA' && params.customerPkg == 'NORMAL' && !IS_DEBUG
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                dir('sourcecode2') {
+                                    sh 'mvn deploy -Pdev -DskipTests -T 4C'
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            sendNotify('EMAIL',
+                                    "[KE4][RELEASE JAR] SUCCESSFUL to Upload the Jar to the product library [repo-ofs]'",
+                                    jar_user_emails,
+                                    """<p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                                <p>The Job upload the RELEASE Jars into inner Product Library [repo-ofs]</p>
+                                <p>It saved in the repository of [maven-release], please check it and use! Tks!</p>"""
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        stage('8.Git Tag') {
+            when {
+                expression {
+                    return params.envStage == 'GA' && params.customerPkg == 'NORMAL' && !IS_DEBUG
+                }
+            }
+            steps {
+                container('build2') {
+                    script {
+                        def _tag = "ke-${version}"
+                        dir('sourcecode2') {
+                            println "backend: KAP push tag: ${_tag} on branch ${pull_result_withspark.release_branch_back} in sourcecode folder"
+                            githubHelper 'TAG', pull_result_withspark.release_branch_back, 'KAP', _tag
+                            bcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                            println "backend [KAP] commitId: ${bcid}"
+
+                            dir('kystudio') {
+                                println "frontend: KAP_Frontend push tag: ${_tag} on branch ${pull_result_withspark.release_branch_front} in kystudio folder"
+                                githubHelper 'TAG', pull_result_withspark.release_branch_front, 'KAP_Frontend', _tag
+                                fcid = sh(returnStdout: true, script: "git rev-parse HEAD | sed -e 's/\r//g'").trim()
+                                println "frontend [KAP_Frontend] commitId: ${fcid}"
+                            }
+                        }
+                    }
+                }
+            }
+            post {
+                success {
+                    script {
+                        if (!IS_DEBUG) {
+                            sendNotify(
+                                    'EMAIL',
+                                    "[KE4][GA] ${version} SUCCESSFUL GA",
+                                    product_emails,
+                                    """
+                        <p>SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                        <p>The Backend repo of [KAP] commitId: ${bcid}</p>
+                        <p>The Frontend repo of [KAP_Frontend] commitId: ${fcid}</p>
+                        <p>Automatically tag [ke-${version}] the front and back branches.</p>
+                        <br />
+                        <p>Download URL: <a href="https://repo-ofs.kyligence.com/repository/raw-public/product/ke/4.0.x/${params.ga_name}">${params.ga_name}</a></p>
+                        """
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

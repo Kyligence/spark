@@ -1,0 +1,171 @@
+#!groovy
+
+@Library('devopslib') _
+
+def paramsStepDeploy = [:]
+def hostServers = [
+        [name: 'gw05', ip: '159.27.224.211'],
+        [name: 'gw05', ip: '159.27.224.168'],
+        [name: 'gw05', ip: '159.27.120.134'],
+        [name: 'gw05', ip: '159.27.81.212']]
+
+def tester_emails = '''minhua.feng@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;chenqing.zhu@kyligence.io;
+        junhui.deng@kyligence.io;huiling.li@kyligence.io;xinxin.li@kyligence.io;zhongjun.chen@kyligence.io;hanhan.zhang@kyligence.io'''
+
+pipeline {
+    options {
+        timeout(time: 23, unit: 'HOURS')
+        ansiColor('xterm')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'file_name', defaultValue: 'KE-4.6.6.0-DEV-dbaec9f05f-c5dc9d997f.tar.gz', description: '')
+        booleanParam(name: 'is_CH', defaultValue: true, description: '是否执行 CH 换包动作')
+        booleanParam(name: 'redeploy_gw05', defaultValue: true, description: '是否重新部署【159.27.224.211/gw05】环境')
+        booleanParam(name: 'redeploy_gw06', defaultValue: true, description: '是否重新部署【159.27.224.168/gw06】环境')
+        booleanParam(name: 'redeploy_gw08', defaultValue: false, description: '是否重新部署【159.27.120.134/gw08】环境')
+        booleanParam(name: 'redeploy_gw19', defaultValue: false, description: '是否重新部署【159.27.81.212/gw19】环境')
+        text(name: 'plan_name', defaultValue: '', description: 'Step库测试计划名称（多个请【换行】填写）')
+        choice(name: 'product_line', choices: 'KE4X\nCH', description: ' 产品线')
+        string(name: 'version_name', defaultValue: '', description: '版本名')
+//        string(name: 'plan_excute_no', defaultValue: '', description: 'Step库测试计划执行编号')
+        string(name: 'check_time', defaultValue: '600', description: '检查时间')
+    }
+
+    stages {
+        // Auto Test
+        stage('1.Step Deploy') {
+            parallel {
+                stage('Deploy gw05') {
+                    when {
+                        expression {
+                            return params.redeploy_gw05
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                if (params.is_CH) {
+                                    ke4xHelper.deployToServerWithCH('159.27.224.211', 'azure_env_gw05', params.file_name)
+                                } else {
+                                    ke4xHelper.deployToServer('159.27.120.141', 'azure_env-gw05', params.file_name)
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            script {
+                                ke4xHelper.notifyToTester('replace', '159.27.224.211', params.file_name, tester_emails)
+                            }
+                        }
+                    }
+                }
+                stage('Deploy gw06') {
+                    when {
+                        expression {
+                            return params.redeploy_gw06
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                if (params.is_CH) {
+                                    ke4xHelper.deployToServerWithCH('159.27.224.168', 'azure_env_gw06', params.file_name)
+                                } else {
+                                    ke4xHelper.deployToServer('159.27.224.168', 'azure_env-gw06', params.file_name)
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            script {
+                                ke4xHelper.notifyToTester('replace', '159.27.224.168', params.file_name, tester_emails)
+                            }
+                        }
+                    }
+                }
+                stage('Deploy gw08') {
+                    when {
+                        expression {
+                            return params.redeploy_gw08
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                if (params.is_CH) {
+                                    ke4xHelper.deployToServerWithCH('159.27.120.134', 'azure_env_gw08', params.file_name)
+                                } else {
+                                    ke4xHelper.deployToServer('159.27.120.134', 'azure_env-gw08', params.file_name)
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            script {
+                                ke4xHelper.notifyToTester('replace', '159.27.120.134', params.file_name, tester_emails)
+                            }
+                        }
+                    }
+                }
+                stage('Deploy gw19') {
+                    when {
+                        expression {
+                            return params.redeploy_gw19
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            script {
+                                if (params.is_CH) {
+                                    ke4xHelper.deployToServerWithCH('159.27.81.212', 'azure_env_gw19', params.file_name)
+                                } else {
+                                    ke4xHelper.deployToServer('159.27.81.212', 'azure_env-gw19', params.file_name)
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            script {
+                                ke4xHelper.notifyToTester('replace', '159.27.81.212', params.file_name, tester_emails)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('2.Step Run') {
+            steps {
+                script {
+                    def planNames = params.plan_name.split('\n')
+                    println "planNames: ${planNames}"
+
+                    def parallelPlans = [:]
+                    planNames.eachWithIndex { plan, index ->
+                        def stageName = "test_plan_${index}"
+                        println "index -> ${index}, stageName -> ${stageName}, plan -> ${plan}"
+                        parallelPlans[stageName] = {
+                            stage(stageName) {
+                                parallelPlans[ke4xHelper.stepRun(params.product_line, params.version_name, plan, params.envStage, params.check_time, index * 10)] = {
+                                    println("excute step Test Plan: ${plan}")
+                                }
+                            }
+                        }
+                    }
+
+                    parallel parallelPlans
+                }
+            }
+        }
+    }
+}

@@ -5,6 +5,7 @@ import requests, json
 from product_api import step_api
 from requests.auth import HTTPBasicAuth
 import jenkins
+import re
 
 # remote_ip = '10.0.0.28'
 #在郭守敬本地运行需要使用外网ip
@@ -167,23 +168,47 @@ def feishu_robot_card(title, card_content, card_template='green', card_url=''):
 
 def get_plan_info(sa, plan_name, header):
     plan_info = sa.test_plan_get(10,header,plan_name)  # ### 获取测试计划所在KE平台信息
+    if len(plan_info) == 0:
+        result = False
+        return None, None, None, result
+    else:
+        result = True
     plan_id = plan_info[0]['id']
     product_line_id = plan_info[0]['product_line_id']
-    return plan_info, plan_id, product_line_id
+    return plan_info, plan_id, product_line_id, result
 
 
-def get_setup_case(sa, plan_info,header):
+def get_setup_case(sa, plan_info,header,step_plan_type):
     case_list = []  # 存放初始化case的case_id
     version_id = plan_info[0]['version_id']
-    print(header)
     version_info = sa.get_version_info(version_id,header)['project_list'][0]  # ###获取setup用例（默认是第一个套件下的用例）
     project_id = version_info['id']
-    suite_info = step_api.get_suite_list(project_id,header)
-    for suite in suite_info:
-        suite_id = suite['id']
-        case_info = step_api.get_case_list(suite_id,header)
-        for case in case_info:
-            case_list.append(case['id'])
+    if step_plan_type == 'CH_HA':
+        suite_info_tmp = step_api.get_suite_list(project_id, header)[10]
+        suite_info = [suite_info_tmp.get('id')]
+        for suite in suite_info:
+            suite_id = suite
+            case_info = step_api.get_case_list(suite_id, header)
+            for case in case_info:
+                if case['name'] == 'HA用例执行的前置操作':
+                    case_list.append(case['id'])
+    elif step_plan_type == 'CH_not_HA':
+        suite_info_tmp = step_api.get_suite_list(project_id, header)[10]
+        suite_info = [suite_info_tmp.get('id')]
+        for suite in suite_info:
+            suite_id = suite
+            case_info = step_api.get_case_list(suite_id, header)
+            for case in case_info:
+                if case['name'] == '非HA用例执行的前置操作':
+                    case_list.append(case['id'])
+    else:
+        suite_info = step_api.get_suite_list(project_id, header)
+        for suite in suite_info:
+            suite_id = suite['id']
+            case_info = step_api.get_case_list(suite_id, header)
+            for case in case_info:
+                case_list.append(case['id'])
+
     return case_list
 
 
@@ -277,9 +302,48 @@ def check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke
     else:
         return 'retry'
 
+def create_plan(plan_name, product_line_id, platform_id, estimated_execution_time, error_retry, timeout_to_stop, version_name, result_receiver_ids, headers):
+    feishu_robot_card("创建计划", f"参数：{plan_name},{product_line_id},{platform_id},{estimated_execution_time},{error_retry},{timeout_to_stop},{version_name},{result_receiver_ids},{headers}")
+    status_code, result = step_api.query_version_id_by_name(product_line_id, version_name, headers)
+    feishu_robot_card("查询版本的结果",f"{status_code},{result}")
+    if status_code != 200:
+        return status_code, result
 
-def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=600, step_ip="10.1.3.18"):
-    feishu_robot_card(plan_name, f"**测试计划：** {plan_name}\n**类型为：** {tar_type}")
+    if not result:
+        feishu_robot_card("查询版本为空，请确认产品线号和版本名是否匹配", f"result：{result}")
+        return 500, result
+
+    version_id = result[0]['id']
+
+    status_code, result = step_api.create_plan(plan_name, product_line_id, platform_id, estimated_execution_time, error_retry, timeout_to_stop, version_id, result_receiver_ids, headers)
+    feishu_robot_card("创建计划的结果", f"{status_code},{result}")
+    return status_code, result
+
+def link_plan_and_cases(plan_name, plan_id, product_line_id, headers):
+    if product_line_id == 146:#ke4x,关联全部用例
+        status_code,msg = step_api.link_ke4x_plan_and_cases(plan_id, product_line_id, headers)
+        return status_code, msg
+
+    elif product_line_id == 149:#CH,
+        #CH-HA：标签选 用例类型：HA，排除（是个bug，实际效果是包含），点查询，点按条件关联
+        #CH-非HA：标签选 用例类型：非HA，排除（是个bug，实际效果是包含），点查询，点按条件关联
+        if re.match('\S*非HA\S*', plan_name) is not None:
+            status_code,msg = step_api.link_CH_not_HA_plan_and_cases(plan_id, product_line_id, headers)
+            return status_code, msg
+
+        if re.match('\S*HA\S*', plan_name) is not None:
+            status_code,msg = step_api.link_CH_HA_plan_and_cases(plan_id, product_line_id, headers)
+            return status_code, msg
+        else:
+            return 500, 'CH计划名称错误，需包含HA或非HA' 
+
+    else:
+        return 500, '产品线id有误，只支持KE4X和CH产品线'
+
+    
+
+def jenkins_job(product_line_name, version_name, plan_name, tar_type, step_username, step_password, check_time=600, step_ip="10.1.3.18"):
+    feishu_robot_card(plan_name, f"**测试计划：** {plan_name}\n**类型为：** {tar_type}\n其他参数为{product_line_name}{version_name}{plan_name}{step_username}{check_time}{step_ip}")
 
     ''' 查找KE包，复制KE包
     ke_version = get_ke_version(plan_name)
@@ -299,24 +363,74 @@ def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=60
             else:
                 break
     '''
+
     header = step_api.get_header(step_username,step_password)
-    sa = step_api.StepAPI("KE4X",header)
-    plan_info, plan_id, product_line_id = get_plan_info(sa, plan_name,header)
+    print(f"jenkins_job header:{header}")
+
+    if 'CH.HA' in plan_name:
+        step_plan_type = 'CH_HA'
+        sa = step_api.StepAPI("CH", header)
+    elif 'CH.非HA' in plan_name:
+        step_plan_type = 'CH_not_HA'
+        sa = step_api.StepAPI("CH", header)
+    else:
+        step_plan_type = 'KE4X'
+        sa = step_api.StepAPI("KE4X", header)
+
+    plan_info, plan_id, product_line_id, result = get_plan_info(sa, plan_name,header)
+    if not result:
+        # 如果找不到计划，则新建计划
+        platform_id = 0
+        if step_plan_type == 'KE4X':
+            platform_id = 174
+            product_line_id = 146
+        elif step_plan_type == 'CH_HA':
+            platform_id = 181
+            product_line_id = 149
+        elif step_plan_type == 'CH_not_HA':
+            platform_id = 158
+            product_line_id = 149
+        else:
+            feishu_robot_card("创建计划失败", "计划不含类型信息。计划名：" + plan_name)
+            return
+        estimated_execution_time = 20
+        error_retry = 0
+        timeout_to_stop = 1
+        result_receiver_ids = [44]
+
+        create_plan_status_code, result = create_plan(plan_name, product_line_id, platform_id, estimated_execution_time, error_retry, timeout_to_stop, version_name, result_receiver_ids, header)
+        if create_plan_status_code!= 200:
+            feishu_robot_card("创建计划失败", result)
+            return
+        else:
+            feishu_robot_card("创建计划成功", result)
+    # 关联计划和case
+    plan_info, plan_id, product_line_id, result = get_plan_info(sa, plan_name, header)
+    link_result_status_code, msg = link_plan_and_cases(plan_name, plan_id, product_line_id,
+                                                       header)  # KE4X:146, Ch:149
+    if link_result_status_code != 200:
+        feishu_robot_card("关联计划和用例失败", "**" + msg + "**")
+        return
+    feishu_robot_card("关联计划和用例成功", msg)
     all_platform_name,all_ke_clusters = get_platform(sa, plan_info,header)
-    # print(all_platform_name,all_ke_clusters)
     # 部署KE
     # ke_deploy(all_platform_name, ke_tar_name)
     # feishu_robot_card("KE部署任务", all_platform_name + " Jenkins任务执行结束，\n开始检测KE部署情况")
 
     deploy_check(all_ke_clusters)
     feishu_robot_card(plan_name, " **测试计划开始执行,获取初始化用例**")
-    get_setup_case(sa, plan_info,header)
+    get_setup_case(sa, plan_info,header,step_plan_type)
     feishu_robot_card("环境初始化", " **初始化各个KE节点开始**")
-    case_list = get_setup_case(sa, plan_info,header)
+    case_list = get_setup_case(sa, plan_info,header,step_plan_type)
     cluster_status = setup_ke_clusters(all_ke_clusters,case_list,header)
     if cluster_status==0:
         feishu_robot_card("环境初始化", f" **环境初始化结束 {plan_name} 开始执行**")
-        plan_excute_no = step_api.test_plan_run(plan_id,header)
+        plan_run_status_code, plan_run_result = step_api.test_plan_run(plan_id,header)
+        if plan_run_status_code != 200:
+            feishu_robot_card("计划运行失败", f" **计划运行失败： {plan_run_result} **")
+            return
+        else:
+            plan_excute_no = plan_run_result
         plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list, check_time,header,step_ip)
         for i in range(0, 3):
             if plan_excute_status == 'retry':
@@ -338,10 +452,18 @@ def jenkins_job(plan_name, tar_type, step_username, step_password, check_time=60
 def jenkins_job_continue(plan_name, plan_excute_no , step_username, step_password ,check_time=3600, step_ip="10.1.3.18"):
     feishu_robot_card(plan_name, f"**测试计划监测重启：** {plan_name}\n ")
     header = step_api.get_header(step_username, step_password)
-    sa = step_api.StepAPI("KE4X",header)
-    plan_info, plan_id, product_line_id = get_plan_info(sa, plan_name,header)
+    if 'CH.HA' in plan_name:
+        step_plan_type = 'CH_HA'
+        sa = step_api.StepAPI("CH", header)
+    elif 'CH.非HA' in plan_name:
+        step_plan_type = 'CH_not_HA'
+        sa = step_api.StepAPI("CH", header)
+    else:
+        step_plan_type = 'KE4X'
+        sa = step_api.StepAPI("KE4X", header)
+    plan_info, plan_id, product_line_id, result = get_plan_info(sa, plan_name,header)
     all_platform_name,all_ke_clusters = get_platform(sa, plan_info,header)
-    case_list = get_setup_case(sa,plan_info,header)
+    case_list = get_setup_case(sa,plan_info,header,step_plan_type)
     plan_excute_status = check_plan_running_status(product_line_id, plan_name, plan_excute_no, all_ke_clusters,case_list, check_time,header,step_ip)
     for i in range(0, 3):
         if plan_excute_status == 'retry':
@@ -361,19 +483,23 @@ def job_run():
     try:
         plan_type = sys.argv[1]
         if plan_type=="first":
-            plan_name,tar_type,check_time,step_username,step_password,step_ip =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7]
-            print(plan_name,tar_type,check_time,step_username,step_password,step_ip)
-            jenkins_job(plan_name,tar_type,step_username,step_password,int(check_time),step_ip)
+            plan_name,tar_type, product_line_name, version_name,check_time,step_username,step_password,step_ip =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9]
+            jenkins_job(product_line_name, version_name, plan_name,tar_type,step_username,step_password,int(check_time),step_ip)
         else:
-            plan_name,plan_excute_no,check_time,step_username,step_password,step_ip  =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7]
-            print(plan_name, plan_excute_no, check_time,step_username,step_password,step_ip)
+            plan_name,plan_excute_no,product_line_name, version_name, check_time,step_username,step_password,step_ip  =sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9]
             jenkins_job_continue(plan_name,plan_excute_no,step_username,step_password,int(check_time),step_ip)
     except IndexError:
         feishu_robot_card("jenkins 任务", '**参数输入异常，缺少参数**')
 
 job_run()
+
+
+#if __name__ == '__main__':
+#    jenkins_job('KE4X',  'default version', 'CH.非HA_GA_4.6.6.0_20230306_AZURE_脚本测试_forCreatePlan', None,  'lianfei.qu@kyligence.io', 'xxxxxx', 600, '10.1.3.29')
 #
 # jenkins_job_continue('S_Daily_4.6.2.0_20221116_AZURE_日报测试','202211241443394129272875',600)
 # # jenkins_job()
 # jenkins_job('S_GA_4.6.4.0_0109_AZURE_脚本测试', 'QA', 600)
-# jenkins_job('S_Daily_4.6.2.0_20221110_AZURE_日报测试', 'QA', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)
+# jenkins_job('S_GA_4.6.4.0_0109_AZURE_脚本测试', 'QA', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)
+# jenkins_job('CH.HA_GA_4.6.5.0_20230210_AZURE_脚本测试', 'RC', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)
+# jenkins_job('CH.非HA_GA_4.6.5.0_20230210_AZURE_脚本测试', 'RC', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)

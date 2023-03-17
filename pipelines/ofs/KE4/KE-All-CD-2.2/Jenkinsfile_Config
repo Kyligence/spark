@@ -1,0 +1,99 @@
+#!groovy
+
+import hudson.model.*;
+
+@Library('devopslib') _
+
+def paramsInput = ''
+
+pipeline {
+    options {
+        timeout(time: 23, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+     parameters {
+         booleanParam(name: 'init', defaultValue: false, description: '勾选时，初始化配置')
+//         text(defaultValue: "This is a multiline\n text", description: "", name: "textExample")
+     }
+
+    // triggers {
+    //     cron('0 0 0 ? * *')
+    // }
+
+    stages {
+        stage('Get Config') {
+            steps {
+                container('build') {
+                    script {
+                        def existsConfigfile = false
+                        def configFile = '/var/cicd/config/daily/Daily.yaml'
+
+                        dir('daily') {
+                            try {
+                                if(params.init) {
+                                    sh script: "rm -f ${configFile}"
+                                }
+                                sh script: """
+                                    ls -lh /var/cicd/config/daily
+                                    cp ${configFile} daily_temp.yaml
+                                    cat daily_temp.yaml
+                                """
+                                existsConfigfile = fileExists('daily_temp.yaml')
+                            } catch (Exception ex) {
+                                println "The package [${configFile}] not exsits."
+                                sh """
+                                    cp pipelines/ofs/KE4/KE-All-CD-2.1/Daily.yaml ${configFile}
+                                    cp ${configFile} daily_temp.yaml
+                                    cat daily_temp.yaml
+                                """
+                            }
+
+                            def configContents = readFile file: 'daily_temp.yaml', encoding: 'UTF-8'
+                            println "existsConfigfile: ${existsConfigfile}, configContents: ${configContents}"
+                            paramsInput = input(
+                                message: '请修改 Daily 配置文件，必须在 Blue Ocean 界面修改，否则格式会乱！！！',
+                                ok: '确认！',
+                                submitter: 'liming.meng,meixiu.chen,chenqing.zhu,ye.feng',
+                                submitterParameter: 'APPROVER',
+                                parameters: [
+                                    text(name: 'configContents', defaultValue: configContents, description: '配置文件')
+                                ]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        stage('Set Daily config') {
+            steps {
+                container('build') {
+                    script {
+                        sh 'ls -lh /var/cicd/config/daily'
+                        println "paramsInput: ${paramsInput['configContents']}"
+                        dir('daily') {
+                            write_file_path = 'daily_write.yaml'
+                            file_contents = paramsInput['configContents']
+                            //write into write.txt
+                            writeFile file: write_file_path, text: file_contents, encoding: 'UTF-8'
+                            sh '''ls -lh .
+                                pwd
+                                cp -r daily_write.yaml /var/cicd/config/daily/Daily.yaml
+                                cat /var/cicd/config/daily/Daily.yaml
+                            '''
+
+                            // read file and print it out
+                            fileContents = readFile file: write_file_path, encoding: 'UTF-8'
+                            println fileContents
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

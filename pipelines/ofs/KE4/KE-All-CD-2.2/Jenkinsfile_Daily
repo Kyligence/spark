@@ -1,0 +1,70 @@
+#!groovy
+
+import hudson.model.*
+
+@Library('devopslib') _
+
+// job is a string
+// jobParameters is a hashmap
+def execKE4Job(job, jobParameters) {
+    sleep Math.random() * 10
+    def buildJobResult = build job: job, parameters: [
+            string(name: 'deployWay', value: jobParameters.deployWay),
+            string(name: 'deployType', value: jobParameters.deployType),
+            string(name: 'version', value: jobParameters.version),
+            string(name: 'kylinVersion', value: jobParameters.kylinVersion),
+            string(name: 'envStage', value: jobParameters.envStage),
+            string(name: 'customerPkg', value: jobParameters.customerPkg),
+            string(name: 'docs_commitid', value: 'latest'),
+            booleanParam(name: 'autoDeploy', value: true)]
+}
+
+pipeline {
+    options {
+        timeout(time: 23, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+        }
+    }
+
+    // triggers {
+    //     cron('0 0 0 ? * *')
+    // }
+
+    stages {
+        stage('Run Jobs from Config') {
+            steps {
+                container('build') {
+                    script {
+                        // def jobs = readYaml file : 'pipelines/ofs/KE4/KE-All-CD-2.1/Daily.yaml'
+                        sh script: """
+                            ls -lh /var/cicd/config/daily
+                            cp /var/cicd/config/daily/Daily.yaml daily_temp.yaml
+                            cat daily_temp.yaml
+                        """
+                        def jobs = readYaml file : 'daily_temp.yaml'
+                        echo 'daily_temp.yaml --->>>\n' + jobs
+
+                        def stepsForParallel = [:]
+                        jobs.dailyBuild.dailyTasks.eachWithIndex{job, index ->
+                            def stageName = "${job['jobName']}-${index}"
+                            println "index->${index}, job->${job}"
+                            // name is a key in the data map
+                            stepsForParallel[stageName] = {
+                                stage(stageName) {
+                                    stepsForParallel[execKE4Job(job.jobName, job.params)] = {
+                                        println("Executing DownstreamJob")
+                                    }
+                                }
+                            }
+                        }
+                        parallel stepsForParallel
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,7 @@
+FROM repo-ofs.kyligence.com/newten-build:latest
+USER root
+
+RUN apt-get install -y sshpass && \
+    rm -rf /var/lib/apt/lists/*
+
+ENTRYPOINT ["bash"]

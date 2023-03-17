@@ -218,11 +218,88 @@ def case_param_delete(param_id,headers):
     if res.status_code != 200:
         print('case_param_delete', res.text.encode('utf-8').decode('unicode_escape'))
 
+def query_version_id_by_name(product_line_id, version_name, header):
+    url = config.step_ip + f'/api/v1/versions/version_name?product_line_id={product_line_id}&version_name={version_name}'
+    res = requests.get(url, headers=header)
+    if res.status_code != 200:
+        print('query_version_id_by_name', res.text.encode('utf-8').decode('unicode_escape'))
+        return res.status_code, res.text.encode('utf-8').decode('unicode_escape')
+    else:
+        if json.loads(res.text)['code'] != 0:
+            return json.loads(res.text)['code'], json.loads(res.text)['msg']
+        else:
+            return 200, json.loads(res.text)['data']
+
+def create_plan(plan_name, product_line_id, platform_id, estimated_execution_time, error_retry, timeout_to_stop, version_id, result_receiver_ids, header):
+    url = config.step_ip + '/api/v1/test_plans'
+    data = {
+              "name": plan_name,
+              "platform_id": platform_id,
+              "estimated_execution_time": estimated_execution_time,
+              "error_retry": error_retry,
+              "timeout_to_stop": timeout_to_stop,
+              "result_receiver_ids": result_receiver_ids,
+              "product_line_id": product_line_id,
+              "version_id": version_id
+            }
+    res = requests.post(url, data=json.dumps(data), headers=header)
+    if res.status_code != 200:
+        print('create_plan', res.text.encode('utf-8').decode('unicode_escape'))
+        return res.status_code, res.text.encode('utf-8').decode('unicode_escape')
+    else:
+        if json.loads(res.text)['code'] != 0:
+            return json.loads(res.text)['code'], json.loads(res.text)['msg']
+        else:
+            return 200, json.loads(res.text)['msg']
+
+def link_ke4x_plan_and_cases(plan_id, product_line_id, header):
+    url = config.step_ip + '/api/v1/test_plans/' + str(plan_id) + '/associate'
+    data = {"include_null": 1, "limit": 10, "offset":0, "product_line_id":product_line_id}
+    res = requests.post(url, data=json.dumps(data), headers=header)
+    if res.status_code != 200:
+        print('link_ke4x_plan_and_cases', res.text.encode('utf-8').decode('unicode_escape'))
+        return res.status_code, res.text.encode('utf-8').decode('unicode_escape')
+    else:
+        if json.loads(res.text)['code'] != 0:
+            return json.loads(res.text)['code'], json.loads(res.text)['msg']
+        else:
+            return 200, json.loads(res.text)['msg']
+    
+def link_CH_not_HA_plan_and_cases(plan_id, product_line_id, header):
+    #CH-非HA：标签选 用例类型：非HA，排除（是个bug，实际效果是包含），点查询，点按条件关联
+    url = config.step_ip + '/api/v1/test_plans/' + str(plan_id) + '/associate'
+    data = {"include_null": 0, "limit": 10, "offset":0, "product_line_id":product_line_id, "tag_list": [25]}
+    res = requests.post(url, data=json.dumps(data), headers=header)
+    if res.status_code != 200:
+        print('link_CH_not_HA_plan_and_cases', res.text.encode('utf-8').decode('unicode_escape'))
+        return res.status_code, res.text.encode('utf-8').decode('unicode_escape')
+    else:
+        if json.loads(res.text)['code'] != 0:
+            return json.loads(res.text)['code'], json.loads(res.text)['msg']
+        else:
+            return 200, json.loads(res.text)['msg']
+
+
+def link_CH_HA_plan_and_cases(plan_id, product_line_id, header):
+    #CH-HA：标签选 用例类型：HA，排除（是个bug，实际效果是包含），点查询，点按条件关联
+    url = config.step_ip + '/api/v1/test_plans/' + str(plan_id) + '/associate'
+    data = {"include_null": 0, "limit": 10, "offset":0, "product_line_id":product_line_id, "tag_list": [24]}
+    res = requests.post(url, data=json.dumps(data), headers=header)
+    if res.status_code != 200:
+        print('link_CH_HA_plan_and_cases', res.text.encode('utf-8').decode('unicode_escape'))
+        return res.status_code, res.text.encode('utf-8').decode('unicode_escape')
+    else:
+        if json.loads(res.text)['code'] != 0:
+            return json.loads(res.text)['code'], json.loads(res.text)['msg']
+        else:
+            return 200, json.loads(res.text)['msg']
 
 def test_plan_batches_get(product_line_id,plan_name,headers, plan_execute_no=''):
     url = config.step_ip + '/api/v1/test_plan_batches?offset=0&limit=100&product_line_id=' + str(
         product_line_id) + '&test_plan_name=' + plan_name
+    print(f"test_plan_batches_get url:{url}")
     res = requests.get(url, headers=headers)
+    print(f"test_plan_batches_get res is {vars(res)}")
     test_plan_batches = json.loads(res.text)['data']['list']
     if plan_execute_no:
         for test_plan_batch in test_plan_batches:
@@ -238,8 +315,9 @@ def test_plan_run(plan_id,headers):
     res = requests.post(url, data=json.dumps(data), headers=headers)
     if res.status_code != 200:
         print('test_plan_run', res.text.encode('utf-8').decode('unicode_escape'))
+        return 500, res.text.encode('utf-8').decode('unicode_escape')
     else:
-        return json.loads(res.text)['data']['plan_execute_no']
+        return 200, json.loads(res.text)['data']['plan_execute_no']
 
 
 def test_result_get(product_line_id,plan_name,headers,plan_execute_no=''):

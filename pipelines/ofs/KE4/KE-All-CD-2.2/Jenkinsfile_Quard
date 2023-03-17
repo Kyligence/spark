@@ -1,0 +1,134 @@
+#!groovy
+
+@Library('devopslib') _
+
+def IS_DEBUG = true
+def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL',
+                     '4X_CDH7.1.6_ALL', '4X_FI-C90_RW', '4X_HADOOP2.7.2_ALL', '4X_HDP2.4_ALL', '4X_HDP3.1_ALL',
+                     '4X_MAPR6.1_ALL', '4X_TDH6.2.2_ALL', '4X_TDH6.2.2_THD']
+
+def getPlatform(paramPlat, allPlat) {
+    def platforms = []
+    if (paramPlat == 'ALL') {
+        allPlat.remove('ALL')
+        platforms = allPlat
+    } else {
+        platforms = paramPlat
+    }
+    println platforms
+    return platforms
+}
+
+pipeline {
+    options {
+        timeout(time: 23, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/yaml/jenkins-tabletrans-deploy-agent.yaml'
+        }
+    }
+
+    parameters {
+        choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard 测试类型')
+//        multipleChoice(name: 'platform', choices: platform_list, description: 'Quard 测试平台')
+        choice(name: 'platform', choices: platform_list, description: 'Quard 测试平台')
+        string(name: 'quard_repo', defaultValue: 'Kyligence', description: '')
+        string(name: 'quard_branch', defaultValue: 'quard-4.x', description: '')
+        string(name: 'reuse_num', description: '')
+        string(name: 'upgrade_num', defaultValue: '', description: '')
+        string(name: 'select_tests', description: '')
+        string(name: 'package_url', defaultValue: 'https://package.kyligence.com/newten-cicd/artifacts/4.6.x/DEV/KE-4.6.6.0-DEV-dbaec9f05f-c5dc9d997f.tar.gz\n', description: '')
+    }
+
+    stages {
+        stage('Deploy KE') {
+            steps {
+                container('build') {
+                    dir('dist') {
+                        script {
+                            println "部署 KE 到 Quard 环境..."
+                            sh """
+                                sh ${env.WORKSPACE}/pipelines/ofs/KE4/KE-All-CD-2.2/distribute_package.sh ${params.package_url}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('KE4X_Daily') {
+            when {
+                expression {
+                    return params.quard_type in ['KE4X_Daily'] && !IS_DEBUG
+                }
+            }
+            steps {
+                script {
+                    def platforms = getPlatform(params.platform, platform_list)
+                    platforms.eachWithIndex { element, index ->
+                        job_name = "Quard/" + element
+                        build job: job_name, parameters: [
+                                string(name: 'quard_repo', value: params.quard_repo),
+                                string(name: 'quard_branch', value: params.quard_branch),
+                                booleanParam(name: 'compatibility', value: false),
+                                string(name: 'reuse_num', value: params.reuse_num),
+                                string(name: 'select_tests', value: params.select_tests),
+                                string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE')
+                        ], wait: false
+                    }
+                }
+            }
+        }
+        stage('KE4X_COMPATIBILITY') {
+            when {
+                expression {
+                    return params.quard_type in ['KE4X_COMPATIBILITY'] && !IS_DEBUG
+                }
+            }
+            steps {
+                script {
+                    def platforms = getPlatform(params.platform, platform_list)
+                    platforms.eachWithIndex { element, index ->
+                        job_name = "Quard/" + element
+                        build job: job_name, parameters: [
+                                string(name: 'quard_repo', value: params.quard_repo),
+                                string(name: 'quard_branch', value: params.quard_branch),
+                                booleanParam(name: 'compatibility', value: true),
+                                string(name: 'reuse_num', value: params.reuse_num),
+                                string(name: 'select_tests', value: params.select_tests),
+                                string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
+                        ], wait: false
+                    }
+                }
+            }
+        }
+        stage('KE4X_UPGRADE') {
+            when {
+                expression {
+                    return params.quard_type in ['KE4X_UPGRADE'] && !IS_DEBUG
+                }
+            }
+            steps {
+                script {
+                    if (params.reuse_num == '' || params.upgrade_num == '') {
+                        error "reuse_num and upgrade_num not cannot be empty"
+                    }
+                    def platforms = getPlatform(params.platform, platform_list)
+                    platforms.eachWithIndex { element, index ->
+                        job_name = "Quard/" + element
+                        build job: job_name, parameters: [
+                                string(name: 'quard_repo', value: params.quard_repo),
+                                string(name: 'quard_branch', value: params.quard_branch),
+                                booleanParam(name: 'compatibility', value: false),
+                                string(name: 'reuse_num', value: params.reuse_num),
+                                string(name: 'upgrade_num', value: params.upgrade_num),
+                                string(name: 'select_tests', value: params.select_tests),
+                                string(name: 'jenkinsfile_path', value: params.jenkinsfile_path)
+                        ], wait: false
+                    }
+                }
+            }
+        }
+    }
+}
