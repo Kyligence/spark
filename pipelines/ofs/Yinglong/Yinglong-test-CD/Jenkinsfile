@@ -15,7 +15,7 @@ def modules = [
 // 以下是依赖的容器镜像，name 作为 tar 包名称，imageName 需要精确到 tag 版本号
 def defModules = [
         ['name': 'busybox', imageName: 'busybox'],
-        ['name': 'gateway', imageName: 'repo-ofs.kyligence.com/gateway:5.1.2-DEV-beab30ca'],
+        ['name': 'gateway', imageName: 'harbor-ofs.kyligence.com/xuanwu/gateway:5.1.2-DEV-beab30ca'],
 //        ['name': 'python-hadoop-hive', imageName: 'repo-ofs.kyligence.com/qa/python-hadoop-hive-dev:latest'],
         ['name': 'spark', imageName: 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3'],
         ['name': 'skywalking-java-agent', imageName: 'apache/skywalking-java-agent:8.10.0-alpine'],
