@@ -87,6 +87,9 @@ pipeline {
         choice(name: 'deployType', choices: 'DEV\nQA\nGA', description: '研发自测用自己分支打包，选择DEV，会在version后面加上 -DEV-SNAPSHOT，并且不会发包给kc，\n' +
                 '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n GA后基于稳定分支发包，选择GA，version 不做处理')
         choice(name: 'sparkVersion', choices: 'spark3\nspark2.4\nspark2.2', description: 'spark 大版本，spark2.4/2.2 发包不会推到云上')
+        string(name: 'cloud_dependency_path', defaultValue: 'cloud-dependency/current', description: 'cloud denpendency directory in repo-ofs,\n 这个路径是制品库spark 目录下的子目录,该目录下必须有depedencies.tar.gz 文件，可以选择旧包的目录打旧版本的spark 包，eg:cloud-dependency/4.6.4.0')
+        booleanParam(name: 'deploy_to_kylin', defaultValue: true, description: '勾选时，将会将spark 推送到public repo，供kylin用户使用,重试的时候可以跳过这一步节省时间')
+        booleanParam(name: 'publishToKC', defaultValue: true, description: '勾选时，会打云上的包给KC用,如果只打on promise 包可以跳过')
     }
 
     stages {
@@ -119,12 +122,12 @@ pipeline {
                     dir('sourcecode') {
                         gitSparkCodeKe(params.repo, params.branch)
                     }
-                    sh script: '''
-                        wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/depedencies.tar.gz
+                    sh script: """
+                        wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/${params.cloud_dependency_path}/depedencies.tar.gz
                         tar zxf depedencies.tar.gz
                         wget  https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
                         tar zxf hive_1_2_2.tar.gz
-                    '''
+                    """
                 }
             }
         }
@@ -134,7 +137,7 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             releaseVersion = getReleaseVersion(params.release_version, params.deployType)
-                            if (params.sparkVersion == 'spark3' && params.deployType in ['QA', 'GA']) {
+                            if (params.sparkVersion == 'spark3' && params.publishToKC) {
                                 publishToKC = true
                             }
                             def kubernetesParm = '-Pkubernetes'
@@ -145,11 +148,13 @@ pipeline {
                                 #1、package kyspark
                                 ./build/mvn versions:set -DnewVersion=${releaseVersion}
                                 ./build/mvn deploy -settings /root/.m2/settings.xml -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                #delpoy to public repo for kylin 
-                                ./build/mvn deploy -settings /root/.m2/settings.xml -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
-                     
+                                
                                 # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
                             """
+                            if(params.deploy_to_kylin) {
+                                //delpoy to public repo for kylin
+                                sh "./build/mvn deploy -settings /root/.m2/settings.xml -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true"
+                            }
                         }
                     }
                     sh script: '''
