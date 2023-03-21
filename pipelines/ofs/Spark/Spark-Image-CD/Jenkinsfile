@@ -37,7 +37,7 @@ pipeline {
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: 'spark repo  https://github.com/Kyligence/spark.git--> Kyligence\nhttps://github.com/apache/spark.git--> apache')
         string(name: 'branch', defaultValue: 'kyspark-3.3.x-4.x', description: 'spark branch  \n kyspark-2.4.1.x-4.x \n kyspark-3.2.x-4.x ')
-        string(name: 'imageRepo', defaultValue: 'harbor-ofs.kyligence.com', description: 'docker image repo')
+        string(name: 'imageRepo', defaultValue: 'harbor-ofs.kyligence.com/spark', description: 'docker image repo')
         string(name: 'version', defaultValue: '', description: 'eg 3.3.0-kylin-4.5.17.0 spark version and docker tag name')
         choice(name: 'hadoopVersion', choices: 'hadoop3\nhadoop2\nhadoop3-with-glue', description: 'hadoop的版本:hadoop2+aws2.10/hadoop3+hadoop-aws-3.2.2/hadoop3+hadoop-aws-3.2.2+glue')
     }
