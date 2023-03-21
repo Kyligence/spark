@@ -32,7 +32,7 @@ spec:
           mountPath: /root/.m2/repository/org/apache/kylin
       resources:
         requests:
-          memory: "10Gi"
+          memory: "12Gi"
           cpu: "4"
           ephemeral-storage: "5Gi"
     - image: "jenkins/inbound-agent:4.11-1-jdk11"
