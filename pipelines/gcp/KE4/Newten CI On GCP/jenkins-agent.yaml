@@ -34,7 +34,7 @@ spec:
           mountPath: /root/.m2/repository/org/apache/spark
       resources:
         requests:
-          memory: "6Gi"
+          memory: "8Gi"
           cpu: "3"
           ephemeral-storage: "5Gi"
     - name: "sonar"
