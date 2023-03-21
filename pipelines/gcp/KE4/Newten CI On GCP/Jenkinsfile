@@ -172,9 +172,9 @@ def clearRuntimeTempData() {
     try {
         sh script: """
             if [ -d /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER} ]; then
-                du -h -d1 /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}
+                ls -alh /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}
                 rm -rf /var/jenkins_tmp/${JOB_NAME}/${BUILD_NUMBER}
-                du -h -d1 /var/jenkins_tmp/${JOB_NAME}/
+                ls -alh /var/jenkins_tmp/${JOB_NAME}/
             fi
         """
     } catch (err) {
