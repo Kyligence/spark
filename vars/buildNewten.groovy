@@ -25,15 +25,17 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
     """
     sh "npm cache verify"
 
-    if (noSpark) {
-        echo "Package not include Spark"
-        sh "export ${customerPkg}=1 && export release_version=${version} && npm config set strict-ssl=false && sh build/script_newten/release.sh -noTimestamp -noSpark -Dmaven.wagon.http.ssl.insecure=true -U"
-    } else {
-        if (!excludeDocs) {
-            insertDocs(version, docs_commitid)
-        }
+    retry (2) {
+        if (noSpark) {
+            echo "Package not include Spark"
+            sh "export ${customerPkg}=1 && export release_version=${version} && npm config set strict-ssl=false && sh build/script_newten/release.sh -noTimestamp -noSpark -Dmaven.wagon.http.ssl.insecure=true -U"
+        } else {
+            if (!excludeDocs) {
+                insertDocs(version, docs_commitid)
+            }
 
-        sh "export ${customerPkg}=1 && export release_version=${version} && npm config set strict-ssl=false && sh build/script_newten/release.sh -noTimestamp -Dmaven.wagon.http.ssl.insecure=true -U"
+            sh "export ${customerPkg}=1 && export release_version=${version} && npm config set strict-ssl=false && sh build/script_newten/release.sh -noTimestamp -Dmaven.wagon.http.ssl.insecure=true -U"
+        }
     }
 }
 
