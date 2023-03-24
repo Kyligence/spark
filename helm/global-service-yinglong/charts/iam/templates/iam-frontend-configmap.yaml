@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iam-frontend-nginx-default-conf-{{ .Release.Namespace }}
+data:
+  default.conf: |-
+    server {
+      listen       80;
+      listen  [::]:80;
+      server_name  localhost;
+
+      # Gateway
+      location /ka-iam/api {
+         add_header Access-Control-Allow-Headers 'Cookie,Set-Cookie,x-requested-with,content-type';
+         add_header Access-Control-Allow-Origin $http_origin;
+         add_header 'Access-Control-Allow-Credentials' 'true';
+         add_header 'Access-Control-Allow-Methods' 'GET,POST,OPTIONS';
+         proxy_set_header Host $http_host;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header REMOTE-HOST $remote_addr;
+         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+         # rewrite ^/ka-iam(.*)$ /saas-kyiam/$1 break;
+         proxy_pass http://saas-gateway.{{ .Release.Namespace }}:8080;
+      }
+
+      location /ka-iam {
+        rewrite ^/ka-iam(.*)$ $1 break;
+        root  /usr/share/nginx/html;
+        index  index.html;
+        try_files $uri /index.html;
+      }
+
+        location / {
+        root  /usr/share/nginx/html;
+        index  index.html;
+        try_files $uri /index.html;
+      }
+    }

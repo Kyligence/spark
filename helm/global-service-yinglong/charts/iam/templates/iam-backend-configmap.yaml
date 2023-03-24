@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "iam.fullname" . }}
+data:
+  config.yaml: |
+    spring:
+      datasource:
+        driver-class-name: {{ .Values.config.db.driverClassName }}
+        # url: {{ .Values.config.db.url }}
+        url: jdbc:mysql://{{ .Values.global.mysql.host }}:{{ .Values.global.mysql.port }}/{{ .Values.config.mysql.db }}?{{ .Values.global.mysql.connectionOptions }}
+        username: {{ .Values.global.mysql.user }}
+        password: {{ .Values.global.mysql.password }}
+      redis:
+        host: {{ .Values.global.redis.host | default .Values.config.redis.host }}
+        database: {{ .Values.global.redis.database | default .Values.config.redis.database }}
+        password: {{ .Values.global.redis.password | default .Values.config.redis.password }}
+    kyligence:
+      user:
+        msg:
+          webhook: {{ .Values.kyligence.webhook }}
+        sync:
+          enable: {{ .Values.kyligence.sync }}
+      request:
+        domain: {{ .Values.global.kyligence.request.domain }}
+        secure: {{ .Values.kyligence.request.secure }}
+      tenant:
+        applications:
+          - krn: iam
+            url: {{ printf "%s.%s" .Values.global.iam.krn .Values.global.kyligence.request.domain | quote }}
+          - krn: nacos
+            url: {{ printf "%s.%s" .Values.global.nacos.krn .Values.global.kyligence.request.domain | quote }}
+          {{- range $index, $element := .Values.global.apps }}
+          - krn: {{ index $element "krn" }}
+            url: {{ index $element "url" }}
+          {{- end }}
+          {{- range $index, $element := .Values.global.tenantApps }}
+          - krn: yinglong
+            url: {{ index $element "url" }}
+            tenant-name: {{ index $element "tenantName" }}
+          {{- end }}
+
+  IAM_DEPLOY_MODE: {{ .Values.global.kyligence.deployMode | default .Values.kyligence.deployMode }}

@@ -1,0 +1,129 @@
+# Default values for global-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  nacos:
+    discovery:
+      group: global-service
+  redis:
+    host: xuanwuredishost
+    database: xuanwuredisdb
+    password:
+
+  mysql:
+    host: xuanwumysqlhost
+    port: 3306
+    user: xuanwumysqluser
+    password: xuanwumysqlpass
+
+  kyligence:
+    deployMode: KA
+
+gateway:
+  tenantName: "saas-kyiam saas-tenant"
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    pullPolicy: xuanwuimagepullpolicy
+    repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/gateway
+    tag: gatewaytaglatest
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+iam:
+  kyligence:
+    request:
+      domain: xuanwurootdomain
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    pullPolicy: xuanwuimagepullpolicy
+    repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/iam-server
+    tag: xuanwutaglatest
+  frontend:
+    image:
+      pullPolicy: xuanwuimagepullpolicy
+      repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/iam-frontend
+      tag: iamfrontendtaglatest
+  config:
+    mysql:
+      db: saas-kyiam
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+nacos:
+  config:
+    discovery:
+    imagePullSecrets:
+      - name: xuanwuimagesecret
+    image:
+      pullPolicy: xuanwuimagepullpolicy
+      repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/kynacos
+      tag: kynacostaglatest
+  naming:
+    imagePullSecrets:
+      - name: xuanwuimagesecret
+    image:
+      pullPolicy: xuanwuimagepullpolicy
+      repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/kynacos
+      tag: kynacostaglatest
+  mysql:
+    db: nacos
+    imagePullSecrets:
+      - name: xuanwuimagesecret
+    image:
+      repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/mysql
+      pullPolicy: xuanwuimagepullpolicy
+      tag: 5.7
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+nacos-frontend:
+  iam:
+    serverAddr: http://iam.xuanwurootdomain
+  config:
+    serverAddr: http://config.xuanwurootdomain
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    pullPolicy: xuanwuimagepullpolicy
+    repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/kynacos-frontend
+    tag: kynacosfrontendtaglatest
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+openldap:
+  env:
+    LDAP_ORGANISATION: "Example Inc."
+    LDAP_DOMAIN: "example.org"
+  adminPassword: xuanwu
+  configPassword: xuanwu
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    pullPolicy: xuanwuimagepullpolicy
+    repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/openldap
+    tag: openldaptaglatest
+  persistence:
+    enabled: true
+    storageClass: xuanwustorageclass
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+phpldapadmin:
+  imagePullSecrets:
+    - name: xuanwuimagesecret
+  image:
+    pullPolicy: xuanwuimagepullpolicy
+    repository: registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/phpldapadmin
+    tag: phpldapadmintaglatest
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+

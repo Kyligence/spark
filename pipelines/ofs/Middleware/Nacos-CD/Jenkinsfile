@@ -10,9 +10,9 @@ pipeline {
     }
 
     environment {
-        repo='repo-ofs.kyligence.com'
+        repo='harbor-ofs.kyligence.com'
         dockerRegistryUrl = "http://${repo}"
-        registryCredential = 'nexus-docker'
+        registryCredential = 'harbor-docker'
         dockerImage = ''
     }
 
@@ -71,6 +71,7 @@ pipeline {
                                 sed -i "s/ARG NACOS_VERSION=.*/ARG NACOS_VERSION=${params.tag}/" build/Dockerfile
                                 sed -i "s/RUN wget.*/COPY  nacos-server-${params.tag}.tar.gz \\/home /" build/Dockerfile
                                 echo nacos.deploy.mode=${params.mode} >> build/conf/application.properties
+                                echo kyligence.nacos.check.prefix=kylin.,kylin.engine.snapshot.spark-conf.,kylin.engine.spark-conf.,kylin.query.async-query.spark-conf.,kylin.query.calcite.extras-props.,kylin.streaming.spark-conf.,kylin.query.udf.,kylin.smart.conf.,kylin.storage.columnar.spark-conf.,spring.,kylin.storage.columnar.spark-env. >> build/conf/application.properties
                                 cat build/conf/application.properties
                                 ls -al build/
                                 cat build/Dockerfile
@@ -91,7 +92,7 @@ pipeline {
                         script {
                             sh 'pwd'
                             sh 'ls -lt'
-                            dockerImage = docker.build "kyligence/kynacos"
+                            dockerImage = docker.build "xuanwu/kynacos"
                         }
                     }
                 }

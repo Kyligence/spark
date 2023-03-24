@@ -1,0 +1,161 @@
+# Default values for global-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  redis:
+    host: redis-svc.xuanwu-depend.svc.cluster.local
+    database: 0
+    password:
+
+  mysql:
+    host: mysql-svc.xuanwu-depend.svc.cluster.local
+    port: 3306
+    user: root
+    password: kyligence
+    connectionOptions: createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&useSSL=false
+
+  iam:
+    krn: https://iam-test
+
+  nacos:
+    krn: https://nacos-test
+    config:
+      ingress:
+        hosts:
+          - host: nacos-test
+            paths:
+              - path: /
+                pathType: ImplementationSpecific
+        tls: [ ]
+    discovery:
+      group: global-service
+  kyligence:
+    request:
+      domain: dev.kyligence.com
+    deployMode: KA
+
+  image:
+    pullPolicy: IfNotPresent
+    repository:
+    tag:
+    imagePullSecrets:
+    - name: docker-secret
+
+#tenantApps:
+#  {{- range .Values.yl-apps }}
+#  - krn: yinglong
+#    url: "{{ .url }}"
+#    tenantName: {{ .tenantName }}
+#  {{- end }}
+
+
+gateway:
+  tenantName: "saas-kyiam saas-tenant"
+  imagePullSecrets: []
+  #  - name: "image pull secret"
+  image:
+    pullPolicy: IfNotPresent
+    repository: registry.kyligence.io/xuanwu/gateway
+    tag: gatewaytaglatest
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+iam:
+  ingress:
+    hosts:
+      - host: iam-test
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+  kyligence:
+    request:
+      domain: xuanwurootdomain
+  imagePullSecrets: []
+  #  - name: "image pull secret"
+  image:
+    pullPolicy: IfNotPresent
+    repository: registry.kyligence.io/xuanwu/iam
+    tag: xuanwutaglatest
+  frontend:
+    image:
+      pullPolicy: IfNotPresent
+      repository: registry.kyligence.io/xuanwu/iam-frontend
+      tag: iamfrontendtaglatest
+  config:
+    mysql:
+      db: middleware_test
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+nacos:
+  imagePullSecrets: []
+  #  - name: "image pull secret"
+  image:
+    pullPolicy: IfNotPresent
+    repository: registry.kyligence.io/xuanwu/kynacos
+    tag: 5.7
+  mysql:
+    db: middleware_test
+    imagePullSecrets: []
+    #  - name: "image pull secret"
+    image:
+      repository: registry.kyligence.io/xuanwu/mysql
+      pullPolicy: IfNotPresent
+      tag: 5.7
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+nacos-frontend:
+  ingress:
+    hosts:
+      - host: nacos-test
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+  iam:
+    serverAddr: http://iam.xuanwurootdomain
+  config:
+    serverAddr: http://config.xuanwurootdomain
+  imagePullSecrets: []
+  #  - name: "image pull secret"
+  image:
+    pullPolicy: IfNotPresent
+    repository: registry.kyligence.io/xuanwu/kynacos-frontend
+    tag: kynacosfrontendtaglatest
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+openldap:
+  env:
+    LDAP_ORGANISATION: "Example Inc."
+    LDAP_DOMAIN: "example.org"
+  adminPassword: xuanwu
+  configPassword: xuanwu
+  imagePullSecrets: []
+  #  - name: "image pull secret"
+  image:
+    pullPolicy: IfNotPresent
+    repository: registry.kyligence.io/xuanwu/openldap
+    tag: openldaptaglatest
+  persistence:
+    enabled: true
+    storageClass: local-path
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+phpldapadmin:
+  imagePullSecrets: []
+  #  - name: "image pull secret"
+  image:
+    pullPolicy: IfNotPresent
+    repository: registry.kyligence.io/xuanwu/phpldapadmin
+    tag: phpldapadmintaglatest
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+

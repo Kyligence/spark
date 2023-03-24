@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iam.fullname" . }}
+  labels:
+    {{- include "iam.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "iam.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "iam.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "iam.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.skyWalking.enabled }}
+      initContainers:
+      - name: agent-container
+        image: apache/skywalking-java-agent:8.7.0-alpine
+        volumeMounts:
+          - name: skywalking-agent
+            mountPath: /agent
+        command: [ "/bin/sh" ]
+        args: [ "-c", "cp -R /skywalking/agent /agent/" ]
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.global.image.repository | default .Values.image.repository }}/iam:{{ .Values.global.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: IAM_DEPLOY_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: saas-kyiam
+                  key: IAM_DEPLOY_MODE
+            {{- if .Values.skyWalking.enabled }}
+            - name: SW_AGENT_NAME
+              value: "Kyligence"
+            - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
+              value: "{{ .Values.skyWalking.serverAddr }}"
+            {{- end }}
+            - name: JAVA_TOOL_OPTIONS
+              value: {{ include "iam.toolOptions" . }}
+          volumeMounts:
+          - mountPath: "/etc/saas-kyiam/config.yaml"
+            name: "saas-kyiam"
+            readOnly: false
+            subPath: "config.yaml"
+          {{- if .Values.skyWalking.enabled }}
+          - name: skywalking-agent
+            mountPath: /skywalking
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 0777
+            items:
+              - key: "config.yaml"
+                path: "config.yaml"
+            name: {{ include "iam.fullname" . }}
+          name: {{ include "iam.fullname" . }}
+        {{- if .Values.skyWalking.enabled }}
+        - name: skywalking-agent
+          emptyDir: { }
+        {{- end }}

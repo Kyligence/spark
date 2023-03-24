@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nacos-frontend.fullname" . }}-sitemap-cm
+data:
+  sitemap.json: |-
+    {
+        "IAM_instance": {{ printf "%s.%s" .Values.global.iam.krn .Values.global.kyligence.request.domain | quote }}
+        "Configuration_instance": {{ printf "%s.%s" .Values.global.nacos.krn .Values.global.kyligence.request.domain | quote }}
+    }

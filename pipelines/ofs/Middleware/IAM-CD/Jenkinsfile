@@ -25,9 +25,9 @@ pipeline {
     }
 
     environment {
-        repo='repo-ofs.kyligence.com'
+        repo='harbor-ofs.kyligence.com'
         dockerRegistryUrl = "http://${repo}"
-        registryCredential = 'nexus-docker'
+        registryCredential = 'harbor-docker'
         iam = ''
         frontend=''
     }
@@ -110,7 +110,7 @@ pipeline {
                 container('docker') {
                     dir('sourcecode') {
                         script {
-                            iam = docker.build 'iam'
+                            iam = docker.build ('xuanwu/iam')
                         }
                         // build frontend
                     }
@@ -124,7 +124,7 @@ pipeline {
                                 echo "registry = 'https://repo-ofs.kyligence.com/repository/npm-public/'" > .npmrc
                                 cat .npmrc
                             """
-                            frontend = docker.build("iam-frontend", "-f ${env.WORKSPACE}/pipelines/ofs/Middleware/IAM-CD/docker/frontend/Dockerfile .")
+                            frontend = docker.build("xuanwu/iam-frontend", "-f ${env.WORKSPACE}/pipelines/ofs/Middleware/IAM-CD/docker/frontend/Dockerfile .")
                         }
                     }
                 }
