@@ -27,9 +27,9 @@ data:
       tenant:
         applications:
           - krn: iam
-            url: {{ printf "%s.%s" .Values.global.iam.krn .Values.global.kyligence.request.domain | quote }}
-          - krn: nacos
-            url: {{ printf "%s.%s" .Values.global.nacos.krn .Values.global.kyligence.request.domain | quote }}
+            url: {{ printf "%s%s.%s" .Values.global.kyligence.request.urlPrefixes .Values.global.iam.krn .Values.global.kyligence.request.domain | quote }}
+          - krn: config
+            url: {{ printf "%s%s.%s" .Values.global.kyligence.request.urlPrefixes .Values.global.nacos.krn .Values.global.kyligence.request.domain | quote }}
           {{- range $index, $element := .Values.global.apps }}
           - krn: {{ index $element "krn" }}
             url: {{ index $element "url" }}
