@@ -103,14 +103,14 @@ Map<String, List<String>> evalTestModules() {
             changeFiles = changeFiles.stream().distinct().collect()
             println("change files: ${changeFiles}")
 
-            def changeModules = sh(script: "java -jar /tools/mat-0.1.2.jar -b -r -lm -d `pwd` -cl ${changeFiles.join(",")} | grep -A 2 'build command:'", returnStdout: true)
-                    .trim()
-                    .split("\n")
-                    .last()
-                    .split(",")
-                    .collect({ it.trim() })
-            println("change modules: ${changeModules}")
-            allSubModules.addAll(changeModules)
+//             def changeModules = sh(script: "java -jar /tools/mat-0.1.2.jar -b -r -lm -d `pwd` -cl ${changeFiles.join(",")} | grep -A 2 'build command:'", returnStdout: true)
+//                     .trim()
+//                     .split("\n")
+//                     .last()
+//                     .split(",")
+//                     .collect({ it.trim() })
+//             println("change modules: ${changeModules}")
+//             allSubModules.addAll(changeModules)
 
             allSubModules.removeAll(parentModules)
             println "all submodules: ${allSubModules}"
