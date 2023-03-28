@@ -180,9 +180,11 @@ def getPackageInfo(version, envStage, fcid, bcid, deployType) {
             break
         case 'ALPHA':
         case 'BETA':
+            obj.tag_front = "${version}-${envStage}"
             obj.tag_back = "${version}-${envStage}"
             break
         case 'GA':
+            obj.tag_front = version
             obj.tag_back = version
             obj.file_name = ga_name
             obj.package_file = "newten-cicd/${package_path}/${ga_name}"
