@@ -5,6 +5,6 @@ metadata:
 data:
   sitemap.json: |-
     {
-        "IAM_instance": {{ printf "%s.%s" .Values.global.iam.krn .Values.global.kyligence.request.domain | quote }}
-        "Configuration_instance": {{ printf "%s.%s" .Values.global.nacos.krn .Values.global.kyligence.request.domain | quote }}
+        "IAM_instance": {{ printf "%s%s.%s" .Values.global.kyligence.request.urlPrefixes .Values.global.iam.krn .Values.global.kyligence.request.domain | quote }},
+        "Configuration_instance": {{ printf "%s%s.%s" .Values.global.kyligence.request.urlPrefixes .Values.global.nacos.krn .Values.global.kyligence.request.domain | quote }}
     }
