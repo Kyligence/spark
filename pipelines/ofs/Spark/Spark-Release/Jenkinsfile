@@ -55,7 +55,7 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
         cp ../depedencies/${dependencyDir}/* dist/jars/
         cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
         #https://olapio.atlassian.net/browse/KC-13052,special handle for azure
-        if [ 'cloud-hadoop3' = '${cloudType}' ]; then
+        if [ 'cloud-azure' = '${cloudType}' ]; then
             cp dist/jars/azure-identity-extensions*.jar dist/hive_1_2_2/ || :
             cp dist/jars/mysql-connector*.jar dist/hive_1_2_2/ || :
             cp dist/jars/postgresql*.jar dist/hive_1_2_2/ || :
@@ -160,7 +160,8 @@ pipeline {
                     sh script: '''
                         cp -r sourcecode ./on-perm-hadoop2
                         cp -r sourcecode ./on-perm-nohadoop
-                        cp -r sourcecode ./cloud-hadoop3
+                        cp -r sourcecode ./cloud-azure
+                        cp -r sourcecode ./cloud-aws
                         cp -r sourcecode ./cloud-gcp
                         cp -r sourcecode ./cloud-huawei
                     '''
@@ -211,10 +212,6 @@ pipeline {
                             dir('on-perm-nohadoop') {
                                 script {
                                     def releaseName = releaseVersion.replace('-kylin', '')
-                                    def kubernetesParm = '-Pkubernetes'
-                                    if (params.sparkVersion == 'spark2.2') {
-                                        kubernetesParm = ''
-                                    }
                                     sh script: """
                                         sleep 10
                                         dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
@@ -229,7 +226,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-hadoop3') {
+                stage('cloud-aws') {
                     when {
                         expression {
                             return publishToKC
@@ -237,14 +234,31 @@ pipeline {
                     }
                     steps {
                         container('build') {
-                            dir('cloud-hadoop3') {
+                            dir('cloud-aws') {
                                 script {
-                                    generateCloudPackage('20', 'cloud-hadoop3', 'hadoop3', releaseVersion)
+                                    generateCloudPackage('10', 'cloud-aws', 'aws', releaseVersion)
                                 }
                             }
                         }
                     }
                 }
+                stage('cloud-azure') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            dir('cloud-azure') {
+                                script {
+                                    generateCloudPackage('20', 'cloud-azure', 'azure', releaseVersion)
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 stage('cloud-gcp') {
                     when {
                         expression {
