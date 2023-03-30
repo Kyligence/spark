@@ -14,12 +14,36 @@ def modules = [
 ]
 // 以下是依赖的容器镜像，name 作为 tar 包名称，imageName 需要精确到 tag 版本号
 def defModules = [
+        // base
         ['name': 'busybox', imageName: 'busybox'],
-        ['name': 'gateway', imageName: 'harbor-ofs.kyligence.com/xuanwu/gateway:5.1.2-DEV-beab30ca'],
-//        ['name': 'python-hadoop-hive', imageName: 'repo-ofs.kyligence.com/qa/python-hadoop-hive-dev:latest'],
-        ['name': 'spark', imageName: 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3'],
+        ['name': 'mysql', imageName: 'mysql:5.7.30'],
+        ['name': 'openldap', imageName: 'osixia/openldap:1.4.0'],
         ['name': 'skywalking-java-agent', imageName: 'apache/skywalking-java-agent:8.10.0-alpine'],
-//        ['name': 'auspicious-resource-executor', imageName: 'harbor-ofs.kyligence.com/auspicious/auspicious-resource-executor:latest']
+        ['name': 's3cmd', imageName: 'd3fk/s3cmd'],
+        // spark
+        ['name': 'spark', imageName: 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3-glue'],
+        // middleware
+        ['name': 'gateway', imageName: 'harbor-ofs.kyligence.com/xuanwu/gateway:5.1.2-DEV-beab30ca'],
+        ['name': 'iam', imageName: 'harbor-ofs.kyligence.com/xuanwu/iam:5.0.3-DEV-45ba7c2cf'],
+        ['name': 'iam-frontend', imageName: 'harbor-ofs.kyligence.com/xuanwu/iam-frontend:5.0.3-DEV-45ba7c2cf'],
+        ['name': 'kynacos', imageName: 'harbor-ofs.kyligence.com/xuanwu/kynacos:v2.1.1.7-DEV-98469bc'],
+        ['name': 'kynacos-frontend', imageName: 'harbor-ofs.kyligence.com/xuanwu/kynacos-frontend:1.1.2-DEV-4a2e'],
+        // hive metastore
+        //['name': 'hive', imageName: 'repo-ofs.kyligence.com/hive:1.2.2-hadoop-2.10.1'],
+        //['name': 'jmx-prometheus-javaagent', imageName: 'saagie/jmx-prometheus-javaagent:2303201022-0.15.0'],
+        // volcano
+        ['name': 'vc-webhook-manager', imageName: 'volcanosh/vc-webhook-manager:latest'],
+        ['name': 'vc-controller-manager', imageName: 'volcanosh/vc-controller-manager:latest'],
+        ['name': 'vc-scheduler', imageName: 'volcanosh/vc-scheduler:latest'],
+        // log center
+        ['name': 'loki', imageName: 'grafana/loki:2.6.1'],
+        ['name': 'fluent-bit-plugin-loki', imageName: 'grafana/fluent-bit-plugin-loki:2.1.0-amd64'],
+        ['name': 'grafana', imageName: 'grafana/grafana:9.1.1'],
+        ['name': 'xuanwu-log-api', imageName: 'registry.cn-shanghai.aliyuncs.com/kyligence-xuanwu/xuanwu-log-api:alpha20230310'],
+        // prometheus
+        ['name': 'prometheus', imageName: 'prom/prometheus:v2.35.0'],
+        ['name': 'alertmanager', imageName: 'prom/alertmanager:v0.14.0'],
+        ['name': 'node-exporter', imageName: 'prom/node-exporter:v0.16.0'],
 ]
 
 // 包信息对象
@@ -157,7 +181,7 @@ def getPackageInfo(version, envStage, fcid, bcid, deployType) {
     }
     println "package_path: ${package_path}"
 
-    file_name = "YL-${version}-${bcid}.tar.gz"
+    file_name = "Kyligence-Enterprise-${version}-${bcid}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
     ga_name = "Kyligence-Enterprise-${version}.tar.gz"
 
@@ -449,6 +473,7 @@ pipeline {
                                     sh script: """
                                         cd ${env.WORKSPACE}/helm
                                         sed -i 's/5.0.0-ALPHA/${package_info.tag_back}/g' yinglong/Chart.yaml
+                                        sed -i 's/yinglong/Kyligence-Enterprise/g' yinglong/Chart.yaml
                                         cat yinglong/Chart.yaml
                                         helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
                                         helm package yinglong
@@ -478,7 +503,7 @@ pipeline {
                             sh script: """
                                 pwd
                                 ls -lh .
-                                tar -cvf ${package_info.file_name} ./*
+                                tar -czf ${package_info.file_name} ./*
                                 cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                             """
                         }
