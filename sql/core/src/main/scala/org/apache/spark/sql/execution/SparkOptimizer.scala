@@ -91,6 +91,7 @@ class SparkOptimizer(
       LimitPushDownThroughWindow,
       EliminateLimits,
       ConstantFolding) :+
+    Batch("Simplify Conditionals in Filter", fixedPoint, SimplifyConditionalsInFilter) :+
     Batch("User Provided Optimizers", fixedPoint, experimentalMethods.extraOptimizations: _*) :+
     Batch("Replace CTE with Repartition", Once, ReplaceCTERefWithRepartition)
 

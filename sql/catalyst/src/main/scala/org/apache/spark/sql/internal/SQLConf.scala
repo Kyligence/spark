@@ -1762,6 +1762,19 @@ object SQLConf {
     .checkValue(threshold => threshold > 0, "The threshold must be a positive integer.")
     .createWithDefault(1024)
 
+  val WHOLESTAGE_MAX_CONDITIONALS_INFILTER =
+    buildConf("spark.sql.codegen.maxConditionalsInFilter")
+      .internal()
+      .doc("The maximum number of conditionals (including nested conditionals) in filter " +
+        "that will be supported before deactivating whole-stage codegen." +
+        "By setting this value to -1 to apply no limit.")
+      .version("3.2.0")
+      .intConf
+      .checkValue(_ >= -1, //
+        "The maximum must be a positive integer, 0 to " + //
+          "disable conditionals-in-filter codegen or -1 to apply no limit.")
+      .createWithDefault(3000)
+
   val WHOLESTAGE_SPLIT_CONSUME_FUNC_BY_OPERATOR =
     buildConf("spark.sql.codegen.splitConsumeFuncByOperator")
       .internal()
@@ -2428,6 +2441,19 @@ object SQLConf {
     .version("3.3.0")
     .booleanConf
     .createWithDefault(false)
+
+  val OPTIMIZER_MAX_CONDITIONALS_INFILTER =
+    buildConf("spark.sql.optimizer.maxConditionalsInFilter")
+      .internal()
+      .doc("The maximum number of conditionals (including nested) in filter " +
+        "that will be supported before applying rule SimplifyConditionalsInFilter.  " +
+        "By setting this value to -1 SimplifyConditionalsInFilter can be disabled.")
+      .version("3.2.0")
+      .intConf
+      .checkValue(_ >= -1, //
+        "The maximum must be a positive integer, -1 to " + //
+          "disable SimplifyConditionalsInFilter.")
+      .createWithDefault(3000)
 
   val FILE_SINK_LOG_DELETION = buildConf("spark.sql.streaming.fileSink.log.deletion")
     .internal()
@@ -4846,6 +4872,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
 
   def codegenCacheMaxEntries: Int = getConf(StaticSQLConf.CODEGEN_CACHE_MAX_ENTRIES)
 
+  def wholeStageMaxConditionalsInFilter: Int = getConf(WHOLESTAGE_MAX_CONDITIONALS_INFILTER)
+
   def exchangeReuseEnabled: Boolean = getConf(EXCHANGE_REUSE_ENABLED)
 
   def subqueryReuseEnabled: Boolean = getConf(SUBQUERY_REUSE_ENABLED)
@@ -5136,6 +5164,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
     getConf(SQLConf.PYSPARK_WORKER_PYTHON_EXECUTABLE)
 
   def replaceExceptWithFilter: Boolean = getConf(REPLACE_EXCEPT_WITH_FILTER)
+
+  def optimizerMaxConditionalsInFilter: Int = getConf(OPTIMIZER_MAX_CONDITIONALS_INFILTER)
 
   def decimalOperationsAllowPrecisionLoss: Boolean = getConf(DECIMAL_OPERATIONS_ALLOW_PREC_LOSS)
 
