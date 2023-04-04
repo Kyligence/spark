@@ -86,20 +86,28 @@ spec:
     port: 80
     targetPort: 9000
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: zenml-toolkit-ingress
   namespace: zenml
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:457798666374:certificate/ed15484e-0021-4ad7-84b0-f94bb2519fd7
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/tags: Cost Center=CE,CRR=202111300007,Owner=yihua.wu@kyligence.io,Project=ZenML
+    alb.ingress.kubernetes.io/inbound-cidrs: 116.228.210.42/32,117.185.80.194/32,120.133.231.36/32,43.228.181.40/29,43.231.187.64/26,218.189.16.224/28,58.34.118.234/32,103.163.156.0/24,103.184.129.0/24,103.152.24.0/24,43.231.187.66/32,54.187.174.169/32,222.71.140.122/32
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120
+    alb.ingress.kubernetes.io/actions.redirect-to-official-website: '{"type": "redirect", "redirectConfig": { "host": "cn.kyligence.io", "path": "/zen", "port": "443", "protocol": "HTTPS", "statusCode": "HTTP_301"}}'
 spec:
   rules:
   - host: zenml-toolkit.kyligence.io
     http:
       paths:
-      - path: /
-        pathType: Prefix
+      - path: /*
         backend:
-          service:
-            name: zenml-toolkit-svc
-            port:
-              number: 80
+          serviceName: zenml-toolkit-svc
+          servicePort: 80

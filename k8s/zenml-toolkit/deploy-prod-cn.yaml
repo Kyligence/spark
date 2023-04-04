@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zenml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zenml-toolkit-pvc
+  namespace: zenml
+  labels:
+    app: zenml-toolkit-pvc
+spec:
+  storageClassName: gp2
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  selector:
+    matchLabels:
+      pv: zenml-toolkit-pv
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: zenml-toolkit-pv
+  labels:
+    type: local
+spec:
+  storageClassName: gp2
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zenml-toolkit-deployment
+  namespace: zenml
+  labels:
+    app: zenml-toolkit
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zenml-toolkit
+  template:
+    metadata:
+      labels:
+        app: zenml-toolkit
+    spec:
+      containers:
+      - name: zenml-toolkit
+        image: 457798666374.dkr.ecr.us-west-2.amazonaws.com/zenml-toolkit/zenml-toolkit:0.1.1
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: zenml-toolkit-storage
+          mountPath: /opt/Kyligence-ZenML-Toolkit/tmp
+      volumes:
+      - name: zenml-toolkit-storage
+        persistentVolumeClaim:
+          claimName: zenml-toolkit-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zenml-toolkit-svc
+  namespace: zenml
+spec:
+  selector:
+    app: zenml-toolkit
+  type: ClusterIP
+  ports:
+  - name: zenml-toolkit-svc
+    protocol: TCP
+    port: 80
+    targetPort: 9000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zenml-toolkit-ingress
+  namespace: zenml
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws-cn:acm:cn-northwest-1:472319870699:certificate/deae964b-23f4-4972-ad42-4fdb2b352a98
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/tags: Cost Center=CE,CRR=202111300007,Owner=yihua.wu@kyligence.io,Project=ZenML
+    alb.ingress.kubernetes.io/inbound-cidrs: 116.228.210.42/32,117.185.80.194/32,120.133.231.36/32,43.228.181.40/29,43.231.187.64/26,218.189.16.224/28,58.34.118.234/32,103.163.156.0/24,103.184.129.0/24,103.152.24.0/24,43.231.187.66/32,54.187.174.169/32,222.71.140.122/32
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120
+spec:
+  rules:
+  - host: zenml-toolkit.kyligence.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zenml-toolkit-svc
+            port:
+              number: 80
