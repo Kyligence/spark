@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zenml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zenml-toolkit-pvc
+  namespace: zenml
+  labels:
+    app: zenml-toolkit-pvc
+spec:
+  storageClassName: gp2
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  selector:
+    matchLabels:
+      pv: zenml-toolkit-pv
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: zenml-toolkit-pv
+  labels:
+    type: local
+spec:
+  storageClassName: gp2
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zenml-toolkit-deployment
+  namespace: zenml
+  labels:
+    app: zenml-toolkit
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zenml-toolkit
+  template:
+    metadata:
+      labels:
+        app: zenml-toolkit
+    spec:
+      containers:
+      - name: zenml-toolkit
+        image: 457798666374.dkr.ecr.us-west-2.amazonaws.com/zenml-toolkit/zenml-toolkit:0.1.1
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: zenml-toolkit-storage
+          mountPath: /opt/Kyligence-ZenML-Toolkit/tmp
+      volumes:
+      - name: zenml-toolkit-storage
+        persistentVolumeClaim:
+          claimName: zenml-toolkit-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zenml-toolkit-svc
+  namespace: zenml
+spec:
+  selector:
+    app: zenml-toolkit
+  type: ClusterIP
+  ports:
+  - name: zenml-toolkit-svc
+    protocol: TCP
+    port: 80
+    targetPort: 9000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zenml-toolkit-ingress
+  namespace: zenml
+spec:
+  rules:
+  - host: zenml-toolkit.kyligence.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zenml-toolkit-svc
+            port:
+              number: 80
