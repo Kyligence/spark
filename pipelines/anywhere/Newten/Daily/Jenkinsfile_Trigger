@@ -1,0 +1,52 @@
+#!groovy
+
+import java.util.concurrent.LinkedBlockingQueue
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 12, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+        }
+    }
+
+    stages {
+        stage("Trigger Daily") {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
+                        def branches = ['newten-dev', 'newten-sp-dev', 'ke-4.5.x-dev', 'ke-4.5.x', 'yinglong-dev', 'newten']
+
+                        println("All Branches: ${branches}")
+
+                        def queue = new LinkedBlockingQueue(branches)
+
+                        def worker = {
+                            def task = queue.poll()
+                            while (task != null) {
+                                println "trigger task: ${task}, [${queue.size()}] tasks left"
+                                def result = build job: 'Daily-On-AWS', parameters: [
+                                        string(name: 'branch', value: "${task}"),
+                                        string(name: 'sha1', value: ''),
+                                        string(name: 'ghprbPullId', value: ''),
+                                        booleanParam(name: 'failFast', value: true),
+                                        booleanParam(name: 'skipBuild', value: false)]
+
+                                println("task [${task}] build [${result}].")
+
+                                task = queue.poll()
+                            }
+                        }
+
+                        def workers = ["Worker-01": worker, "Worker-02": worker, "Worker-03": worker]
+                        parallel workers
+                    }
+                }
+            }
+        }
+    }
+}

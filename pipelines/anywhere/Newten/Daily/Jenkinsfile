@@ -1,0 +1,162 @@
+#!groovy
+
+@Library('devopslib') _
+
+import io.kyligence.devopslib.unit.*
+import io.kyligence.devopslib.unit.flow.*
+import io.kyligence.devopslib.k8s.Toolkit
+import io.kyligence.devopslib.Utils
+import java.util.concurrent.LinkedBlockingQueue
+
+Utils.ctx = this
+
+def jobEnv = Utils.loadJobEnv("anywhere_newten_daily", env.PLATFORM)
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yaml Toolkit.loadYaml('agents/anywhere_newten_daily/jenkins-agent.yaml', jobEnv)
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'newten-dev', description: '')
+        booleanParam(name: 'failFast', defaultValue: true, description:'')
+        booleanParam(name: 'skipBuild', defaultValue: false, description:'')
+    }
+
+    stages {
+        stage("Checkout") {
+            steps {
+                dir("sourcecode") {
+                    script {
+                        def checkout = new GithubCheckout("Checkout")
+                        def retryFlow = new RetryFlow(checkout)
+                        retryFlow.execute(GithubCheckout.GithubCheckoutParameter.builder()
+                            .org("Kyligence")
+                            .repo("KAP")
+                            .cre(jobEnv.GITHUB_CRE)
+                            .sha1(params.sha1)
+                            .branch(params.branch)
+                            .build(), false, 2, 1000)
+                    }
+                }
+            }
+        }
+        stage('Compile') {
+            steps {
+                container("maven") {
+                    dir("sourcecode") {
+                        script {
+                            def mavenInstall = new MavenInstall("Compile")
+                            def retryFlow = new RetryFlow(mavenInstall)
+                            retryFlow.execute(null, false, 2, 1000)
+                        }
+                    }
+                }
+            }
+        }
+        stage("Testing") {
+            steps {
+                container("maven") {
+                    script {
+                        def dynamicParallelFlow = new NewtenDynamicParallelFlow(jobEnv)
+                        dynamicParallelFlow.execute(NewtenDynamicParallelFlow.DynamicParallelFlowParameter.builder()
+                            .orgRepo('Kyligence/KAP')
+                            .ghprbPullId(params.ghprbPullId)
+                            .failFast(params.failFast)
+                            .skipBuild(params.skipBuild)
+                            .isDaily(true)
+                            .build())
+                    }
+                }
+            }
+            post {
+                always {
+                    container("maven") {
+                        timestamps {
+                            junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+
+                            sh script: """
+                                execfiles=`find . -path '*-Stage-*\\/target*jacoco.exec' -exec printf "{} " \\;`
+                                classfiles=`find . -path '*-Stage-*\\/target\\/classes' -exec printf "--classfiles {} " \\;`
+                                java -jar /var/jacoco/jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
+                            """
+                            publishCoverage adapters: [jacocoAdapter('jacoco.xml')]
+                        }
+                    }
+                }
+            }
+        }
+        stage('Sonar Check') {
+            steps {
+                container('sonar') {
+                    withSonarQubeEnv(credentialsId: jobEnv.SONAR_CRE, installationName: jobEnv.SONAR_NAME) {
+                        dir('sourcecode') {
+                            retry(2) {
+                                script {
+                                    if (params.sha1) {
+                                        sh script: """
+                                            mvn sonar:sonar -T 2C \
+                                                -Dsonar.host.url=https://sonarcloud.io \
+                                                -Dsonar.organization=kyligence \
+                                                -Dsonar.pullrequest.base=${ghprbTargetBranch} \
+                                                -Dsonar.pullrequest.branch=${ghprbSourceBranch} \
+                                                -Dsonar.pullrequest.key=${ghprbPullId} \
+                                                -Dsonar.projectKey=Kyligence_KAP \
+                                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/jacoco.xml
+                                        """
+                                    } else {
+                                        sh script: """
+                                            mvn sonar:sonar -T 2C \
+                                                -Dsonar.host.url=https://sonarcloud.io \
+                                                -Dsonar.organization=kyligence \
+                                                -Dsonar.branch.name=${params.branch} \
+                                                -Dsonar.projectKey=Kyligence_KAP \
+                                                -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/jacoco.xml
+                                        """
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            httpRequest(
+                url:"https://open.feishu.cn/open-apis/bot/v2/hook/54fe68e4-e635-414d-b738-002695390743",
+                httpMode: "POST",
+                consoleLogResponseBody: true,
+                contentType: "APPLICATION_JSON",
+                requestBody: groovy.json.JsonOutput.toJson([
+                    'msg_type': 'text',
+                    'content': [
+                        'text': "branch: ${params.branch} CI failed.\nsee: ${env.BUILD_URL}"
+                    ]
+                ])
+            )
+        }
+        aborted {
+            httpRequest(
+                url:"https://open.feishu.cn/open-apis/bot/v2/hook/54fe68e4-e635-414d-b738-002695390743",
+                httpMode: "POST",
+                consoleLogResponseBody: true,
+                contentType: "APPLICATION_JSON",
+                requestBody: groovy.json.JsonOutput.toJson([
+                    'msg_type': 'text',
+                    'content': [
+                        'text': "branch: ${params.branch} CI aborted.\nsee: ${env.BUILD_URL}"
+                    ]
+                ])
+            )
+        }
+    }
+}
