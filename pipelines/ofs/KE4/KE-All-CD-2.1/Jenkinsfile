@@ -308,13 +308,13 @@ def buildPackage(path, pull_result, version, kylinVersion, envStage, deployType,
                     */
                 if (!noSpark) {
                     package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                    if (!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
+                    if (!checkCacheExist(package_info) || pull_result['overide'] || envStage == 'GA') {
                         buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg, params.excludeDocs)
                     }
                     result.package_info = package_info
                 }else {
                     no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                    if (!checkCacheExist(no_spark_package_info) || pMap['overide'] || envStage == 'GA') {
+                    if (!checkCacheExist(no_spark_package_info) || pull_result['overide'] || envStage == 'GA') {
                         buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg, params.excludeDocs)
                     }
                     result.no_spark_package_info = no_spark_package_info

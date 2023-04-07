@@ -316,13 +316,13 @@ def buildPackage(path, pull_result, version, kylinVersion, envStage, deployType,
                  */
                 if (!noSpark) {
                     package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                    if (!checkCacheExist(package_info) || pMap['overide'] || envStage == 'GA') {
+                    if (!checkCacheExist(package_info) || pull_result['overide'] || envStage == 'GA') {
                         buildAndCopy(_version, noSpark, package_info, docs_commitid, customerPkg, params.excludeDocs)
                     }
                     result.package_info = package_info
                 } else {
                     no_spark_package_info = getPackageInfo(_version, envStage, _cids, deployType, noSpark, customerPkg)
-                    if (!checkCacheExist(no_spark_package_info) || pMap['overide'] || envStage == 'GA') {
+                    if (!checkCacheExist(no_spark_package_info) || pull_result['overide'] || envStage == 'GA') {
                         buildAndCopy(_version, noSpark, no_spark_package_info, docs_commitid, customerPkg, params.excludeDocs)
                     }
                     result.no_spark_package_info = no_spark_package_info
@@ -381,8 +381,8 @@ pipeline {
         choice(name: 'envStage', choices: 'DEV\nQA\nRC\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
         choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3', 'CUSTOMER_GUANGDA_CDH5'], description: '指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n - CUSTOMER_GUANGDA_CDH5：光大\n')
         string(name: 'docs_commitid', defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）')
-        booleanParam(name: 'run_quard', defaultValue: true, description: '是否执行 Quard 自动化测试')
-        booleanParam(name: 'run_step', defaultValue: true, description: '是否执行  Step 自动化测试')
+        booleanParam(name: 'run_quard', defaultValue: false, description: '是否执行 Quard 自动化测试')
+        booleanParam(name: 'run_step', defaultValue: false, description: '是否执行  Step 自动化测试')
         booleanParam(name: 'is_CH', defaultValue: false, description: '是否执行 CH 换包动作（Step用）')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         booleanParam(name: 'excludeDocs', defaultValue: false, description: '【手动排除】勾选时，将不包含手册')
