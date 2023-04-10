@@ -12,7 +12,8 @@ class MavenInstall extends Unit<Void, Integer> {
 
     @Override
     void run(Void _) {
-        this.setResult(Utils.ctx.sh(script: CMD, returnStatus: true))
+        Utils.ctx.sh(script: CMD)
+        this.setResult(0)
     }
 
     @Override

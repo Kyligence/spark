@@ -11,12 +11,13 @@ class MavenTest extends Unit<String, Integer> {
 
     @Override
     void run(String jvmArgs) {
-        this.setResult(Utils.ctx.sh(script: """
+        Utils.ctx.sh(script: """
                     mvn clean test --fail-at-end \
                     -pl ${getName()} \
                     -DfailIfNoTests=false \
                     -Duser.timezone=GMT+8 ${jvmArgs}
-                """, returnStatus: true))
+                """)
+        this.setResult(0)
 
     }
 
