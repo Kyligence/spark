@@ -29,8 +29,8 @@ def defModules = [
         ['name': 'kynacos', imageName: 'harbor-ofs.kyligence.com/xuanwu/kynacos:v2.1.1.7-DEV-98469bc'],
         ['name': 'kynacos-frontend', imageName: 'harbor-ofs.kyligence.com/xuanwu/kynacos-frontend:1.1.2-DEV-4a2e'],
         // hive metastore
-        //['name': 'hive', imageName: 'repo-ofs.kyligence.com/hive:1.2.2-hadoop-2.10.1'],
-        //['name': 'jmx-prometheus-javaagent', imageName: 'saagie/jmx-prometheus-javaagent:2303201022-0.15.0'],
+        ['name': 'hive', imageName: 'repo-ofs.kyligence.com/hive:1.2.2-hadoop-2.10.1'],
+        ['name': 'jmx-prometheus-javaagent', imageName: 'repo-ofs.kyligence.com/jmx-prometheus-javaagent:0.16.1'],
         // volcano
         ['name': 'vc-webhook-manager', imageName: 'volcanosh/vc-webhook-manager:latest'],
         ['name': 'vc-controller-manager', imageName: 'volcanosh/vc-controller-manager:latest'],
@@ -167,8 +167,8 @@ def gitCodeKe(back, front, pMap) {
 }
 
 //
-def getPackageInfo(version, envStage, fcid, bcid, deployType) {
-    println "getPackageInfo -> version[${version}],envStage[${envStage}],fcid[${fcid}],bcid[${bcid}],deployType[${deployType}]"
+def getPackageInfo(version, envStage, fcid, bcid, deployType, cloudPlatform) {
+    println "getPackageInfo -> version[${version}],envStage[${envStage}],fcid[${fcid}],bcid[${bcid}],deployType[${deployType}],cloudPlatform[${cloudPlatform}]"
     def package_path = ''
     def branchCollection = ['5.0.x', '5.0.x-sp']
     switch (deployType) {
@@ -181,9 +181,9 @@ def getPackageInfo(version, envStage, fcid, bcid, deployType) {
     }
     println "package_path: ${package_path}"
 
-    file_name = "Kyligence-Enterprise-${version}-${bcid}.tar.gz"
+    file_name = "Kyligence-Enterprise-${version}-${cloudPlatform}-${bcid}.tar.gz"
     package_file = "newten-cicd/${package_path}/${file_name}"
-    ga_name = "Kyligence-Enterprise-${version}.tar.gz"
+    ga_name = "Kyligence-Enterprise-${version}-${cloudPlatform}.tar.gz"
 
     println "file_name: ${file_name}"
     println "package_file: ${package_file}"
@@ -260,6 +260,7 @@ pipeline {
         choice(name: 'deployType', choices: 'Regular\nSP-5.0.x', description: '交付版本流程:\nRegular - 指主线发布\nSP-5.0.x - 指每周的版本发布5.0.x系列')
         string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices: 'DEV\nQA\nRC\nALPHA\nBETA\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
+        choice(name: 'cloudPlatform', choices: 'AWS\nAliCloud\nAzure', description: '云平台:\nAWS\nAliCloud\nAzure')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
         booleanParam(name: 'build', defaultValue: true, description: '是否构建')
         booleanParam(name: 'push', defaultValue: true, description: '推送镜像')
@@ -336,7 +337,7 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            package_info = getPackageInfo(params.version, params.envStage, release_commitid_front, release_commitid_back, params.deployType)
+                            package_info = getPackageInfo(params.version, params.envStage, release_commitid_front, release_commitid_back, params.deployType, params.cloudPlatform)
                             sh """
                                 if [ ! -d offline  ];then
                                     mkdir -p offline
@@ -493,7 +494,23 @@ pipeline {
                 container('docker') {
                     script {
                         dir('sourcecode/offline') {
+                            cloudPlatform = params.cloudPlatform
+
                             defModules.eachWithIndex { LinkedHashMap<String, String> entry, int i ->
+                                if (entry['name'] == 'spark') {
+                                    switch (cloudPlatform) {
+                                        case 'AWS':
+                                        entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3-glue'
+                                        break
+                                    case 'AliCloud':
+                                        entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop2-rrsa'
+                                        break
+                                    case 'Azure':
+                                        entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3'
+                                        break
+                                    }
+                                    println("cloudPlatform is ${cloudPlatform}, spark image is ${entry['imageName']}")
+                                }
                                 sh script: """
                                     docker pull ${entry['imageName']}
                                     docker save ${entry['imageName']}  > ${entry['name']}.tar
@@ -503,6 +520,8 @@ pipeline {
                             sh script: """
                                 pwd
                                 ls -lh .
+                                mkdir helm && mkdir image
+                                mv *.tgz ./helm/ && mv *.tar ./image/
                                 tar -czf ${package_info.file_name} ./*
                                 cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                             """
