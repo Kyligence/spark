@@ -34,6 +34,7 @@ pipeline {
             steps {
                 dir("sourcecode") {
                     script {
+                        currentBuild.description = "${params.branch}"
                         def checkout = new GithubCheckout("Checkout")
                         def retryFlow = new RetryFlow(checkout)
                         retryFlow.execute(GithubCheckout.GithubCheckoutParameter.builder()
