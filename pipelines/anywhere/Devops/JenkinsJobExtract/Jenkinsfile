@@ -4,12 +4,12 @@
 
 pipeline {
     options {
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 1, unit: 'HOURS')
     }
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/gcp/Devops/JenkinsJobTransform/jenkins-agent.yaml'
+            yamlFile 'pipelines/anywhere/Devops/JenkinsJobExtract/jenkins-agent.yaml'
         }
     }
 
@@ -29,7 +29,7 @@ pipeline {
                 }
             }
         }
-        stage('Transform') {
+        stage('Extract') {
             steps {
                 script {
                     container('maven') {
@@ -41,16 +41,14 @@ pipeline {
                                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
 
                                 withCredentials([usernamePassword(credentialsId: 'devopsid', passwordVariable: 'jenkins_password', usernameVariable: 'jenkins_username')]) {
-                                   configFileProvider([configFile(fileId: 'github-accounts', targetLocation: 'github_accounts.json', variable: '_f')]) {
-                                       sh script: """
-                                            cd target && \
-                                            java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-                                                -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-                                                -DJENKINS_USERNAME=${jenkins_username} \
-                                                -DJENKINS_PASSWORD=${jenkins_password} \
-                                                jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform gcp
-                                       """
-                                   }
+                                   sh script: """
+                                        cd target && \
+                                        java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                            -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                            -DJENKINS_USERNAME=${jenkins_username} \
+                                            -DJENKINS_PASSWORD=${jenkins_password} \
+                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar extract aws-mixed
+                                   """
                                 }
                             }
                         }

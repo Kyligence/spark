@@ -23,4 +23,5 @@ class JenkinsConfig {
 
     String s3secretKey
 
+    boolean compatibleGCP
 }

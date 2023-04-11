@@ -10,8 +10,8 @@ class Main {
     static void main(String[] args) {
         if (args[0].equals("extract")) {
             switch (args[1]) {
-                case "gcp":
-                    extractGCP()
+                case "aws-mixed":
+                    extractAWSMixed()
                     break
                 case "aws":
                     extractAWS()
@@ -21,8 +21,8 @@ class Main {
             }
         } else if (args[0].equals("transform")) {
             switch (args[1]) {
-                case "gcp":
-                    transformGCP()
+                case "aws-mixed":
+                    transformAWSMixed()
                     break
                 case "aws":
                     transformAWS()
@@ -37,7 +37,7 @@ class Main {
 
     }
 
-    static void extractGCP() {
+    static void extractAWSMixed() {
         final String s3Accesskey = System.getProperty("AWS_ACCESS_KEY_ID");
         final String s3secretKey = System.getProperty("AWS_SECRET_ACCESS_KEY");
         final String s3bucket = System.getProperty("AWS_STORE_BUCKET", "devops-jenkins-history");
@@ -45,14 +45,15 @@ class Main {
         final String jenkinsUsername = System.getProperty("JENKINS_USERNAME")
         final String jenkinsPassword = System.getProperty("JENKINS_PASSWORD")
 
-        final JenkinsConfig config = new JenkinsConfig("gcp", "http://cicd-gcp.kyligence.com/", jenkinsUsername, jenkinsPassword);
+        final JenkinsConfig config = new JenkinsConfig("aws-mixed", "http://jenkins.cicd:8080/", jenkinsUsername, jenkinsPassword);
         config.setS3Accesskey(s3Accesskey);
         config.setS3secretKey(s3secretKey);
         config.setS3StoreBucket(s3bucket);
+        config.setCompatibleGCP(true)
         final JenkinsClientImpl client = JenkinsClientFactory.create(config);
         final JenkinsExtract extract = new JenkinsExtract(config, client);
 
-        extract.execute("KE4", "Newten_CI_On_GCP");
+        extract.execute("KE", "KE-CI-On-AWS_Cloud");
     }
 
     static void extractAWS() {
@@ -73,7 +74,7 @@ class Main {
         extract.execute("KC", "Lightning-PR-CHECK");
     }
 
-    static void transformGCP() {
+    static void transformAWSMixed() {
         final String s3Accesskey = System.getProperty("AWS_ACCESS_KEY_ID");
         final String s3secretKey = System.getProperty("AWS_SECRET_ACCESS_KEY");
         final String s3bucket = System.getProperty("AWS_STORE_BUCKET", "devops-jenkins-history");
@@ -81,13 +82,14 @@ class Main {
         final String jenkinsUsername = System.getProperty("JENKINS_USERNAME")
         final String jenkinsPassword = System.getProperty("JENKINS_PASSWORD")
 
-        final JenkinsConfig config = new JenkinsConfig("gcp", "http://cicd-gcp.kyligence.com/", jenkinsUsername, jenkinsPassword);
+        final JenkinsConfig config = new JenkinsConfig("aws-mixed", "http://jenkins.cicd:8080/", jenkinsUsername, jenkinsPassword);
         config.setS3Accesskey(s3Accesskey);
         config.setS3secretKey(s3secretKey);
         config.setS3StoreBucket(s3bucket);
+        config.setCompatibleGCP(true)
         final JenkinsTransform transform = new JenkinsTransform(config, [NewtenBasicPostAnalyzer.class, ModuleTestStatePostAnalyzer.class, ModuleTestDurationPostAnalyzer.class]);
 
-        transform.execute("KE4", "Newten_CI_On_GCP");
+        transform.execute("KE", "KE-CI-On-AWS_Cloud");
     }
 
     static void transformAWS() {
