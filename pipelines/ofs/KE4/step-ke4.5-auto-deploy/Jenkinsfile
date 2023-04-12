@@ -41,6 +41,7 @@ pipeline {
                         remote.allowAnyHosts = true         
                         sshCommand remote: remote, command: """
                             #! /bin/bash
+                            set -e
                             cd ${remote_dir}
                             rm -f ke_package/K*.tar.gz
                             scp step@10.0.0.28:${kepackage_dir}/${package_name}  ke_package/
@@ -89,6 +90,7 @@ pipeline {
                         remote.allowAnyHosts = true         
                         sshCommand remote: remote, command: """
                             #! /bin/bash
+                            set -e
                             cd ${remote_dir}
                             rm -f ke_package/K*.tar.gz
                             scp step@10.0.0.28:${kepackage_dir}/${package_name}  ke_package/
@@ -137,6 +139,7 @@ pipeline {
                         remote.allowAnyHosts = true         
                         sshCommand remote: remote, command: """
                             #! /bin/bash
+                            set -e
                             cd ${remote_dir}
                             rm -f ke_package/K*.tar.gz
                             scp step@10.0.0.28:${kepackage_dir}/${package_name}  ke_package/
