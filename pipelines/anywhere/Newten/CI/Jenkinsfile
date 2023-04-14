@@ -26,7 +26,7 @@ pipeline {
     parameters {
         string(name: 'branch', defaultValue: 'newten-dev', description: '')
         string(name: 'sha1', defaultValue: '', description: '')
-        string(name: 'ghprbPullId', defaultValue: '', description: '')
+        string(name: '_ghprbPullId', defaultValue: '', description: '')
         booleanParam(name: 'failFast', defaultValue: true, description:'')
         booleanParam(name: 'skipBuild', defaultValue: false, description:'')
     }
