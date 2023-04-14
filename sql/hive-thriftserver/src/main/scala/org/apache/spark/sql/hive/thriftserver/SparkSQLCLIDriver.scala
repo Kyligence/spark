@@ -110,9 +110,9 @@ private[hive] object SparkSQLCLIDriver extends Logging {
 
     sessionState.in = System.in
     try {
-      sessionState.out = new PrintStream(System.out, true, UTF_8.name())
-      sessionState.info = new PrintStream(System.err, true, UTF_8.name())
-      sessionState.err = new PrintStream(System.err, true, UTF_8.name())
+      shimSessionState(sessionState, "out", new PrintStream(System.out, true, UTF_8.name()))
+      shimSessionState(sessionState, "info", new PrintStream(System.err, true, UTF_8.name()))
+      shimSessionState(sessionState, "err", new PrintStream(System.err, true, UTF_8.name()))
     } catch {
       case e: UnsupportedEncodingException =>
         closeHiveSessionStateIfStarted(sessionState)
@@ -323,7 +323,6 @@ private[hive] object SparkSQLCLIDriver extends Logging {
     exit(ret)
   }
 
-
   def isRemoteMode(state: CliSessionState): Boolean = {
     //    sessionState.isRemoteMode
     state.isHiveServerQuery
@@ -332,6 +331,16 @@ private[hive] object SparkSQLCLIDriver extends Logging {
   def printUsage(): Unit = {
     val processor = new OptionsProcessor()
     ReflectionUtils.invoke(classOf[OptionsProcessor], processor, "printUsage")
+  }
+
+  private def shimSessionState(state: SessionState, //
+                               field: String, stream: java.io.OutputStream): Unit = {
+    val fieldObj = state.getClass.getField(field)
+    val fieldValue = fieldObj.getType
+      // eg. PrintStream -> SessionStream (CDP 7.1 specified)
+      .getConstructor(classOf[java.io.OutputStream])
+      .newInstance(stream)
+    fieldObj.set(state, fieldValue)
   }
 
   private def closeHiveSessionStateIfStarted(state: SessionState): Unit = {
