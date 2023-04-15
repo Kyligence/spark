@@ -37,34 +37,34 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
-    # - name: "build2"
-    #   image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
-    #   imagePullPolicy: "IfNotPresent"
-    #   tty: true
-    #   command:
-    #     - "cat"
-    #   resources:
-    #     request:
-    #       memory: "1Gi"
-    #       cpu: "100m"
-    #     limits:
-    #       memory: "8Gi"
-    #       cpu: "4000m"
-    #   volumeMounts:
-    #     - mountPath: "/root/.m2"
-    #       name: "jenkins-common"
-    #       subPath: "maven3"
-    #     - mountPath: "/root/.m2/settings.xml"
-    #       name: "lex-mvn-settings"
-    #       readOnly: false
-    #       subPath: "settings2.xml"
-    #     - name: "kyligence-repo"
-    #       mountPath: /root/.m2/repository2/io/kyligence
-    #     - name: "kylin-repo"
-    #       mountPath: /root/.m2/repository2/org/apache
-    #     - mountPath: "/var/cicd"
-    #       name: "jenkins-common"
-    #       subPath: "newten-cicd"
+    - name: "build2"
+      image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        request:
+          memory: "1Gi"
+          cpu: "100m"
+        limits:
+          memory: "6Gi"
+          cpu: "2000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings2.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository2/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository2/org/apache
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
     # - name: "kubectl"
     #   image: "cnych/kubectl"
     #   imagePullPolicy: "IfNotPresent"

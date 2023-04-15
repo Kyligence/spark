@@ -49,7 +49,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build2') {
+                        container('build') {
                             script {
                                 if (params.is_CH) {
                                     ke4xHelper.deployToServerWithCH('159.27.224.211', 'azure_env_gw05', params.file_name)
@@ -74,7 +74,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build2') {
+                        container('build') {
                             script {
                                 if (params.is_CH) {
                                     ke4xHelper.deployToServerWithCH('159.27.224.168', 'azure_env_gw06', params.file_name)
@@ -99,7 +99,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build2') {
+                        container('build') {
                             script {
                                 if (params.is_CH) {
                                     ke4xHelper.deployToServerWithCH('159.27.120.134', 'azure_env_gw08', params.file_name)
@@ -124,7 +124,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build2') {
+                        container('build') {
                             script {
                                 if (params.is_CH) {
                                     ke4xHelper.deployToServerWithCH('159.27.81.212', 'azure_env_gw19', params.file_name)
