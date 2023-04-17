@@ -70,7 +70,7 @@ pipeline {
                                    curl -X POST "http://devops-nexus:8081/service/rest/v1/components?repository=raw-tars-hosted" \
                                       -H "accept: application/json" \
                                       -H "Content-Type: multipart/form-data" \
-                                      -F "raw.directory=io.kyligence.clickhouse/${params.branch}/latest" \
+                                      -F "raw.directory=io.kyligence.clickhouse/${params.branch}/aws/latest" \
                                       -F "raw.asset1=@output/libch.so;type=application/java-archive" \
                                       -F "raw.asset1.filename=libch.so" \
                                       -u "${user}":"${passwd}"

@@ -1,0 +1,202 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/Gluten-CI/jenkins-agent-gluten-ci.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'add_clickhouse_source', description: 'gluten branch')
+        string(name: 'sha1', defaultValue: '', description: '')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('git') {
+                    dir('gluten') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+
+                        script {
+                            def prBranch = env.sha1
+//                            if (params.sha1) {
+//                                prBranch = params.sha1
+//                            }
+                            sh 'env'
+                            echo "clone gluten branch ${prBranch}"
+
+                            //log: git init /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+//                            withCredentials([gitUsernamePassword(credentialsId: 'kyligence-git')]){
+//                                sh """
+//                                export GLUTEN_SOURCE=\$(pwd)
+//
+//                                if [ ! -d "/source-folder/gluten/.git" ]
+//                                  then
+//                                    cd /source-folder
+//                                    git clone https://github.com/oap-project/gluten.git
+//                                  else
+//                                    cd /source-folder
+//                                fi
+//                                cd gluten
+//                                git checkout ${prBranch}
+//                                git pull
+//                                cp -R /source-folder/gluten/* \${GLUTEN_SOURCE}
+//                                """
+//                            }
+
+
+                            //githubCheckout 'gluten', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'liuneng1994'
+                            githubCheckout 'gluten', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'oap-project'
+
+                            // def ch_source = "/tmp_workspace/build_${BUILD_NUMBER}"
+                            // sh "git clone --recursive --depth 1 https://github.com/Kyligence/ClickHouse.git ${ch_source}"
+
+                            sh 'ls'
+
+                        }
+                    }
+                    dir('clickhouse') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/clickhouse
+                        script {
+                            //def ch_source = "tmp_workspace/build_${BUILD_NUMBER}"
+                            //log: git init /home/jenkins/agent/workspace/Gluten/gluten-ci/clickhouse
+
+                            githubCheckout 'ClickHouse', 'clickhouse_backend', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'kyligence'
+                            sh """git submodule update --init --recursive --depth 1 """
+
+                            sh 'ls'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build LIBCH') {
+            steps {
+                container('libchbuilder') {
+                    dir('gluten') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+                        script {
+
+                            def ch_source = "../clickhouse"
+                            //def ch_source = "../clickhouse"
+                            sh script: """
+                                export CCACHE_DIR=/ccache &&\
+                                export CCACHE_BASEDIR=\${GLUTEN_SOURCE}/${ch_source}/build &&\
+                                export CCACHE_NOHASHDIR=true &&\
+                                export CCACHE_COMPILERCHECK=content &&\
+                                export CCACHE_MAXSIZE=15G &&\
+                                export GLUTEN_SOURCE=\$(pwd) && \
+                                cmake -G Ninja -S \${GLUTEN_SOURCE}/cpp-ch -B \${GLUTEN_SOURCE}/cpp-ch/_build -DCH_SOURCE_DIR=\${GLUTEN_SOURCE}/${ch_source} -DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_BUILD_TYPE=Release &&\
+                                cmake --build \${GLUTEN_SOURCE}/cpp-ch/_build --target build_ch\
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Unit Test') {
+            steps {
+                container("maven") {
+                    dir("gluten") {
+                        script {
+                            sh 'ls'
+//                            sh script: "echo '/coredumps/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern"
+                            sh script: 'mkdir -p /data && tar -zxf /dataset/tpcds-data-sf1.tar.gz -C /data/'
+                            sh script: 'ls -al /data/tpcds-data-sf1'
+                            sh '''
+                              if [ -d "/tmp/spark" ]
+                              then
+                                rm -rf /tmp/spark
+                              fi
+                              git clone --depth 1 --branch v3.2.2 https://github.com/apache/spark.git /tmp/spark
+                              export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
+                              '''
+                            try{
+                                sh '''
+                                  export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
+                                  mvn clean install -Pbackends-clickhouse -Pspark-3.2 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark"
+                                '''
+                            }finally {
+                                echo 'enter finally'
+                                sh 'ls -l'
+                                sh 'pwd'
+                                sh 'mkdir -p /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
+                                sh 'cp -r /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten/backends-clickhouse /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
+                                sh 'ls -l /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
+
+                            }
+
+
+
+                            sh '''
+                              if [ -d "/tmp/spark" ]
+                              then
+                                rm -rf /tmp/spark
+                              fi
+                              git clone --depth 1 --branch v3.3.1 https://github.com/apache/spark.git /tmp/spark
+                              export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
+                              '''
+                            try{
+
+                              sh '''
+                                export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
+                                mvn clean install -Pbackends-clickhouse -Pspark-3.3 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark"
+                              '''
+                            }finally {
+                                echo 'enter finally'
+                                sh 'ls -l'
+                                sh 'pwd'
+                                sh 'mkdir -p /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+                                sh 'cp -r /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten/backends-clickhouse /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+                                sh 'ls -l /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            container('libchbuilder') {
+                sh "rm -rf /tmp_workspace/build_${env.BUILD_NUMBER}"
+            }
+        }
+    }
+}
+
+
+def quicklyCheckout() {
+    if (params.sha1) {
+        println "checkout from pull request."
+        def pullNumber = matchPullNumber(params.sha1)
+        checkout([$class: 'GitSCM', branches: [[name: params.sha1]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligence-git', name: 'origin', refspec: "+refs/pull/${pullNumber}/*:refs/remotes/origin/pr/${pullNumber}/*", url: 'https://github.com/oap-project/gluten.git']]])
+    } else if (params.branch) {
+        println "checkout from specified branch."
+        checkout([$class: 'GitSCM', branches: [[name: params.branch]], extensions: [[$class: 'CloneOption', depth: 1, honorRefspec: true, noTags: true, reference: '', shallow: true, timeout: 3]], userRemoteConfigs: [[credentialsId: 'kyligence-git', name: 'origin', refspec: "+refs/heads/${params.branch}:refs/remotes/origin/${params.branch}", url: 'https://github.com/oap-project/gluten.git']]])
+    } else {
+        throw new RuntimeException("unknown branch")
+    }
+}
+
+@NonCPS
+def matchPullNumber(String sha1) {
+    def m = sha1 =~ /^origin\/pr\/(\d+)\/merge$/
+    if (!m) {
+        throw new RuntimeException("invalid sha1")
+    }
+    return m.group(1)
+}

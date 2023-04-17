@@ -1,0 +1,115 @@
+#!groovy
+
+import org.kohsuke.github.GitHub
+
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/Gluten-CD/jenkins-agent-gluten-cd.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'branch', defaultValue: 'clickhouse_backend', description: 'gluten branch')
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            steps {
+                container('git') {
+                    dir('gluten') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+                        script {
+                            def prBranch = params.branch
+                            sh 'env'
+                            echo "clone gluten branch ${prBranch}"
+
+                            //log: git init /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+
+                            //githubCheckout 'gluten', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'liuneng1994'
+                            githubCheckout 'gluten', prBranch, 'https', 'github.com', '+refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'oap-project'
+
+                            // def ch_source = "/tmp_workspace/build_${BUILD_NUMBER}"
+                            // sh "git clone --recursive --depth 1 https://github.com/Kyligence/ClickHouse.git ${ch_source}"
+
+                            sh 'ls'
+
+                        }
+                    }
+                    dir('clickhouse') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/clickhouse
+                        script {
+                            //def ch_source = "tmp_workspace/build_${BUILD_NUMBER}"
+                            //log: git init /home/jenkins/agent/workspace/Gluten/gluten-ci/clickhouse
+
+                            githubCheckout 'ClickHouse', 'clickhouse_backend', 'https', 'github.com', '+refs/heads/*:refs/remotes/origin/*', 'kyligence-git', 'kyligence'
+                            sh """git submodule update --init --recursive --depth 1 """
+
+                            sh 'ls'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build LIBCH') {
+            steps {
+                container('libchbuilder') {
+                    dir('gluten') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+                        script {
+
+                            def ch_source = "../clickhouse"
+                            //def ch_source = "../clickhouse"
+                            sh script: """
+                                export CCACHE_DIR=/ccache &&\
+                                export CCACHE_BASEDIR=\${GLUTEN_SOURCE}/${ch_source}/build &&\
+                                export CCACHE_NOHASHDIR=true &&\
+                                export CCACHE_COMPILERCHECK=content &&\
+                                export CCACHE_MAXSIZE=15G &&\
+                                export GLUTEN_SOURCE=\$(pwd) && \
+                                cmake -G Ninja -S \${GLUTEN_SOURCE}/cpp-ch -B \${GLUTEN_SOURCE}/cpp-ch/_build -DCH_SOURCE_DIR=\${GLUTEN_SOURCE}/${ch_source} -DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_BUILD_TYPE=Release &&\
+                                cmake --build \${GLUTEN_SOURCE}/cpp-ch/_build --target build_ch\
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Release') {
+            steps {
+                container("libchbuilder") {
+                    dir("gluten/cpp-ch/build/utils/extern-local-engine") {
+                        script {
+                            withCredentials([usernamePassword(credentialsId: 'nexus-upload', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                echo "user is ${user}"
+                                echo "passwd is ${passwd}"
+
+                                sh script: """
+                                   curl -X POST "http://repo-ofs.kyligence.com:18443/service/rest/v1/components?repository=raw-tars-hosted" \
+                                      -H "accept: application/json" \
+                                      -H "Content-Type: multipart/form-data" \
+                                      -F "raw.directory=io.kyligence.clickhouse/${params.branch}/snapshot/latest" \
+                                      -F "raw.asset1=libch.so;type=application/java-archive" \
+                                      -F "raw.asset1.filename=libch.so" \
+                                      -u "${user}":"${passwd}"
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+    }
+}

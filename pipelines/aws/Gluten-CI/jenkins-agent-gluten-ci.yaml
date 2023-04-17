@@ -1,18 +1,24 @@
 ---
 kind: "Pod"
 name: "jenkins-agent"
+metadata:
+  namespace: node
 spec:
-  tolerations:
-  - key: "nodetype"
-    operator: "Equal"
-    value: "ke"
-    effect: "NoSchedule"
+  # tolerations:
+  # - key: "nodetype"
+  #   operator: "Equal"
+  #   value: "ke"
+  #   effect: "NoSchedule"
   containers:
     - name: "git"
       volumeMounts:
         - name: "kyligence-repo"
           mountPath: /clickhouse
           readOnly: false
+        - mountPath: "/source-folder"
+          name: "jenkins-common"
+          readOnly: false
+          subPath: "source-folder"
       tty: true
       command:
         - "cat"
@@ -21,10 +27,10 @@ spec:
       imagePullPolicy: "IfNotPresent"
       resources:
         limits:
-          memory: "16Gi"
+          memory: "4Gi"
           cpu: "2000m"
         requests:
-          memory: "16Gi"
+          memory: "2Gi"
           cpu: "800m"
 
     - name: "maven"
@@ -47,6 +53,11 @@ spec:
           name: "jenkins-common"
           readOnly: true
           subPath: "dataset"
+        - mountPath: "/maven-log"
+          name: "jenkins-common"
+          readOnly: false
+          subPath: "maven-log"
+
       resources:
         limits:
           memory: "20Gi"
@@ -73,6 +84,10 @@ spec:
           name: "jenkins-common"
           readOnly: false
           subPath: "ccache"
+        - mountPath: "/coredumps"
+          name: "jenkins-common"
+          readOnly: false
+          subPath: "coredumps"
       resources:
         limits:
           memory: "30Gi"
@@ -92,7 +107,7 @@ spec:
         items:
           - key: "settings.xml"
             path: "settings.xml"
-        name: "ke-maven-settings"
+        name: "aws-maven-settings"
       name: "maven-settings"
     - name: "dockersock"
       hostPath:

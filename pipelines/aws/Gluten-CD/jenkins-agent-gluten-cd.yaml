@@ -21,45 +21,17 @@ spec:
       imagePullPolicy: "IfNotPresent"
       resources:
         limits:
-          memory: "16Gi"
+          memory: "4Gi"
           cpu: "2000m"
         requests:
-          memory: "16Gi"
+          memory: "2Gi"
           cpu: "800m"
-
-    - name: "maven"
-      tty: true
-      command:
-        - "cat"
-      image: "maven:3.8.3-openjdk-8"
-      imagePullPolicy: "IfNotPresent"
-      volumeMounts:
-        - name: "kyligence-repo"
-          mountPath: /jenkins-common/.kem2/repository
-          readOnly: false
-        - mountPath: "/root/.m2/settings.xml"
-          name: "maven-settings"
-          readOnly: false
-          subPath: "settings.xml"
-        - mountPath: "/var/run/docker.sock"
-          name: "dockersock"
-        - mountPath: "/dataset"
-          name: "jenkins-common"
-          readOnly: true
-          subPath: "dataset"
-      resources:
-        limits:
-          memory: "20Gi"
-          cpu: "8"
-        requests:
-          memory: "20Gi"
-          cpu: "8"
 
     - name: "libchbuilder"
       tty: true
       command:
         - "cat"
-      image: "qwe1398775315/libchbuilder:0.2.0"
+      image: "457798666374.dkr.ecr.us-west-2.amazonaws.com/jenkinsslave/libchbuilder:0.1.0"
       imagePullPolicy: "IfNotPresent"
       env:
         - name: HTTP_PROXY
@@ -87,13 +59,6 @@ spec:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
-    - configMap:
-        defaultMode: 0777
-        items:
-          - key: "settings.xml"
-            path: "settings.xml"
-        name: "ke-maven-settings"
-      name: "maven-settings"
     - name: "dockersock"
       hostPath:
         path: "/var/run/docker.sock"
