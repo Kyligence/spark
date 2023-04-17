@@ -23,5 +23,14 @@ abstract class AbstractPostAnalyzer {
         return row.get(row.indexOf(Column.valueOf(name, null)))
     }
 
+
+    protected String compatiblePlatform(final String platform) {
+        if (this.config.isCompatibleGCP() && platform.equals("aws-mixed")) {
+            return "gcp"
+        }
+
+        return platform
+    }
+
     abstract void process(Csv data);
 }

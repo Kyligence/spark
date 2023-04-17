@@ -41,6 +41,6 @@ class ModuleTestDurationPostAnalyzer extends AbstractPostAnalyzer {
         def dataStream = result.toStream()
         def meta = new ObjectMetadata()
         meta.setContentLength(dataStream.available())
-        s3client.putObject(config.getS3StoreBucket(), "${String.format(DATA_KEY_PREFIX, config.getPlatform(), "KE4", "Newten_CI_On_GCP")}/module_test_durations/data.csv", dataStream, meta)
+        s3client.putObject(config.getS3StoreBucket(), "${String.format(DATA_KEY_PREFIX, compatiblePlatform(config.getPlatform()), "KE4", "Newten_CI_On_GCP")}/module_test_durations/data.csv", dataStream, meta)
     }
 }
