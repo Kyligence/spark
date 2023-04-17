@@ -16,12 +16,12 @@ spec:
       command:
         - "cat"
       resources:
-        request:
-          memory: "2Gi"
+        requests:
+          memory: "1Gi"
           cpu: "100m"
         limits:
-          memory: "16Gi"
-          cpu: "8000m"
+          memory: "8Gi"
+          cpu: "4000m"
       volumeMounts:
         - mountPath: "/root/.m2"
           name: "jenkins-common"
@@ -54,7 +54,7 @@ spec:
           name: "jenkins-common"
           subPath: "newten-cicd"
       resources:
-        request:
+        requests:
           memory: "2Gi"
           cpu: "500m"
         limits:
@@ -67,7 +67,7 @@ spec:
       command:
         - "cat"
       resources:
-        request:
+        requests:
           cpu: "100m"
           memory: "500Mi"
         limits:
@@ -84,7 +84,7 @@ spec:
       command:
         - "cat"
       resources:
-        request:
+        requests:
           cpu: "100m"
           memory: "500Mi"
         limits:
@@ -101,7 +101,7 @@ spec:
       command:
         - "cat"
       resources:
-        request:
+        requests:
           cpu: "100m"
           memory: "500Mi"
         limits:

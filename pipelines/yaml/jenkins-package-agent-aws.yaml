@@ -10,7 +10,7 @@ spec:
       command:
         - "cat"
       resources:
-        request:
+        requests:
           memory: "4Gi"
           cpu: "1500m"
         limits:
