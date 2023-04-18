@@ -46,6 +46,7 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
     //https://olapio.atlassian.net/browse/KC-12372 delete slf4j-log4j12
     sh script: """
         sleep ${waitTime}
+        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
         dev/make-distribution.sh --name ${releaseVersion} -Phadoop-3.2 -Phive-thriftserver -pl assembly
         cp ../depedencies/log4j/*.jar dist/jars/
         cp ../depedencies/cloud_log4j/*.jar dist/jars/
@@ -184,6 +185,7 @@ pipeline {
                                         hadoopVersion = 'hadoop-2.6'
                                     }
                                     sh script: """
+                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
                                         dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn 
                                         if [ 'spark3' = '${params.sparkVersion}' ]; then
                                             cp ../depedencies/log4j/*.jar dist/jars/
