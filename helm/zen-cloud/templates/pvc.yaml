@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: ext-resource
+spec:
+  storageClassName: {{ .Values.global.storageClass.name }}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi

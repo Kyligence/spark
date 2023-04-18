@@ -1,0 +1,75 @@
+# Default values for zen-cloud.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+monitor:
+  enabled: false
+log:
+  enabled: false
+global:
+  hadoopPrefix: hadoop
+  hdfs: {}
+    # workingDir:
+  storageClass:
+    name: ceph-fs
+
+  image:
+    registry: harbor-ofs.kyligence.com/enterprise
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    logTag: "latest"
+
+  metadata:
+    url: "*****" # zen-cloud engine 所在的 mysql 的 URL 地址, (用户名和密码在参数上)
+  nacos:
+    config:
+      serverAddrNoHttp: nacos-config-svc.zen-cloud:8848
+    discovery:
+      serverAddrNoHttp: nacos-naming-svc.zen-cloud:8848
+    # serverAddr:
+  
+  tenantId: "9223372036854775707" # 部署一个 zen-cloud-release 需要的租户ID
+  publicGroup: "zen-cloud"   # 租户中心在 nacos-naming 中的组
+
+  tz: "Asia/Shanghai"        # 部署 zen-cloud 的时区, 必须考虑实际情况.
+
+  configcenter:
+    disabled: false         # 使用非配置中心版本的 zen-cloud (beta) 为 xuanwu-offering 10月演示特殊设置.
+
+  spark:
+    image:
+      repository: harbor-ofs.kyligence.com/spark/spark
+      tag: 3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3
+      pullPolicy: Always
+    uploadPath: s3a://zen-cloud-dep
+
+  s3:
+    endpoint: http://10.1.9.41
+    ak: 2XLJ23H3NUY4272EFKV5
+    sk: abspVTy4AZ8Ud6lr254cBR0SFYbyfRDBxWG0Da9C
+    bucket: zen-cloud
+  metastore:
+    uris: hadoop-hive-metastore.zen-cloud:9083
+
+frontend:
+  image:
+    tag: "latest"
+#   iam:
+#     serverAddr: https://iam.dev.kyligence.com/   # 租户中心的访问地址.
+#   config:
+#     serverAddr: https://nacos.dev.kyligence.com/   # 配置中心的访问地址.
+#   ingress:
+#     hosts:
+#       - host: dev.kyligence.com  # zen-cloud 最终的访问地址是 https://{helm-release-name}.{k8s-namespace}.{host}/
+#         paths:
+#           - path: /
+#             pathType: ImplementationSpecific
+
+gateway:
+  image:
+    repository: repo-ofs.kyligence.com/gateway
+    tag: "5.1.2-DEV-beab30ca"
+#   config: # redis 参数必须和租户中心的 gateway 所使用的 redis 一致.
+#     redis:
+#       host: redis-master.zen-cloud.svc.cluster.local
+#       database: 6
+#       password: "******"

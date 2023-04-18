@@ -261,7 +261,7 @@ pipeline {
         string(name: 'version', defaultValue: '5.0.0', description: '填写版本号，格式：5.0.0，5.0.1.1.1，版本号由【数字和 . 】组合，最多5段，必须规范,\n特别提醒：选择QA打包阶段，版本号写错是无法匹配到对应分支的！！！')
         choice(name: 'envStage', choices: 'DEV\nQA\nRC\nALPHA\nBETA\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
         choice(name: 'cloudPlatform', choices: 'AWS\nAliCloud\nAzure', description: '云平台:\nAWS\nAliCloud\nAzure')
-        string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
+        string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 Zen Cloud，iam 会添加 iam 的 jar')
         booleanParam(name: 'build', defaultValue: true, description: '是否构建')
         booleanParam(name: 'push', defaultValue: true, description: '推送镜像')
     }
@@ -362,7 +362,7 @@ pipeline {
                                         ls -al
                                         cp ../../../VERSION VERSION
                                         cp ../../../commit_SHA1 commit_SHA1
-                                        cp ${env.WORKSPACE}/docker/yinglong-jdk8/Dockerfile Dockerfile
+                                        cp ${env.WORKSPACE}/docker/zen-cloud-jdk8/Dockerfile Dockerfile
                                         sed -i "s#&&replace_package&&#target/${m.name}*.tar.gz#g" Dockerfile
                                         sed -i "s#&&replace_dir&&#${m.name}#g" Dockerfile
                                         cat Dockerfile
@@ -405,7 +405,7 @@ pipeline {
                         }
                     }
                 }
-                stage('3.2.images yinglong') {
+                stage('3.2.images Zen cloud') {
                     steps {
                         container('docker') {
                             script {
@@ -473,11 +473,10 @@ pipeline {
                                 dir('sourcecode') {
                                     sh script: """
                                         cd ${env.WORKSPACE}/helm
-                                        sed -i 's/5.0.0-ALPHA/${package_info.tag_back}/g' yinglong/Chart.yaml
-                                        sed -i 's/yinglong/Kyligence-Enterprise/g' yinglong/Chart.yaml
-                                        cat yinglong/Chart.yaml
+                                        sed -i 's/5.0.0-ALPHA/${package_info.tag_back}/g' zen-cloud/Chart.yaml
+                                        cat zen-cloud/Chart.yaml
                                         helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
-                                        helm package yinglong
+                                        helm package zen-cloud
                                         ls -lh .
                                         helm cm-push *.tgz harbor-ofs
                                         cp *.tgz ${env.WORKSPACE}/sourcecode/offline
@@ -526,10 +525,17 @@ pipeline {
                                 cp ${package_info.file_name} /var/cicd/${package_info.package_path}
                             """
                         }
-                        // upload to S3
-                        println("upload to S3 in AWS CN: ${package_info.file_name}")
-                        retry(2) {
-                            uploadHelper.uploadAwsS3(package_info.file_name, "product/yinglong/5.0.x/${package_info.file_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp', 'sourcecode/offline')
+
+                        switch (params.envStage) {
+                            case 'GA':
+                                // upload to S3
+                                println("upload to S3 in AWS CN: ${package_info.file_name}")
+                                retry(2) {
+                                    uploadHelper.uploadAwsS3(package_info.file_name, "product/zen-cloud/5.0.x/${package_info.file_name}", 'download.kyligence.io', 'cn-north-1', 'aws_cn_s3_cp', 'sourcecode/offline')
+                                }
+                                break
+                            default:
+                                println("env is: ${params.envStage}, no need to upload to S3 in AWS.")
                         }
                     }
                 }
@@ -561,9 +567,9 @@ pipeline {
 
                                 sh returnStatus: true, script: """
                                     helm -n ${namespace} list
-                                    helm -n ${namespace} upgrade yinglong ./helm/yinglong \
+                                    helm -n ${namespace} upgrade yinglong ./helm/zen-cloud \
                                         --set global.image.tag=${package_info.tag_back} \
-                                        --set yl-frontend.image.tag=${package_info.tag_front} \
+                                        --set frontend.image.tag=${package_info.tag_front} \
                                         --set global.image.pullPolicy=Always \
                                         --set global.hadoopPrefix=${hadoop_prefix} \
                                         --set global.tenantId=${tenant_id} \
@@ -571,10 +577,10 @@ pipeline {
                                         --set global.nacos.discovery.serverAddrNoHttp=nacos-naming-svc.yinglong:8848 \
                                         --set global.nacos.config.serverAddrNoHttp=nacos-config-svc.yinglong:8848 \
                                         --set 'global.metadata.url=${metadata_table_name}@jdbc\\,driverClassName=com.mysql.jdbc.Driver\\,url=jdbc:mysql://10.1.9.111:3306/kylin?allowMasterDownConnections=true&allowSlavesDownConnections=true&useSSL=false&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8\\,username=yinglong\\,password=cA*BUi#4\\,maxTotal=50\\,maxIdle=8' \
-                                        --set 'yl-gateway.image.tag=5.0.1-private' \
-                                        --set 'yl-gateway.nacos.serverAddr=nacos-naming-svc.yinglong:8848' \
-                                        --set 'yl-gateway.saas.nacos.discovery.group=${tenant_id}' \
-                                        --set 'yl-gateway.saas.nacos.discovery.publicGroup=yinglong' ${extra_settings}
+                                        --set 'gateway.image.tag=5.0.1-private' \
+                                        --set 'gateway.nacos.serverAddr=nacos-naming-svc.yinglong:8848' \
+                                        --set 'gateway.saas.nacos.discovery.group=${tenant_id}' \
+                                        --set 'gateway.saas.nacos.discovery.publicGroup=yinglong' ${extra_settings}
                                     helm -n ${namespace} list
                                 """
                             } else if (deploy == "install") {
