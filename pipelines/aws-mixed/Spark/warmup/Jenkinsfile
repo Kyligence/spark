@@ -1,0 +1,38 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws-mixed/Spark/warmup/jenkins-agent.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'sparkVersion', defaultValue: '3.2.0-kylin-4.5.19.10-SNAPSHOT', description: '')
+    }
+
+    stages {
+        stage('Warmup') {
+            steps {
+                container("maven") {
+                    script {
+                        sh script: """
+                            pwd
+                            cd pipelines/aws-mixed/Spark/warmup/
+                            ls -artlh .
+                            sed -i "s|<spark.version>*.</spark.version>|<spark.version>${params.sparkVersion}</spark.version>|g" pom.xml
+                            cat pom.xml
+                            mvn -U clean install -DskipTests
+                        """
+                    }
+                }
+            }
+        }
+    }
+}

@@ -2,21 +2,56 @@
 
 @Library('devopslib') _
 
-def IS_DEBUG = true
+def IS_DEBUG = false
 def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL',
                      '4X_CDH7.1.6_ALL', '4X_FI-C90_RW', '4X_HADOOP2.7.2_ALL', '4X_HDP2.4_ALL', '4X_HDP3.1_ALL',
-                     '4X_MAPR6.1_ALL', '4X_TDH6.2.2_ALL', '4X_TDH6.2.2_THD']
+                     '4X_MAPR6.1_ALL', '4X_MRS3.0.2_RW', '4X_TDH6.2.2_ALL', '4X_TDH6.2.2_THD']
 
 def getPlatform(paramPlat, allPlat) {
+    println "getPlatform -> paramPlat[${paramPlat}],allPlat[${allPlat}]"
     def platforms = []
     if (paramPlat == 'ALL') {
         allPlat.remove('ALL')
         platforms = allPlat
     } else {
-        platforms = paramPlat
+        platforms[0] = paramPlat
     }
     println platforms
     return platforms
+}
+
+def setParameters(platform) {
+    if (platform == "4X_TDH6.2.2_ALL") {
+        quard_branch = "quard-4.x-thd"
+        select_tests = ""
+        compatibility = true
+    }
+    else if (platform == "4X_TDH6.2.2_THD") {
+        quard_branch = "quard-4.x-thd"
+        select_tests = "transaction"
+        compatibility = false
+    }
+    else {
+        quard_branch = "quard-4.x"
+        select_tests = ""
+        compatibility = true
+    }
+    return [quard_branch, select_tests, compatibility]
+}
+
+def convertPlatform2Str(platforms) {
+    result = '%'
+    platforms.eachWithIndex { platform, index ->
+        if (index != platforms.size() - 1){
+            result += "${platform}"
+            result += ','
+        }
+        else {
+            result += "${platform}"
+        }
+    }
+    result += '@'
+    return result
 }
 
 pipeline {
@@ -26,31 +61,53 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-tabletrans-deploy-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-quard-agent.yaml'
         }
     }
 
     parameters {
-        choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard 测试类型')
+        choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_FULLCASE\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard 测试类型')
 //        multipleChoice(name: 'platform', choices: platform_list, description: 'Quard 测试平台')
         choice(name: 'platform', choices: platform_list, description: 'Quard 测试平台')
         string(name: 'quard_repo', defaultValue: 'Kyligence', description: '')
         string(name: 'quard_branch', defaultValue: 'quard-4.x', description: '')
-        string(name: 'reuse_num', description: '')
+        string(name: 'reuse_num', defaultValue: '', description: '')
         string(name: 'upgrade_num', defaultValue: '', description: '')
-        string(name: 'select_tests', description: '')
-        string(name: 'package_url', defaultValue: 'https://package.kyligence.com/newten-cicd/artifacts/4.6.x/DEV/KE-4.6.6.0-DEV-dbaec9f05f-c5dc9d997f.tar.gz\n', description: '')
+        booleanParam(name: 'compatibility', defaultValue: 'true')
+        string(name: 'select_tests', defaultValue: '', description: '')
+        string(name: 'package_url', defaultValue: 'https://package.kyligence.com/newten-cicd/artifacts/4.6.x/DEV/KE-4.6.6.0-DEV-dbaec9f05f-c5dc9d997f.tar.gz', description: '')
     }
 
     stages {
-        stage('Deploy KE') {
+        stage('Deploy KE Package') {
             steps {
                 container('build') {
                     dir('dist') {
                         script {
+                            def platforms = getPlatform(params.platform, platform_list)
+                            def all_platforms = convertPlatform2Str(platforms)
                             println "部署 KE 到 Quard 环境..."
-                            sh """
-                                sh ${env.WORKSPACE}/pipelines/ofs/KE4/KE-All-CD-2.2/distribute_package.sh ${params.package_url}
+                            def remote = [:]
+                            remote.name = 'quard'
+                            withCredentials([usernamePassword(credentialsId: 'quard-remote', usernameVariable: 'REMOTE_USERNAME', passwordVariable: 'REMOTE_PASSWORD')]) {
+                                remote.user = REMOTE_USERNAME
+                                remote.password = REMOTE_PASSWORD
+                            }
+                            remote.host = '10.1.2.171'
+                            remote.allowAnyHosts = true
+                            sh """#!/bin/bash
+                                echo '复制部署脚本'
+                                scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ${env.WORKSPACE}/pipelines/ofs/KE4/KE-All-CD-2.2/distribute_package.sh root@${remote.host}:/root/distribute_package.sh
+                            """
+                            sshCommand remote: remote, command: """
+                                set -e
+                                cd /root/
+                                chmod +x distribute_package.sh
+                                if [[ "${params.quard_type}" != "KE4X_UPGRADE" ]]; then
+                                    bash distribute_package.sh ${params.package_url}
+                                else
+                                    bash distribute_package.sh UPGRADE ${params.reuse_num} ${params.upgrade_num} ${all_platforms} ${params.package_url}
+                                fi
                             """
                         }
                     }
@@ -66,16 +123,66 @@ pipeline {
             steps {
                 script {
                     def platforms = getPlatform(params.platform, platform_list)
+                    def parallelJobs = [:]
                     platforms.eachWithIndex { element, index ->
-                        job_name = "Quard/" + element
+                        def job_name = "Quard/${element}"
+                        (quard_branch, select_tests, compatibility) = setParameters(element)
+                        println "element: ${element}, job_name: ${job_name}"
+                        parallelJobs[element] = {
+                            build job: job_name, parameters: [
+                                    string(name: 'quard_repo', value: params.quard_repo),
+                                    string(name: 'quard_branch', value: quard_branch),
+                                    booleanParam(name: 'compatibility', value: compatibility),
+                                    string(name: 'reuse_num', value: params.reuse_num),
+                                    string(name: 'select_tests', value: select_tests),
+                                    booleanParam(name: 'skip_checkenv', value: false),
+                                    booleanParam(name: 'skip_quard_checkenv', value: true),
+                                    string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
+                                    string(name: 'retry', value: '2')
+                            ]
+                        }
+                    }
+                    println "build quard full test cases on mrs3.0.2 platform"
+                    parallelJobs['4X_MRS3.0.2_RW_FULLCASES'] = {
+                        build job: "Quard/4X_MRS3.0.2_RW", parameters: [
+                            string(name: 'quard_repo', value: params.quard_repo),
+                            string(name: 'quard_branch', value: 'quard-4.x'),
+                            booleanParam(name: 'compatibility', value: false),
+                            string(name: 'reuse_num', value: params.reuse_num),
+                            string(name: 'select_tests', value: ''),
+                            booleanParam(name: 'skip_checkenv', value: false),
+                            booleanParam(name: 'skip_quard_checkenv', value: true),
+                            string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
+                            string(name: 'retry', value: '2')
+                        ]
+                    }
+                    parallel parallelJobs
+                }
+            }
+        }
+        stage('KE4X_Fullcase') {
+            when {
+                expression {
+                    return params.quard_type in ['KE4X_FULLCASE'] && !IS_DEBUG
+                }
+            }
+            steps {
+                script {
+                    def platforms = getPlatform(params.platform, platform_list)
+                    platforms.eachWithIndex { fullit, index ->
+                        def job_name = "Quard/${fullit}"
+                        println "element: ${fullit}, job_name: ${job_name}"
                         build job: job_name, parameters: [
                                 string(name: 'quard_repo', value: params.quard_repo),
                                 string(name: 'quard_branch', value: params.quard_branch),
                                 booleanParam(name: 'compatibility', value: false),
                                 string(name: 'reuse_num', value: params.reuse_num),
                                 string(name: 'select_tests', value: params.select_tests),
-                                string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE')
-                        ], wait: false
+                                booleanParam(name: 'skip_checkenv', value: false),
+                                booleanParam(name: 'skip_quard_checkenv', value: true),
+                                string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
+                                string(name: 'retry', value: '2')
+                        ]
                     }
                 }
             }
@@ -89,17 +196,26 @@ pipeline {
             steps {
                 script {
                     def platforms = getPlatform(params.platform, platform_list)
+                    def parallelJobs = [:]
                     platforms.eachWithIndex { element, index ->
-                        job_name = "Quard/" + element
-                        build job: job_name, parameters: [
-                                string(name: 'quard_repo', value: params.quard_repo),
-                                string(name: 'quard_branch', value: params.quard_branch),
-                                booleanParam(name: 'compatibility', value: true),
-                                string(name: 'reuse_num', value: params.reuse_num),
-                                string(name: 'select_tests', value: params.select_tests),
-                                string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
-                        ], wait: false
+                        def job_name = "Quard/${element}"
+                        (quard_branch, select_tests, compatibility) = setParameters(element)
+                        println "element: ${element}, job_name: ${job_name}"
+                        parallelJobs[element] = {
+                            build job: job_name, parameters: [
+                                    string(name: 'quard_repo', value: params.quard_repo),
+                                    string(name: 'quard_branch', value: quard_branch),
+                                    booleanParam(name: 'compatibility', value: compatibility),
+                                    string(name: 'reuse_num', value: params.reuse_num),
+                                    string(name: 'select_tests', value: select_tests),
+                                    booleanParam(name: 'skip_checkenv', value: false),
+                                    booleanParam(name: 'skip_quard_checkenv', value: true),
+                                    string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
+                                    string(name: 'retry', value: '2')
+                            ]
+                        }
                     }
+                    parallel parallelJobs
                 }
             }
         }
@@ -115,18 +231,27 @@ pipeline {
                         error "reuse_num and upgrade_num not cannot be empty"
                     }
                     def platforms = getPlatform(params.platform, platform_list)
-                    platforms.eachWithIndex { element, index ->
-                        job_name = "Quard/" + element
-                        build job: job_name, parameters: [
-                                string(name: 'quard_repo', value: params.quard_repo),
-                                string(name: 'quard_branch', value: params.quard_branch),
-                                booleanParam(name: 'compatibility', value: false),
-                                string(name: 'reuse_num', value: params.reuse_num),
-                                string(name: 'upgrade_num', value: params.upgrade_num),
-                                string(name: 'select_tests', value: params.select_tests),
-                                string(name: 'jenkinsfile_path', value: params.jenkinsfile_path)
-                        ], wait: false
+                    def parallelJobs = [:]
+                    platforms.remove('4X_TDH6.2.2_THD')
+                    platforms.eachWithIndex { upit, index ->
+                        def job_name = "Quard/${upit}"
+                        println "element: ${upit}, job_name: ${job_name}"
+                        parallelJobs[upit] = {
+                            build job: job_name, parameters: [
+                                    string(name: 'quard_repo', value: params.quard_repo),
+                                    string(name: 'quard_branch', value: params.quard_branch),
+                                    booleanParam(name: 'compatibility', value: false),
+                                    string(name: 'reuse_num', value: params.reuse_num),
+                                    string(name: 'upgrade_num', value: params.upgrade_num),
+                                    string(name: 'select_tests', value: params.select_tests),
+                                    booleanParam(name: 'skip_checkenv', value: false),
+                                    booleanParam(name: 'skip_quard_checkenv', value: true),
+                                    booleanParam(name: 'is_upgrade', value: true),
+                                    string(name: 'jenkinsfile_path', value: 'src/tests/upgrade/JENKINSFILE')
+                            ]
+                        }
                     }
+                    parallel parallelJobs
                 }
             }
         }

@@ -1,13 +1,13 @@
 #!groovy
 
-@Library('devopslib') _
+@Library('devopslib@DEVOPS-1825') _
 
 def paramsStepDeploy = [:]
 def hostServers = [
         [name: 'gw05', ip: '159.27.224.211'],
-        [name: 'gw05', ip: '159.27.224.168'],
-        [name: 'gw05', ip: '159.27.120.134'],
-        [name: 'gw05', ip: '159.27.81.212']]
+        [name: 'gw06', ip: '159.27.224.168'],
+        [name: 'gw08', ip: '159.27.120.134'],
+        [name: 'gw19', ip: '159.27.81.212']]
 
 def tester_emails = '''minhua.feng@kyligence.io;ye.feng@kyligence.io;meixiu.chen@kyligence.io;chenqing.zhu@kyligence.io;
         junhui.deng@kyligence.io;huiling.li@kyligence.io;xinxin.li@kyligence.io;zhongjun.chen@kyligence.io;hanhan.zhang@kyligence.io'''
@@ -54,7 +54,7 @@ pipeline {
                                 if (params.is_CH) {
                                     ke4xHelper.deployToServerWithCH('159.27.224.211', 'azure_env_gw05', params.file_name)
                                 } else {
-                                    ke4xHelper.deployToServer('159.27.120.141', 'azure_env-gw05', params.file_name)
+                                    ke4xHelper.deployToServer('159.27.224.211', 'azure_env-gw05', params.file_name)
                                 }
                             }
                         }

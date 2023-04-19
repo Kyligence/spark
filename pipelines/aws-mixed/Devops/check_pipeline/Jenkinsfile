@@ -1,0 +1,89 @@
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - image: "jenkinsci/jnlp-slave"
+      name: "jnlp"
+      resources:
+        requests:
+          memory: "200Mi"
+          cpu: "0.5"
+'''
+        }
+    }
+    stages {
+        stage('check') {
+            parallel {
+                stage('拉取代码') {
+                    steps {
+                        container('jnlp') {
+                            timestamps {
+                                checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'kyligence-git', url: 'https://github.com/Kyligence/devopslib.git']]])
+                            }
+                        }
+                    }
+                }
+                stage('连接 aws nexus') {
+                    steps {
+                        container('jnlp') {
+                            timestamps {
+                                sh '''
+                                for i in `seq 20`;do
+                                curl -I http://nexus.cicd:8081
+                                sleep 2
+                                done
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage('连接 local nexus') {
+                    steps {
+                        container('jnlp') {
+                            timestamps {
+                                sh '''
+                                for i in `seq 20`;do
+                                curl -I https://repo-ofs.kyligence.com:18443
+                                sleep 2
+                                done
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage('连接 kc nexus') {
+                    steps {
+                        container('jnlp') {
+                            timestamps {
+                                sh '''
+                                for i in `seq 20`;do
+                                curl -I https://devopsnexus.kyligence.io
+                                sleep 2
+                                done
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        failure {
+            container('jnlp') {
+                feishu('失败！！ ❌')
+            }
+        }
+    }
+}

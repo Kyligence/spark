@@ -1,0 +1,60 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/Devops/JenkinsJobTransform/jenkins-agent.yaml'
+        }
+    }
+
+    triggers {
+        cron('0 * * * *')
+    }
+
+    stages {
+        stage('Compile') {
+            steps {
+                container('maven') {
+                    dir('jenkins-etl') {
+                        sh script: """
+                            mvn clean install -DskipTests
+                        """
+                    }
+                }
+            }
+        }
+        stage('Extract') {
+            steps {
+                script {
+                    container('maven') {
+                        dir('jenkins-etl') {
+                            withCredentials([[
+                                $class: 'AmazonWebServicesCredentialsBinding',
+                                credentialsId: "aws_global_s3_cp",
+                                accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+
+                                withCredentials([usernamePassword(credentialsId: 'devopsid', passwordVariable: 'jenkins_password', usernameVariable: 'jenkins_username')]) {
+                                   sh script: """
+                                        cd target && \
+                                        java -jar -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                            -DAWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                            -DJENKINS_USERNAME=${jenkins_username} \
+                                            -DJENKINS_PASSWORD=${jenkins_password} \
+                                            jenkins-etl-1.0-SNAPSHOT-jar-with-dependencies.jar transform aws
+                                   """
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -3,23 +3,23 @@ kind: "Pod"
 name: "jenkins-package-agent"
 spec:
   containers:
-    - name: 'python3'
-      image: "python:3.11.0-alpine3.16"
-      imagePullPolicy: "IfNotPresent"
-      tty: true
-      command:
-        - "cat"
-      resources:
-        requests:
-          memory: "1Gi"
-          cpu: "100m"
-        limits:
-          memory: "8Gi"
-          cpu: "4000m"
-      volumeMounts:
-        - mountPath: "/mnt/jenkins"
-          name: "quard-newten"
-          subPath: ""
+    # - name: 'python3'
+    #   image: "python:3.11.0-alpine3.16"
+    #   imagePullPolicy: "IfNotPresent"
+    #   tty: true
+    #   command:
+    #     - "cat"
+    #   resources:
+    #     request:
+    #       memory: "1Gi"
+    #       cpu: "100m"
+    #     limits:
+    #       memory: "8Gi"
+    #       cpu: "4000m"
+      # volumeMounts:
+      #   - mountPath: "/mnt/jenkins"
+      #     name: "quard-newten"
+      #     subPath: ""
     - name: "build"
       image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
       imagePullPolicy: "IfNotPresent"
@@ -48,6 +48,8 @@ spec:
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
+        - mountPath: "/etc/pem/"
+          name: "quard-secret"
     - name: "kubectl"
       image: "cnych/kubectl"
       imagePullPolicy: "IfNotPresent"
@@ -72,9 +74,9 @@ spec:
       operator: Equal
       effect: NoSchedule
   volumes:
-    - name: "quard-newten"
-      persistentVolumeClaim:
-        claimName: "quard-pvc"
+    # - name: "quard-newten"
+    #   persistentVolumeClaim:
+    #     claimName: "quard-pvc"
     - name: "jenkins-common"
       persistentVolumeClaim:
         claimName: "jenkins-pvc-nfs"
@@ -92,3 +94,7 @@ spec:
             path: "settings.xml"
         name: "lex-mvn-settings"
       name: "lex-mvn-settings"
+    - name: "quard-secret"
+      secret:
+        secretName: "quard-secret"
+        defaultMode: 0400

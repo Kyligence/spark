@@ -1,0 +1,73 @@
+
+metadata:
+  namespace: node
+spec:
+  containers:
+    - name: "ci-tools"
+      command:
+        - "cat"
+      image: "429636537981.dkr.ecr.us-west-2.amazonaws.com/jenkinsslave/ci-tools:latest"
+      imagePullPolicy: "Always"
+      resources:
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+        requests:
+          memory: "1024Mi"
+          cpu: "2000m"
+      tty: true
+      volumeMounts:
+        - mountPath: "/jenkins-common"
+          name: "volume-0"
+          readOnly: false
+    - name: "package"
+      image: "429636537981.dkr.ecr.us-west-2.amazonaws.com/jenkinsslave/docker-dind-kc:20.10.18-dind"
+      imagePullPolicy: "Always"
+      securityContext:
+        privileged: true
+      env:
+        - name: DOCKER_TLS_CERTDIR
+          value:
+        - name: DOCKER_TLS_VERIFY
+          value:
+      resources:
+        limits:
+          memory: "4096Mi"
+          cpu: "3000m"
+        requests:
+          memory: "4096Mi"
+          cpu: "3000m"
+      tty: true
+      volumeMounts:
+        - mountPath: "/jenkins-common"
+          name: "volume-0"
+          readOnly: false
+        - mountPath: "/usr/share/java/maven-3/conf/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+    - name: "jnlp"
+      image: "jenkins/inbound-agent:4.3-4"
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+      volumeMounts:
+        - mountPath: "/jenkins-common"
+          name: "volume-0"
+          readOnly: false
+  volumes:
+    - name: "volume-0"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+        readOnly: false
+    - name: docker-config
+      configMap:
+        name: docker-config
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "aws-maven-settings"
+      name: "maven-settings"

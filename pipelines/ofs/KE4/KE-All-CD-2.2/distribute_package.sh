@@ -25,9 +25,9 @@ re_archive_package() {
     pwd
     tar -zxf $ORIGIN_PACKAGE_NAME
     # rename to general test package name
-    mv $(ls | grep -v "KE-") Kyligence-Enterprise-Quard
+    mv $(ls | grep -v ".tar.gz") Kyligence-Enterprise-Quard
     # copy license
-    sshpass -p hadoop scp -o StrictHostKeyChecking=no root@10.1.2.171:/mnt/jenkins/quard_newten/license/LICENSE ./Kyligence-Enterprise-Quard/
+    cp /mnt/jenkins/quard_newten/license/LICENSE ./Kyligence-Enterprise-Quard/
     # re-archive package
     tar -zcf Kyligence-Enterprise-Quard.tar.gz Kyligence-Enterprise-Quard
     printf "re-archive package done.\n"
@@ -39,7 +39,7 @@ distribute_package() {
     cd $TEMP_DIR
     while [ "$TRY_TIMES" -gt 0 ]
     do
-        sshpass -p hadoop scp Kyligence-Enterprise-Quard.tar.gz root@10.1.2.171:/mnt/jenkins/quard_newten/dist/
+        cp Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/dist/
         if [ "$?" -eq 0 ]; then
             cd $CURRENT_DIR
             break
@@ -52,9 +52,69 @@ distribute_package() {
     cd $CURRENT_DIR
 }
 
-download_package $1
-re_archive_package
-distribute_package
+distribute_upgrade_package() {
+    round=1
+    upgrade_from=$2
+    upgrade_to=$3
+    all_platforms=$4
+    upgrade_package_link=$5
+    echo "upgrade_from: ${upgrade_from}"
+    echo "upgrade_to: ${upgrade_to}"
+    echo "pal: ${all_platforms}"
+    echo "upgrade_package_link: ${upgrade_package_link}"
+    declare -a platforms=`echo $4 | sed 's/,/ /g' | sed 's/%/\( /g' | sed 's/@/\ \)/g'`
+    echo "platforms: ${platforms[@]}"
+    [ ! -d $upgrade_from ] && mkdir $upgrade_from
+    [ ! -d $upgrade_to ] && mkdir $upgrade_to
+    for item in $upgrade_from $upgrade_to
+    do
+        cd $CURRENT_DIR
+        if [ "${round}" -ne 2 ]; then
+            package_name="Kyligence-Enterprise-${item}-GA.tar.gz"
+            if [[ $item =~ "4.5" ]]; then
+                wget --tries=$TRY_TIMES https://package.kyligence.com/newten-cicd/artifacts/4.5.x/GA/Kyligence-Enterprise-${item}-GA.tar.gz -P $item > /dev/null
+            else
+                wget --tries=$TRY_TIMES https://package.kyligence.com/newten-cicd/artifacts/4.6.x/GA/Kyligence-Enterprise-${item}-GA.tar.gz -P $item > /dev/null
+            fi
+        else
+            package_name=${upgrade_package_link##*/}
+            wget --tries=$TRY_TIMES $upgrade_package_link -P $item > /dev/null
+        fi
+        cd $item
+        tar -zxf $package_name
+        # rename to general test package name
+        mv $(ls | grep -v ".tar.gz") Kyligence-Enterprise-Quard
+        # copy license
+        cp /mnt/jenkins/quard_newten/license/LICENSE ./Kyligence-Enterprise-Quard/
+        tar -zcf Kyligence-Enterprise-Quard.tar.gz Kyligence-Enterprise-Quard
+        rm -rf Kyligence-Enterprise-Quard $package_name
+        round=$((round+1))
+    done
+
+    cd $CURRENT_DIR
+
+    set +e
+    for platform in ${platforms[@]}
+    do
+        for item in $upgrade_from $upgrade_to
+        do
+            echo "copy package to: /mnt/jenkins/quard_newten/packages/${platform}/${item}"
+            rm -rf /mnt/jenkins/quard_newten/packages/${platform}/${item}
+            mkdir -p /mnt/jenkins/quard_newten/packages/${platform}/${item}
+            cp -f ${item}/Kyligence-Enterprise-Quard.tar.gz /mnt/jenkins/quard_newten/packages/${platform}/${item}
+        done
+    done
+    set -e
+    rm -rf $upgrade_from $upgrade_to
+}
+
+if [[ "$1" != "UPGRADE" ]]; then
+    download_package $1
+    re_archive_package
+    distribute_package
+else
+    distribute_upgrade_package $1 $2 $3 $4 $5
+fi
 
 echo "clean"
 rm -rf $TEMP_DIR

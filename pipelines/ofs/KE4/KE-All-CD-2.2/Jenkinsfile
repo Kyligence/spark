@@ -3,9 +3,9 @@
 @Library('devopslib') _
 
 import hudson.model.*
+import groovy.json.JsonSlurper
 
 def IS_DEBUG = false
-
 
 def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL',
                      '4X_CDH7.1.6_ALL', '4X_FI-C90_RW', '4X_HADOOP2.7.2_ALL', '4X_HDP2.4_ALL', '4X_HDP3.1_ALL',
@@ -381,12 +381,13 @@ pipeline {
         choice(name: 'envStage', choices: 'DEV\nQA\nRC\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
         choice(name: 'customerPkg', choices: ['NORMAL', 'CUSTOMER_JIANHANG_HDP3', 'CUSTOMER_GUANGDA_CDH5'], description: '指定客户定向包，NORMAL 为常规打包。若指定了定向包，会自动跳过 GA 上传步骤\n - CUSTOMER_JIANHANG_HDP3：建行\n - CUSTOMER_GUANGDA_CDH5：光大\n')
         string(name: 'docs_commitid', defaultValue: 'latest', description: '指定要打包的文档 commitid（前 8 位）')
-        booleanParam(name: 'run_quard', defaultValue: false, description: '是否执行 Quard 自动化测试')
-        booleanParam(name: 'run_step', defaultValue: false, description: '是否执行  Step 自动化测试')
-        booleanParam(name: 'is_CH', defaultValue: false, description: '是否执行 CH 换包动作（Step用）')
         booleanParam(name: 'scanApi', defaultValue: false, description: '勾选时，将扫描产品包 API 是否有变更（注意：RC 包会自动强制扫描！）\n 扫描规则如下 https://kyligence.feishu.cn/wiki/wikcnL08pitXNyfO4omnIaf5mLh')
         booleanParam(name: 'excludeDocs', defaultValue: false, description: '【手动排除】勾选时，将不包含手册')
+        booleanParam(name: 'run_quard', defaultValue: true, description: '是否执行 Quard 自动化测试')
+        booleanParam(name: 'run_step', defaultValue: true, description: '是否执行  Step 自动化测试')
         booleanParam(name: 'autoDeploy', defaultValue: false, description: '【手动打包不选】无需审批直接部署（用于 Daily Build）')
+        string(name: 'autoQuardParams', defaultValue: '{"quard_type":"KE4X_Daily","platform":"4X_CDH5.14_HA","quard_branch":"","reuse_num":"","upgrade_num":""}', description: '【手动打包不选】自动跑 Quard 参数（用于 Daily Build）')
+        string(name: 'autoStepParams', defaultValue: '{"is_CH": false,"product_line": "KE4X", "version_name": "GA-4.6.8.0", "plan_name": "S_RC_4.6.8.0_20230420_AZURE_发布测试_DEBUG"}', description: '【手动打包不选】自动跑 Step 参数（用于 Daily Build）')
     }
 
     stages {
@@ -576,7 +577,7 @@ pipeline {
                                 parameters: [
                                         string(name: 'remote_dir', defaultValue: '/home/4xuser/data/4.5test', description: 'KE work dir'),
                                         string(name: 'kepackage_dir', defaultValue: '/home/4xuser/data/devops', description: 'KE4.5 stroage dir'),
-                                        string(name: 'ke_workdir', defaultValue:'Kyligence-Enterprise-newten-current', description: 'ke work dir'),
+                                        string(name: 'ke_workdir', defaultValue: 'Kyligence-Enterprise-newten-current', description: 'ke work dir'),
                                         booleanParam(name: 'redeploy_gw07', defaultValue: false, description: '是否重新部署【159.27.120.141/gw07】环境'),
                                         booleanParam(name: 'redeploy_gw09', defaultValue: false, description: '是否重新部署【159.27.120.138/gw09】环境')
                                 ]
@@ -864,7 +865,7 @@ pipeline {
             }
         }
         // Auto Test
-        stage('5.1.Auto Test'){
+        stage('5.1.Auto Test') {
             parallel {
                 stage('Step') {
                     stages {
@@ -878,34 +879,40 @@ pipeline {
                                 script {
                                     def checkMsg = '是否部署并执行 Step 自动化测试服务？'
                                     println checkMsg
+
+                                    def jsonSlurper = new groovy.json.JsonSlurper()
+                                    def _autoStepParams = jsonSlurper.parseText(params.autoStepParams)
+                                    println "_autoStepParams: ${_autoStepParams}"
+
                                     if (params.autoDeploy) {
                                         paramsStepDeploy = [:]
-                                        paramsStepDeploy['is_CH'] = params.is_CH
+                                        paramsStepDeploy['is_CH'] = _autoStepParams.is_CH
                                         paramsStepDeploy['redeploy_gw05'] = true
                                         paramsStepDeploy['redeploy_gw06'] = true
                                         paramsStepDeploy['redeploy_gw08'] = true
                                         paramsStepDeploy['redeploy_gw19'] = true
-                                        paramsStepDeploy['product_line'] = 'KE4X'
-                                        paramsStepDeploy['version_name'] = ''
+                                        paramsStepDeploy['plan_name'] = _autoStepParams.plan_name
+                                        paramsStepDeploy['product_line'] = _autoStepParams.product_line
+                                        paramsStepDeploy['version_name'] = _autoStepParams.version_name
+                                        paramsStepDeploy['check_time'] = _autoStepParams.check_time
                                     } else {
                                         paramsStepDeploy = input(
-                                                message: checkMsg,
-                                                ok: '确认！',
-                                                // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
-                                                submitterParameter: 'APPROVER',
-                                                parameters: [
-//                                                        booleanParam(name: 'is_CH', defaultValue: params.is_CH, description: '是否执行 CH 换包动作'),
-                                                        booleanParam(name: 'redeploy_gw05', defaultValue: true, description: '是否重新部署【159.27.224.211/gw05】环境'),
-                                                        booleanParam(name: 'redeploy_gw06', defaultValue: true, description: '是否重新部署【159.27.224.168/gw06】环境'),
-                                                        booleanParam(name: 'redeploy_gw08', defaultValue: false, description: '是否重新部署【159.27.120.134/gw08】环境'),
-                                                        booleanParam(name: 'redeploy_gw19', defaultValue: false, description: '是否重新部署【159.27.81.212/gw19】环境'),
-                                                        text(name: 'plan_name', defaultValue: '', description: '[必填]Step库测试计划名称（多个请【换行】填写）'),
-//                                                        string(name: 'plan_excute_no', defaultValue: '', description: 'Step库测试计划执行编号'),
-                                                        string(name: 'check_time', defaultValue: '600', description: '检查时间'),
-                                                        choice(name: 'product_line', choices: 'KE4X\nCH', description: '[必填]产品线'),
-                                                        string(name: 'version_name', defaultValue: '', description: '[必填]版本名')
-//                                        string(name: 'step_env_ip', defaultValue:'10.1.3.18', description: '检查时间')
-                                                ]
+                                            message: checkMsg,
+                                            ok: '确认！',
+                                            // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
+                                            submitterParameter: 'APPROVER',
+                                            parameters: [
+                                                booleanParam(name: 'is_CH', defaultValue: params.is_CH, description: '是否执行 CH 换包动作'),
+                                                booleanParam(name: 'redeploy_gw05', defaultValue: true, description: '是否重新部署【159.27.224.211/gw05】环境'),
+                                                booleanParam(name: 'redeploy_gw06', defaultValue: true, description: '是否重新部署【159.27.224.168/gw06】环境'),
+                                                booleanParam(name: 'redeploy_gw08', defaultValue: true, description: '是否重新部署【159.27.120.134/gw08】环境'),
+                                                booleanParam(name: 'redeploy_gw19', defaultValue: true, description: '是否重新部署【159.27.81.212/gw19】环境'),
+                                                text(name: 'plan_name', defaultValue: '', description: 'Step库测试计划名称（多个请【换行】填写）'),
+                                                // string(name: 'plan_excute_no', defaultValue: '', description: 'Step库测试计划执行编号'),
+                                                choice(name: 'product_line', choices: 'KE4X\nCH', description: ' 产品线'),
+                                                string(name: 'version_name', defaultValue: '', description: '版本名'),
+                                                string(name: 'check_time', defaultValue: '600', description: '检查时间')
+                                            ]
                                         )
                                     }
                                     println "paramsStepDeploy: ${paramsStepDeploy}"
@@ -922,16 +929,16 @@ pipeline {
                                 echo 'Step...'
                                 build job: '0.KE-STEP', parameters: [
                                         string(name: 'file_name', value: package_info.file_name),
-                                        booleanParam(name: 'is_CH', value: params.is_CH),
+                                        booleanParam(name: 'is_CH', value: paramsStepDeploy.is_CH),
                                         booleanParam(name: 'redeploy_gw05', value: paramsStepDeploy['redeploy_gw05']),
                                         booleanParam(name: 'redeploy_gw06', value: paramsStepDeploy['redeploy_gw06']),
                                         booleanParam(name: 'redeploy_gw08', value: paramsStepDeploy['redeploy_gw08']),
                                         booleanParam(name: 'redeploy_gw19', value: paramsStepDeploy['redeploy_gw19']),
                                         text(name: 'plan_name', value: paramsStepDeploy['plan_name']),
-                                        string(name: 'plan_excute_no', value: ''),
-                                        string(name: 'check_time', value: paramsStepDeploy['check_time']),
-                                        choice(name: 'product_line', value: paramsStepDeploy['product_line']),
-                                        string(name: 'version_name', value: paramsStepDeploy['version_name'])
+                                        string(name: 'product_line', value: paramsStepDeploy['product_line']),
+                                        string(name: 'version_name', value: paramsStepDeploy['version_name']),
+//                                        string(name: 'plan_excute_no', value: ''),
+                                        string(name: 'check_time', value: paramsStepDeploy['check_time'])
                                 ]
                             }
                         }
@@ -949,33 +956,37 @@ pipeline {
                                 script {
                                     def checkMsg = '是否部署并执行 Quard 自动化测试服务？'
                                     println checkMsg
-//                if (params.autoDeploy) {
-//                    paramsQuardDeploy = [:]
-//                    paramsQuardDeploy['quard_type'] = 'KE4X_Daily'
-//                    paramsQuardDeploy['platform'] = platform_list
-//                    paramsQuardDeploy['quard_branch'] = 'quard-4.x'
-//                    paramsQuardDeploy['reuse_num'] = ''
-//                    paramsQuardDeploy['upgrade_num'] = ''
-//                    paramsQuardDeploy['select_tests'] = ''
-//                    paramsQuardDeploy['package_url'] = "https://package.kyligence.com/${package_info.package_file}"
-//                } else {
-                                    paramsQuardDeploy = input(
-                                            message: checkMsg,
-                                            ok: '确认！',
-                                            // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
-                                            submitterParameter: 'APPROVER',
-                                            parameters: [
-                                                    choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard 测试类型'),
-                                                    choice(name: 'platform', choices: platform_list, description: 'Quard 测试平台'),
-//                                    string(name: 'quard_repo', defaultValue: 'Kyligence', description: ''),
-                                                    string(name: 'quard_branch', defaultValue: 'quard-4.x', description: ''),
-                                                    string(name: 'reuse_num', description: ''),
-                                                    string(name: 'upgrade_num', defaultValue: '', description: ''),
-                                                    string(name: 'select_tests', description: ''),
-                                                    string(name: 'package_url', defaultValue: "https://package.kyligence.com/${package_info.package_file}", description: '')
-                                            ]
-                                    )
-//                }
+
+                                    def jsonSlurper = new groovy.json.JsonSlurper()
+                                    def _autoQuardParams = jsonSlurper.parseText(params.autoQuardParams)
+                                    println "_autoQuardParams: ${_autoQuardParams}"
+
+                                    if (params.autoDeploy) {
+                                        paramsQuardDeploy = [:]
+                                        paramsQuardDeploy['quard_type'] = _autoQuardParams.quard_type
+                                        paramsQuardDeploy['platform'] = _autoQuardParams.platform
+                                        paramsQuardDeploy['quard_branch'] = _autoQuardParams.quard_branch
+                                        paramsQuardDeploy['reuse_num'] = _autoQuardParams.reuse_num
+                                        paramsQuardDeploy['upgrade_num'] = _autoQuardParams.upgrade_num
+                                        paramsQuardDeploy['select_tests'] = _autoQuardParams.select_tests
+                                        paramsQuardDeploy['package_url'] = "https://package.kyligence.com/${package_info.package_file}"
+                                    } else {
+                                        paramsQuardDeploy = input(
+                                                message: checkMsg,
+                                                ok: '确认！',
+                                                // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
+                                                submitterParameter: 'APPROVER',
+                                                parameters: [
+                                                        choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_FULLCASE\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard 测试类型'),
+                                                        choice(name: 'platform', choices: platform_list, description: 'Quard 测试平台'),
+                                                        string(name: 'quard_branch', defaultValue: 'quard-4.x', description: ''),
+                                                        string(name: 'reuse_num', description: ''),
+                                                        string(name: 'upgrade_num', defaultValue: '', description: ''),
+                                                        string(name: 'select_tests', description: ''),
+                                                        string(name: 'package_url', defaultValue: "https://package.kyligence.com/${package_info.package_file}", description: '')
+                                                ]
+                                        )
+                                    }
                                     println "paramsQuardDeploy: ${paramsQuardDeploy}"
                                 }
                             }
@@ -1007,10 +1018,10 @@ pipeline {
         // GA
         stage('6.Approve GA') {
             when {
-                 expression {
-                     return params.envStage == 'GA'
-                 }
-             }
+                expression {
+                    return params.envStage == 'GA'
+                }
+            }
             steps {
                 container('build2') {
                     script {

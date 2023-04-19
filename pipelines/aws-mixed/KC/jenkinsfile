@@ -1,0 +1,267 @@
+#!groovy
+
+def upload_s3(Map map) {
+    // rename the upload path to support the packaging of different cloud platforms
+    profile = "${cloud}/${profile}"
+    def awscp = [:]
+    if ("${map.skipcn}" == "true") {
+        echo "skip upload to cn bucket."
+    } else {
+        awscp["cn_lightning"] = {
+            withAWS(region: "${cn_bucket_region}", credentials: 'aws_cn_s3_cp') {
+                s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "./kyligence_lightning_amd64.tar.gz", bucket: "$bucket", path: "kycloud/version/${version}/${profile}/packages/kyligence_lightning_amd64.tar.gz", acl: 'PublicRead')
+            }
+        }
+    }
+    awscp["global_lightning"] = {
+        withAWS(region: "${global_bucket_region}", credentials: 'aws_global_s3_cp') {
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "./kyligence_lightning_amd64.tar.gz", bucket: "$bucket", path: "kycloud/version/${version}/${profile}/packages/kyligence_lightning_amd64.tar.gz", acl: 'PublicRead')
+        }
+    }
+    awscp["global_other"] = {
+        withAWS(region: "${global_bucket_region}", credentials: 'aws_global_s3_cp') {
+            sh """
+                ls -alth /jenkins-common/jobs/${env.JOB_NAME}/${version}/
+                cd /jenkins-common/jobs/${env.JOB_NAME}/${version}/
+                mkdir -p upload
+                mv docker_influxdb.tar upload
+                mv docker_zookeeper.tar upload
+                mv ansible.tar.gz upload
+                mv node_exporter.tar.gz upload
+                mv kyligence-loki.tar upload
+                mv kyligence-loki-azure.tar upload
+                mv promtail.tar.gz upload
+                ls -alth upload
+            """
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/upload/*", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_influxdb.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_zookeeper.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/ansible.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/node_exporter.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/kyligence-loki.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/kyligence-loki-azure.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+//            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/promtail.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+        }
+    }
+    awscp["cn_other"] = {
+        withAWS(region: "${cn_bucket_region}", credentials: 'aws_cn_s3_cp') {
+            sh "ls -althm /jenkins-common/jobs/${env.JOB_NAME}/${version}/"
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_influxdb.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_zookeeper.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/ansible.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/node_exporter.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/kyligence-loki.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/kyligence-loki-azure.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/promtail.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+        }
+    }
+
+    parallel awscp
+}
+
+def upload_arm_packages_to_s3(Map map) {
+    def awscp = [:]
+    if ("${map.skipcn}" == "true") {
+        echo "skip upload to cn bucket."
+    } else {
+        awscp["cn_lightning"] = {
+            withAWS(region: "${cn_bucket_region}", credentials: 'aws_cn_s3_cp') {
+                s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "./kyligence_lightning_aarch64.tar.gz", bucket: "$bucket", path: "kycloud/version/${version}/${profile}/packages/kyligence_lightning_aarch64.tar.gz", acl: 'PublicRead')
+            }
+        }
+    }
+    awscp["global_lightning"] = {
+        withAWS(region: "${global_bucket_region}", credentials: 'aws_global_s3_cp') {
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "./kyligence_lightning_aarch64.tar.gz", bucket: "$bucket", path: "kycloud/version/${version}/${profile}/packages/kyligence_lightning_aarch64.tar.gz", acl: 'PublicRead')
+        }
+    }
+    awscp["global_other"] = {
+        withAWS(region: "${global_bucket_region}", credentials: 'aws_global_s3_cp') {
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_influxdb_aarch64.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_zookeeper_aarch64.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/kyligence-loki_aarch64.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/node_exporter_aarch64.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/promtail_aarch64.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+        }
+    }
+    awscp["cn_other"] = {
+        withAWS(region: "${cn_bucket_region}", credentials: 'aws_cn_s3_cp') {
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_influxdb_aarch64.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/docker_zookeeper_aarch64.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/kyligence-loki_aarch64.tar", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/node_exporter_aarch64.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+            s3Upload(pathStyleAccessEnabled: true, payloadSigningEnabled: true, file: "/jenkins-common/jobs/${env.JOB_NAME}/${version}/promtail_aarch64.tar.gz", bucket: "$bucket", path: "kycloud/version/$version/$profile/resources/", acl: 'PublicRead')
+        }
+    }
+
+    parallel awscp
+}
+
+
+pipeline {
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws-mixed/KC/jenkins-agent.yaml'
+        }
+    }
+    stages {
+        stage("download packages") {
+            when {
+                environment name: 'force_update', value: 'true'
+            }
+            steps {
+                container('ci-tools') {
+                    checkout([$class: "GitSCM", branches: [[name: "${branch}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${credential}", url: "${repo}"]]])
+                    timestamps {
+                        sh "mkdir -p /jenkins-common/jobs/${env.JOB_NAME}/${version}"
+                        dir("/jenkins-common/jobs/${env.JOB_NAME}/${version}") {
+                            script {
+                                def run_command = "python /version/src/version.py --config ${env.WORKSPACE}/pipeline/config.yaml --module lightning-dependency --s3path packages"
+                                def filelist = sh returnStdout: true, script: run_command
+                                def filelists = filelist.split("\n")
+                                def files = [:]
+
+                                for (int i = 0; i < filelists.size(); ++i) {
+                                    file = filelists[i].split(" ")
+                                    final path = file[1]
+                                    final name = file[0]
+                                    if (name.startsWith("nacos.tar.gz") || name.startsWith("terra_provider.tar.gz")) {
+                                        files[file[0]] = {
+                                            withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                                                s3Download(file: "$name", bucket: 'kyligencecloud-ci', path: "$path", force: true)
+                                            }
+                                        }
+                                    }
+                                }
+                                files["jar"] = {
+                                    withAWS(region: 'us-west-2', credentials: 'aws_global_s3_cp') {
+                                        for (int i = 0; i < filelists.size(); ++i) {
+                                            file = filelists[i].split(" ")
+                                            final path = file[1]
+                                            final name = file[0]
+                                            if (!(name.startsWith("nacos.tar.gz") || name.startsWith("terra_provider.tar.gz"))) {
+                                                s3Download(file: "$name", bucket: 'kyligencecloud-ci', path: "$path", force: true)
+                                            }
+                                        }
+                                    }
+                                }
+                                parallel files
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("repackage & push") {
+            environment {
+                CRED_ID = 'zbbkeepgoing'
+            }
+
+            steps {
+                container('package') {
+                    checkout([$class: "GitSCM", branches: [[name: "${branch}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${credential}", url: "${repo}"]]])
+                    timestamps {
+                        dir("../") {
+                            script {
+                                final version_info = "Kyligence Cloud ${deploy_version}"
+                                sh """
+                                  echo "prepare docker buildx builder"
+                                  docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+                                  docker buildx create --name multiarch --driver docker-container --use
+                                  docker buildx inspect --bootstrap
+                                  echo "prepare file"
+                                  mkdir -p aarch64
+                                  mkdir -p amd64
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/terra_provider.tar.gz ./
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/hadoop-aws-3.3.1.jar ./
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/license.patch ./
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/nginx.tar.gz ./amd64/nginx.tar.gz
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/nginx_aarch64.tar.gz ./aarch64/nginx.tar.gz
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/terraform14 ./terraform_amd64
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/terraform14_aarch64 ./terraform_aarch64
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/admintools ./admintools_amd64
+                                  cp /jenkins-common/jobs/${env.JOB_NAME}/${version}/admintools_aarch64 ./admintools_aarch64
+                                  tar -xvf terra_provider.tar.gz
+                                  tar -xvf ./amd64/nginx.tar.gz -C ./amd64/
+                                  tar -xvf ./aarch64/nginx.tar.gz -C ./aarch64/
+                                  echo ${version_info}  > VERSION
+                                """
+                                if ("${cloud}" == "all") {
+                                    sh """
+                                      cp -r ${JOB_BASE_NAME} saas
+                                      cp -r ${JOB_BASE_NAME} aws
+                                      cp -r ${JOB_BASE_NAME} azure
+                                      cp -r ${JOB_BASE_NAME} huawei
+                                    """
+                                }
+
+                            }
+                        }
+
+                        dir('lightning_frontend') {
+                            checkout([$class: "GitSCM", branches: [[name: "${frontend_branch}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: "${credential}", url: "${frontend_repo}"]]])
+
+                            script {
+                                sh """
+                                    rm -rf ../frontend
+                                    cp -r ./frontend ../
+                                """
+                            }
+                        }
+
+                        script {
+                            sh """
+                                pwd
+                                ls -l ./
+                            """
+                            if ("${cloud}" == "all") {
+                                def clouddeploy = [:]
+                                clouddeploy["saas"] = {
+                                    dir("../saas") {
+                                        sh "make saas-deploy VERSION=${version} CLOUD=saas"
+                                        upload_s3(skipcn = "${skipcn}")
+                                    }
+                                }
+                                clouddeploy["aws"] = {
+                                    dir("../aws") {
+                                        sh "make ${cloud}-deploy VERSION=${version} CLOUD=${cloud}"
+                                        upload_s3(skipcn: "${skipcn}")
+                                        upload_arm_packages_to_s3(skipcn: "${skipcn}")
+                                    }
+                                }
+                                clouddeploy["azure"] = {
+                                    dir("../azure") {
+                                        sh "make azure-deploy VERSION=${version}"
+                                        upload_s3(skipcn = "${skipcn}")
+                                    }
+                                }
+                                clouddeploy["huawei"] = {
+                                    dir("../huawei") {
+                                        sh "make huawei-deploy VERSION=${version}"
+                                        upload_s3(skipcn = "${skipcn}")
+                                    }
+                                }
+                                parallel clouddeploy
+                            } else {
+                                if ("${cloud}" == "saas") {
+                                    sh "make ${cloud}-deploy VERSION=${version} CLOUD=saas"
+                                    sh "pwd"
+                                    sh "ls -l"
+                                    upload_s3(skipcn: "${skipcn}")
+                                } else if ("${cloud}" == "aws") {
+                                    sh "make ${cloud}-deploy VERSION=${version} CLOUD=${cloud}"
+                                    upload_s3(skipcn: "${skipcn}")
+                                    upload_arm_packages_to_s3(skipcn: "${skipcn}")
+                                } else if ("${cloud}" == "azure") {
+                                    sh "make ${cloud}-deploy VERSION=${version} CLOUD=${cloud}"
+                                    upload_s3(skipcn: "${skipcn}")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

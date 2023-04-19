@@ -1,0 +1,97 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+metadata:
+  namespace: cicd
+spec:
+  securityContext:
+    fsGroup: 0
+  containers:
+    - name: "maven"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.6.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /var/jenkins_tmp
+          subPath: "tmp"
+          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          subPath: "settings.xml"
+          readOnly: false
+        - name: "jenkins-common"
+          mountPath: /var/jacoco
+          subPath: "jacoco"
+        - name: "jenkins-common"
+          mountPath: /tools
+          subPath: "tools"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository/org/apache/kylin
+        - name: "spark-repo"
+          mountPath: /root/.m2/repository/org/apache/spark
+      resources:
+        requests:
+          memory: "6Gi"
+          cpu: "3"
+          ephemeral-storage: "5Gi"
+    - name: "sonar"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.6.3-openjdk-11"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /root/.m2/repository
+          subPath: "maven_repo"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+      resources:
+        requests:
+          memory: "4Gi"
+          cpu: "2"
+          ephemeral-storage: "5Gi"
+    - image: "jenkins/inbound-agent:4.11-1-jdk11"
+      name: "jnlp"
+      resources:
+        requests:
+          memory: "2048Mi"
+          cpu: "1"
+          ephemeral-storage: "1Gi"
+      volumeMounts:
+        - name: "jenkins-common"
+          mountPath: /var/jenkins_tmp
+          subPath: "tmp"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+        readOnly: false
+#    - name: "jenkins-tmp"
+#      persistentVolumeClaim:
+#        claimName: "fileserver-claim1"
+#        readOnly: false
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "kylin-repo"
+      emptyDir: { }
+    - name: "spark-repo"
+      emptyDir: { }
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "maven-settings"
+      name: "maven-settings"
