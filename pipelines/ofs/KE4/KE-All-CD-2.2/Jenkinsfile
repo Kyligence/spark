@@ -880,11 +880,11 @@ pipeline {
                                     def checkMsg = '是否部署并执行 Step 自动化测试服务？'
                                     println checkMsg
 
-                                    def jsonSlurper = new groovy.json.JsonSlurper()
-                                    def _autoStepParams = jsonSlurper.parseText(params.autoStepParams)
-                                    println "_autoStepParams: ${_autoStepParams}"
-
                                     if (params.autoDeploy) {
+                                        def jsonSlurper = new groovy.json.JsonSlurper()
+                                        def _autoStepParams = jsonSlurper.parseText(params.autoStepParams)
+                                        println "_autoStepParams: ${_autoStepParams}"
+
                                         paramsStepDeploy = [:]
                                         paramsStepDeploy['is_CH'] = _autoStepParams.is_CH
                                         paramsStepDeploy['redeploy_gw05'] = true
@@ -955,11 +955,11 @@ pipeline {
                                     def checkMsg = '是否部署并执行 Quard 自动化测试服务？'
                                     println checkMsg
 
-                                    def jsonSlurper = new groovy.json.JsonSlurper()
-                                    def _autoQuardParams = jsonSlurper.parseText(params.autoQuardParams)
-                                    println "_autoQuardParams: ${_autoQuardParams}"
-
                                     if (params.autoDeploy) {
+                                        def jsonSlurper = new groovy.json.JsonSlurper()
+                                        def _autoQuardParams = jsonSlurper.parseText(params.autoQuardParams)
+                                        println "_autoQuardParams: ${_autoQuardParams}"
+
                                         paramsQuardDeploy = [:]
                                         paramsQuardDeploy['quard_type'] = _autoQuardParams.quard_type
                                         paramsQuardDeploy['platform'] = _autoQuardParams.platform

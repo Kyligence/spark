@@ -15,7 +15,10 @@ def execKE4Job(job, jobParameters) {
             string(name: 'kylinVersion', value: jobParameters.kylinVersion),
             string(name: 'envStage', value: jobParameters.envStage),
             string(name: 'customerPkg', value: jobParameters.customerPkg),
+            booleanParam(name: 'excludeDocs', value: true),
             string(name: 'docs_commitid', value: 'latest'),
+            booleanParam(name: 'run_quard', value: jobParameters.run_quard || false),
+            booleanParam(name: 'run_step', value: jobParameters.run_step || false),
             booleanParam(name: 'autoDeploy', value: true)]
 }
 
