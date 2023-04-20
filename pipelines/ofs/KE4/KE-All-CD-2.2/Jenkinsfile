@@ -902,13 +902,12 @@ pipeline {
                                             // submitter: 'liming.meng,meixiu.chen,lu.cao,chenqing.zhu',
                                             submitterParameter: 'APPROVER',
                                             parameters: [
-                                                booleanParam(name: 'is_CH', defaultValue: params.is_CH, description: '是否执行 CH 换包动作'),
+                                                booleanParam(name: 'is_CH', defaultValue: false, description: '是否执行 CH 换包动作'),
                                                 booleanParam(name: 'redeploy_gw05', defaultValue: true, description: '是否重新部署【159.27.224.211/gw05】环境'),
                                                 booleanParam(name: 'redeploy_gw06', defaultValue: true, description: '是否重新部署【159.27.224.168/gw06】环境'),
                                                 booleanParam(name: 'redeploy_gw08', defaultValue: true, description: '是否重新部署【159.27.120.134/gw08】环境'),
                                                 booleanParam(name: 'redeploy_gw19', defaultValue: true, description: '是否重新部署【159.27.81.212/gw19】环境'),
                                                 text(name: 'plan_name', defaultValue: '', description: 'Step库测试计划名称（多个请【换行】填写）'),
-                                                // string(name: 'plan_excute_no', defaultValue: '', description: 'Step库测试计划执行编号'),
                                                 choice(name: 'product_line', choices: 'KE4X\nCH', description: ' 产品线'),
                                                 string(name: 'version_name', defaultValue: '', description: '版本名'),
                                                 string(name: 'check_time', defaultValue: '600', description: '检查时间')
@@ -937,7 +936,6 @@ pipeline {
                                         text(name: 'plan_name', value: paramsStepDeploy['plan_name']),
                                         string(name: 'product_line', value: paramsStepDeploy['product_line']),
                                         string(name: 'version_name', value: paramsStepDeploy['version_name']),
-//                                        string(name: 'plan_excute_no', value: ''),
                                         string(name: 'check_time', value: paramsStepDeploy['check_time'])
                                 ]
                             }
