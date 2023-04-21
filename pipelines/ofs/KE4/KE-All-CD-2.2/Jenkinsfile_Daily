@@ -7,19 +7,24 @@ import hudson.model.*
 // job is a string
 // jobParameters is a hashmap
 def execKE4Job(job, jobParameters) {
+    print "execKE4Job -> job[${job}],jobParameters[${jobParameters}]"
+
     sleep Math.random() * 10
     def buildJobResult = build job: job, parameters: [
-            string(name: 'deployWay', value: jobParameters.deployWay),
-            string(name: 'deployType', value: jobParameters.deployType),
-            string(name: 'version', value: jobParameters.version),
-            string(name: 'kylinVersion', value: jobParameters.kylinVersion),
-            string(name: 'envStage', value: jobParameters.envStage),
-            string(name: 'customerPkg', value: jobParameters.customerPkg),
-            booleanParam(name: 'excludeDocs', value: true),
-            string(name: 'docs_commitid', value: 'latest'),
-            booleanParam(name: 'run_quard', value: jobParameters.run_quard || false),
-            booleanParam(name: 'run_step', value: jobParameters.run_step || false),
-            booleanParam(name: 'autoDeploy', value: true)]
+        string(name: 'deployWay', value: jobParameters.deployWay),
+        string(name: 'deployType', value: jobParameters.deployType),
+        string(name: 'version', value: jobParameters.version),
+        string(name: 'kylinVersion', value: jobParameters.kylinVersion),
+        string(name: 'envStage', value: jobParameters.envStage),
+        string(name: 'customerPkg', value: jobParameters.customerPkg),
+        string(name: 'docs_commitid', value: 'latest'),
+        booleanParam(name: 'excludeDocs', value: true),
+        booleanParam(name: 'run_quard', value: jobParameters.run_quard),
+        booleanParam(name: 'run_step', value: jobParameters.run_step),
+        booleanParam(name: 'autoDeploy', value: true),
+        string(name: 'autoQuardParams', value: jobParameters.autoQuardParams),
+        string(name: 'autoStepParams', value: jobParameters.autoStepParams)
+    ], wait
 }
 
 pipeline {
