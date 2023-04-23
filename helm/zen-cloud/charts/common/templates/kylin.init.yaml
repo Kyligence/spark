@@ -21,3 +21,6 @@ data:
   SPARK_SERVICE_ACCOUNT_NAME: {{ .Values.serviceAccount.name }}-{{ .Release.Namespace }}
   SPARK_UPLOAD_PATH: {{ .Values.global.spark.uploadPath }}
   RELEASE_NAME: {{ .Release.Name }}
+  {{- if and .Values.global.nacos.config.initSpec (eq "min" .Values.global.nacos.config.initSpec) }}
+  CONFIG_INIT_SPEC: {{ (printf "_%s" (lower .Values.global.nacos.config.initSpec)) }}
+  {{- end }}
