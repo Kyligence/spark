@@ -490,6 +490,7 @@ def job_run():
             jenkins_job_continue(plan_name,plan_excute_no,step_username,step_password,int(check_time),step_ip)
     except IndexError:
         feishu_robot_card("jenkins 任务", '**参数输入异常，缺少参数**')
+        raise IndexError()
 
 job_run()
 
@@ -500,6 +501,6 @@ job_run()
 # jenkins_job_continue('S_Daily_4.6.2.0_20221116_AZURE_日报测试','202211241443394129272875',600)
 # # jenkins_job()
 # jenkins_job('S_GA_4.6.4.0_0109_AZURE_脚本测试', 'QA', 600)
-# jenkins_job('S_GA_4.6.4.0_0109_AZURE_脚本测试', 'QA', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)
-# jenkins_job('CH.HA_GA_4.6.5.0_20230210_AZURE_脚本测试', 'RC', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)
-# jenkins_job('CH.非HA_GA_4.6.5.0_20230210_AZURE_脚本测试', 'RC', 'Devops_user@kyligence.io', 'Kylin@#!~', 5)
+# jenkins_job('S_GA_4.6.4.0_0109_AZURE_脚本测试', 'QA', 'Devops_user@kyligence.io', 'xxx', 5)
+# jenkins_job('CH.HA_GA_4.6.5.0_20230210_AZURE_脚本测试', 'RC', 'Devops_user@kyligence.io', 'xxx', 5)
+# jenkins_job('CH.非HA_GA_4.6.5.0_20230210_AZURE_脚本测试', 'RC', 'Devops_user@kyligence.io', 'xxx', 5)

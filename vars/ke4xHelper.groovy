@@ -160,6 +160,7 @@ def stepRun(planName, envStage, productLine, versionName, check_time = 600, time
             """
             retry(3) {
                 sh script: """
+                    set -e
                     cd /opt/qa_auto
                     python3 excute_test_plan.py 'first' ${productLine} ${versionName} ${planName} ${envStage} ${check_time} ${REMOTE_USERNAME} ${REMOTE_PASSWORD} '10.1.3.18'
                 """
