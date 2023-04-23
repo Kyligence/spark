@@ -122,7 +122,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
 
 pipeline {
     options {
-        timeout(time: 5, unit: 'HOURS')
+        timeout(time: 12, unit: 'HOURS')
     }
 
     agent {
