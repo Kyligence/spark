@@ -220,9 +220,9 @@ pipeline {
                                         kubernetesParm = ''
                                     }
                                     timestamps {
-                                        sh script: "./build/mvn versions:set -DnewVersion=${releaseVersion}"
                                         sh script: """
-                                            ./build/mvn -T1C deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                            mvn versions:set -DnewVersion=${releaseVersion}
+                                            mvn -T1C deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
                                             # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
                                         """
                                     }
@@ -260,11 +260,13 @@ pipeline {
                                     if (params.sparkVersion == 'spark2.2') {
                                         kubernetesParm = ''
                                     }
-                                    //delpoy to public repo for kylin
-                                    sh """
-                                        ./build/mvn versions:set -DnewVersion=${releaseVersion}
-                                        ./build/mvn -T1C deploy -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
-                                    """
+                                    timestamps {
+                                        //delpoy to public repo for kylin
+                                        sh """
+                                            mvn versions:set -DnewVersion=${releaseVersion}
+                                            mvn -T1C deploy -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
+                                        """
+                                    }
                                 }
                             }
                         }
