@@ -30,8 +30,10 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
             npm rebuild
             npm cache verify
             npm install -g npm@latest
-            npm install
         """
+        retry(3){
+            sh "npm install"
+        }
     }
     if (noSpark) {
         echo "Package not include Spark"
