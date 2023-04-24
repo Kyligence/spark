@@ -104,13 +104,15 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
             def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
             def _releaseName = _releaseVersion.replace('-kylin', '')
             def _package =  getPackageInfo(_releaseName, packageType)
-            if(uploadOnly) {
-                sh """
-                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_package} --no-check-certificate
-                """
-            } else {
-                withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                    pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
+            retry(3) {
+                if(uploadOnly) {
+                    sh """
+                        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_package} --no-check-certificate
+                    """
+                } else {
+                    withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                        pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
+                    }
                 }
             }
             if(uploadS3){
