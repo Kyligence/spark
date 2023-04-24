@@ -26,8 +26,11 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
     dir('kystudio') {
         sh """
             pwd && ls -lha
+            rm -rf node_modules || true
+            rm package-lock.json || true
             npm cache clean --force
             npm cache verify
+            npm install
         """
     }
     if (noSpark) {
