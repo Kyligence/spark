@@ -29,7 +29,9 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
             npm cache verify
             node -v
             npm -v
-            npm install npm
+            npm install npm -g
+            node -v
+            npm -v
             npm cache clean --force
             npm rebuild
             node -v

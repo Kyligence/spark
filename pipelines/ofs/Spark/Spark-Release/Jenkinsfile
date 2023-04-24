@@ -222,11 +222,13 @@ pipeline {
                                         kubernetesParm = ''
                                     }
                                     timestamps {
-                                        sh script: """
-                                            mvn versions:set -DnewVersion=${releaseVersion}
-                                            mvn -T1C deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                            # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                        """
+                                        retry(2) {
+                                            sh script: """
+                                                mvn versions:set -DnewVersion=${releaseVersion}
+                                                mvn -T1C clean install deploy -U -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                                # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                            """
+                                        }
                                     }
                                 }
                             }
@@ -263,11 +265,13 @@ pipeline {
                                         kubernetesParm = ''
                                     }
                                     timestamps {
-                                        //delpoy to public repo for kylin
-                                        sh """
-                                            mvn versions:set -DnewVersion=${releaseVersion}
-                                            mvn -T1C deploy -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
-                                        """
+                                        retry(2) {
+                                            //delpoy to public repo for kylin
+                                            sh """
+                                                mvn versions:set -DnewVersion=${releaseVersion}
+                                                mvn -T1C clean install deploy -U -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
+                                            """
+                                        }
                                     }
                                 }
                             }
