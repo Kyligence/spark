@@ -23,6 +23,7 @@ global:
   nacos:
     config:
       serverAddrNoHttp: nacos-config-svc.zen-cloud:8848
+      initSpec: min
     discovery:
       serverAddrNoHttp: nacos-naming-svc.zen-cloud:8848
     # serverAddr:
@@ -73,3 +74,6 @@ gateway:
 #       host: redis-master.zen-cloud.svc.cluster.local
 #       database: 6
 #       password: "******"
+
+common:
+  sparkResourceNamespace: zen-cloud-calc

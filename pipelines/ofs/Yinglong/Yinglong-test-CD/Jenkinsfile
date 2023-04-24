@@ -64,6 +64,10 @@ def release_tag_back = ''
 def paramsMap = [:]
 //变量名，手册版本号
 def doc_version = ''
+// commit id of global_service
+def release_commitid_global_service = ''
+// commit id of zen_cloud
+def release_commitid_zen_cloud = ''
 
 // 根据发布类型自动获取分支
 def getBranch(deployType, envStage, version) {
@@ -262,14 +266,19 @@ pipeline {
         choice(name: 'envStage', choices: 'DEV\nQA\nRC\nALPHA\nBETA\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
         choice(name: 'cloudPlatform', choices: 'AWS\nAliCloud\nAzure', description: '云平台:\nAWS\nAliCloud\nAzure')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 Zen Cloud，iam 会添加 iam 的 jar')
+        choice(name: 'target', choices: ['helm,image', 'helm', 'image'], description: '选择 Zen-cloud pipeline 需要构建的对象是 helm 还是 image，默认为 helm,image')
         booleanParam(name: 'build', defaultValue: true, description: '是否构建')
         booleanParam(name: 'push', defaultValue: true, description: '推送镜像')
+        booleanParam(name: 'offline', defaultValue: true, description: '是否需要打离线包')
+
     }
 
     stages {
         stage('1.Pull Code') {
             when {
-                environment name: 'build', value: 'true'
+                expression {
+                    return params.build
+                }
             }
             steps {
                 container('build') {
@@ -277,6 +286,16 @@ pipeline {
                         script {
                             // 1. 参数检查：version
                             paramsVerify.version(params.version)
+                            release_commitid_global_service = sh(returnStdout: true, script: "git log --stat -1 ${env.WORKSPACE}/helm/global-service-zen-cloud | sed -n 's/commit \\(.*\\)/\\1/p'").trim()
+                            println "release_commitid_global_service: ${release_commitid_global_service}"
+                            release_commitid_zen_cloud = sh(returnStdout: true, script: "git log --stat -1 ${env.WORKSPACE}/helm/zen-cloud | sed -n 's/commit \\(.*\\)/\\1/p'").trim()
+                            println "release_commitid_zen_cloud: ${release_commitid_zen_cloud}"
+
+                            if (params.target == 'helm') {
+                                println "build target is: ${params.target}, no need to pull code."
+                                return
+                            }
+
                             // 2. 根据分支规则获取分支
                             if (params.deployWay == 'Auto Select') {
                                 // 2.1 根据分支流程规则，自动获取代码分支参数
@@ -321,17 +340,14 @@ pipeline {
                             """
                         }
                     }
-                    dir('global') {
-                        script {
-                            githubCheckout 'xuanwu-charts', 'main', 'https', 'github.com'
-                        }
-                    }
                 }
             }
         }
         stage('2.Building Package') {
             when {
-                environment name: 'build', value: 'true'
+                expression {
+                    return params.build && params.target != 'helm'
+                }
             }
             steps {
                 container('build') {
@@ -376,7 +392,9 @@ pipeline {
         }
         stage('3.build docker image') {
             when {
-                environment name: 'push', value: 'true'
+                expression {
+                    return params.push && params.target != 'helm'
+                }
             }
             parallel {
                 stage('3.1.image front') {
@@ -424,7 +442,9 @@ pipeline {
         }
         stage('4.1.tag & push images') {
             when {
-                environment name: 'push', value: 'true'
+                expression {
+                    return params.push && params.target != 'helm'
+                }
             }
             steps {
                 container('docker') {
@@ -454,32 +474,68 @@ pipeline {
             }
         }
         stage('4.2.push helm') {
+            when {
+                expression {
+                    return params.push && params.target != 'image'
+                }
+            }
             steps {
                 container('helm-pusher') {
                     timestamps {
                         withCredentials([usernamePassword(credentialsId: 'harbor-devops', passwordVariable: 'password', usernameVariable: 'username')]) {
                             script {
-                                dir('global') {
-                                    sh script: """
-                                        pwd
-                                        ls -lh .
-                                        helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
-                                        helm package global-service
-                                        ls -lh .
-                                        helm cm-push *.tgz harbor-ofs
-                                        cp *.tgz ${env.WORKSPACE}/sourcecode/offline
-                                    """
-                                }
                                 dir('sourcecode') {
+
+                                    def release_commitid_global_service_short = release_commitid_global_service.substring(0, 10)
+                                    println "release_commitid of global : ${release_commitid_global_service}"
+                                    println "release_commitid_short of global : ${release_commitid_global_service_short}"
+
+                                    def release_commitid_zen_cloud_short = release_commitid_zen_cloud.substring(0, 10)
+                                    println "release_commitid of zen cloud : ${release_commitid_zen_cloud}"
+                                    println "release_commitid_short of zen cloud : ${release_commitid_zen_cloud_short}"
+
+                                    def global_service_suffix = ""
+                                    def zen_cloud_suffix = ""
+
+                                    def envStage = params.envStage
+                                    switch (envStage) {
+
+                                        case 'DEV':
+                                        case 'QA':
+                                        case 'RC':
+                                            global_service_suffix = "-${envStage}-${release_commitid_global_service_short}"
+                                            zen_cloud_suffix = "-${envStage}-${release_commitid_zen_cloud_short}"
+                                            break
+                                        case 'ALPHA':
+                                        case 'BETA':
+                                            global_service_suffix = "-${envStage}"
+                                            zen_cloud_suffix = "-${envStage}"
+                                            break
+                                        case 'GA':
+                                            break
+                                    }
+                                    println "global_service_suffix: ${global_service_suffix}"
+                                    println "zen_cloud_suffix: ${zen_cloud_suffix}"
+
                                     sh script: """
                                         cd ${env.WORKSPACE}/helm
-                                        sed -i 's/5.0.0-ALPHA/${package_info.tag_back}/g' zen-cloud/Chart.yaml
+                                        sed -i 's/\\(version: .*\\)/\\1${zen_cloud_suffix}/g' zen-cloud/Chart.yaml
                                         cat zen-cloud/Chart.yaml
                                         helm repo add --username $username --password $password harbor-ofs https://harbor-ofs.kyligence.com/chartrepo/enterprise
                                         helm package zen-cloud
+                                        
+                                        sed -i 's/\\(version: .*\\)/\\1${global_service_suffix}/g' global-service-zen-cloud/Chart.yaml
+                                        cat global-service-zen-cloud/Chart.yaml
+                                        helm package global-service-zen-cloud
+                                        
                                         ls -lh .
-                                        helm cm-push *.tgz harbor-ofs
-                                        cp *.tgz ${env.WORKSPACE}/sourcecode/offline
+                                        helm cm-push global-service-*.tgz harbor-ofs
+                                        helm cm-push Zen-Cloud-*.tgz harbor-ofs
+                                        if ${params.offline}
+                                        then
+                                            cp *.tgz ${env.WORKSPACE}/sourcecode/offline
+                                        fi
+                                        
                                     """
                                 }
                             }
@@ -489,6 +545,11 @@ pipeline {
             }
         }
         stage('4.3.make offline & upload S3') {
+            when {
+                expression {
+                    return params.offline && params.target == 'helm,image'
+                }
+            }
             steps {
                 container('docker') {
                     script {
