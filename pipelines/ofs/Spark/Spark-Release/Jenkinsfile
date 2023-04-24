@@ -193,7 +193,7 @@ pipeline {
                     sh script: """
                         wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/${params.cloud_dependency_path}/depedencies.tar.gz
                         tar zxf depedencies.tar.gz
-                        wget  https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
+                        wget https://s3.cn-north-1.amazonaws.com.cn/download-resource/kyspark/hive_1_2_2.tar.gz
                         tar zxf hive_1_2_2.tar.gz
                     """
                 }

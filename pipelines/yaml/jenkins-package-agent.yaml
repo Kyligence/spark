@@ -17,8 +17,8 @@ spec:
         - "cat"
       resources:
         requests:
-          memory: "1Gi"
-          cpu: "100m"
+          memory: "2Gi"
+          cpu: "1000m"
         limits:
           memory: "8Gi"
           cpu: "4000m"

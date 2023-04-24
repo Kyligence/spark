@@ -27,16 +27,17 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
         npm cache clean --force
         npm cache verify
     """
-
-    retry (2) {
-        if (noSpark) {
-            echo "Package not include Spark"
+    if (noSpark) {
+        echo "Package not include Spark"
+        retry (2) {
             sh "export ${customerPkg}=1 && export release_version=${version} && npm config set strict-ssl=false && sh build/script_newten/release.sh -noTimestamp -noSpark -Dmaven.wagon.http.ssl.insecure=true -U"
-        } else {
-            if (!excludeDocs) {
-                insertDocs(version, docs_commitid)
-            }
+        }
+    } else {
+        if (!excludeDocs) {
+            insertDocs(version, docs_commitid)
+        }
 
+        retry (2) {
             sh "export ${customerPkg}=1 && export release_version=${version} && npm config set strict-ssl=false && sh build/script_newten/release.sh -noTimestamp -Dmaven.wagon.http.ssl.insecure=true -U"
         }
     }
