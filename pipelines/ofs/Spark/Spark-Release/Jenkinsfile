@@ -123,6 +123,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
 pipeline {
     options {
         timeout(time: 12, unit: 'HOURS')
+        ansiColor('xterm')
     }
 
     agent {
@@ -218,13 +219,13 @@ pipeline {
                                     if (params.sparkVersion == 'spark2.2') {
                                         kubernetesParm = ''
                                     }
-                                    sh script: """
-                                        #1、package kyspark
-                                        ./build/mvn versions:set -DnewVersion=${releaseVersion}
-                                        ./build/mvn -T1C deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                        
-                                        # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                    """
+                                    timestamps {
+                                        sh script: "./build/mvn versions:set -DnewVersion=${releaseVersion}"
+                                        sh script: """
+                                            ./build/mvn -T1C deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                            # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                        """
+                                    }
                                 }
                             }
 
