@@ -23,10 +23,13 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
         wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-libs-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
         wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/postgresql10-server-10.8-1PGDG.rhel8.x86_64.rpm --directory-prefix=build/postgresql/ --no-check-certificate
     """
-    sh """
-        npm cache clean --force
-        npm cache verify
-    """
+    dir('kystudio') {
+        sh """
+            pwd && ls -lha
+            npm cache clean --force
+            npm cache verify
+        """
+    }
     if (noSpark) {
         echo "Package not include Spark"
         retry (2) {
