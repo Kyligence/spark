@@ -27,15 +27,8 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
         sh """
             pwd && ls -lha
             npm cache verify
-            node -v
-            npm -v
-            npm install npm -g
-            node -v
-            npm -v
             npm cache clean --force
             npm rebuild
-            node -v
-            npm -v
         """
         retry(3){
             sh "npm install"
