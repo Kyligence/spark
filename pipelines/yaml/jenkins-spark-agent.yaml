@@ -10,8 +10,11 @@ spec:
       effect: NoSchedule
   containers:
     - name: "build"
-      image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
+      image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
       imagePullPolicy: "IfNotPresent"
+      env:
+      - name: JAVA_OPTS
+        value: "-XX:+UseParallelGC -XX:MaxRAMPercentage=75"
       tty: true
       command:
         - "cat"
@@ -38,8 +41,11 @@ spec:
           name: "jenkins-common"
           subPath: "newten-cicd"
     - name: "build2"
-      image: "harbor-ofs.kyligence.com/library/newten-build:0.1"
+      image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
       imagePullPolicy: "IfNotPresent"
+      env:
+      - name: JAVA_OPTS
+        value: "-XX:+UseParallelGC -XX:MaxRAMPercentage=75"
       tty: true
       command:
         - "cat"
