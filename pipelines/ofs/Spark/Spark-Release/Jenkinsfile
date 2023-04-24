@@ -224,8 +224,9 @@ pipeline {
                                     timestamps {
                                         retry(2) {
                                             sh script: """
+                                                export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=1g -Xss128m"
                                                 mvn versions:set -DnewVersion=${releaseVersion}
-                                                mvn -T1C clean install deploy -U -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                                                mvn deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
                                                 # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
                                             """
                                         }
@@ -268,8 +269,9 @@ pipeline {
                                         retry(2) {
                                             //delpoy to public repo for kylin
                                             sh """
+                                                export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=1g -Xss128m"
                                                 mvn versions:set -DnewVersion=${releaseVersion}
-                                                mvn -T1C clean install deploy -U -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
+                                                mvn deploy -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
                                             """
                                         }
                                     }
