@@ -26,13 +26,13 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
     dir('kystudio') {
         sh """
             pwd && ls -lha
+            npm cache verify
+            npm install npm
             npm cache clean --force
             npm rebuild
-            npm cache verify
-            npm install -g npm@latest
         """
         retry(3){
-            sh "npm install"
+            sh "npm install --registry https://repo-ofs.kyligence.com/repository/npm-public/"
         }
     }
     if (noSpark) {
