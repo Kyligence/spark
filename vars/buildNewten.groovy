@@ -38,7 +38,7 @@ def call(String version, boolean noSpark = false, String docs_commitid = 'latest
             npm -v
         """
         retry(3){
-            sh "npm install --registry https://repo-ofs.kyligence.com/repository/npm-public/"
+            sh "npm install"
         }
     }
     if (noSpark) {

@@ -1,6 +1,6 @@
 ---
 kind: "Pod"
-name: "jenkins-package-agent"
+name: "jenkins-spark-agent"
 spec:
   nodeSelector:
     cicd: ''
