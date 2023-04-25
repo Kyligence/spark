@@ -268,6 +268,7 @@ pipeline {
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 Zen Cloud，iam 会添加 iam 的 jar')
         choice(name: 'target', choices: ['helm,image', 'helm', 'image'], description: '选择 Zen-cloud pipeline 需要构建的对象是 helm 还是 image，默认为 helm,image')
         booleanParam(name: 'build', defaultValue: true, description: '是否构建')
+        booleanParam(name: 'skipFront', defaultValue: false, description: '是否构建 Front image')
         booleanParam(name: 'push', defaultValue: true, description: '推送镜像')
         booleanParam(name: 'offline', defaultValue: true, description: '是否需要打离线包')
 
@@ -403,8 +404,12 @@ pipeline {
                             dir('sourcecode') {
                                 script {
                                     dir('kystudio') {
-                                        doc_version = getDocVersion(params.version)
-                                        sh """
+                                        if (params.skipFront && !params.offline) {
+                                            println "skip front image build."
+                                            return
+                                        } else {
+                                            doc_version = getDocVersion(params.version)
+                                            sh """
                                             pwd
                                             ls -alt
                                             cat .npmrc
@@ -414,9 +419,10 @@ pipeline {
                                             mkdir docs
                                             wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${doc_version}/latest/en/Kyligence_Enterprise_User_Manual-en.pdf --directory-prefix=./docs --no-check-certificate
                                             wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${doc_version}/latest/zh-cn/Kyligence_Enterprise_User_Manual-zh.pdf --directory-prefix=./docs --no-check-certificate
-                                        """
+                                            """
 
-                                        frontend = docker.build('enterprise/frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile4Yinglong .")
+                                            frontend = docker.build('enterprise/frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile4Yinglong .")
+                                        }
                                     }
                                 }
                             }
@@ -450,14 +456,6 @@ pipeline {
                 container('docker') {
                     script {
                         dir('sourcecode') {
-                            println "package_info.tag_front: ${package_info.tag_front}"
-                            retry(2) {
-                                docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                    frontend.push(package_info.tag_front)
-                                    frontend.push('latest')
-                                    dockerSave("frontend:${package_info.tag_front}")
-                                }
-                            }
                             println "package_info.tag_back: ${package_info.tag_back}"
                             docker.withRegistry(dockerRegistryUrl, registryCredential) {
                                 for (m in modules) {
@@ -467,6 +465,21 @@ pipeline {
                                         dockerSave("${m.imageName}:${package_info.tag_back}")
                                     }
                                 }
+                            }
+
+                            if (params.skipFront && !params.offline) {
+                                println "skip front image push."
+                                return
+                            } else {
+                                println "package_info.tag_front: ${package_info.tag_front}"
+                                retry(2) {
+                                    docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                        frontend.push(package_info.tag_front)
+                                        frontend.push('latest')
+                                        dockerSave("frontend:${package_info.tag_front}")
+                                    }
+                                }
+
                             }
                         }
                     }
@@ -528,9 +541,14 @@ pipeline {
                                         cat global-service-zen-cloud/Chart.yaml
                                         helm package global-service-zen-cloud
                                         
+                                        cat hive-metastore/Chart.yaml
+                                        helm package hive-metastore
+                                        
                                         ls -lh .
                                         helm cm-push global-service-*.tgz harbor-ofs
                                         helm cm-push Zen-Cloud-*.tgz harbor-ofs
+                                        helm cm-push hive-metastore-*.tgz harbor-ofs
+
                                         if ${params.offline}
                                         then
                                             cp *.tgz ${env.WORKSPACE}/sourcecode/offline
