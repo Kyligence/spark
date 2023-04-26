@@ -70,7 +70,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "qwe1398775315/libchbuilder:0.2.0"
+      image: "qwe1398775315/libchbuilder:0.3.2"
       imagePullPolicy: "IfNotPresent"
       env:
         - name: HTTP_PROXY
