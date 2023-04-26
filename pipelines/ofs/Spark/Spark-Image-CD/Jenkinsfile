@@ -40,6 +40,7 @@ pipeline {
         string(name: 'imageRepo', defaultValue: 'harbor-ofs.kyligence.com/spark', description: 'docker image repo')
         string(name: 'version', defaultValue: '', description: 'eg 3.3.0-kylin-4.5.17.0 spark version and docker tag name')
         choice(name: 'hadoopVersion', choices: 'hadoop3\nhadoop2\nhadoop3-with-glue', description: 'hadoop的版本:hadoop2+aws2.10/hadoop3+hadoop-aws-3.2.2/hadoop3+hadoop-aws-3.2.2+glue')
+        choice(name: 'arch', choices: ['linux/amd64', 'linux/arm64','linux/amd64,linux/arm64'], description: '选择spark镜像的linux架构，默认为 linux/amd64')
     }
 
 
@@ -89,8 +90,9 @@ pipeline {
                         script {
                             docker.withRegistry(dockerRegistryUrl, registryCredential) {
                                 sh script: """
-                                ./bin/docker-image-tool.sh -r ${params.imageRepo} -t ${params.version}  build
-                                ./bin/docker-image-tool.sh -r ${params.imageRepo} -t ${params.version}  push    
+                                export DOCKER_CLI_EXPERIMENTAL=enabled
+                                docker buildx create --name yinglongMultiarchBuilder && docker buildx use yinglongMultiarchBuilder || true
+                                ARCHS="--platform  ${params.arch}" ./bin/docker-image-tool.sh -X -r ${params.imageRepo} -t ${params.version} build
                                 """
                             }
                         }

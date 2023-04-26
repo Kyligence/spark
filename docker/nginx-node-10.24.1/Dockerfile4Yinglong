@@ -2,8 +2,7 @@ FROM bitnami/node:10.24.1 as build-stage
 WORKDIR /app
 COPY .npmrc ./
 COPY package*.json ./
-RUN npm install -g phantomjs@2.1.1 --unsafe-perm
-RUN npm install --unsafe-perm
+RUN npm install --unsafe-perm -verbose
 COPY . .
 RUN npm run build
 COPY docs /app/dist/docs

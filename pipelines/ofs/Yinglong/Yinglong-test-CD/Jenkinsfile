@@ -170,7 +170,6 @@ def gitCodeKe(back, front, pMap) {
     return result
 }
 
-//
 def getPackageInfo(version, envStage, fcid, bcid, deployType, cloudPlatform) {
     println "getPackageInfo -> version[${version}],envStage[${envStage}],fcid[${fcid}],bcid[${bcid}],deployType[${deployType}],cloudPlatform[${cloudPlatform}]"
     def package_path = ''
@@ -222,15 +221,46 @@ def getPackageInfo(version, envStage, fcid, bcid, deployType, cloudPlatform) {
     return obj
 }
 
+def dockerSaveScript(imageTag, imageName, platform, platformSuffix) {
+    retry(3) {
+        sh script: """
+        image="${imageTag}"
+        docker pull --platform "$platform" "\$image"
+        platform_suffix="${platformSuffix}"
+        docker tag "\$image" "\$image\${platform_suffix}"
+        docker save "\$image\${platform_suffix}" > "${imageName}\${platform_suffix}.tar"
+        ls -lth
+        """
+    }
+}
+
 // docker save 离线镜像并制作压缩包
 def dockerSave(imageName) {
     sh script: """
+        #!/bin/sh
+        echo "---------------------------"
+        docker images || true
+        echo "---------------------------"
         pwd
-        docker save harbor-ofs.kyligence.com/enterprise/${imageName} > ${imageName}.tar
-        ls -lth
-        mv ${imageName}.tar ${env.WORKSPACE}/sourcecode/offline
-        ls -lth ${env.WORKSPACE}/sourcecode/offline
     """
+
+    if (params.arch == 'linux/arm64' || params.arch == 'linux/amd64,linux/arm64') {
+        def platformSuffix = '-arm64'
+        dockerSaveScript(env.repo + '/enterprise/' + imageName, imageName, 'linux/arm64', platformSuffix)
+        sh script: """
+            mv "${imageName}${platformSuffix}.tar" "${env.WORKSPACE}/sourcecode/offline"
+        """
+    }
+
+    if (params.arch != 'linux/arm64') {
+        dockerSaveScript(env.repo + '/enterprise/' + imageName, imageName, 'linux/amd64', '')
+        sh script: """
+            mv "${imageName}.tar" "${env.WORKSPACE}/sourcecode/offline"
+        """
+    }
+    sh script: """
+           ls -lth "${env.WORKSPACE}/sourcecode/offline"
+        """
 }
 
 pipeline {
@@ -257,6 +287,8 @@ pipeline {
         release_commitid_back_full = ''
         release_commitid_front = ''
         spark = ''
+        docker_cli_experimental = 'enabled'
+        builder_instance_name = 'yinglongMultiarchBuilder'
     }
 
     parameters {
@@ -266,6 +298,7 @@ pipeline {
         choice(name: 'envStage', choices: 'DEV\nQA\nRC\nALPHA\nBETA\nGA', description: '打包阶段，如果要GA，选择GA进行流程')
         choice(name: 'cloudPlatform', choices: 'AWS\nAliCloud\nAzure', description: '云平台:\nAWS\nAliCloud\nAzure')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 Zen Cloud，iam 会添加 iam 的 jar')
+        choice(name: 'arch', choices: ['linux/amd64', 'linux/arm64', 'linux/amd64,linux/arm64'], description: '选择yinglong镜像的linux架构，默认为 linux/amd64')
         choice(name: 'target', choices: ['helm,image', 'helm', 'image'], description: '选择 Zen-cloud pipeline 需要构建的对象是 helm 还是 image，默认为 helm,image')
         booleanParam(name: 'build', defaultValue: true, description: '是否构建')
         booleanParam(name: 'skipFront', defaultValue: false, description: '是否构建 Front image')
@@ -421,7 +454,26 @@ pipeline {
                                             wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${doc_version}/latest/zh-cn/Kyligence_Enterprise_User_Manual-zh.pdf --directory-prefix=./docs --no-check-certificate
                                             """
 
-                                            frontend = docker.build('enterprise/frontend', "-f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile4Yinglong .")
+                                        println "package_info.tag_front: ${package_info.tag_front}"
+                                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                            retry(3) {
+                                                sh script: """
+                                                    echo "prepare front docker buildx builder..."
+                                                    export DOCKER_CLI_EXPERIMENTAL=${env.docker_cli_experimental}
+                                                    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
+                                                    docker buildx create --name ${builder_instance_name}_frontend --driver docker-container --use || true
+                                                    docker buildx inspect --bootstrap || true
+                                                    echo "execute front docker buildx builder..."
+                                                    docker buildx build \
+                                                        -t ${env.repo}/enterprise/frontend:${package_info.tag_front} \
+                                                        -t ${env.repo}/enterprise/frontend:latest \
+                                                        -f ${env.WORKSPACE}/docker/nginx-node-10.24.1/Dockerfile4Yinglong \
+                                                        --platform ${params.arch} \
+                                                        --no-cache \
+                                                        --push .
+                                                    echo "done with buildx frontend"    
+                                                """
+                                            }
                                         }
                                     }
                                 }
@@ -429,14 +481,29 @@ pipeline {
                         }
                     }
                 }
-                stage('3.2.images Zen cloud') {
+                stage('3.2.build images Zen cloud && push images to harbor') {
                     steps {
                         container('docker') {
                             script {
                                 for (m in modules) {
                                     dir("sourcecode/${m.path}") {
-                                        retry(2) {
-                                            m.image = docker.build("enterprise/${m.imageName}")
+                                        println "package_info.tag_back: ${package_info.tag_back}"
+                                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                            retry(3) {
+                                                sh script: """
+                                                    echo "prepare back docker buildx builder..."
+                                                    export DOCKER_CLI_EXPERIMENTAL=${env.docker_cli_experimental}
+                                                    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
+                                                    docker buildx create --name ${builder_instance_name}_${m.imageName} --driver docker-container --use || true
+                                                    docker buildx inspect --bootstrap || true
+                                                    echo "execute back docker buildx builder..."
+                                                    docker buildx build \
+                                                     -t ${env.repo}/enterprise/${m.imageName}:${package_info.tag_back} \
+                                                     -t ${env.repo}/enterprise/${m.imageName}:latest \
+                                                     --no-cache --platform ${params.arch} --push .
+                                                    echo "done with docker buildx build"
+                                                """
+                                            }
                                         }
                                     }
                                 }
@@ -456,14 +523,14 @@ pipeline {
                 container('docker') {
                     script {
                         dir('sourcecode') {
-                            println "package_info.tag_back: ${package_info.tag_back}"
+                            println "package_info.tag_front: latest、${package_info.tag_front}"
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                dockerSave("frontend:${package_info.tag_front}")
+                            }
+                            println "package_info.tag_back: latest、${package_info.tag_back}"
                             docker.withRegistry(dockerRegistryUrl, registryCredential) {
                                 for (m in modules) {
-                                    retry(2) {
-                                        m.image.push(package_info.tag_back)
-                                        m.image.push('latest')
-                                        dockerSave("${m.imageName}:${package_info.tag_back}")
-                                    }
+                                    dockerSave("${m.imageName}:${package_info.tag_back}")
                                 }
                             }
 
@@ -573,26 +640,32 @@ pipeline {
                     script {
                         dir('sourcecode/offline') {
                             cloudPlatform = params.cloudPlatform
-
-                            defModules.eachWithIndex { LinkedHashMap<String, String> entry, int i ->
-                                if (entry['name'] == 'spark') {
-                                    switch (cloudPlatform) {
-                                        case 'AWS':
-                                        entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3-glue'
-                                        break
-                                    case 'AliCloud':
-                                        entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop2-rrsa'
-                                        break
-                                    case 'Azure':
-                                        entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3'
-                                        break
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                defModules.eachWithIndex { LinkedHashMap<String, String> entry, int i ->
+                                    if (entry['name'] == 'spark') {
+                                        switch (cloudPlatform) {
+                                            case 'AWS':
+                                                entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-yinglongtest'
+                                                if (params.arch == 'linux/arm64' || params.arch == 'linux/amd64,linux/arm64') {
+                                                    def platformSuffix = '-arm64'
+                                                    println("It`s contains arm64 platform, so add platform suffix and save arm64 image tar. Image tar name: ${entry['name']}${platformSuffix}.tar")
+                                                    dockerSaveScript(entry['imageName'], entry['name'], 'linux/arm64', platformSuffix)
+                                                }
+                                                break
+                                            case 'AliCloud':
+                                                entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop2-rrsa'
+                                                break
+                                            case 'Azure':
+                                                entry['imageName'] = 'harbor-ofs.kyligence.com/spark/spark:3.3.0-kylin-4.6.4.0-SNAPSHOT-hadoop3'
+                                                break
+                                        }
+                                        println("cloudPlatform is ${cloudPlatform}, spark image is ${entry['imageName']}")
                                     }
-                                    println("cloudPlatform is ${cloudPlatform}, spark image is ${entry['imageName']}")
+
+                                    if (entry['name'] != 'spark' || (entry['name'] == 'spark' && params.arch != 'linux/arm64')) {
+                                        dockerSaveScript(entry['imageName'], entry['name'], 'linux/amd64', '')
+                                    }
                                 }
-                                sh script: """
-                                    docker pull ${entry['imageName']}
-                                    docker save ${entry['imageName']}  > ${entry['name']}.tar
-                                """
                             }
 
                             sh script: """

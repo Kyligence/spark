@@ -39,6 +39,7 @@ pipeline {
         booleanParam(name: 'deploy', defaultValue:true, description:'部署在 k8s' )
         string(name: 'namespace', defaultValue: 'dev', description: 'namespace to deploy')
         booleanParam(name: 'is_public', defaultValue:true, description:'是否为公共应用服务（iam/nacos）服务的gateway' )
+        choice(name: 'arch', choices: ['linux/amd64', 'linux/arm64', 'linux/amd64,linux/arm64'], description: '选择gateway镜像的linux架构，默认为 linux/amd64')
     }
 
     stages {
@@ -92,7 +93,30 @@ pipeline {
                 container('docker') {
                     dir('sourcecode') {
                         script {
-                            gateway = docker.build('xuanwu/gateway')
+                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                retry(3) {
+                                    gateway = null
+                                    if (params.arch == 'linux/arm64' || params.arch == 'linux/amd64,linux/arm64') {
+                                        sh script: """
+                                            echo "prepare xuanwu/gateway docker buildx builder..."
+                                            export DOCKER_CLI_EXPERIMENTAL=enabled
+                                            docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
+                                            docker buildx create --name xuanwu-gateway --driver docker-container --use || true
+                                            docker buildx inspect --bootstrap || true
+                                            echo "execute xuanwu/gateway docker buildx builder..."
+                                            docker buildx build \
+                                                -t ${env.repo}/xuanwu/gateway:$tag \
+                                                -t ${env.repo}/xuanwu/gateway:latest \
+                                                --platform ${params.arch} \
+                                                --no-cache \
+                                                --push .
+                                            echo "done with buildx xuanwu/gateway, image: ${env.repo}/xuanwu/gateway:$tag"
+                                        """
+                                    } else {
+                                        gateway = docker.build('xuanwu/gateway')
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -106,8 +130,10 @@ pipeline {
                 container('docker') {
                     script {
                         docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                            gateway.push("$tag")
-                            gateway.push('latest')
+                            if (params.arch == 'linux/amd64') {
+                                gateway.push("$tag")
+                                gateway.push('latest')
+                            }
                         }
                     }
                 }
