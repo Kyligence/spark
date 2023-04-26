@@ -3,7 +3,7 @@
 @Library('devopslib') _
 
 def IS_DEBUG = false
-def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL',
+def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL', '4X_CDH6.3.2_AZURE_ALL',
                      '4X_CDH7.1.6_ALL', '4X_FI-C90_RW', '4X_HADOOP2.7.2_ALL', '4X_HDP2.4_ALL', '4X_HDP3.1_ALL',
                      '4X_MAPR6.1_ALL', '4X_MRS3.0.2_RW', '4X_TDH6.2.2_ALL', '4X_TDH6.2.2_THD']
 
@@ -66,16 +66,14 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_FULLCASE\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard 测试类型')
-//        multipleChoice(name: 'platform', choices: platform_list, description: 'Quard 测试平台')
+        choice(name: 'quard_type', choices: 'KE4X_Daily\nKE4X_FULLCASE\nKE4X_COMPATIBILITY\nKE4X_UPGRADE', description: 'Quard测试类型：1.KE4X_Daily包括全平台兼容性和全量测试，2.KE4X_FULL全量测试，运行在azure北三环境，3.KE4_COMPATIBILITY兼容性测试，运行在全平台，4.KE4_UPGRADE升级测试，运行在全平台')
         choice(name: 'platform', choices: platform_list, description: 'Quard 测试平台')
-        string(name: 'quard_repo', defaultValue: 'Kyligence', description: '')
-        string(name: 'quard_branch', defaultValue: 'quard-4.x', description: '')
-        string(name: 'reuse_num', defaultValue: '', description: '')
-        string(name: 'upgrade_num', defaultValue: '', description: '')
-        booleanParam(name: 'compatibility', defaultValue: 'true')
-        string(name: 'select_tests', defaultValue: '', description: '')
-        string(name: 'package_url', defaultValue: 'https://package.kyligence.com/newten-cicd/artifacts/4.6.x/DEV/KE-4.6.6.0-DEV-dbaec9f05f-c5dc9d997f.tar.gz', description: '')
+        string(name: 'quard_repo', defaultValue: 'Kyligence', description: 'Quard代码仓库')
+        string(name: 'quard_branch', defaultValue: 'quard-4.x', description: 'Quard测试分支')
+        string(name: 'reuse_num', defaultValue: '', description: '测试升级回滚时填写，从当前版本升级到upgrade_num版本。4位数字，如：4.6.7.0')
+        string(name: 'upgrade_num', defaultValue: '', description: '测试升级回滚时填写，从reuse_num升级到当前版本。当测试升级回滚时，版本号需要和package_url中的版本一致。4位数字，如：4.6.8.0')
+        string(name: 'select_tests', defaultValue: '', description: '测试用例集合，正常情况下不用填写，每个测试类型都已经定义好了用例集合。')
+        string(name: 'package_url', defaultValue: 'https://package.kyligence.com/newten-cicd/artifacts/4.6.x/DEV/KE-4.6.6.0-DEV-dbaec9f05f-c5dc9d997f.tar.gz', description: '必填，测试包链接')
     }
 
     stages {
@@ -143,8 +141,8 @@ pipeline {
                         }
                     }
                     println "build quard full test cases on mrs3.0.2 platform"
-                    parallelJobs['4X_MRS3.0.2_RW_FULLCASES'] = {
-                        build job: "Quard/4X_MRS3.0.2_RW", parameters: [
+                    parallelJobs['4X_CDH6.3.2_AZURE_ALL_FULLCASES'] = {
+                        build job: "Quard/4X_CDH6.3.2_AZURE_ALL", parameters: [
                             string(name: 'quard_repo', value: params.quard_repo),
                             string(name: 'quard_branch', value: 'quard-4.x'),
                             booleanParam(name: 'compatibility', value: false),
