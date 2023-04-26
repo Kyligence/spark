@@ -937,7 +937,7 @@ pipeline {
                                         string(name: 'product_line', value: paramsStepDeploy['product_line']),
                                         string(name: 'version_name', value: paramsStepDeploy['version_name']),
                                         string(name: 'check_time', value: paramsStepDeploy['check_time'])
-                                ]
+                                ], waitForStart: true
                             }
                         }
                     }
@@ -1005,7 +1005,7 @@ pipeline {
                                         string(name: 'upgrade_num', value: paramsQuardDeploy['upgrade_num']),
                                         string(name: 'select_tests', value: paramsQuardDeploy['select_tests']),
                                         string(name: 'package_url', value: "https://package.kyligence.com/${package_info.package_file}")
-                                ]
+                                ], waitForStart: true
                             }
                         }
                     }

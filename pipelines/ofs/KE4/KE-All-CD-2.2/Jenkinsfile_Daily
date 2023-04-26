@@ -17,14 +17,14 @@ def execKE4Job(job, jobParameters) {
         string(name: 'kylinVersion', value: jobParameters.kylinVersion),
         string(name: 'envStage', value: jobParameters.envStage),
         string(name: 'customerPkg', value: jobParameters.customerPkg),
-        string(name: 'docs_commitid', value: 'latest'),
-        booleanParam(name: 'excludeDocs', value: true),
-        booleanParam(name: 'run_quard', value: jobParameters.run_quard),
-        booleanParam(name: 'run_step', value: jobParameters.run_step),
+        string(name: 'docs_commitid', value: excludeDocs.docs_commitid ?: 'latest'),
+        booleanParam(name: 'excludeDocs', value: jobParameters.excludeDocs ?: true),
+        booleanParam(name: 'run_quard', value: jobParameters.run_quard ?: false),
+        booleanParam(name: 'run_step', value: jobParameters.run_step ?: false),
         booleanParam(name: 'autoDeploy', value: true),
-        string(name: 'autoQuardParams', value: jobParameters.autoQuardParams),
-        string(name: 'autoStepParams', value: jobParameters.autoStepParams)
-    ], wait
+        string(name: 'autoQuardParams', value: jobParameters.autoQuardParams ?: "{}"),
+        string(name: 'autoStepParams', value: jobParameters.autoStepParams ?: "{}")
+    ], waitForStart: true
 }
 
 pipeline {
