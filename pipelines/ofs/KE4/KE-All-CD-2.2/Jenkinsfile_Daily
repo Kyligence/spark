@@ -21,7 +21,7 @@ def execKE4Job(job, jobParameters) {
         booleanParam(name: 'excludeDocs', value: jobParameters.excludeDocs ?: true),
         booleanParam(name: 'run_quard', value: jobParameters.run_quard ?: false),
         booleanParam(name: 'run_step', value: jobParameters.run_step ?: false),
-        booleanParam(name: 'autoDeploy', value: true),
+        booleanParam(name: 'autoDeploy', value: jobParameters.autoDeploy ?: true),
         string(name: 'autoQuardParams', value: jobParameters.autoQuardParams ?: "{}"),
         string(name: 'autoStepParams', value: jobParameters.autoStepParams ?: "{}")
     ], wait: false
