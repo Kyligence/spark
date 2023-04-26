@@ -137,7 +137,7 @@ pipeline {
                                     booleanParam(name: 'skip_quard_checkenv', value: true),
                                     string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
                                     string(name: 'retry', value: '2')
-                            ], waitForStart: true
+                            ], wait: false
                         }
                     }
                     println "build quard full test cases on mrs3.0.2 platform"
@@ -152,7 +152,7 @@ pipeline {
                             booleanParam(name: 'skip_quard_checkenv', value: true),
                             string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
                             string(name: 'retry', value: '2')
-                        ], waitForStart: true
+                        ], wait: false
                     }
                     parallel parallelJobs
                 }
@@ -180,7 +180,7 @@ pipeline {
                                 booleanParam(name: 'skip_quard_checkenv', value: true),
                                 string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
                                 string(name: 'retry', value: '2')
-                        ], waitForStart: true
+                        ], wait: false
                     }
                 }
             }
@@ -210,7 +210,7 @@ pipeline {
                                     booleanParam(name: 'skip_quard_checkenv', value: true),
                                     string(name: 'jenkinsfile_path', value: 'PARALLEL_JENKINSFILE'),
                                     string(name: 'retry', value: '2')
-                            ], waitForStart: true
+                            ], wait: false
                         }
                     }
                     parallel parallelJobs
@@ -246,7 +246,7 @@ pipeline {
                                     booleanParam(name: 'skip_quard_checkenv', value: true),
                                     booleanParam(name: 'is_upgrade', value: true),
                                     string(name: 'jenkinsfile_path', value: 'src/tests/upgrade/JENKINSFILE')
-                            ], waitForStart: true
+                            ], wait: false
                         }
                     }
                     parallel parallelJobs

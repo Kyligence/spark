@@ -24,7 +24,7 @@ def execKE4Job(job, jobParameters) {
         booleanParam(name: 'autoDeploy', value: true),
         string(name: 'autoQuardParams', value: jobParameters.autoQuardParams ?: "{}"),
         string(name: 'autoStepParams', value: jobParameters.autoStepParams ?: "{}")
-    ], waitForStart: true
+    ], wait: false
 }
 
 pipeline {
