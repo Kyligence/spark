@@ -238,9 +238,6 @@ def dockerSaveScript(imageTag, imageName, platform, platformSuffix) {
 def dockerSave(imageName) {
     sh script: """
         #!/bin/sh
-        echo "---------------------------"
-        docker images || true
-        echo "---------------------------"
         pwd
     """
 
@@ -454,10 +451,10 @@ pipeline {
                                             wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.ke/docs/${doc_version}/latest/zh-cn/Kyligence_Enterprise_User_Manual-zh.pdf --directory-prefix=./docs --no-check-certificate
                                             """
 
-                                        println "package_info.tag_front: ${package_info.tag_front}"
-                                        docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                            retry(3) {
-                                                sh script: """
+                                            println "package_info.tag_front: ${package_info.tag_front}"
+                                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                                retry(3) {
+                                                    sh script: """
                                                     echo "prepare front docker buildx builder..."
                                                     export DOCKER_CLI_EXPERIMENTAL=${env.docker_cli_experimental}
                                                     docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
@@ -473,6 +470,7 @@ pipeline {
                                                         --push .
                                                     echo "done with buildx frontend"    
                                                 """
+                                                }
                                             }
                                         }
                                     }
@@ -523,10 +521,6 @@ pipeline {
                 container('docker') {
                     script {
                         dir('sourcecode') {
-                            println "package_info.tag_front: latest、${package_info.tag_front}"
-                            docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                dockerSave("frontend:${package_info.tag_front}")
-                            }
                             println "package_info.tag_back: latest、${package_info.tag_back}"
                             docker.withRegistry(dockerRegistryUrl, registryCredential) {
                                 for (m in modules) {
@@ -538,15 +532,10 @@ pipeline {
                                 println "skip front image push."
                                 return
                             } else {
-                                println "package_info.tag_front: ${package_info.tag_front}"
-                                retry(2) {
-                                    docker.withRegistry(dockerRegistryUrl, registryCredential) {
-                                        frontend.push(package_info.tag_front)
-                                        frontend.push('latest')
-                                        dockerSave("frontend:${package_info.tag_front}")
-                                    }
+                                println "package_info.tag_front: latest、${package_info.tag_front}"
+                                docker.withRegistry(dockerRegistryUrl, registryCredential) {
+                                    dockerSave("frontend:${package_info.tag_front}")
                                 }
-
                             }
                         }
                     }
