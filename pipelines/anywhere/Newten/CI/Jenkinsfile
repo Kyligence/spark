@@ -80,14 +80,19 @@ pipeline {
                 always {
                     container("maven") {
                         timestamps {
-                            junit skipPublishingChecks: true, allowEmptyResults: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                            script {
+                                def summary = junit skipPublishingChecks: true, allowEmptyResults: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                                if (summary.totalCount <= 0) {
+                                    return
+                                }
 
-                            sh script: """
-                                execfiles=`find . -path '*-Stage-*\\/target*jacoco.exec' -exec printf "{} " \\;`
-                                classfiles=`find . -path '*-Stage-*\\/target\\/classes' ! -path '*second-storage*' -exec printf "--classfiles {} " \\;`
-                                java -jar /var/jacoco/jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
-                            """
-                            publishCoverage adapters: [jacocoAdapter('jacoco.xml')]
+                                sh script: """
+                                    execfiles=`find . -path '*-Stage-*\\/target*jacoco.exec' -exec printf "{} " \\;`
+                                    classfiles=`find . -path '*-Stage-*\\/target\\/classes' ! -path '*second-storage*' -exec printf "--classfiles {} " \\;`
+                                    java -jar /var/jacoco/jacococli.jar report \${execfiles} \${classfiles} --xml jacoco.xml
+                                """
+                                publishCoverage adapters: [jacocoAdapter('jacoco.xml')]
+                            }
                         }
                     }
                 }
