@@ -12,7 +12,7 @@ spec:
       image: "maven:3.6.3-openjdk-8"
       imagePullPolicy: "IfNotPresent"
       volumeMounts:
-        - name: "jenkins-tmp"
+        - name: "jenkins-common"
           mountPath: /var/jenkins_tmp
           subPath: "tmp"
         - name: "jenkins-common"
