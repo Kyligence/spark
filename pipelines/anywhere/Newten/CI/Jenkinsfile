@@ -80,7 +80,7 @@ pipeline {
                 always {
                     container("maven") {
                         timestamps {
-                            junit skipPublishingChecks: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
+                            junit skipPublishingChecks: true, allowEmptyResults: true, testResults: '*Test-Stage-*/**/target/surefire-reports/*.xml'
 
                             sh script: """
                                 execfiles=`find . -path '*-Stage-*\\/target*jacoco.exec' -exec printf "{} " \\;`
