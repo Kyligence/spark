@@ -26,7 +26,7 @@ pipeline {
                             pwd
                             cd pipelines/aws-mixed/Spark/warmup/
                             ls -artlh .
-                            sed -i "s|<spark.version>*.</spark.version>|<spark.version>${params.sparkVersion}</spark.version>|g" pom.xml
+                            sed -i "s|<spark.version>.*</spark.version>|<spark.version>${params.sparkVersion}</spark.version>|g" pom.xml
                             cat pom.xml
                             mvn -U clean install -DskipTests
                         """
