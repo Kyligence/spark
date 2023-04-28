@@ -162,7 +162,7 @@ pipeline {
                 '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n GA后基于稳定分支发包，选择GA，version 不做处理')
         choice(name: 'sparkVersion', choices: 'spark3\nspark2.4\nspark2.2', description: 'spark 大版本，spark2.4/2.2 发包不会推到云上')
         string(name: 'cloud_dependency_path', defaultValue: 'cloud-dependency/current', description: 'cloud denpendency directory in repo-ofs,\n 这个路径是制品库spark 目录下的子目录,该目录下必须有depedencies.tar.gz 文件，可以选择旧包的目录打旧版本的spark 包，eg:cloud-dependency/4.6.4.0\n 4.5稳定版发版请用cloud-dependency/4.5.x-current')
-        booleanParam(name: 'deploy_to_ofs', defaultValue: true, description: '勾选时，将会将spark 推送到public repo，供kylin用户使用,重试的时候可以跳过这一步节省时间')
+        booleanParam(name: 'deploy_to_ofs', defaultValue: true, description: '默认勾选，取消勾选时跳过本地repo-ofs deploy 以节省时间')
         booleanParam(name: 'deploy_to_kylin', defaultValue: true, description: '勾选时，将会将spark 推送到public repo，供kylin用户使用,重试的时候可以跳过这一步节省时间')
         booleanParam(name: 'deploy_to_aws', defaultValue: true, description: '勾选时，将会将spark 推送到aws repo，供CI使用,重试的时候可以跳过这一步节省时间')
         booleanParam(name: 'publishToKC', defaultValue: false, description: '勾选时，会打云上的包给KC用, 如果只打on promise 包可以取消勾选')
@@ -279,7 +279,7 @@ pipeline {
                         }
                     }
                     steps {
-                        container('build2') {
+                        container('build') {
                             dir('sourcecode') {
                                 deployJars(params.release_version, params.deployType, params.sparkVersion, 'aws')
                             }
