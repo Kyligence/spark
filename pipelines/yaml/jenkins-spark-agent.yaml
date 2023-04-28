@@ -70,7 +70,39 @@ spec:
           mountPath: /root/.m2/repository2/org/apache
         - mountPath: "/var/cicd"
           name: "jenkins-common"
+          subPath: "newten-cicd"
+    - name: "build3"
+      image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
+      imagePullPolicy: "IfNotPresent"
+      env:
+      - name: JAVA_OPTS
+        value: "-XX:+UseParallelGC -XX:MaxRAMPercentage=75"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        requests:
+          memory: "4Gi"
+          cpu: "2000m"
+        limits:
+          memory: "12Gi"
+          cpu: "6000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings3.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository2/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository2/org/apache
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
           subPath: "newten-cicd" 
+    
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
@@ -80,11 +112,13 @@ spec:
     - name: "kylin-repo"
       emptyDir: { }
     - configMap:
-        defaultMode: 0777
+        defaultMode: 0644
         items:
           - key: "settings.xml"
             path: "settings.xml"
           - key: "settings2.xml"
             path: "settings2.xml"
+          - key: "settings3.xml"
+            path: "settings3.xml"
         name: "lex-mvn-settings"
       name: "lex-mvn-settings"
