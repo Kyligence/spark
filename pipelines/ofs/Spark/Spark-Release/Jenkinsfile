@@ -280,7 +280,7 @@ pipeline {
                     }
                     steps {
                         container('build') {
-                            dir('sourcecode') {
+                            dir('sourcecode3') {
                                 deployJars(params.release_version, params.deployType, params.sparkVersion, 'aws')
                             }
                         }
