@@ -134,11 +134,13 @@ def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
         if (sparkVersion == 'spark2.2') {
             kubernetesParm = ''
         }
-        sh script: """
-            export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
-            mvn versions:set -DnewVersion=${_releaseVersion}
-            mvn -T 2C deploy -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-        """
+        retry(3) {
+            sh script: """
+                export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
+                mvn versions:set -DnewVersion=${_releaseVersion}
+                mvn -T 2C deploy -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+            """
+        }
     }
 }
 
@@ -234,7 +236,7 @@ pipeline {
                 }
             }
             parallel {
-                stage('to Ofs') {
+                stage('1.to Ofs') {
                     steps {
                         container('build') {
                             dir('sourcecode') {
@@ -258,21 +260,7 @@ pipeline {
                         }
                     }
                 }
-                stage('to Open Source') {
-                    when {
-                        expression {
-                            return params.deploy_to_kylin
-                        }
-                    }
-                    steps {
-                        container('build2') {
-                            dir('sourcecode2') {
-                                deployJars(params.release_version, params.deployType, params.sparkVersion, 'pro')
-                            }
-                        }
-                    }
-                }
-                stage('to AWS CI') {
+                stage('2.to AWS CI') {
                     when {
                         expression {
                             return params.deploy_to_aws
@@ -282,6 +270,20 @@ pipeline {
                         container('build') {
                             dir('sourcecode3') {
                                 deployJars(params.release_version, params.deployType, params.sparkVersion, 'aws')
+                            }
+                        }
+                    }
+                }
+                stage('3.to Open Source') {
+                    when {
+                        expression {
+                            return params.deploy_to_kylin
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            dir('sourcecode2') {
+                                deployJars(params.release_version, params.deployType, params.sparkVersion, 'pro')
                             }
                         }
                     }
