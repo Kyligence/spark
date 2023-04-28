@@ -237,6 +237,11 @@ pipeline {
             }
             parallel {
                 stage('1.to Ofs') {
+                    when {
+                        expression {
+                            return params.deploy_to_ofs
+                        }
+                    }
                     steps {
                         container('build') {
                             dir('sourcecode') {

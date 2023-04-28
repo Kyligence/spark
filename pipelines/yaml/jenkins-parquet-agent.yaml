@@ -1,0 +1,58 @@
+---
+kind: "Pod"
+name: "jenkins-package-agent"
+spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  containers:
+    - name: "build"
+      image: "harbor-ofs.kyligence.com/library/thrift-build:0.1"
+      imagePullPolicy: "IfNotPresent"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "100m"
+        limits:
+          memory: "8Gi"
+          cpu: "4000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository2/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository2/org/apache
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+      
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-pvc-nfs"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "kylin-repo"
+      emptyDir: { }
+    - name:  "kube-config"
+      hostPath:
+        path:  "/home/jenkins/.kube"
+    - configMap:
+        defaultMode: 0777
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "lex-mvn-settings"
+      name: "lex-mvn-settings"

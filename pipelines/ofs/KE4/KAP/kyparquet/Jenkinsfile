@@ -10,26 +10,24 @@ pipeline {
 
     agent {
         kubernetes {
-            yamlFile 'pipelines/yaml/jenkins-package-agent.yaml'
+            yamlFile 'pipelines/yaml/jenkins-parquet-agent.yaml'
         }
     }
 
     parameters {
         string(name: 'repo', defaultValue: 'Kyligence', description: '')
-        string(name: 'branch', defaultValue: 'kylin-1.9.0-r1', description: '')
-        string(name: 'WHORU', defaultValue: 'anonymous', description: 'who are you?')
+        string(name: 'branch', defaultValue: 'kyparquet-1.12.2-4.x', description: '')
+        // string(name: 'WHORU', defaultValue: 'anonymous', description: 'who are you?')
     }
 
     stages {
         stage('Pull Code') {
             steps {
                 container('build') {
-                    script {
-                        currentBuild.displayName = "#${BUILD_NUMBER} for ${params.WHORU}"
-                    }
                     dir('kycalcite') {
                         timestamps {
                             script {
+                                sh "thrift -version"
                                 retry(3) {
                                     pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
                                 }
@@ -39,26 +37,28 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy') {
-            steps {
-                container('build') {
-                    dir("kycalcite"){
-                        sh script: '''
-                            sed -i "s/\\${snapshots.id}/pro/g" pom.xml
-                            sed -i "s/\\${snapshots.name}/User Project SNAPSHOTS/g" pom.xml
-                            sed -i "s/\\${snapshots.url}/https:\\/\\/repository.kyligence.io\\/repository\\/maven-snapshots\\//g" pom.xml
-                        '''
-
-                        sh script: '''
-                            sed -i "s/\\${releases.id}/pro/g" pom.xml
-                            sed -i "s/\\${releases.name}/User Project Release/g" pom.xml
-                            sed -i "s/\\${releases.url}/https:\\/\\/repository.kyligence.io\\/repository\\/maven-releases\\//g" pom.xml
-                        '''
-
-                        sh script: """
-                            mvn clean deploy -DskipTests=true
-                        """
+            parallel {
+                stage('Deploy Ofs') {
+                    steps {
+                        container('build') {
+                            dir("kycalcite"){
+                                sh script: """
+                                    mvn clean deploy -DskipTests=true -Pdev
+                                """
+                            }
+                        }
+                    }
+                }
+                stage('Deploy OpenSource') {
+                    steps {
+                        container('build') {
+                            dir("kycalcite"){
+                                sh script: """
+                                    mvn clean deploy -DskipTests=true -Ppro
+                                """
+                            }
+                        }
                     }
                 }
             }
