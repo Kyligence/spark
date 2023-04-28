@@ -35,7 +35,11 @@ def uploadAwsS3(region, credentials, bucket, path, ga_name) {
         println("uploadAwsS3 -> path: ${path}, ga_name: ${ga_name}, retry 3 times")
         withAWS(region: region, credentials: credentials) {
             retry(3) {
-                s3Upload(bucket: bucket, path: path, file: ga_name)
+                // s3Upload(bucket: bucket, path: path, file: ga_name)
+                sh """
+                    ls -alt /jenkins-common/jobs/${env.JOB_NAME}/
+                    aws s3 cp /jenkins-common/jobs/${env.JOB_NAME}/${ga_name} s3://$bucket/${path}/ --acl public-read
+                """
             }
         }
     }
@@ -131,8 +135,9 @@ def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
             kubernetesParm = ''
         }
         sh script: """
-            ./build/mvn versions:set -DnewVersion=${_releaseVersion}
-            ./build/mvn -T 2C deploy -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+            export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
+            mvn versions:set -DnewVersion=${_releaseVersion}
+            mvn -T 2C deploy -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
         """
     }
 }
