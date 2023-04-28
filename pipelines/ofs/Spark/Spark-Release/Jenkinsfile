@@ -122,6 +122,21 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
     }
 }
 
+def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
+    println "deployJars -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
+    script {
+        def _releaseVersion = getReleaseVersion(releaseVersion, deployType)
+        def kubernetesParm = '-Pkubernetes'
+        if (sparkVersion == 'spark2.2') {
+            kubernetesParm = ''
+        }
+        sh script: """
+            ./build/mvn versions:set -DnewVersion=${_releaseVersion}
+            ./build/mvn -T 2C deploy -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+        """
+    }
+}
+
 pipeline {
     options {
         timeout(time: 12, unit: 'HOURS')
@@ -142,9 +157,11 @@ pipeline {
                 '进代码后基于dev分支发布，选择QA，会在version后面加上 -SNAPSHOT\n GA后基于稳定分支发包，选择GA，version 不做处理')
         choice(name: 'sparkVersion', choices: 'spark3\nspark2.4\nspark2.2', description: 'spark 大版本，spark2.4/2.2 发包不会推到云上')
         string(name: 'cloud_dependency_path', defaultValue: 'cloud-dependency/current', description: 'cloud denpendency directory in repo-ofs,\n 这个路径是制品库spark 目录下的子目录,该目录下必须有depedencies.tar.gz 文件，可以选择旧包的目录打旧版本的spark 包，eg:cloud-dependency/4.6.4.0\n 4.5稳定版发版请用cloud-dependency/4.5.x-current')
+        booleanParam(name: 'deploy_to_ofs', defaultValue: true, description: '勾选时，将会将spark 推送到public repo，供kylin用户使用,重试的时候可以跳过这一步节省时间')
         booleanParam(name: 'deploy_to_kylin', defaultValue: true, description: '勾选时，将会将spark 推送到public repo，供kylin用户使用,重试的时候可以跳过这一步节省时间')
+        booleanParam(name: 'deploy_to_aws', defaultValue: true, description: '勾选时，将会将spark 推送到aws repo，供CI使用,重试的时候可以跳过这一步节省时间')
         booleanParam(name: 'publishToKC', defaultValue: false, description: '勾选时，会打云上的包给KC用, 如果只打on promise 包可以取消勾选')
-        booleanParam(name: 'upload_only', defaultValue: false, description: '勾选时，将会跳过 deploy jar 包到制品库，并获取对应版本 tar 包上传到 S3')
+        booleanParam(name: 'upload_only', defaultValue: false, description: '勾选时，将会跳过 deploy jar 包到制品库，并获取repo-ofs raw 中对应版本 tar 包上传到 S3')
     }
 
     stages {
@@ -185,12 +202,16 @@ pipeline {
                     script {
                         releaseVersion = getReleaseVersion(params.release_version, params.deployType)
                         releaseName = releaseVersion.replace('-kylin', '')
+                        if (params.sparkVersion == 'spark3' && params.publishToKC) {
+                            publishToKC = true
+                        }
                         if(params.deploy_to_kylin){
                             sh script: """
                                 cp -r sourcecode ./sourcecode2
                                 ls -alt sourcecode2
                             """
                         }
+                        sh "cp -r sourcecode ./sourcecode3"
                     }
                     sh script: """
                         wget https://repo-ofs.kyligence.com/repository/raw-public/io.kyligence.spark/${params.cloud_dependency_path}/depedencies.tar.gz
@@ -212,26 +233,7 @@ pipeline {
                     steps {
                         container('build') {
                             dir('sourcecode') {
-                                script {
-                                    releaseVersion = getReleaseVersion(params.release_version, params.deployType)
-                                    if (params.sparkVersion == 'spark3' && params.publishToKC) {
-                                        publishToKC = true
-                                    }
-                                    def kubernetesParm = '-Pkubernetes'
-                                    if (params.sparkVersion == 'spark2.2') {
-                                        kubernetesParm = ''
-                                    }
-                                    timestamps {
-                                        retry(2) {
-                                            sh script: """
-                                                export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=1g -Xss128m"
-                                                mvn versions:set -DnewVersion=${releaseVersion}
-                                                mvn deploy -Pdev -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                                # ./build/mvn install -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
-                                            """
-                                        }
-                                    }
-                                }
+                                deployJars(params.release_version, params.deployType, params.sparkVersion, 'dev')
                             }
 
                             script {
@@ -260,29 +262,26 @@ pipeline {
                     steps {
                         container('build2') {
                             dir('sourcecode2') {
-                                script {
-                                    def kubernetesParm = '-Pkubernetes'
-                                    if (params.sparkVersion == 'spark2.2') {
-                                        kubernetesParm = ''
-                                    }
-                                    timestamps {
-                                        retry(2) {
-                                            //delpoy to public repo for kylin
-                                            sh """
-                                                export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=1g -Xss128m"
-                                                mvn versions:set -DnewVersion=${releaseVersion}
-                                                mvn deploy -Ppro -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true  -Dmaven.install.skip=true
-                                            """
-                                        }
-                                    }
-                                }
+                                deployJars(params.release_version, params.deployType, params.sparkVersion, 'pro')
+                            }
+                        }
+                    }
+                }
+                stage('to AWS CI') {
+                    when {
+                        expression {
+                            return params.deploy_to_aws
+                        }
+                    }
+                    steps {
+                        container('build2') {
+                            dir('sourcecode') {
+                                deployJars(params.release_version, params.deployType, params.sparkVersion, 'aws')
                             }
                         }
                     }
                 }
             }
-
-            
         }
         stage('Package') {
             when {
@@ -424,7 +423,7 @@ pipeline {
                 stage('on-perm-nohadoop') {
                     when {
                         expression {
-                            return params.sparkVersion == 'spark3' && params.publishToKC
+                            return publishToKC
                         }
                     }
                     steps {
@@ -436,7 +435,7 @@ pipeline {
                 stage('cloud-aws') {
                     when {
                         expression {
-                            return params.sparkVersion == 'spark3' && params.publishToKC
+                            return publishToKC
                         }
                     }
                     steps {
@@ -448,7 +447,7 @@ pipeline {
                 stage('cloud-azure') {
                     when {
                         expression {
-                            return params.sparkVersion == 'spark3' && params.publishToKC
+                            return publishToKC
                         }
                     }
                     steps {
@@ -460,7 +459,7 @@ pipeline {
                 stage('cloud-gcp') {
                     when {
                         expression {
-                            return params.sparkVersion == 'spark3' && params.publishToKC
+                            return publishToKC
                         }
                     }
                     steps {
@@ -472,7 +471,7 @@ pipeline {
                 stage('cloud-huawei') {
                     when {
                         expression {
-                            return params.sparkVersion == 'spark3' && params.publishToKC
+                            return publishToKC
                         }
                     }
                     steps {
