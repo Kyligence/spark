@@ -20,7 +20,7 @@ global:
   nacos:
     krn: "config"
     discovery:
-      group: global-service
+      group: zen-cloud
 
   kyligence:
     request:

@@ -14,6 +14,10 @@ data:
       gateway:
         integrate:
           iam: {{.Values.saas.gateway.integrate.iam}}
+    server:
+      max-http-header-size: 5242880
+      netty:
+        max-initial-line-length: 5242880
 
   route.json: |
     [

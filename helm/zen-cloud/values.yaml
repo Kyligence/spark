@@ -29,7 +29,7 @@ global:
     # serverAddr:
   
   tenantId: "9223372036854775707" # 部署一个 zen-cloud-release 需要的租户ID
-  publicGroup: "zen-cloud"   # 租户中心在 nacos-naming 中的组
+  publicGroup: "zen-cloud"   # 租户中心在 nacos-naming 中的组 {nacos.discovery.group}
 
   tz: "Asia/Shanghai"        # 部署 zen-cloud 的时区, 必须考虑实际情况.
 
@@ -54,26 +54,26 @@ global:
 frontend:
   image:
     tag: "latest"
-#   iam:
-#     serverAddr: https://iam.dev.kyligence.com/   # 租户中心的访问地址.
-#   config:
-#     serverAddr: https://nacos.dev.kyligence.com/   # 配置中心的访问地址.
-#   ingress:
-#     hosts:
-#       - host: dev.kyligence.com  # zen-cloud 最终的访问地址是 https://{helm-release-name}.{k8s-namespace}.{host}/
-#         paths:
-#           - path: /
-#             pathType: ImplementationSpecific
+    iam:
+      serverAddr: https://iam.dev.kyligence.com/   # 租户中心的访问地址. https://{iam.krn}.{host}
+    config:
+      serverAddr: https://config.dev.kyligence.com/   # 配置中心的访问地址. https://{nacos.krn}.{host}
+    ingress:
+      hosts:
+        - host: dev.kyligence.com  # zen-cloud 最终的访问地址是 https://{helm-release-name}.{k8s-namespace}.{host}/
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
 
 gateway:
   image:
     repository: repo-ofs.kyligence.com/gateway
     tag: "5.1.2-DEV-beab30ca"
-#   config: # redis 参数必须和租户中心的 gateway 所使用的 redis 一致.
-#     redis:
-#       host: redis-master.zen-cloud.svc.cluster.local
-#       database: 6
-#       password: "******"
+    config: # redis 参数必须和租户中心的 gateway 所使用的 redis 一致.
+      redis:
+        host: redis.zen-cloud.svc.cluster.local
+        database: 6
+        password: "******"
 
 common:
   sparkResourceNamespace: zen-cloud-calc
