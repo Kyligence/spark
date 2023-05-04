@@ -44,7 +44,7 @@ pipeline {
                         container('build') {
                             dir("kycalcite"){
                                 sh script: """
-                                    mvn clean deploy -DskipTests=true -Pdev
+                                    mvn clean deploy -DskipTests=true -Pdev --settings /root/.m2/settings.xml
                                 """
                             }
                         }
@@ -55,7 +55,7 @@ pipeline {
                         container('build') {
                             dir("kycalcite"){
                                 sh script: """
-                                    mvn clean deploy -DskipTests=true -Ppro
+                                    mvn clean deploy -DskipTests=true -Ppro --settings /root/.m2/settings.xml
                                 """
                             }
                         }
