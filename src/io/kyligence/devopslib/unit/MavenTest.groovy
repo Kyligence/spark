@@ -16,6 +16,7 @@ class MavenTest extends Unit<String, Integer> {
                     -pl ${getName()} \
                     -DfailIfNoTests=false \
                     -Duser.timezone=GMT+8 ${jvmArgs}
+                    -Djava.net.preferIPv4Stack=true
                 """)
         this.setResult(0)
 
