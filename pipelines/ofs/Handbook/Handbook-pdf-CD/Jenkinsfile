@@ -299,8 +299,7 @@ pipeline {
 
                                 retry(5) {
                                     sh (script:"""
-                                        set +X
-                                        set -e
+                                        set +x -e
                                         export PATH=$PATH:/opt/calibre
                                         export LC_ALL=en_US.UTF-8
                                         export LANG=en_US.UTF-8
@@ -318,8 +317,7 @@ pipeline {
 
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
-                                    set +X
-                                    set -e
+                                    set +x -e
                                     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
                                     rm -rf _book/zh-cn
                                     mv _book/zh-hans _book/zh-cn
@@ -338,8 +336,7 @@ pipeline {
                                 println "package_path: ${package_path}"
 
                                 sh script: """
-                                    set +X
-                                    set -e
+                                    set +x -e
                                     mkdir -p /var/cicd/handbook/${package_path}
                                     mv _book/${file_name} ${file_name}
                                     ls -lh _book/
@@ -375,8 +372,7 @@ pipeline {
 
                             retry(3) {
                                 sh """#!/bin/bash
-                                    set +X
-                                    set -e
+                                    set +x -e
                                     echo 'uploading to CN site ...'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /home/ec2-user/release/${package_path}"
                                     scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@161.189.160.9:/home/ec2-user/release/${package_path}
@@ -387,8 +383,7 @@ pipeline {
 
                             retry(3) {
                                 sh """#!/bin/bash
-                                    set +X
-                                    set -e
+                                    set +x -e
                                     echo 'uploading to EN site ...'
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /home/ec2-user/release/${package_path}"
                                     scp -i /etc/pem/docs.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@44.233.37.122:/home/ec2-user/release/${package_path}
@@ -462,8 +457,7 @@ pipeline {
                             try {
                                 retry(2) {
                                     sh """#!/bin/bash
-                                        set +X
-                                        set -e
+                                        set +x -e
                                         echo '备份旧版(CN)'
                                         ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /opt/books/${package_path}/"
 
@@ -474,8 +468,7 @@ pipeline {
                                 }
                                 retry(2) {
                                     sh """#!/bin/bash
-                                        set +X
-                                        set -e
+                                        set +x -e
                                         echo '备份旧版(EN)'
                                         ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /opt/books/${package_path}/"
 
@@ -490,8 +483,7 @@ pipeline {
                                 println "exception: ${exception}"
                             }
                             sh """#!/bin/bash
-                                set +X
-                                set -e
+                                set +x -e
                                 echo '发布上传 CN 站点'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /opt/books/${package_path}/"
@@ -500,8 +492,7 @@ pipeline {
                             """
 
                             sh """#!/bin/bash
-                                set +X
-                                set -e
+                                set +x -e
                                 echo '发布上传 EN 站点'
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /opt/books/${package_path}/"
@@ -542,7 +533,7 @@ pipeline {
                             if (isRollback == true) {
                                 println "backup_name: ${backup_name}"
                                 sh """
-                                    set -e
+                                    set +x -e
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /home/ec2-user/backup/"
@@ -554,7 +545,7 @@ pipeline {
                                 """
 
                                 sh """
-                                    set -e
+                                    set +x -e
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /home/ec2-user/backup/"
