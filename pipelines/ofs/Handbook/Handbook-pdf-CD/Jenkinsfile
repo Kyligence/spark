@@ -293,13 +293,13 @@ pipeline {
                                 retry(5) {
                                     sh (script:'''
                                         gitbook build
-                                        echo "\033[33m gitbook build success\033[0m"
+                                        echo "gitbook build success"
                                     ''')
                                 }
 
                                 retry(5) {
                                     sh (script:"""
-                                        set -X
+                                        set +X
                                         set -e
                                         export PATH=$PATH:/opt/calibre
                                         export LC_ALL=en_US.UTF-8
@@ -310,7 +310,7 @@ pipeline {
                                         gitbook pdf
                                         mv book_tmp.json book.json
 
-                                        echo "\033[36m gitbook pdf success\033[0m"
+                                        echo "gitbook pdf success"
                                     """)
                                 }
 
@@ -318,7 +318,7 @@ pipeline {
 
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
-                                    set -X
+                                    set +X
                                     set -e
                                     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
                                     rm -rf _book/zh-cn
@@ -330,7 +330,7 @@ pipeline {
                                     ls -lh en/
                                     sed -i 's/zh-hans/zh-cn/g' index.html
                                     tar -zcvf ${file_name} * > /dev/null
-                                    echo "\033[36m pdf compress success\033[0m"
+                                    echo "pdf compress success"
                                 """)
 
                                 archiveArtifacts artifacts: '_book/*.tar.gz', fingerprint: true, followSymlinks: false, onlyIfSuccessful: true
@@ -338,7 +338,7 @@ pipeline {
                                 println "package_path: ${package_path}"
 
                                 sh script: """
-                                    set -X
+                                    set +X
                                     set -e
                                     mkdir -p /var/cicd/handbook/${package_path}
                                     mv _book/${file_name} ${file_name}
@@ -375,7 +375,7 @@ pipeline {
 
                             retry(3) {
                                 sh """#!/bin/bash
-                                    set -X
+                                    set +X
                                     set -e
                                     echo 'uploading to CN site ...'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /home/ec2-user/release/${package_path}"
@@ -387,7 +387,7 @@ pipeline {
 
                             retry(3) {
                                 sh """#!/bin/bash
-                                    set -X
+                                    set +X
                                     set -e
                                     echo 'uploading to EN site ...'
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /home/ec2-user/release/${package_path}"
@@ -462,7 +462,7 @@ pipeline {
                             try {
                                 retry(2) {
                                     sh """#!/bin/bash
-                                        set -X
+                                        set +X
                                         set -e
                                         echo '备份旧版(CN)'
                                         ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /opt/books/${package_path}/"
@@ -474,7 +474,7 @@ pipeline {
                                 }
                                 retry(2) {
                                     sh """#!/bin/bash
-                                        set -X
+                                        set +X
                                         set -e
                                         echo '备份旧版(EN)'
                                         ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /opt/books/${package_path}/"
@@ -490,7 +490,7 @@ pipeline {
                                 println "exception: ${exception}"
                             }
                             sh """#!/bin/bash
-                                set -X
+                                set +X
                                 set -e
                                 echo '发布上传 CN 站点'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
@@ -500,7 +500,7 @@ pipeline {
                             """
 
                             sh """#!/bin/bash
-                                set -X
+                                set +X
                                 set -e
                                 echo '发布上传 EN 站点'
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
