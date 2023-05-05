@@ -81,7 +81,7 @@ def _sendNotify(doc_type, subject, msg) {
 @NonCPS
 def _getNotifyTo(doc_type) {
     def emails = [
-        'KC': 'danchao.gu@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
+        'KC': 'na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
         'KE': 'yong.zhao@kyligence.io;qian.jiang@kyligence.io;lina.liu@kyligence.io;kaiqi.xue@kyligence.io;na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io',
         'KI': 'na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io;xinxing.wu@kyligence.io',
         'MDX': 'na.pan@kyligence.io;chen.gui@kyligence.io;chonger.ni@kyligence.io;xinxing.wu@kyligence.io',
@@ -249,6 +249,7 @@ pipeline {
                             retry(3) {
                                 sh script: '''#!/bin/bash
                                     set +X
+                                    set -e
                                     sed -ie 's/\"search\"/\"-search\"/g' book.json
                                     gitbook install
                                 '''
@@ -256,6 +257,7 @@ pipeline {
                             if (project == 'Kyligence-Enterprise-Manual') {
                                 sh script: '''#!/bin/bash
                                     set +X
+                                    set -e
                                     ls -al
                                     chmod +x ./check_deadlinks.sh
                                     /bin/bash -c ./check_deadlinks.sh
@@ -263,6 +265,7 @@ pipeline {
                             } else if (project == 'Cloud_Manual') {
                                 sh script: '''#!/bin/bash
                                     set +X
+                                    set -e
                                     ls -al
                                     chmod +x ./local_check_dead_link.sh
                                     /bin/bash -c ./local_check_dead_link.sh
@@ -296,6 +299,8 @@ pipeline {
 
                                 retry(5) {
                                     sh (script:"""
+                                        set -X
+                                        set -e
                                         export PATH=$PATH:/opt/calibre
                                         export LC_ALL=en_US.UTF-8
                                         export LANG=en_US.UTF-8
@@ -313,6 +318,8 @@ pipeline {
 
                                 // 参看pdf压缩说明书.md
                                 sh (script:"""
+                                    set -X
+                                    set -e
                                     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dColorImageResolution=300 -dNOPAUSE -dBATCH -sOutputFile=_book/en/${pdf_en}.pdf book_en.pdf
                                     rm -rf _book/zh-cn
                                     mv _book/zh-hans _book/zh-cn
@@ -331,6 +338,8 @@ pipeline {
                                 println "package_path: ${package_path}"
 
                                 sh script: """
+                                    set -X
+                                    set -e
                                     mkdir -p /var/cicd/handbook/${package_path}
                                     mv _book/${file_name} ${file_name}
                                     ls -lh _book/
@@ -364,21 +373,29 @@ pipeline {
                             sh "mv ${file_name} ${ga_name}"
                             sh 'ls -lh'
 
-                            println '\033[36mUploading... \033[0m'
                             retry(3) {
                                 sh """#!/bin/bash
+                                    set -X
+                                    set -e
+                                    echo 'uploading to CN site ...'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /home/ec2-user/release/${package_path}"
                                     scp -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@161.189.160.9:/home/ec2-user/release/${package_path}
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /home/ec2-user/release/${package_path}"
+                                    echo 'upload CN site Done'
                                 """
+                            }
 
+                            retry(3) {
                                 sh """#!/bin/bash
+                                    set -X
+                                    set -e
+                                    echo 'uploading to EN site ...'
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /home/ec2-user/release/${package_path}"
                                     scp -i /etc/pem/docs.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r ./${ga_name} ec2-user@44.233.37.122:/home/ec2-user/release/${package_path}
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /home/ec2-user/release/${package_path}"
+                                    echo 'upload EN site Done'
                                 """
                             }
-                            println '\033[36mUploaded success\033[0m'
                         }
                     }
                 }
@@ -395,7 +412,6 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            println '\033[36mUpload to Nexus... \033[0m'
                             sh """#!/bin/bash
                                 mkdir tmp
                                 tar -zxvf ./${ga_name} -C ./tmp > /dev/null
@@ -421,8 +437,6 @@ pipeline {
                                     pushRawArtifactsByApi('raw-tars-hosted', "io.kyligence.ke/docs/${version}/${commitid}/zh-cn", "./tmp/zh-cn/${pdf_zh}.pdf", "Kyligence_Enterprise_User_Manual-zh.pdf", user, passwd)
                                 }
                             }
-
-                            println '\033[36mUpload to Nexus success\033[0m'
                         }
                     }
                 }
@@ -446,30 +460,39 @@ pipeline {
                                 <p>Please check it and Confirm on the pipeline url: <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>
                             """)
                             try {
-                                sh """#!/bin/bash
-                                    echo '备份旧版'
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /opt/books/${package_path}/"
+                                retry(2) {
+                                    sh """#!/bin/bash
+                                        set -X
+                                        set -e
+                                        echo '备份旧版(CN)'
+                                        ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /opt/books/${package_path}/"
 
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /home/ec2-user/backup/${package_path}/"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mv /opt/books/${package_path}/* /home/ec2-user/backup/${package_path}/"
-                                    ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /home/ec2-user/backup/${package_path}/"
-                                """
+                                        ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mkdir -p /home/ec2-user/backup/${package_path}/"
+                                        ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "mv /opt/books/${package_path}/* /home/ec2-user/backup/${package_path}/"
+                                        ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /home/ec2-user/backup/${package_path}/"
+                                    """
+                                }
+                                retry(2) {
+                                    sh """#!/bin/bash
+                                        set -X
+                                        set -e
+                                        echo '备份旧版(EN)'
+                                        ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /opt/books/${package_path}/"
 
-                                sh """#!/bin/bash
-                                    echo '备份旧版'
-                                    ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /opt/books/${package_path}/"
-
-                                    ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /home/ec2-user/backup/${package_path}/"
-                                    ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mv /opt/books/${package_path}/* /home/ec2-user/backup/${package_path}/"
-                                    ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /home/ec2-user/backup/${package_path}/"
-                                """
+                                        ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mkdir -p /home/ec2-user/backup/${package_path}/"
+                                        ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "mv /opt/books/${package_path}/* /home/ec2-user/backup/${package_path}/"
+                                        ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /home/ec2-user/backup/${package_path}/"
+                                    """
+                                }
                                 println 'Deploy last version successful'
                             }
                             catch (exception) {
                                 println "exception: ${exception}"
                             }
                             sh """#!/bin/bash
-                                echo '发布上传站点'
+                                set -X
+                                set -e
+                                echo '发布上传 CN 站点'
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /opt/books/${package_path}/"
                                 ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /opt/books/${package_path}/zh-cn/"
@@ -477,15 +500,14 @@ pipeline {
                             """
 
                             sh """#!/bin/bash
-                                echo '发布上传站点'
+                                set -X
+                                set -e
+                                echo '发布上传 EN 站点'
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "tar -zxvf /home/ec2-user/release/${package_path}/${ga_name} -C /opt/books/${package_path}/ > /dev/null"
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /opt/books/${package_path}/"
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /opt/books/${package_path}/zh-cn/"
                                 ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /opt/books/${package_path}/en/"
                             """
-                            // }
-                            // def approver = paramsGA['APPROVER']
-                            // println "approver: ${approver}"
 
                             _sendNotify(params.doc_type, "[DEVOPS] Handbook [${project}] Deploy Successful", """
                                 <h3>Hi,</h3><br />
@@ -520,6 +542,7 @@ pipeline {
                             if (isRollback == true) {
                                 println "backup_name: ${backup_name}"
                                 sh """
+                                    set -e
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/rsa.pem -o StrictHostKeyChecking=no ec2-user@161.189.160.9 "ls -lh /home/ec2-user/backup/"
@@ -531,6 +554,7 @@ pipeline {
                                 """
 
                                 sh """
+                                    set -e
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /opt/books/${package_path}/"
                                     echo '------'
                                     ssh -i /etc/pem/docs.pem -o StrictHostKeyChecking=no ec2-user@44.233.37.122 "ls -lh /home/ec2-user/backup/"
