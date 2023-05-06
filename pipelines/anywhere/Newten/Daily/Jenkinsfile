@@ -27,6 +27,7 @@ pipeline {
         string(name: 'branch', defaultValue: 'newten-dev', description: '')
         booleanParam(name: 'failFast', defaultValue: true, description:'')
         booleanParam(name: 'skipBuild', defaultValue: false, description:'')
+        booleanParam(name: 'clickhouseIt', defaultValue: false, description:'')
     }
 
     stages {
@@ -71,7 +72,7 @@ pipeline {
                             .ghprbPullId(params.ghprbPullId)
                             .failFast(params.failFast)
                             .skipBuild(params.skipBuild)
-                            .isDaily(false)
+                            .isDaily(params.clickhouseIt)
                             .build())
                     }
                 }
