@@ -71,7 +71,7 @@ pipeline {
                             .ghprbPullId(params.ghprbPullId)
                             .failFast(params.failFast)
                             .skipBuild(params.skipBuild)
-                            .isDaily(true)
+                            .isDaily(false)
                             .build())
                     }
                 }
