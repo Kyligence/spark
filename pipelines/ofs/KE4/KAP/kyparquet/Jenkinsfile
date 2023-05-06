@@ -47,7 +47,7 @@ pipeline {
                         container('build') {
                             dir("kyparquet"){
                                 sh script: """
-                                    mvn deploy -DskipTests=true -Pdev 
+                                    mvn clean deploy -DskipTests=true -Pdev -U
                                 """
                             }
                         }
@@ -58,7 +58,7 @@ pipeline {
                         container('build2') {
                             dir("kyparquet2"){
                                 sh script: """
-                                    mvn deploy -DskipTests=true -Ppro
+                                    mvn clean deploy -DskipTests=true -Ppro -U
                                 """
                             }
                         }
