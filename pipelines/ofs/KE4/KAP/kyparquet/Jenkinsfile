@@ -52,7 +52,7 @@ pipeline {
                 }
                 stage('Deploy OpenSource') {
                     steps {
-                        container('build') {
+                        container('build2') {
                             dir("kycalcite"){
                                 sh script: """
                                     mvn clean deploy -DskipTests=true -Ppro --settings /root/.m2/settings.xml

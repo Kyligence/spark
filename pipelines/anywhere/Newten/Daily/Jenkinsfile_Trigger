@@ -34,7 +34,8 @@ pipeline {
                                         string(name: 'sha1', value: ''),
                                         string(name: 'ghprbPullId', value: ''),
                                         booleanParam(name: 'failFast', value: true),
-                                        booleanParam(name: 'skipBuild', value: false)],
+                                        booleanParam(name: 'skipBuild', value: false),
+                                        booleanParam(name: 'clickhouseIt', value: true)],
 
                                 println("task [${task}] build [${result}].")
 
