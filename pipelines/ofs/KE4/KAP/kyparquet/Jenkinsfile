@@ -28,8 +28,9 @@ pipeline {
                         timestamps {
                             script {
                                 sh "thrift -version"
-                                if(params.repo && params.repo != "Kyligence"){
-                                    pull
+                                if(params.repo && params.repo != "Kyligence") {
+                                    println "暂不支持其他仓库"
+                                }else{
                                     pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
                                 }
 
