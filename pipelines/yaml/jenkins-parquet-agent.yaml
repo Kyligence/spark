@@ -59,9 +59,9 @@ spec:
           readOnly: false
           subPath: "settings2.xml"
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository2/io/kyligence
+          mountPath: /root/.m2/repository/io/kyligence
         - name: "kylin-repo"
-          mountPath: /root/.m2/repository2/org/apache
+          mountPath: /root/.m2/repository/org/apache
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"

@@ -28,7 +28,11 @@ pipeline {
                         timestamps {
                             script {
                                 sh "thrift -version"
-                                pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
+                                if(params.repo && params.repo != "Kyligence"){
+                                    pull
+                                    pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
+                                }
+
                             }
                         }
                     }
