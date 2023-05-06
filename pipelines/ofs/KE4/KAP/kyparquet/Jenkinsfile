@@ -46,6 +46,7 @@ pipeline {
                     dir("kyparquet"){
                         sh script: """
                             mvn clean install -DskipTests=true -Pdev -U
+                            mvn deploy -DskipTests=true -Paws
                             mvn deploy -DskipTests=true -Pdev
                             mvn deploy -DskipTests=true -Ppro
                         """
