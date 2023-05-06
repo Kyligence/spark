@@ -24,17 +24,17 @@ pipeline {
         stage('Pull Code') {
             steps {
                 container('build') {
-                    dir('kycalcite') {
-                        timestamps {
-                            script {
+                    timestamps {
+                        script {
+                            dir('kyparquet') {
                                 sh "thrift -version"
                                 if(params.repo && params.repo != "Kyligence") {
                                     println "暂不支持其他仓库"
                                 }else{
                                     pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
                                 }
-
                             }
+                            sh "cp -r kyparquet ./kyparquet2"
                         }
                     }
                 }
@@ -45,9 +45,9 @@ pipeline {
                 stage('Deploy Ofs') {
                     steps {
                         container('build') {
-                            dir("kycalcite"){
+                            dir("kyparquet"){
                                 sh script: """
-                                    mvn clean deploy -DskipTests=true -Pdev --settings /root/.m2/settings.xml
+                                    mvn deploy -DskipTests=true -Pdev 
                                 """
                             }
                         }
@@ -56,9 +56,9 @@ pipeline {
                 stage('Deploy OpenSource') {
                     steps {
                         container('build2') {
-                            dir("kycalcite"){
+                            dir("kyparquet2"){
                                 sh script: """
-                                    mvn clean deploy -DskipTests=true -Ppro --settings /root/.m2/settings.xml
+                                    mvn deploy -DskipTests=true -Ppro
                                 """
                             }
                         }
