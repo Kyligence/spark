@@ -28,9 +28,7 @@ pipeline {
                         timestamps {
                             script {
                                 sh "thrift -version"
-                                retry(3) {
-                                    pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
-                                }
+                                pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
                             }
                         }
                     }
