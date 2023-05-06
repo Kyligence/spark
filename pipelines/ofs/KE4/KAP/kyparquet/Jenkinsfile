@@ -34,7 +34,8 @@ pipeline {
                                     pullCodeFromGitMirror "parquet-mr", "${params.branch}", false, "${params.repo}"
                                 }
                             }
-//                            sh "cp -r kyparquet ./kyparquet2"
+                            sh "cp -r kyparquet ./kyparquet2"
+                            sh "cp -r kyparquet ./kyparquet3"
                         }
                     }
                 }
@@ -45,6 +46,7 @@ pipeline {
                 container('build') {
                     dir("kyparquet"){
                         sh script: """
+                            set +x -e
                             mvn clean install -DskipTests=true -Pdev -U
                             mvn deploy -DskipTests=true -Paws
                             mvn deploy -DskipTests=true -Pdev
