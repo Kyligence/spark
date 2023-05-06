@@ -30,10 +30,10 @@ spec:
           name: "lex-mvn-settings"
           readOnly: false
           subPath: "settings.xml"
-        - name: "kyligence-repo"
-          mountPath: /root/.m2/repository/io/kyligence
-        - name: "kylin-repo"
-          mountPath: /root/.m2/repository/org/apache
+#        - name: "kyligence-repo"
+#          mountPath: /root/.m2/repository/io/kyligence
+#        - name: "kylin-repo"
+#          mountPath: /root/.m2/repository/org/apache
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"

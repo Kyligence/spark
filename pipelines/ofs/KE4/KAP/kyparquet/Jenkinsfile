@@ -41,17 +41,22 @@ pipeline {
                 }
             }
         }
-        stage('Deploy') {
+        stage('Build') {
             steps {
                 container('build') {
                     dir("kyparquet"){
-                        sh script: """
-                            set +x -e
-                            mvn clean install -DskipTests=true -Pdev -U
-                            mvn deploy -DskipTests=true -Paws
-                            mvn deploy -DskipTests=true -Pdev
-                            mvn deploy -DskipTests=true -Ppro
-                        """
+                        sh "mvn clean install -DskipTests=true -Pdev -U"
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                container('build') {
+                    dir("kyparquet") {
+//                        sh "mvn deploy -DskipTests=true -Paws"
+                        sh "mvn deploy -DskipTests=true -Pdev"
+//                        sh "mvn deploy -DskipTests=true -Ppro"
                     }
                 }
             }
