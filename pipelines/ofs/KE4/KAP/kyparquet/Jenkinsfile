@@ -45,7 +45,7 @@ pipeline {
             steps {
                 container('build') {
                     dir("kyparquet"){
-                        sh "mvn clean install -DskipTests=true -Pdev -U"
+                        sh "mvn clean install -DskipTests=true -Paliyun -U"
                     }
                 }
             }
@@ -56,7 +56,7 @@ pipeline {
                     dir("kyparquet") {
 //                        sh "mvn deploy -DskipTests=true -Paws"
                         sh "mvn deploy -DskipTests=true -Pdev"
-//                        sh "mvn deploy -DskipTests=true -Ppro"
+                        sh "mvn deploy -DskipTests=true -Ppro"
                     }
                 }
             }
