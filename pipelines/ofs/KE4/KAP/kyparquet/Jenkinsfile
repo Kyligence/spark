@@ -54,38 +54,12 @@ pipeline {
             steps {
                 container('build') {
                     dir("kyparquet") {
-//                        sh "mvn deploy -DskipTests=true -Paws"
                         sh "mvn deploy -DskipTests=true -Pdev"
+                        sh "mvn deploy -DskipTests=true -Paws"
                         sh "mvn deploy -DskipTests=true -Ppro"
                     }
                 }
             }
         }
-//        stage('Deploy') {
-//            parallel {
-//                stage('Deploy Ofs') {
-//                    steps {
-//                        container('build') {
-//                            dir("kyparquet"){
-//                                sh script: """
-//                                    mvn clean deploy -DskipTests=true -Pdev -U
-//                                """
-//                            }
-//                        }
-//                    }
-//                }
-//                stage('Deploy OpenSource') {
-//                    steps {
-//                        container('build2') {
-//                            dir("kyparquet2"){
-//                                sh script: """
-//                                    mvn clean deploy -DskipTests=true -Ppro -U
-//                                """
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
     }
 }

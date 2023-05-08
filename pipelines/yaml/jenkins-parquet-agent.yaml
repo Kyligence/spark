@@ -30,42 +30,13 @@ spec:
           name: "lex-mvn-settings"
           readOnly: false
           subPath: "settings.xml"
-#        - name: "kyligence-repo"
-#          mountPath: /root/.m2/repository/io/kyligence
-#        - name: "kylin-repo"
-#          mountPath: /root/.m2/repository/org/apache
-        - mountPath: "/var/cicd"
-          name: "jenkins-common"
-          subPath: "newten-cicd"
-    - name: "build2"
-      image: "harbor-ofs.kyligence.com/library/thrift-build:0.1"
-      imagePullPolicy: "IfNotPresent"
-      tty: true
-      command:
-        - "cat"
-      resources:
-        requests:
-          memory: "1Gi"
-          cpu: "100m"
-        limits:
-          memory: "8Gi"
-          cpu: "4000m"
-      volumeMounts:
-        - mountPath: "/root/.m2"
-          name: "jenkins-common"
-          subPath: "maven3"
-        - mountPath: "/root/.m2/settings.xml"
-          name: "lex-mvn-settings"
-          readOnly: false
-          subPath: "settings2.xml"
         - name: "kyligence-repo"
-          mountPath: /root/.m2/repository2/io/kyligence
+          mountPath: /root/.m2/repository/io/kyligence
         - name: "kylin-repo"
-          mountPath: /root/.m2/repository2/org/apache
+          mountPath: /root/.m2/repository/org/apache
         - mountPath: "/var/cicd"
           name: "jenkins-common"
           subPath: "newten-cicd"
-
   volumes:
     - name: "jenkins-common"
       persistentVolumeClaim:
@@ -82,7 +53,5 @@ spec:
         items:
           - key: "settings.xml"
             path: "settings.xml"
-          - key: "settings2.xml"
-            path: "settings2.xml"
         name: "lex-mvn-settings"
       name: "lex-mvn-settings"
