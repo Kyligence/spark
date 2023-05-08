@@ -19,7 +19,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'kyligence-git', passwordVariable: 'token', usernameVariable: 'login')]) {
-                        def branches = ['newten-dev', 'newten-sp-dev', 'ke-4.5.x-dev', 'ke-4.5.x', 'yinglong-dev', 'newten']
+                        def branches = ['newten-sp-dev', 'ke-4.5.x-dev', 'ke-4.5.x', 'yinglong-dev', 'newten', 'newten-dev']
 
                         println("All Branches: ${branches}")
 
