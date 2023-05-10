@@ -27,6 +27,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter2.compat.QueryMetrics;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.Type;
 
 import org.apache.spark.memory.MemoryMode;
@@ -38,6 +39,8 @@ import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+
+import scala.Option;
 
 /**
  * A specialized RecordReader that reads into InternalRows or ColumnarBatches directly using the
@@ -152,6 +155,16 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException, UnsupportedOperationException {
     super.initialize(inputSplit, taskAttemptContext);
+    initializeInternal();
+  }
+
+  @Override
+  public void initialize(
+          InputSplit inputSplit,
+          TaskAttemptContext taskAttemptContext,
+          Option<ParquetMetadata> fileFooter)
+          throws IOException, InterruptedException, UnsupportedOperationException {
+    super.initialize(inputSplit, taskAttemptContext, fileFooter);
     initializeInternal();
   }
 

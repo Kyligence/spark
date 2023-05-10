@@ -268,8 +268,17 @@ class ParquetFileFormat
 
       S3FileUtils.tryOpenClose(sharedConf, filePath)
       val startTime = System.currentTimeMillis()
-      lazy val footerFileMetaData =
-        ParquetFooterReader.readFooter(sharedConf, filePath, SKIP_ROW_GROUPS).getFileMetaData
+
+      val fileFooter = if (enableVectorizedReader) {
+        // When there are vectorized reads, we can avoid reading the footer twice by reading
+        // all row groups in advance and filter row groups according to filters that require
+        // push down (no need to read the footer metadata again).
+        ParquetFooterReader.readFooter(sharedConf, file, ParquetFooterReader.WITH_ROW_GROUPS)
+      } else {
+        ParquetFooterReader.readFooter(sharedConf, file, ParquetFooterReader.SKIP_ROW_GROUPS)
+      }
+      val footerFileMetaData = fileFooter.getFileMetaData
+
       val datetimeRebaseMode = DataSourceUtils.datetimeRebaseMode(
         footerFileMetaData.getKeyValueMetaData.get,
         datetimeRebaseModeInRead)
@@ -335,7 +344,7 @@ class ParquetFileFormat
         val iter = new RecordReaderIterator(vectorizedReader)
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
-        vectorizedReader.initialize(split, hadoopAttemptContext)
+        vectorizedReader.initialize(split, hadoopAttemptContext, Option.apply(fileFooter))
         logDebug(s"Appending $partitionSchema ${file.partitionValues}")
         vectorizedReader.initBatch(partitionSchema, file.partitionValues)
         if (returningBatch) {

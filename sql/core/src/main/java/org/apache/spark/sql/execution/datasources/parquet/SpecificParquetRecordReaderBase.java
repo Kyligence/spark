@@ -44,6 +44,7 @@ import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
@@ -80,16 +81,27 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
 
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+          throws IOException, InterruptedException {
+    initialize(inputSplit, taskAttemptContext, Option.empty());
+  }
+
+  public void initialize(InputSplit inputSplit,
+                         TaskAttemptContext taskAttemptContext,
+                         Option<ParquetMetadata> fileFooter)
       throws IOException, InterruptedException {
     Configuration configuration = taskAttemptContext.getConfiguration();
     FileSplit split = (FileSplit) inputSplit;
     this.file = split.getPath();
-
-    ParquetReadOptions options = HadoopReadOptions
-      .builder(configuration)
-      .withRange(split.getStart(), split.getStart() + split.getLength())
-      .build();
-    this.reader = new ParquetFileReader(HadoopInputFile.fromPath(file, configuration), options);
+    if (fileFooter.isDefined()) {
+      this.reader = new ParquetFileReader(configuration, file, fileFooter.get());
+    } else {
+      ParquetReadOptions options = HadoopReadOptions
+              .builder(configuration, file)
+              .withRange(split.getStart(), split.getStart() + split.getLength())
+              .build();
+      this.reader = new ParquetFileReader(
+              HadoopInputFile.fromPath(file, configuration), options);
+    }
     this.fileSchema = reader.getFileMetaData().getSchema();
     Map<String, String> fileMetadata = reader.getFileMetaData().getKeyValueMetaData();
     ReadSupport<T> readSupport = getReadSupportInstance(getReadSupportClass(configuration));
