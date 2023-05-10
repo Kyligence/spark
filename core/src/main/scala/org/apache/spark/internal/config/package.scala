@@ -2263,4 +2263,8 @@ package object config {
       .version("3.2.0")
       .stringConf
       .createOptional
+
+  private[spark] val CACHE_RETAIN_TIME = ConfigBuilder("spark.job-conf.retain.minutes")
+    .longConf
+    .createWithDefault(5)
 }
