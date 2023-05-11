@@ -4,6 +4,7 @@
 
 pipeline {
     options {
+        timestamps()
         timeout(time: 3, unit: 'HOURS')
     }
 
@@ -46,6 +47,26 @@ pipeline {
             }
         }
 
+        stage('Make gluten repo copies') {
+            steps {
+                container('git') {
+                    dir('gluten') {
+                        //log: Running in /home/jenkins/agent/workspace/Gluten/gluten-ci/gluten
+                        script {
+                            sh script: """
+                                cd ..
+                                if [ -d "gluten2" ]
+                                then
+                                  rm -rf gluten2
+                                fi
+                                cp -r gluten gluten2
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Build LIBCH') {
             steps {
                 container('libchbuilder') {
@@ -69,68 +90,87 @@ pipeline {
             }
         }
 
-        stage('Unit Test') {
-            steps {
-                container("maven") {
-                    dir("gluten") {
-                        script {
-                            sh 'ls'
+        stage('Parallel Unit Test') {
+            parallel {
+                stage('Gluten with Spark32') {
+                    steps {
+                        container("maven") {
+                            dir("gluten") {
+                                script {
+                                    sh 'ls'
 //                            sh script: "echo '/coredumps/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern"
-                            sh script: 'mkdir -p /data && tar -zxf /dataset/tpcds-data-sf1.tar.gz -C /data/'
-                            sh script: 'ls -al /data/tpcds-data-sf1'
-                            sh '''
-                              if [ -d "/tmp/spark" ]
+                                    sh script: 'mkdir -p /data && tar -zxf /dataset/tpcds-data-sf1.tar.gz -C /data/'
+                                    sh script: 'ls -al /data/tpcds-data-sf1'
+                                    sh '''
+                              if [ -d "/tmp/spark32" ]
                               then
-                                rm -rf /tmp/spark
+                                rm -rf /tmp/spark32
                               fi
-                              git clone --depth 1 --branch v3.2.2 https://github.com/apache/spark.git /tmp/spark
+                              git clone --depth 1 --branch v3.2.2 https://github.com/apache/spark.git /tmp/spark32
                               export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
                               '''
-                            try{
-                                sh '''
+                                    try{
+                                        sh '''
                                   export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
-                                  mvn clean install -Pbackends-clickhouse -Pspark-3.2 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark"
+                                  mvn clean test -Pbackends-clickhouse -Pspark-3.2 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark32"
                                 '''
-                            }finally {
-                                echo 'enter finally'
-                                sh 'ls -l'
-                                sh 'pwd'
-                                sh 'mkdir -p /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
-                                sh 'cp -r $(pwd)/backends-clickhouse /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
-                                sh 'ls -l /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
+                                    }finally {
+                                        echo 'enter finally'
+                                        sh 'ls -l'
+                                        sh 'pwd'
+                                        sh 'mkdir -p /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
+                                        sh 'cp -r $(pwd)/backends-clickhouse /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
+                                        sh 'ls -l /maven-log/\${BUILD_NUMBER}/3.2.2/backends-clickhouse'
 
-                            }
+                                    }
 
-
-
-                            sh '''
-                              if [ -d "/tmp/spark" ]
-                              then
-                                rm -rf /tmp/spark
-                              fi
-                              git clone --depth 1 --branch v3.3.1 https://github.com/apache/spark.git /tmp/spark
-                              export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
-                              '''
-                            try{
-
-                              sh '''
-                                export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
-                                mvn clean install -Pbackends-clickhouse -Pspark-3.3 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark"
-                              '''
-                            }finally {
-                                echo 'enter finally'
-                                sh 'ls -l'
-                                sh 'pwd'
-                                sh 'mkdir -p /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
-                                sh 'cp -r $(pwd)/backends-clickhouse /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
-                                sh 'ls -l /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+                                }
 
                             }
                         }
+                    }
+                }
+                stage('Gluten with Spark33') {
+                    steps {
+                        container("maven2") {
+                            dir("gluten2") {
+                                script {
+                                    sh 'ls'
+//                            sh script: "echo '/coredumps/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern"
+                                    sh script: 'mkdir -p /data2 && tar -zxf /dataset/tpcds-data-sf1.tar.gz -C /data2/'
+                                    sh script: 'ls -al /data2/tpcds-data-sf1'
+                                    sh '''
+                              if [ -d "/tmp/spark33" ]
+                              then
+                                rm -rf /tmp/spark33
+                              fi
 
+                              git clone --depth 1 --branch v3.3.1 https://github.com/apache/spark.git /tmp/spark33
+                              export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
+                              '''
+                                    try{
+
+                                        sh '''
+                                export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
+                                mvn clean test -Pbackends-clickhouse -Pspark-3.3 -Pspark-ut -Dtpcds.data.path=/data2/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark33"
+                              '''
+                                    }finally {
+                                        echo 'enter finally'
+                                        sh 'ls -l'
+                                        sh 'pwd'
+                                        sh 'mkdir -p /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+                                        sh 'cp -r $(pwd)/backends-clickhouse /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+                                        sh 'ls -l /maven-log/\${BUILD_NUMBER}/3.3.1/backends-clickhouse'
+
+                                    }
+                                }
+
+                            }
+                        }
                     }
                 }
             }
+
         }
     }
 

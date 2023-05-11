@@ -27,11 +27,11 @@ spec:
       imagePullPolicy: "IfNotPresent"
       resources:
         limits:
-          memory: "4Gi"
+          memory: "2Gi"
           cpu: "2000m"
         requests:
-          memory: "2Gi"
-          cpu: "800m"
+          memory: "1Gi"
+          cpu: "500m"
 
     - name: "maven"
       tty: true
@@ -42,6 +42,9 @@ spec:
       volumeMounts:
         - name: "kyligence-repo"
           mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - name: "tmpfs"
+          mountPath: /tmp
           readOnly: false
         - mountPath: "/root/.m2/settings.xml"
           name: "maven-settings"
@@ -60,11 +63,47 @@ spec:
 
       resources:
         limits:
-          memory: "20Gi"
-          cpu: "8"
+          memory: "24Gi"
+          cpu: "16"
         requests:
-          memory: "20Gi"
-          cpu: "8"
+          memory: "8Gi"
+          cpu: "2"
+
+    - name: "maven2"
+      tty: true
+      command:
+        - "cat"
+      image: "maven:3.8.3-openjdk-8"
+      imagePullPolicy: "IfNotPresent"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /jenkins-common/.kem2/repository
+          readOnly: false
+        - name: "tmpfs"
+          mountPath: /tmp
+          readOnly: false
+        - mountPath: "/root/.m2/settings.xml"
+          name: "maven-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - mountPath: "/var/run/docker.sock"
+          name: "dockersock"
+        - mountPath: "/dataset"
+          name: "jenkins-common"
+          readOnly: true
+          subPath: "dataset"
+        - mountPath: "/maven-log"
+          name: "jenkins-common"
+          readOnly: false
+          subPath: "maven-log"
+
+      resources:
+        limits:
+          memory: "24Gi"
+          cpu: "16"
+        requests:
+          memory: "8Gi"
+          cpu: "2"
 
     - name: "libchbuilder"
       tty: true
@@ -93,8 +132,8 @@ spec:
           memory: "30Gi"
           cpu: "16"
         requests:
-          memory: "30Gi"
-          cpu: "16"
+          memory: "8Gi"
+          cpu: "2"
 
   volumes:
     - name: "jenkins-common"
@@ -102,6 +141,10 @@ spec:
         claimName: "jenkins-common"
     - name: "kyligence-repo"
       emptyDir: { }
+    - name: "tmpfs"
+      emptyDir:
+        medium: Memory
+        sizeLimit: 8096Mi
     - configMap:
         defaultMode: 0777
         items:
