@@ -6,7 +6,7 @@ def call(repository,directory,file,filename,user,passwd){
       -F "raw.directory=${directory}" \
       -F "raw.asset1=@${file};type=application/java-archive" \
       -F "raw.asset1.filename=${filename}" \
-      -u "${user}":"${passwd}"
+      -u $user:$passwd
 """
 }
 def pushGATar(repository,directory,file,filename,user,passwd){
