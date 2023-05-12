@@ -107,11 +107,11 @@ pipeline {
                                 rm -rf /tmp/spark32
                               fi
                               git clone --depth 1 --branch v3.2.2 https://github.com/apache/spark.git /tmp/spark32
-                              export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
                               '''
                                     try{
                                         sh '''
                                   export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
+                                  export MAVEN_OPTS="-Xms1g -Xmx8g -Xss16m -XX:ReservedCodeCacheSize=1g"
                                   mvn clean test -Pbackends-clickhouse -Pspark-3.2 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark32"
                                 '''
                                     }finally {
@@ -146,11 +146,11 @@ pipeline {
                               fi
 
                               git clone --depth 1 --branch v3.3.1 https://github.com/apache/spark.git /tmp/spark33
-                              export MAVEN_OPTS="-Xmx5g -XX:ReservedCodeCacheSize=1g"
                               '''
                                     try{
 
                                         sh '''
+                                export MAVEN_OPTS="-Xms1g -Xmx8g -Xss16m -XX:ReservedCodeCacheSize=1g"
                                 export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
                                 mvn clean test -Pbackends-clickhouse -Pspark-3.3 -Pspark-ut -Dtpcds.data.path=/data2/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark33"
                               '''
