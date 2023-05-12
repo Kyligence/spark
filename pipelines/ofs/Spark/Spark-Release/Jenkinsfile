@@ -145,6 +145,24 @@ def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
     }
 }
 
+def build(releaseVersion,deployType,sparkVersion,envProfile) {
+    println "deployJars -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
+    script {
+        def _releaseVersion = getReleaseVersion(releaseVersion, deployType)
+        def kubernetesParm = '-Pkubernetes'
+        if (sparkVersion == 'spark2.2') {
+            kubernetesParm = ''
+        }
+        retry(3) {
+            sh script: """
+                export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
+                mvn versions:set -DnewVersion=${_releaseVersion}
+                mvn -T 4C clean install -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+            """
+        }
+    }
+}
+
 pipeline {
     options {
         timeout(time: 12, unit: 'HOURS')
@@ -166,6 +184,7 @@ pipeline {
         choice(name: 'sparkVersion', choices: 'spark3\nspark2.4\nspark2.2', description: 'spark 大版本，spark2.4/2.2 发包不会推到云上')
         string(name: 'cloud_dependency_path', defaultValue: 'cloud-dependency/current', description: 'cloud denpendency directory in repo-ofs,\n 这个路径是制品库spark 目录下的子目录,该目录下必须有depedencies.tar.gz 文件，可以选择旧包的目录打旧版本的spark 包，eg:cloud-dependency/4.6.4.0\n 4.5稳定版发版请用cloud-dependency/4.5.x-current')
         // booleanParam(name: 'deploy_to_ofs', defaultValue: true, description: '默认勾选，取消勾选时跳过本地repo-ofs deploy 以节省时间')
+        booleanParam(name: 'deploy_jars', defaultValue: true, description: '默认勾选，取消勾选时跳过本地repo-ofs deploy 以节省时间')
         booleanParam(name: 'deploy_to_kylin', defaultValue: true, description: '勾选时，将会将spark 推送到public repo，供kylin用户使用,重试的时候可以跳过这一步节省时间')
         booleanParam(name: 'deploy_to_aws', defaultValue: false, description: '勾选时，将会将spark 推送到aws repo，供CI使用,重试的时候可以跳过这一步节省时间')
         booleanParam(name: 'publishToKC', defaultValue: false, description: '勾选时，会打云上的包给KC用, 如果只打on promise 包可以取消勾选')
@@ -230,10 +249,34 @@ pipeline {
                 }
             }
         }
+        stage('Build') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        build(params.release_version, params.deployType, params.sparkVersion, 'dev')
+                    }
+
+                    script {
+                        sh script: '''
+                            cp -r sourcecode ./on-perm-hadoop2
+                        '''
+                        if(publishToKC) {
+                            sh script: '''
+                                cp -r sourcecode ./on-perm-nohadoop
+                                cp -r sourcecode ./cloud-azure
+                                cp -r sourcecode ./cloud-aws
+                                cp -r sourcecode ./cloud-gcp
+                                cp -r sourcecode ./cloud-huawei
+                            '''
+                        }
+                    }
+                }
+            }
+        }
         stage('Deploy') {
             when {
                 expression {
-                    return !params.upload_only
+                    return !params.upload_only && params.deploy_jars
                 }
             }
             parallel {
@@ -242,21 +285,6 @@ pipeline {
                         container('build') {
                             dir('sourcecode') {
                                 deployJars(params.release_version, params.deployType, params.sparkVersion, 'dev')
-                            }
-
-                            script {
-                                sh script: '''
-                                    cp -r sourcecode ./on-perm-hadoop2
-                                '''
-                                if(publishToKC) {
-                                    sh script: '''
-                                        cp -r sourcecode ./on-perm-nohadoop
-                                        cp -r sourcecode ./cloud-azure
-                                        cp -r sourcecode ./cloud-aws
-                                        cp -r sourcecode ./cloud-gcp
-                                        cp -r sourcecode ./cloud-huawei
-                                    '''
-                                }
                             }
                         }
                     }
@@ -321,7 +349,7 @@ pipeline {
                                         tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}
                                         md5sum spark-newten-${releaseName}-hadoop2.tgz
                                     """
-                                    uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
+                                    // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
                                     // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                     //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-hadoop2.tgz", "spark-newten-${releaseName}-hadoop2.tgz", user, passwd)
                                     // }
@@ -347,7 +375,7 @@ pipeline {
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
                                     """
-                                    uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
+                                    // uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
                                     // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                     //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
                                     // }
@@ -367,7 +395,7 @@ pipeline {
                             dir('cloud-aws') {
                                 script {
                                     generateCloudPackage('10', 'cloud-aws', 'aws', releaseVersion)
-                                    uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
+                                    // uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
                                 }
                             }
                         }
@@ -384,7 +412,7 @@ pipeline {
                             dir('cloud-azure') {
                                 script {
                                     generateCloudPackage('20', 'cloud-azure', 'azure', releaseVersion)
-                                    uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
+                                    // uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
                                 }
                             }
                         }
@@ -401,7 +429,7 @@ pipeline {
                             dir('cloud-gcp') {
                                 script {
                                     generateCloudPackage('30', 'cloud-gcp', 'gcp', releaseVersion)
-                                    uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
+                                    // uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
                                 }
                             }
                         }
@@ -418,7 +446,7 @@ pipeline {
                             dir('cloud-huawei') {
                                 script {
                                     generateCloudPackage('40', 'cloud-huawei', 'huawei', releaseVersion)
-                                    uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
+                                    // uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
                                 }
                             }
                         }
@@ -426,77 +454,77 @@ pipeline {
                 }
             }
         }
-        // stage('Upload') {
-        //     parallel {
-        //         stage('on-perm-hadoop2') {
-        //             steps {
-        //                 container('build') {
-        //                     uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
-        //                 }
-        //             }
-        //         }
-        //         stage('on-perm-nohadoop') {
-        //             when {
-        //                 expression {
-        //                     return publishToKC
-        //                 }
-        //             }
-        //             steps {
-        //                 container('build') {
-        //                     uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
-        //                 }
-        //             }
-        //         }
-        //         stage('cloud-aws') {
-        //             when {
-        //                 expression {
-        //                     return publishToKC
-        //                 }
-        //             }
-        //             steps {
-        //                 container('build') {
-        //                     uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
-        //                 }
-        //             }
-        //         }
-        //         stage('cloud-azure') {
-        //             when {
-        //                 expression {
-        //                     return publishToKC
-        //                 }
-        //             }
-        //             steps {
-        //                 container('build') {
-        //                     uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
-        //                 }
-        //             }
-        //         }            
-        //         stage('cloud-gcp') {
-        //             when {
-        //                 expression {
-        //                     return publishToKC
-        //                 }
-        //             }
-        //             steps {
-        //                 container('build') {
-        //                     uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
-        //                 }
-        //             }
-        //         }
-        //         stage('cloud-huawei') {
-        //             when {
-        //                 expression {
-        //                     return publishToKC
-        //                 }
-        //             }
-        //             steps {
-        //                 container('build') {
-        //                     uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Upload') {
+            parallel {
+                stage('on-perm-hadoop2') {
+                    steps {
+                        container('build') {
+                            uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
+                        }
+                    }
+                }
+                stage('on-perm-nohadoop') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
+                        }
+                    }
+                }
+                stage('cloud-aws') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
+                        }
+                    }
+                }
+                stage('cloud-azure') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
+                        }
+                    }
+                }            
+                stage('cloud-gcp') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
+                        }
+                    }
+                }
+                stage('cloud-huawei') {
+                    when {
+                        expression {
+                            return publishToKC
+                        }
+                    }
+                    steps {
+                        container('build') {
+                            uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
+                        }
+                    }
+                }
+            }
+        }
         stage('Tag') {
             when {
                 expression {
