@@ -155,9 +155,9 @@ def buildPackage(releaseVersion,deployType,sparkVersion,envProfile) {
         }
         retry(3) {
             sh script: """
-                export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
+                export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=2g -Xss1g"
                 mvn versions:set -DnewVersion=${_releaseVersion}
-                mvn -T 4C clean install -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                mvn clean install -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
             """
         }
     }
