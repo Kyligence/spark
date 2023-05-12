@@ -145,7 +145,7 @@ def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
     }
 }
 
-def build(releaseVersion,deployType,sparkVersion,envProfile) {
+def buildPackage(releaseVersion,deployType,sparkVersion,envProfile) {
     println "deployJars -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
     script {
         def _releaseVersion = getReleaseVersion(releaseVersion, deployType)
@@ -253,7 +253,7 @@ pipeline {
             steps {
                 container('build') {
                     dir('sourcecode') {
-                        build(params.release_version, params.deployType, params.sparkVersion, 'dev')
+                        buildPackage(params.release_version, params.deployType, params.sparkVersion, 'dev')
                     }
 
                     script {
