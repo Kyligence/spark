@@ -3,8 +3,8 @@
 @Library('devopslib') _
 
 def package_info = [:]
-def releaseVersion = '' //最后发布的版本号
-def releaseName = ''
+// def releaseVersion = '' //最后发布的版本号
+// def releaseName = ''
 def publishToKC = false //是否发布给KC
 
 def getPackageInfo(releaseVersion,packageType) {
@@ -145,12 +145,12 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
 }
 
 def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,uploadS3=true) {
-    println "uploadCloudPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],packageType[${packageType},uploadOnly[${uploadOnly},uploadS3[${uploadS3}]"
+    println "uploadCloudPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],packageType[${packageType}],uploadOnly[${uploadOnly}],uploadS3[${uploadS3}]"
     dir(packageType) {
         script {
             def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
             def _releaseName = _releaseVersion.replace('-kylin', '')
-            def _packageInfo =  getPackageInfo(_releaseName, packageType)
+            def _packageInfo =  getPackageInfo(_releaseVersion, packageType)
             
             if(uploadOnly) {
                 try {
@@ -422,14 +422,12 @@ pipeline {
                                             mkdir -p ${pi.package_path}
                                             cp ${pi.file_name} ${pi.package_path}
                                         """
-                                        // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
-                                        // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                        //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-hadoop2.tgz", "spark-newten-${releaseName}-hadoop2.tgz", user, passwd)
-                                        // }
-                                        // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "kyspark/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}-hadoop2.tgz")
                                     } else {
                                         echo "${pi.file_name} is Existed"
-                                        sh "cp ${pi.package_path}/${pi.file_name} ."
+                                        sh """
+                                            cp ${pi.package_path}/${pi.file_name} .
+                                            ls -alh .
+                                        """
                                     }
                                 }
                             }
@@ -450,19 +448,15 @@ pipeline {
                                     if(!checkCacheExist(pi)) {
                                         sh script: """
                                             sleep 10
-                                            dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
-                                            mv dist spark-newten-${releaseName}
-                                            tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
+                                            dev/make-distribution.sh --name ${pi.releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
+                                            mv dist spark-newten-${pi.releaseName}
+                                            tar czf spark-newten-${pi.releaseName}.tgz spark-newten-${pi.releaseName}
                                         """
 
                                         sh script: """
                                             mkdir -p ${pi.package_path}
                                             cp ${pi.file_name} ${pi.package_path}
-                                        """
-                                        // uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
-                                        // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                        //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
-                                        // } 
+                                        """ 
                                     } else {
                                         echo "${pi.file_name} Is Existed"
                                         sh "cp ${pi.package_path}/${pi.file_name} ."
