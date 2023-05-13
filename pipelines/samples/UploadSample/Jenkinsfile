@@ -1,0 +1,94 @@
+@Library('devopslib') _
+
+def upload(repository,directory,file,filename,user,passwd){
+  sh """
+    curl -k -X POST "https://repo-ofs.kyligence.com/service/rest/v1/components?repository=${repository}" \
+      -H "accept: application/json" \
+      -H "Content-Type: multipart/form-data" \
+      -F "raw.directory=${directory}" \
+      -F "raw.asset1=@${file};type=application/java-archive" \
+      -F "raw.asset1.filename=${filename}" \
+      -u "${user}:${passwd}"
+  """
+}
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+kind: "Pod"
+name: "jenkins-spark-agent"
+spec:
+  nodeSelector:
+    cicd: ''
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  containers:
+    - name: "build"
+      image: "harbor-ofs.kyligence.com/library/newten-build:1.0"
+      imagePullPolicy: "IfNotPresent"
+      env:
+      - name: JAVA_OPTS
+        value: "-XX:+UseParallelGC -XX:MaxRAMPercentage=75"
+      tty: true
+      command:
+        - "cat"
+      resources:
+        requests:
+          memory: "4Gi"
+          cpu: "2000m"
+        limits:
+          memory: "12Gi"
+          cpu: "6000m"
+      volumeMounts:
+        - mountPath: "/root/.m2"
+          name: "jenkins-common"
+          subPath: "maven3"
+        - mountPath: "/root/.m2/settings.xml"
+          name: "lex-mvn-settings"
+          readOnly: false
+          subPath: "settings.xml"
+        - name: "kyligence-repo"
+          mountPath: /root/.m2/repository2/io/kyligence
+        - name: "kylin-repo"
+          mountPath: /root/.m2/repository2/org/apache
+        - mountPath: "/var/cicd"
+          name: "jenkins-common"
+          subPath: "newten-cicd"
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-pvc-nfs"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "kylin-repo"
+      emptyDir: { }
+    - configMap:
+        defaultMode: 0644
+        items:
+          - key: "settings.xml"
+            path: "settings.xml"
+        name: "lex-mvn-settings"
+      name: "lex-mvn-settings"
+'''
+        }
+    }
+    stages {
+        stage('Main') {
+            steps {
+                container('build') {
+                    dir('sourcecode') {
+                        sh 'hostname'
+                        sh 'echo "test" > a.txt'
+                        sh 'ls -hm'
+                        withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                            upload('raw-tars-hosted','io.debug','a.txt','a.txt', user, passwd)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
