@@ -26,7 +26,7 @@ def getPackageInfo(releaseVersion,packageType) {
             file_name = "spark-newten-${releaseName}-${packageType}.tgz"
             break
     }
-    package_path = "/var/cicd/spark/${releaseName}"
+    package_path = "/var/cicd/spark/${releaseVersion}"
     def obj = [:]
     obj.package_path = package_path
     obj.file_name = file_name
@@ -41,14 +41,14 @@ def checkCacheExist(pi) {
     try {
         def existPackage = "${pi.package_path}/${pi.file_name}"
         sh script: """
-            ls -l /var/cicd/${pi.package_path}
-            cp /var/cicd/${existPackage} ${pi.file_name}
+            ls -l ${pi.package_path}
+            cp ${existPackage} ${pi.file_name}
         """
 
         sh 'ls -l'
         // println "pi.package_file: ${pi.package_file}"
         result = fileExists(pi.file_name)
-        println "/var/cicd/${pi.package_path}/${pi.file_name} is ${result}"
+        println "${pi.package_path}/${pi.file_name} is ${result}"
     } catch (Exception err) {
         println "The package [${pi.file_name}] not exsits, the pipeline will make it next."
         result = false
@@ -297,8 +297,7 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             def piHadoop = getPackageInfo(params.release_version, 'on-perm-hadoop2')
-                            def piNohadoop = getPackageInfo(params.release_version, 'on-perm-nohadoop')
-                            if(!checkCacheExist(piHadoop) || !checkCacheExist(piNohadoop)) {
+                            if(!checkCacheExist(piHadoop)) {
                                 buildPackage(params.release_version, params.deployType, params.sparkVersion, 'dev')
                             }
                         }
@@ -395,14 +394,14 @@ pipeline {
                                             if [ 'spark3' = '${params.sparkVersion}' ]; then
                                                 cp ../depedencies/log4j/*.jar dist/jars/
                                             fi
-                                            mv dist ${fi.filename}
-                                            tar czf ${fi.filename}.tgz ${fi.filename}
-                                            md5sum ${fi.filename}.tgz
+                                            mv dist ${pi.filename}
+                                            tar czf ${pi.filename}.tgz ${pi.filename}
+                                            md5sum ${pi.filename}.tgz
                                         """
 
                                         sh script: """
                                             mkdir -p ${pi.package_path}
-                                            cp ${fi.filename}.tgz ${pi.package_path}
+                                            cp ${pi.filename}.tgz ${pi.package_path}
                                         """
                                         // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
                                         // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
