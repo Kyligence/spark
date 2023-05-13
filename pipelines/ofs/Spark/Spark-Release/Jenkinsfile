@@ -142,38 +142,38 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
 
 def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,uploadS3=true) {
     println "uploadCloudPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],packageType[${packageType}],uploadOnly[${uploadOnly}],uploadS3[${uploadS3}]"
-    dir(packageType) {
-        script {
-            def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
-            def _releaseName = _releaseVersion.replace('-kylin', '')
-            def _packageInfo =  getPackageInfo(_releaseVersion, packageType)
-            
-            if(uploadOnly) {
-                try {
-                    sh """
-                        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.file_name} --no-check-certificate
-                    """
-                }
-                catch (exception) {
-                    println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
-                }
-                try {
-                    sh """
-                        wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.file_name} --no-check-certificate
-                    """
-                }
-                catch (exception) {
-                    println "not found in https://package.kyligence.com/newten-cicd/spark/"
-                }
-            } else {
-                try {
-                    retry(3) {
-                        uploadHelper.uploadNexus(_packageInfo.file_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
-                    }
-                } catch (Exception err) {
-                    println "upload to nexus fail, ${err.getMessage}"
-                }
+    script {
+        def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
+        def _releaseName = _releaseVersion.replace('-kylin', '')
+        def _packageInfo =  getPackageInfo(_releaseVersion, packageType)
+        
+        if(uploadOnly) {
+            try {
+                sh """
+                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.file_name} --no-check-certificate
+                """
             }
+            catch (exception) {
+                println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
+            }
+            try {
+                sh """
+                    wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.file_name} --no-check-certificate
+                """
+            }
+            catch (exception) {
+                println "not found in https://package.kyligence.com/newten-cicd/spark/"
+            }
+        } else {
+            try {
+                retry(3) {
+                    uploadHelper.uploadNexus(_packageInfo.file_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+                }
+            } catch (Exception err) {
+                println "upload to nexus fail, ${err.getMessage}"
+            }
+        }
+        dir(packageType) {
             if(uploadS3){
                 uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.file_name}", _packageInfo.file_name)
             }
