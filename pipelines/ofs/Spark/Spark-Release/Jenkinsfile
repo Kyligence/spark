@@ -26,7 +26,7 @@ def getPackageInfo(releaseVersion,packageType) {
             file_name = "spark-newten-${releaseName}-${packageType}.tgz"
             break
     }
-    package_path = "/var/cicd/spark/${releaseVersion}"
+    package_path = "/var/cicd/spark/${releaseName}"
     def obj = [:]
     obj.package_path = package_path
     obj.file_name = file_name
@@ -105,35 +105,41 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
     //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
     //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
     //https://olapio.atlassian.net/browse/KC-12372 delete slf4j-log4j12
-    sh script: """
-        sleep ${waitTime}
-        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
-        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-3.2 -Phive-thriftserver -pl assembly
-        cp ../depedencies/log4j/*.jar dist/jars/
-        cp ../depedencies/cloud_log4j/*.jar dist/jars/
-        rm  dist/jars/log4j-1.2-api-*.jar
-        rm  dist/jars/slf4j-log4j12*.jar
-        cp -r ../hive_1_2_2  dist/
-        cp ../depedencies/${dependencyDir}/* dist/jars/
-        cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
-        #https://olapio.atlassian.net/browse/KC-13052,special handle for azure
-        if [ 'cloud-azure' = '${cloudType}' ]; then
-            cp dist/jars/azure-identity-extensions*.jar dist/hive_1_2_2/ || :
-            cp dist/jars/mysql-connector*.jar dist/hive_1_2_2/ || :
-            cp dist/jars/postgresql*.jar dist/hive_1_2_2/ || :
-        fi
-        mv dist spark-newten-${releaseName}-${cloudType}
-        tar czf spark-newten-${releaseName}-${cloudType}.tgz spark-newten-${releaseName}-${cloudType}
-    """
+    def pi = getPackageInfo(releaseVersion, cloudType)
+    if(!checkCacheExist(pi)) {
+        sh script: """
+            sleep ${waitTime}
+            export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
+            dev/make-distribution.sh --name ${releaseVersion} -Phadoop-3.2 -Phive-thriftserver -pl assembly
+            cp ../depedencies/log4j/*.jar dist/jars/
+            cp ../depedencies/cloud_log4j/*.jar dist/jars/
+            rm  dist/jars/log4j-1.2-api-*.jar
+            rm  dist/jars/slf4j-log4j12*.jar
+            cp -r ../hive_1_2_2  dist/
+            cp ../depedencies/${dependencyDir}/* dist/jars/
+            cp ../depedencies/log4j/spark-executor-log4j.xml dist/conf/spark-executor-log4j.xml
+            #https://olapio.atlassian.net/browse/KC-13052,special handle for azure
+            if [ 'cloud-azure' = '${cloudType}' ]; then
+                cp dist/jars/azure-identity-extensions*.jar dist/hive_1_2_2/ || :
+                cp dist/jars/mysql-connector*.jar dist/hive_1_2_2/ || :
+                cp dist/jars/postgresql*.jar dist/hive_1_2_2/ || :
+            fi
+            mv dist ${pi.filename}
+            tar czf ${pi.filename}.tgz ${pi.filename}
+        """
 
-    sh script: """
-        mkdir -p /var/cicd/spark/${release_version}
-        cp spark-newten-${releaseName}-${cloudType}.tgz /var/cicd/spark/${release_version}
-    """
-    // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-    //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz", user, passwd)
-    // }
-    // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz")
+        sh script: """
+            mkdir -p ${pi.package_path}
+            cp ${pi.filename}.tgz ${pi.package_path}
+        """
+        // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+        //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz", user, passwd)
+        // }
+        // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz")
+    } else {
+        echo "${pi.filename} Is Existed"
+        sh "cp ${pi.package_path}/${pi.filename} ."
+    }
 }
 
 def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,uploadS3=true) {
@@ -143,21 +149,21 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
             def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
             def _releaseName = _releaseVersion.replace('-kylin', '')
             def _packageInfo =  getPackageInfo(_releaseName, packageType)
-            // retry(3) {
-            //     if(uploadOnly) {
-            //         // sh """
-            //         //     # wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_package} --no-check-certificate
-            //         // """
-            //     } else {
-            //         // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-            //         //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
-            //         // }
-            //         // uploadHelper.uploadNexus(_packageInfo.filename, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
-
-            //     }
-            // }
+            
+            if(uploadOnly) {
+                sh """
+                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.filename} --no-check-certificate
+                """
+            } else {
+                retry(3) {
+                    // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                    //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
+                    // }
+                    uploadHelper.uploadNexus(_packageInfo.filename, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+                }
+            }
             if(uploadS3){
-                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_package}", _packageInfo.filename)
+                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.filename}", _packageInfo.filename)
             }
         }
     }
@@ -193,7 +199,7 @@ def buildPackage(releaseVersion,deployType,sparkVersion,envProfile) {
             sh script: """
                 export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=2g -Xss1g"
                 mvn versions:set -DnewVersion=${_releaseVersion}
-                mvn clean install -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                mvn -T 2C clean install -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
             """
         }
     }
@@ -367,34 +373,40 @@ pipeline {
                         container('build') {
                             dir('on-perm-hadoop2') {
                                 script {
-                                    def hadoopVersion = 'hadoop-2.7'
-                                    if (params.sparkVersion == 'spark2.4') {
-                                        hadoopVersion = 'hadoop-2.6'
-                                    }
-                                    if (params.sparkVersion == 'spark2.2') {
-                                        hadoopVersion = 'hadoop-2.6'
-                                    }
-                                    sh script: """
-                                        ls -alh .
-                                        export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
-                                        dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn 
-                                        if [ 'spark3' = '${params.sparkVersion}' ]; then
-                                            cp ../depedencies/log4j/*.jar dist/jars/
-                                        fi
-                                        mv dist spark-newten-${releaseName}
-                                        tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}
-                                        md5sum spark-newten-${releaseName}-hadoop2.tgz
-                                    """
+                                    def pi = getPackageInfo(params.release_version, 'on-perm-hadoop2')
+                                    if(!checkCacheExist(pi)) {
+                                        def hadoopVersion = 'hadoop-2.7'
+                                        if (params.sparkVersion == 'spark2.4') {
+                                            hadoopVersion = 'hadoop-2.6'
+                                        }
+                                        if (params.sparkVersion == 'spark2.2') {
+                                            hadoopVersion = 'hadoop-2.6'
+                                        }
+                                        sh script: """
+                                            ls -alh .
+                                            export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
+                                            dev/make-distribution.sh --name ${releaseVersion} -P${hadoopVersion} -Phive -Phive-thriftserver -Pyarn 
+                                            if [ 'spark3' = '${params.sparkVersion}' ]; then
+                                                cp ../depedencies/log4j/*.jar dist/jars/
+                                            fi
+                                            mv dist ${fi.filename}
+                                            tar czf ${fi.filename}.tgz ${fi.filename}
+                                            md5sum ${fi.filename}.tgz
+                                        """
 
-                                    sh script: """
-                                        mkdir -p /var/cicd/spark/${release_version}
-                                        cp spark-newten-${releaseName}-hadoop2.tgz /var/cicd/spark/${release_version}/
-                                    """
-                                    // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
-                                    // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                    //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-hadoop2.tgz", "spark-newten-${releaseName}-hadoop2.tgz", user, passwd)
-                                    // }
-                                    // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "kyspark/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}-hadoop2.tgz")
+                                        sh script: """
+                                            mkdir -p ${pi.package_path}
+                                            cp ${fi.filename}.tgz ${pi.package_path}
+                                        """
+                                        // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
+                                        // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                        //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-hadoop2.tgz", "spark-newten-${releaseName}-hadoop2.tgz", user, passwd)
+                                        // }
+                                        // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "kyspark/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}-hadoop2.tgz")
+                                    } else {
+                                        echo "${pi.filename} Is Existed"
+                                        sh "cp ${pi.package_path}/${pi.filename} ."
+                                    }
                                 }
                             }
                         }
@@ -410,21 +422,27 @@ pipeline {
                         container('build') {
                             dir('on-perm-nohadoop') {
                                 script {
-                                    sh script: """
-                                        sleep 10
-                                        dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
-                                        mv dist spark-newten-${releaseName}
-                                        tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
-                                    """
+                                    def pi = getPackageInfo(params.release_version, 'on-perm-nohadoop')
+                                    if(!checkCacheExist(pi)) {
+                                        sh script: """
+                                            sleep 10
+                                            dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
+                                            mv dist spark-newten-${releaseName}
+                                            tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
+                                        """
 
-                                    sh script: """
-                                        mkdir -p /var/cicd/spark/${release_version}
-                                        cp spark-newten-${releaseName}.tgz /var/cicd/spark/${release_version}/
-                                    """
-                                    // uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
-                                    // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                                    //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
-                                    // }
+                                        sh script: """
+                                            mkdir -p ${pi.package_path}
+                                            cp ${fi.filename}.tgz ${pi.package_path}
+                                        """
+                                        // uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
+                                        // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                                        //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
+                                        // } 
+                                    } else {
+                                        echo "${pi.filename} Is Existed"
+                                        sh "cp ${pi.package_path}/${pi.filename} ."
+                                    }
                                 }
                             }
                         }
