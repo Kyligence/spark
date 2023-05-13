@@ -60,16 +60,16 @@ def uploadNexus(file_name, package_path, repo, dir_name = 'sourcecode', credenti
             script {
                 // 上传制品库
                 withCredentials([usernamePassword(credentialsId: credentials, passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                    // pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
-                    sh '''
-                        curl -k -X POST https://repo-ofs.kyligence.com/service/rest/v1/components?repository=$repository \
-                            -H "accept: application/json" \
-                            -H "Content-Type: multipart/form-data" \
-                            -F raw.directory=$directory \
-                            -F raw.asset1=@$file;type=application/java-archive \
-                            -F raw.asset1.filename=$filename \
-                            -u $user:$passwd
-                    '''
+                    pushRawArtifactsByApi(repo, package_path, file_name, file_name, user, passwd)
+                    // sh '''
+                    //     curl -k -X POST https://repo-ofs.kyligence.com/service/rest/v1/components?repository=$repository \
+                    //         -H "accept: application/json" \
+                    //         -H "Content-Type: multipart/form-data" \
+                    //         -F raw.directory=$directory \
+                    //         -F raw.asset1=@$file;type=application/java-archive \
+                    //         -F raw.asset1.filename=$filename \
+                    //         -u $user:$passwd
+                    // '''
                 }
             }
         }
