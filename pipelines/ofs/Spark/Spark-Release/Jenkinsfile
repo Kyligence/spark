@@ -31,6 +31,7 @@ def getPackageInfo(releaseVersion,packageType) {
     obj.package_path = package_path
     obj.file_name = file_name
     obj.releaseName = releaseName
+    obj.releaseVersion = releaseVersion
     println obj.toString()
     return obj
 }
@@ -101,6 +102,7 @@ def gitSparkCodeKe(repo, branch) {
 }
 
 def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
+    println "generateCloudPackage -> waitTime[${waitTime}],cloudType[${cloudType}],dependencyDir[${dependencyDir}],releaseVersion[${releaseVersion}]"
     def releaseName = releaseVersion.replace('-kylin', '')
     //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
     //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
@@ -151,15 +153,32 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
             def _packageInfo =  getPackageInfo(_releaseName, packageType)
             
             if(uploadOnly) {
-                sh """
-                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.file_name} --no-check-certificate
-                """
+                try {
+                    sh """
+                        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.file_name} --no-check-certificate
+                    """
+                }
+                catch (exception) {
+                    println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
+                }
+                try {
+                    sh """
+                        wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.file_name} --no-check-certificate
+                    """
+                }
+                catch (exception) {
+                    println "not found in https://package.kyligence.com/newten-cicd/spark/"
+                }
             } else {
-                retry(3) {
-                    // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                    //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
-                    // }
-                    uploadHelper.uploadNexus(_packageInfo.file_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+                try {
+                    retry(3) {
+                        // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+                        //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
+                        // }
+                        uploadHelper.uploadNexus(_packageInfo.file_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+                    }
+                } catch (Exception err) {
+                    println "upload to nexus fail, ${err.getMessage}"
                 }
             }
             if(uploadS3){
