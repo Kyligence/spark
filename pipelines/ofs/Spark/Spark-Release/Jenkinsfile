@@ -9,24 +9,30 @@ def publishToKC = false //是否发布给KC
 
 def getPackageInfo(releaseVersion,packageType) {
     println "getPackageInfo -> releaseVersion[${releaseVersion}],packageType[${packageType}]"
-    def result = ''
+    def file_name = ''
+    def package_path = ''
     def releaseName = releaseVersion.replace('-kylin', '')
     switch(packageType) {
         case 'on-perm-hadoop2':
-            result = "spark-newten-${releaseName}-hadoop2.tgz"
+            file_name = "spark-newten-${releaseName}-hadoop2.tgz"
             break
         case 'on-perm-nohadoop':
-            result = "spark-newten-${releaseName}.tgz"
+            file_name = "spark-newten-${releaseName}.tgz"
             break
         case 'cloud-aws':
         case 'cloud-azure':
         case 'cloud-gcp':
         case 'cloud-huawei':
-            result = "spark-newten-${releaseName}-${packageType}.tgz"
+            file_name = "spark-newten-${releaseName}-${packageType}.tgz"
             break
     }
-    println "getPackageInfo -> result: ${result}"
-    return result
+    package_path = "/var/cicd/spark/${release_version}
+    def obj = [:]
+    obj.package_path = package_path
+    obj.file_name = file_name
+    obj.releaseName = releaseName
+    println obj.toString()
+    return obj
 }
 
 // 上传制品包到Aws S3存储
@@ -95,6 +101,11 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
         mv dist spark-newten-${releaseName}-${cloudType}
         tar czf spark-newten-${releaseName}-${cloudType}.tgz spark-newten-${releaseName}-${cloudType}
     """
+
+    sh script: """
+        mkdir -p /var/cicd/spark/${release_version}
+        cp spark-newten-${releaseName}-${cloudType}.tgz /var/cicd/spark/${release_version}
+    """
     // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
     //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz", user, passwd)
     // }
@@ -107,19 +118,20 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
         script {
             def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
             def _releaseName = _releaseVersion.replace('-kylin', '')
-            def _package =  getPackageInfo(_releaseName, packageType)
-            retry(3) {
-                if(uploadOnly) {
-                    sh """
-                        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_package} --no-check-certificate
-                    """
-                } else {
-                    // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
-                    //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
-                    // }
-                    uploadHelper.uploadNexus(_package, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
-                }
-            }
+            def _packageInfo =  getPackageInfo(_releaseName, packageType)
+            // retry(3) {
+            //     if(uploadOnly) {
+            //         // sh """
+            //         //     # wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_package} --no-check-certificate
+            //         // """
+            //     } else {
+            //         // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
+            //         //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
+            //         // }
+            //         // uploadHelper.uploadNexus(_packageInfo.filename, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+
+            //     }
+            // }
             if(uploadS3){
                 uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_package}", _package)
             }
@@ -146,7 +158,7 @@ def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
 }
 
 def buildPackage(releaseVersion,deployType,sparkVersion,envProfile) {
-    println "deployJars -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
+    println "buildPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
     script {
         def _releaseVersion = getReleaseVersion(releaseVersion, deployType)
         def kubernetesParm = '-Pkubernetes'
@@ -349,6 +361,11 @@ pipeline {
                                         tar czf spark-newten-${releaseName}-hadoop2.tgz spark-newten-${releaseName}
                                         md5sum spark-newten-${releaseName}-hadoop2.tgz
                                     """
+
+                                    sh script: """
+                                        mkdir -p /var/cicd/spark/${release_version}"
+                                        cp spark-newten-${releaseName}-hadoop2.tgz /var/cicd/spark/${release_version}/
+                                    """
                                     // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
                                     // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                     //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-hadoop2.tgz", "spark-newten-${releaseName}-hadoop2.tgz", user, passwd)
@@ -374,6 +391,11 @@ pipeline {
                                         dev/make-distribution.sh --name ${releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
                                         mv dist spark-newten-${releaseName}
                                         tar czf spark-newten-${releaseName}.tgz spark-newten-${releaseName}
+                                    """
+
+                                    sh script: """
+                                        mkdir -p /var/cicd/spark/${release_version}
+                                        cp spark-newten-${releaseName}.tgz /var/cicd/spark/${release_version}/
                                     """
                                     // uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
                                     // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
