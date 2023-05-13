@@ -295,7 +295,11 @@ pipeline {
             steps {
                 container('build') {
                     dir('sourcecode') {
-                        buildPackage(params.release_version, params.deployType, params.sparkVersion, 'dev')
+                        def piHadoop = getPackageInfo(params.release_version, 'on-perm-hadoop2')
+                        def piNohadoop = getPackageInfo(params.release_version, 'on-perm-nohadoop')
+                        if(!checkCacheExist(piHadoop) || !checkCacheExist(piNohadoop)) {
+                            buildPackage(params.release_version, params.deployType, params.sparkVersion, 'dev')
+                        }
                     }
 
                     script {
