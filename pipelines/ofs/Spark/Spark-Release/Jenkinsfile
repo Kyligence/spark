@@ -124,21 +124,21 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
                 cp dist/jars/mysql-connector*.jar dist/hive_1_2_2/ || :
                 cp dist/jars/postgresql*.jar dist/hive_1_2_2/ || :
             fi
-            mv dist ${pi.filename}
-            tar czf ${pi.filename}.tgz ${pi.filename}
+            mv dist ${pi.file_name}
+            tar czf ${pi.file_name} ${pi.file_name}
         """
 
         sh script: """
             mkdir -p ${pi.package_path}
-            cp ${pi.filename}.tgz ${pi.package_path}
+            cp ${pi.file_name} ${pi.package_path}
         """
         // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
         //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz", user, passwd)
         // }
         // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/spark-newten-${releaseName}-${cloudType}.tgz", "spark-newten-${releaseName}-${cloudType}.tgz")
     } else {
-        echo "${pi.filename} Is Existed"
-        sh "cp ${pi.package_path}/${pi.filename} ."
+        echo "${pi.file_name} is Existed"
+        sh "cp ${pi.package_path}/${pi.file_name} ."
     }
 }
 
@@ -152,18 +152,18 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
             
             if(uploadOnly) {
                 sh """
-                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.filename} --no-check-certificate
+                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.file_name} --no-check-certificate
                 """
             } else {
                 retry(3) {
                     // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                     //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', _package, _package, user, passwd)
                     // }
-                    uploadHelper.uploadNexus(_packageInfo.filename, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+                    uploadHelper.uploadNexus(_packageInfo.file_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
                 }
             }
             if(uploadS3){
-                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.filename}", _packageInfo.filename)
+                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.file_name}", _packageInfo.file_name)
             }
         }
     }
@@ -394,14 +394,14 @@ pipeline {
                                             if [ 'spark3' = '${params.sparkVersion}' ]; then
                                                 cp ../depedencies/log4j/*.jar dist/jars/
                                             fi
-                                            mv dist ${pi.filename}
-                                            tar czf ${pi.filename}.tgz ${pi.filename}
-                                            md5sum ${pi.filename}.tgz
+                                            mv dist ${pi.file_name}
+                                            tar czf ${pi.file_name} ${pi.file_name}
+                                            md5sum ${pi.file_name}
                                         """
 
                                         sh script: """
                                             mkdir -p ${pi.package_path}
-                                            cp ${pi.filename}.tgz ${pi.package_path}
+                                            cp ${pi.file_name} ${pi.package_path}
                                         """
                                         // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
                                         // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
@@ -409,8 +409,8 @@ pipeline {
                                         // }
                                         // uploadAwsS3('cn-north-1', 'aws_cn_s3_cp', 'download-resource', "kyspark/spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}-hadoop2.tgz")
                                     } else {
-                                        echo "${pi.filename} Is Existed"
-                                        sh "cp ${pi.package_path}/${pi.filename} ."
+                                        echo "${pi.file_name} is Existed"
+                                        sh "cp ${pi.package_path}/${pi.file_name} ."
                                     }
                                 }
                             }
@@ -438,15 +438,15 @@ pipeline {
 
                                         sh script: """
                                             mkdir -p ${pi.package_path}
-                                            cp ${fi.filename}.tgz ${pi.package_path}
+                                            cp ${pi.file_name} ${pi.package_path}
                                         """
                                         // uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only, false)
                                         // withCredentials([usernamePassword(credentialsId: 'nexus-raw', passwordVariable: 'passwd', usernameVariable: 'user')]) {
                                         //     pushRawArtifactsByApi('raw-tars-hosted', 'io.kyligence.spark', "spark-newten-${releaseName}.tgz", "spark-newten-${releaseName}.tgz", user, passwd)
                                         // } 
                                     } else {
-                                        echo "${pi.filename} Is Existed"
-                                        sh "cp ${pi.package_path}/${pi.filename} ."
+                                        echo "${pi.file_name} Is Existed"
+                                        sh "cp ${pi.package_path}/${pi.file_name} ."
                                     }
                                 }
                             }
