@@ -35,6 +35,30 @@ def getPackageInfo(releaseVersion,packageType) {
     return obj
 }
 
+def checkCacheExist(pi) {
+    println "checkCacheExist -> package_info[${pi}]"
+    def result = false
+    try {
+        def existPackage = "${pi.package_path}/${pi.file_name}"
+        sh script: """
+            ls -l /var/cicd/${pi.package_path}
+            cp /var/cicd/${existPackage} ${pi.file_name}
+        """
+
+        sh 'ls -l'
+        // println "pi.package_file: ${pi.package_file}"
+        result = fileExists(pi.file_name)
+        println "/var/cicd/${pi.package_path}/${pi.file_name} is ${result}"
+    } catch (Exception err) {
+        println "The package [${pi.file_name}] not exsits, the pipeline will make it next."
+        result = false
+        // println err.getMessage()
+    }
+
+    println "checkCacheExist result: ${result}"
+    return result
+}
+
 // 上传制品包到Aws S3存储
 def uploadAwsS3(region, credentials, bucket, path, ga_name) {
     timestamps {
@@ -363,7 +387,7 @@ pipeline {
                                     """
 
                                     sh script: """
-                                        mkdir -p /var/cicd/spark/${release_version}"
+                                        mkdir -p /var/cicd/spark/${release_version}
                                         cp spark-newten-${releaseName}-hadoop2.tgz /var/cicd/spark/${release_version}/
                                     """
                                     // uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only)
