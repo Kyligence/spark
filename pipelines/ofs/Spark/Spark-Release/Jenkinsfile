@@ -26,7 +26,7 @@ def getPackageInfo(releaseVersion,packageType) {
             file_name = "spark-newten-${releaseName}-${packageType}.tgz"
             break
     }
-    package_path = "/var/cicd/spark/${release_version}
+    package_path = "/var/cicd/spark/${releaseVersion}
     def obj = [:]
     obj.package_path = package_path
     obj.file_name = file_name
