@@ -133,7 +133,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
             //     }
             // }
             if(uploadS3){
-                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_package}", _package)
+                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_package}", _packageInfo.filename)
             }
         }
     }
