@@ -308,7 +308,7 @@ pipeline {
                     dir('sourcecode') {
                         script {
                             def piHadoop = getPackageInfo(params.release_version, 'on-perm-hadoop2')
-                            if(!checkCacheExist(piHadoop)) {
+                            if(!checkCacheExist(piHadoop) || publishToKC) {
                                 buildPackage(params.release_version, params.deployType, params.sparkVersion, 'dev')
                             }
                         }
