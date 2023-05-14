@@ -2,6 +2,7 @@
 
 @Library('devopslib') _
 
+def IS_DEBUG = true
 def package_info = [:]
 def releaseVersion = '' //最后发布的版本号
 def releaseName = ''
@@ -144,7 +145,6 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
     println "uploadCloudPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],packageType[${packageType}],uploadOnly[${uploadOnly}],uploadS3[${uploadS3}]"
     script {
         def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
-        def _releaseName = _releaseVersion.replace('-kylin', '')
         def _packageInfo =  getPackageInfo(_releaseVersion, packageType)
         def _hasNexusCache = false
         def _hasPackageCache = false
@@ -174,7 +174,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
                 }
             } 
         }
-        
+
         if(!uploadOnly || _hasPackageCache) {
             try {
                 retry(3) {
@@ -616,6 +616,19 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         githubHelper 'TAG', params.branch, 'spark', releaseVersion
+                    }
+                }
+            }
+        }
+    }
+
+
+    post {
+        failure {
+            container('build') {
+                script {
+                    if (!IS_DEBUG) {
+                        feishu('KE-All-CD-2.1打包失败！！')
                     }
                 }
             }
