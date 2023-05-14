@@ -547,7 +547,7 @@ pipeline {
                 stage('on-perm-nohadoop') {
                     when {
                         expression {
-                            return publishToKC
+                            return publishToKC || params.upload_only
                         }
                     }
                     steps {
@@ -559,7 +559,7 @@ pipeline {
                 stage('cloud-aws') {
                     when {
                         expression {
-                            return publishToKC
+                            return publishToKC || params.upload_only
                         }
                     }
                     steps {
@@ -571,7 +571,7 @@ pipeline {
                 stage('cloud-azure') {
                     when {
                         expression {
-                            return publishToKC
+                            return publishToKC || params.upload_only
                         }
                     }
                     steps {
@@ -583,7 +583,7 @@ pipeline {
                 stage('cloud-gcp') {
                     when {
                         expression {
-                            return publishToKC
+                            return publishToKC || params.upload_only
                         }
                     }
                     steps {
@@ -595,7 +595,7 @@ pipeline {
                 stage('cloud-huawei') {
                     when {
                         expression {
-                            return publishToKC
+                            return publishToKC || params.upload_only
                         }
                     }
                     steps {
