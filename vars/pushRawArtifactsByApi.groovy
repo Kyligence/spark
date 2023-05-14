@@ -1,17 +1,6 @@
 def call(repository,directory,file,filename,user,passwd){
   sh """
-    curl -k -X POST "https://repo-ofs.kyligence.com/service/rest/v1/components?repository=${repository}" \
-      -H "accept: application/json" \
-      -H "Content-Type: multipart/form-data" \
-      -F "raw.directory=${directory}" \
-      -F "raw.asset1=@${file};type=application/java-archive" \
-      -F "raw.asset1.filename=${filename}" \
-      -u "${user}:${passwd}"
-  """
-}
-def pushGATar(repository,directory,file,filename,user,passwd){
-  sh """
-    curl -k -X POST "https://repo0-ofs.kyligence.com/service/rest/v1/components?repository=${repository}" \
+    curl -k -v -X POST "https://repo-ofs.kyligence.com/service/rest/v1/components?repository=${repository}" \
       -H "accept: application/json" \
       -H "Content-Type: multipart/form-data" \
       -F "raw.directory=${directory}" \

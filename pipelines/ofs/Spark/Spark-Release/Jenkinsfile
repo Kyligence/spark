@@ -146,23 +146,30 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
         def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
         def _releaseName = _releaseVersion.replace('-kylin', '')
         def _packageInfo =  getPackageInfo(_releaseVersion, packageType)
+        def _hasNexusCache = false
+        def _hasPackageCache = false
         
         if(uploadOnly) {
             try {
                 sh """
-                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.package_name} --no-check-certificate
-                """
-            }
-            catch (exception) {
-                println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
-            }
-            try {
-                sh """
                     wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.package_name} --no-check-certificate
                 """
+                _hasPackageCache = true
             }
             catch (exception) {
                 println "not found in https://package.kyligence.com/newten-cicd/spark/"
+                _hasPackageCache = false
+            }
+            if(!_hasPackageCache) {
+                try {
+                    sh """
+                        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.package_name} --no-check-certificate
+                    """
+                }
+                catch (exception) {
+                    println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
+                    _hasNexusCache = false
+                }
             }
         } else {
             try {
