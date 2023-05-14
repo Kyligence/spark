@@ -171,7 +171,8 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
                     _hasNexusCache = false
                 }
             }
-        } else {
+        } 
+        if(!uploadOnly || _hasPackageCache) {
             try {
                 retry(3) {
                     uploadHelper.uploadNexus(_packageInfo.package_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
