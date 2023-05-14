@@ -149,29 +149,32 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
         def _hasNexusCache = false
         def _hasPackageCache = false
         
-        if(uploadOnly) {
-            try {
-                sh """
-                    wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.package_name} --no-check-certificate
-                """
-                _hasPackageCache = true
-            }
-            catch (exception) {
-                println "not found in https://package.kyligence.com/newten-cicd/spark/"
-                _hasPackageCache = false
-            }
-            if(!_hasPackageCache) {
+        dir(packageType) {
+            if(uploadOnly) {
                 try {
                     sh """
-                        wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.package_name} --no-check-certificate
+                        wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.package_name} --no-check-certificate
                     """
+                    _hasPackageCache = true
                 }
                 catch (exception) {
-                    println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
-                    _hasNexusCache = false
+                    println "not found in https://package.kyligence.com/newten-cicd/spark/"
+                    _hasPackageCache = false
                 }
-            }
-        } 
+                if(!_hasPackageCache) {
+                    try {
+                        sh """
+                            wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.package_name} --no-check-certificate
+                        """
+                    }
+                    catch (exception) {
+                        println "not found in https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/"
+                        _hasNexusCache = false
+                    }
+                }
+            } 
+        }
+        
         if(!uploadOnly || _hasPackageCache) {
             try {
                 retry(3) {
@@ -181,10 +184,10 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
                 println "upload to nexus fail, ${err.getMessage}"
             }
         }
-        dir(packageType) {
-            if(uploadS3){
-                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.package_name}", _packageInfo.package_name)
-            }
+
+        if(uploadS3){
+            // uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.package_name}", _packageInfo.package_name)
+            uploadHelper.uploadAwsS3(_packageInfo.package_name, "packages/spark-cloud/${_packageInfo.package_name}", 'kyligencecloud-ci', 'us-west-2', 'aws_global_s3_cp', packageType)
         }
     }
 }
@@ -477,7 +480,6 @@ pipeline {
                             dir('cloud-aws') {
                                 script {
                                     generateCloudPackage('cloud-aws', 'aws', releaseVersion)
-                                    // uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
                                 }
                             }
                         }
@@ -494,7 +496,6 @@ pipeline {
                             dir('cloud-azure') {
                                 script {
                                     generateCloudPackage('cloud-azure', 'azure', releaseVersion)
-                                    // uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
                                 }
                             }
                         }
@@ -511,7 +512,6 @@ pipeline {
                             dir('cloud-gcp') {
                                 script {
                                     generateCloudPackage('cloud-gcp', 'gcp', releaseVersion)
-                                    // uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
                                 }
                             }
                         }
@@ -528,7 +528,6 @@ pipeline {
                             dir('cloud-huawei') {
                                 script {
                                     generateCloudPackage('cloud-huawei', 'huawei', releaseVersion)
-                                    // uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
                                 }
                             }
                         }
