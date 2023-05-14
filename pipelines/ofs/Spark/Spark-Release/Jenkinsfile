@@ -128,7 +128,7 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
                 cp dist/jars/postgresql*.jar dist/hive_1_2_2/ || :
             fi
             mv dist ${pi.file_name}
-            tar czf ${pi.file_name} ${pi.package_name}
+            tar czf ${pi.package_name} ${pi.file_name}
         """
 
         sh script: """
@@ -407,7 +407,7 @@ pipeline {
                                                 cp ../depedencies/log4j/*.jar dist/jars/
                                             fi
                                             mv dist ${pi.file_name}
-                                            tar czf ${pi.file_name} ${pi.package_name}
+                                            tar czf ${pi.package_name} ${pi.file_name}
                                             md5sum ${pi.package_name}
                                         """
 
@@ -442,8 +442,8 @@ pipeline {
                                         sh script: """
                                             sleep 10
                                             dev/make-distribution.sh --name ${pi.releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
-                                            mv dist spark-newten-${pi.releaseName}
-                                            tar czf spark-newten-${pi.releaseName}.tgz spark-newten-${pi.releaseName}
+                                            mv dist ${pi.file_name}
+                                            tar czf ${pi.package_name} ${pi.file_name}
                                         """
 
                                         sh script: """
