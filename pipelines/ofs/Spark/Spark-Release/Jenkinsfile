@@ -222,7 +222,7 @@ def buildPackage(releaseVersion,deployType,sparkVersion,envProfile) {
             sh script: """
                 export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=2g -Xss1g"
                 mvn versions:set -DnewVersion=${_releaseVersion}
-                mvn -T 2C clean install -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
+                mvn -T 2C package -U -P${envProfile} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn ${kubernetesParm} -DskipTests=true
             """
         }
     }
@@ -396,7 +396,7 @@ pipeline {
                 }
             }
             parallel {
-                stage('on-perm-hadoop2') {
+                stage('1.on-perm-hadoop2') {
                     steps {
                         container('build') {
                             dir('on-perm-hadoop2') {
@@ -438,7 +438,7 @@ pipeline {
                         }
                     }
                 }
-                stage('on-perm-nohadoop') {
+                stage('2.on-perm-nohadoop') {
                     when {
                         expression {
                             return publishToKC
@@ -469,7 +469,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-aws') {
+                stage('3.cloud-aws') {
                     when {
                         expression {
                             return publishToKC
@@ -485,7 +485,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-azure') {
+                stage('4.cloud-azure') {
                     when {
                         expression {
                             return publishToKC
@@ -501,7 +501,7 @@ pipeline {
                         }
                     }
                 }            
-                stage('cloud-gcp') {
+                stage('5.cloud-gcp') {
                     when {
                         expression {
                             return publishToKC
@@ -517,7 +517,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-huawei') {
+                stage('6.cloud-huawei') {
                     when {
                         expression {
                             return publishToKC
@@ -537,14 +537,14 @@ pipeline {
         }
         stage('Upload') {
             parallel {
-                stage('on-perm-hadoop2') {
+                stage('1.on-perm-hadoop2') {
                     steps {
                         container('build') {
                             uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only, false)
                         }
                     }
                 }
-                stage('on-perm-nohadoop') {
+                stage('2.on-perm-nohadoop') {
                     when {
                         expression {
                             return publishToKC || params.upload_only
@@ -556,7 +556,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-aws') {
+                stage('3.cloud-aws') {
                     when {
                         expression {
                             return publishToKC || params.upload_only
@@ -568,7 +568,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-azure') {
+                stage('4.cloud-azure') {
                     when {
                         expression {
                             return publishToKC || params.upload_only
@@ -580,7 +580,7 @@ pipeline {
                         }
                     }
                 }            
-                stage('cloud-gcp') {
+                stage('5.cloud-gcp') {
                     when {
                         expression {
                             return publishToKC || params.upload_only
@@ -592,7 +592,7 @@ pipeline {
                         }
                     }
                 }
-                stage('cloud-huawei') {
+                stage('6.cloud-huawei') {
                     when {
                         expression {
                             return publishToKC || params.upload_only
