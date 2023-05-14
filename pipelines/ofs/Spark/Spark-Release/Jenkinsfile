@@ -14,22 +14,23 @@ def getPackageInfo(releaseVersion,packageType) {
     def releaseName = releaseVersion.replace('-kylin', '')
     switch(packageType) {
         case 'on-perm-hadoop2':
-            file_name = "spark-newten-${releaseName}-hadoop2.tgz"
+            file_name = "spark-newten-${releaseName}-hadoop2"
             break
         case 'on-perm-nohadoop':
-            file_name = "spark-newten-${releaseName}.tgz"
+            file_name = "spark-newten-${releaseName}"
             break
         case 'cloud-aws':
         case 'cloud-azure':
         case 'cloud-gcp':
         case 'cloud-huawei':
-            file_name = "spark-newten-${releaseName}-${packageType}.tgz"
+            file_name = "spark-newten-${releaseName}-${packageType}"
             break
     }
     package_path = "/var/cicd/spark/${releaseVersion}"
     def obj = [:]
     obj.package_path = package_path
     obj.file_name = file_name
+    obj.package_name = "${file_name}.tgz"
     obj.releaseName = releaseName
     obj.releaseVersion = releaseVersion
     println obj.toString()
@@ -40,18 +41,18 @@ def checkCacheExist(pi) {
     println "checkCacheExist -> package_info[${pi}]"
     def result = false
     try {
-        def existPackage = "${pi.package_path}/${pi.file_name}"
+        def existPackage = "${pi.package_path}/${pi.package_name}"
         sh script: """
             ls -l ${pi.package_path}
-            cp ${existPackage} ${pi.file_name}
+            cp ${existPackage} ${pi.package_name}
         """
 
         sh 'ls -l'
         // println "pi.package_file: ${pi.package_file}"
-        result = fileExists(pi.file_name)
-        println "${pi.package_path}/${pi.file_name} is ${result}"
+        result = fileExists(pi.package_name)
+        println "${pi.package_path}/${pi.package_name} is ${result}"
     } catch (Exception err) {
-        println "The package [${pi.file_name}] not exsits, the pipeline will make it next."
+        println "The package [${pi.package_name}] not exsits, the pipeline will make it next."
         result = false
         // println err.getMessage()
     }
@@ -127,16 +128,16 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
                 cp dist/jars/postgresql*.jar dist/hive_1_2_2/ || :
             fi
             mv dist ${pi.file_name}
-            tar czf ${pi.file_name} ${pi.file_name}
+            tar czf ${pi.file_name} ${pi.package_name}
         """
 
         sh script: """
             mkdir -p ${pi.package_path}
-            cp ${pi.file_name} ${pi.package_path}
+            cp ${pi.package_name} ${pi.package_path}
         """
     } else {
-        echo "${pi.file_name} is Existed"
-        sh "cp ${pi.package_path}/${pi.file_name} ."
+        echo "${pi.package_name} is Existed"
+        sh "cp ${pi.package_path}/${pi.package_name} ."
     }
 }
 
@@ -150,7 +151,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
         if(uploadOnly) {
             try {
                 sh """
-                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.file_name} --no-check-certificate
+                    wget https://repo-ofs.kyligence.com/repository/raw-tars-hosted/io.kyligence.spark/${_packageInfo.package_name} --no-check-certificate
                 """
             }
             catch (exception) {
@@ -158,7 +159,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
             }
             try {
                 sh """
-                    wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.file_name} --no-check-certificate
+                    wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.package_name} --no-check-certificate
                 """
             }
             catch (exception) {
@@ -167,7 +168,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
         } else {
             try {
                 retry(3) {
-                    uploadHelper.uploadNexus(_packageInfo.file_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
+                    uploadHelper.uploadNexus(_packageInfo.package_name, 'io.kyligence.spark', 'raw-tars-hosted', packageType)
                 }
             } catch (Exception err) {
                 println "upload to nexus fail, ${err.getMessage}"
@@ -175,7 +176,7 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
         }
         dir(packageType) {
             if(uploadS3){
-                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.file_name}", _packageInfo.file_name)
+                uploadAwsS3('us-west-2', 'aws_global_s3_cp', 'kyligencecloud-ci', "packages/spark-cloud/${_packageInfo.package_name}", _packageInfo.package_name)
             }
         }
     }
@@ -406,18 +407,18 @@ pipeline {
                                                 cp ../depedencies/log4j/*.jar dist/jars/
                                             fi
                                             mv dist ${pi.file_name}
-                                            tar czf ${pi.file_name} ${pi.file_name}
-                                            md5sum ${pi.file_name}
+                                            tar czf ${pi.file_name} ${pi.package_name}
+                                            md5sum ${pi.package_name}
                                         """
 
                                         sh script: """
                                             mkdir -p ${pi.package_path}
-                                            cp ${pi.file_name} ${pi.package_path}
+                                            cp ${pi.package_name} ${pi.package_path}
                                         """
                                     } else {
-                                        echo "${pi.file_name} is Existed"
+                                        echo "${pi.package_name} is Existed"
                                         sh """
-                                            cp ${pi.package_path}/${pi.file_name} .
+                                            cp ${pi.package_path}/${pi.package_name} .
                                             ls -alh .
                                         """
                                     }
@@ -447,11 +448,11 @@ pipeline {
 
                                         sh script: """
                                             mkdir -p ${pi.package_path}
-                                            cp ${pi.file_name} ${pi.package_path}
+                                            cp ${pi.package_name} ${pi.package_path}
                                         """ 
                                     } else {
-                                        echo "${pi.file_name} Is Existed"
-                                        sh "cp ${pi.package_path}/${pi.file_name} ."
+                                        echo "${pi.package_name} Is Existed"
+                                        sh "cp ${pi.package_path}/${pi.package_name} ."
                                     }
                                 }
                             }
