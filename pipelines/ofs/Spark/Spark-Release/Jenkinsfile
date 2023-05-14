@@ -43,11 +43,11 @@ def checkCacheExist(pi) {
     try {
         def existPackage = "${pi.package_path}/${pi.package_name}"
         sh script: """
-            ls -l ${pi.package_path}
+            ls -alh ${pi.package_path}
             cp ${existPackage} ${pi.package_name}
         """
 
-        sh 'ls -l'
+        sh 'ls -alh'
         // println "pi.package_file: ${pi.package_file}"
         result = fileExists(pi.package_name)
         println "${pi.package_path}/${pi.package_name} is ${result}"
@@ -102,8 +102,8 @@ def gitSparkCodeKe(repo, branch) {
     }
 }
 
-def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
-    println "generateCloudPackage -> waitTime[${waitTime}],cloudType[${cloudType}],dependencyDir[${dependencyDir}],releaseVersion[${releaseVersion}]"
+def generateCloudPackage(cloudType, dependencyDir, releaseVersion) {
+    println "generateCloudPackage -> cloudType[${cloudType}],dependencyDir[${dependencyDir}],releaseVersion[${releaseVersion}]"
     def releaseName = releaseVersion.replace('-kylin', '')
     //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
     //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
@@ -111,7 +111,6 @@ def generateCloudPackage(waitTime, cloudType, dependencyDir, releaseVersion) {
     def pi = getPackageInfo(releaseVersion, cloudType)
     if(!checkCacheExist(pi)) {
         sh script: """
-            sleep ${waitTime}
             export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
             dev/make-distribution.sh --name ${releaseVersion} -Phadoop-3.2 -Phive-thriftserver -pl assembly
             cp ../depedencies/log4j/*.jar dist/jars/
@@ -326,6 +325,7 @@ pipeline {
                                 cp -r sourcecode ./cloud-aws
                                 cp -r sourcecode ./cloud-gcp
                                 cp -r sourcecode ./cloud-huawei
+                                ls -alh
                             '''
                         }
                     }
@@ -440,7 +440,6 @@ pipeline {
                                     def pi = getPackageInfo(params.release_version, 'on-perm-nohadoop')
                                     if(!checkCacheExist(pi)) {
                                         sh script: """
-                                            sleep 10
                                             dev/make-distribution.sh --name ${pi.releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
                                             mv dist ${pi.file_name}
                                             tar czf ${pi.package_name} ${pi.file_name}
@@ -469,7 +468,7 @@ pipeline {
                         container('build') {
                             dir('cloud-aws') {
                                 script {
-                                    generateCloudPackage('10', 'cloud-aws', 'aws', releaseVersion)
+                                    generateCloudPackage('cloud-aws', 'aws', releaseVersion)
                                     // uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
                                 }
                             }
@@ -486,7 +485,7 @@ pipeline {
                         container('build') {
                             dir('cloud-azure') {
                                 script {
-                                    generateCloudPackage('20', 'cloud-azure', 'azure', releaseVersion)
+                                    generateCloudPackage('cloud-azure', 'azure', releaseVersion)
                                     // uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
                                 }
                             }
@@ -503,7 +502,7 @@ pipeline {
                         container('build') {
                             dir('cloud-gcp') {
                                 script {
-                                    generateCloudPackage('30', 'cloud-gcp', 'gcp', releaseVersion)
+                                    generateCloudPackage('cloud-gcp', 'gcp', releaseVersion)
                                     // uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
                                 }
                             }
@@ -520,7 +519,7 @@ pipeline {
                         container('build') {
                             dir('cloud-huawei') {
                                 script {
-                                    generateCloudPackage('40', 'cloud-huawei', 'huawei', releaseVersion)
+                                    generateCloudPackage('cloud-huawei', 'huawei', releaseVersion)
                                     // uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
                                 }
                             }
