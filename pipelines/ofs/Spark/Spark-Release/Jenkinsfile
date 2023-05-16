@@ -29,7 +29,7 @@ def getPackageInfo(version,deployType,packageType) {
             file_name = "spark-newten-${releaseName}-${packageType}"
             break
     }
-    package_path = "/var/cicd/spark/${deployType}/${releaseName}"
+    package_path = "/var/cicd/spark/${deployType}/"
     def obj = [:]
     obj.package_path = package_path
     obj.file_name = file_name
