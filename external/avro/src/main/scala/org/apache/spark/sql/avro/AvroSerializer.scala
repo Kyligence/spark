@@ -60,7 +60,7 @@ private[sql] class AvroSerializer(
     converter.apply(catalystData)
   }
 
-  private val dateRebaseFunc = DataSourceUtils.creteDateRebaseFuncInWrite(
+  private val dateRebaseFunc = DataSourceUtils.createDateRebaseFuncInWrite(
     datetimeRebaseMode, "Avro")
 
   private val timestampRebaseFunc = DataSourceUtils.creteTimestampRebaseFuncInWrite(

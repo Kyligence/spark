@@ -84,7 +84,7 @@ class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
 
   private val parquetCellSizeLimit = SQLConf.PARQUET_CELL_SIZE_LIMIT.defaultValue.get
 
-  private val dateRebaseFunc = DataSourceUtils.creteDateRebaseFuncInWrite(
+  private val dateRebaseFunc = DataSourceUtils.createDateRebaseFuncInWrite(
     datetimeRebaseMode, "Parquet")
 
   private val timestampRebaseFunc = DataSourceUtils.creteTimestampRebaseFuncInWrite(
