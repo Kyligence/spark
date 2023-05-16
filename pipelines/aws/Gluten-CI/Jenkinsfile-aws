@@ -111,7 +111,7 @@ pipeline {
                                     try{
                                         sh '''
                                   export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
-                                  export MAVEN_OPTS="-Xms1g -Xmx8g -Xss16m -XX:ReservedCodeCacheSize=1g"
+                                  export MAVEN_OPTS="-Xms1g -Xmx8g -Xss128m -XX:ReservedCodeCacheSize=1g"
                                   mvn clean test -Pbackends-clickhouse -Pspark-3.2 -Pspark-ut -Dtpcds.data.path=/data/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark32"
                                 '''
                                     }finally {
@@ -150,7 +150,7 @@ pipeline {
                                     try{
 
                                         sh '''
-                                export MAVEN_OPTS="-Xms1g -Xmx8g -Xss16m -XX:ReservedCodeCacheSize=1g"
+                                export MAVEN_OPTS="-Xms1g -Xmx8g -Xss128m -XX:ReservedCodeCacheSize=1g"
                                 export LD_PRELOAD=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so
                                 mvn clean test -Pbackends-clickhouse -Pspark-3.3 -Pspark-ut -Dtpcds.data.path=/data2/tpcds-data-sf1 -Dclickhouse.lib.path=\${WORKSPACE}/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -DargLine="-Dspark.test.home=/tmp/spark33"
                               '''
