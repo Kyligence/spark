@@ -8,11 +8,13 @@ def releaseVersion = '' //最后发布的版本号
 def releaseName = ''
 def publishToKC = false //是否发布给KC
 
-def getPackageInfo(releaseVersion,packageType) {
-    println "getPackageInfo -> releaseVersion[${releaseVersion}],packageType[${packageType}]"
+def getPackageInfo(version,deployType,packageType) {
+    println "getPackageInfo -> version[${version}],deployType[${deployType}],packageType[${packageType}]"
     def file_name = ''
     def package_path = ''
-    def releaseName = releaseVersion.replace('-kylin', '')
+    def releaseName = ''
+    def releaseVersion = getReleaseVersion(version, deployType)
+    releaseName = releaseVersion.replace('-kylin', '')
     switch(packageType) {
         case 'on-perm-hadoop2':
             file_name = "spark-newten-${releaseName}-hadoop2"
@@ -27,14 +29,14 @@ def getPackageInfo(releaseVersion,packageType) {
             file_name = "spark-newten-${releaseName}-${packageType}"
             break
     }
-    package_path = "/var/cicd/spark/${releaseVersion}"
+    package_path = "/var/cicd/spark/${deployType}/${releaseName}"
     def obj = [:]
     obj.package_path = package_path
     obj.file_name = file_name
     obj.package_name = "${file_name}.tgz"
     obj.releaseName = releaseName
     obj.releaseVersion = releaseVersion
-    println obj.toString()
+    println "getPackageInfo: ${obj.toString()}"
     return obj
 }
 
@@ -88,6 +90,9 @@ def getReleaseVersion(version, deployType) {
         case 'QA':
             _result = _result + '-SNAPSHOT'
             break
+        case 'GA':
+            _result = version
+            break
     }
     return _result.trim()
 }
@@ -103,13 +108,13 @@ def gitSparkCodeKe(repo, branch) {
     }
 }
 
-def generateCloudPackage(cloudType, dependencyDir, releaseVersion) {
+def generateCloudPackage(cloudType,dependencyDir,version,deployType) {
     println "generateCloudPackage -> cloudType[${cloudType}],dependencyDir[${dependencyDir}],releaseVersion[${releaseVersion}]"
     def releaseName = releaseVersion.replace('-kylin', '')
     //kc 使用的的log4j jar 与本地略有区别，这里需要特殊处理 参见 https://olapio.atlassian.net/browse/KE-34130
     //https://olapio.atlassian.net/browse/KE-34066 配置方式也与本地略有区别
     //https://olapio.atlassian.net/browse/KC-12372 delete slf4j-log4j12
-    def pi = getPackageInfo(releaseVersion, cloudType)
+    def pi = getPackageInfo(version,deployType,cloudType)
     if(!checkCacheExist(pi)) {
         sh script: """
             export MAVEN_OPTS="-Xmx4g -XX:ReservedCodeCacheSize=1g -Xss128m"
@@ -141,11 +146,11 @@ def generateCloudPackage(cloudType, dependencyDir, releaseVersion) {
     }
 }
 
-def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,uploadS3=true) {
-    println "uploadCloudPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],packageType[${packageType}],uploadOnly[${uploadOnly}],uploadS3[${uploadS3}]"
+def uploadCloudPackage(version,deployType,packageType,uploadOnly=false,uploadS3=true) {
+    println "uploadCloudPackage -> version[${version}],deployType[${deployType}],packageType[${packageType}],uploadOnly[${uploadOnly}],uploadS3[${uploadS3}]"
     script {
-        def _releaseVersion = getReleaseVersion(releaseVersion,deployType)
-        def _packageInfo =  getPackageInfo(_releaseVersion, packageType)
+        def _releaseVersion = getReleaseVersion(version,deployType)
+        def _packageInfo =  getPackageInfo(version,deployType, packageType)
         def _hasNexusCache = false
         def _hasPackageCache = false
         
@@ -192,10 +197,10 @@ def uploadCloudPackage(releaseVersion,deployType,packageType,uploadOnly=false,up
     }
 }
 
-def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
-    println "deployJars -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
+def deployJars(version,deployType,sparkVersion,envProfile) {
+    println "deployJars -> version[${version}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
     script {
-        def _releaseVersion = getReleaseVersion(releaseVersion, deployType)
+        def _releaseVersion = getReleaseVersion(version, deployType)
         def kubernetesParm = '-Pkubernetes'
         if (sparkVersion == 'spark2.2') {
             kubernetesParm = ''
@@ -210,10 +215,10 @@ def deployJars(releaseVersion,deployType,sparkVersion,envProfile) {
     }
 }
 
-def buildPackage(releaseVersion,deployType,sparkVersion,envProfile) {
-    println "buildPackage -> releaseVersion[${releaseVersion}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
+def buildPackage(version,deployType,sparkVersion,envProfile) {
+    println "buildPackage -> version[${version}],deployType[${deployType}],sparkVersion[${sparkVersion}],publishToKC[${publishToKC}],envProfile[${envProfile}]"
     script {
-        def _releaseVersion = getReleaseVersion(releaseVersion, deployType)
+        def _releaseVersion = getReleaseVersion(version, deployType)
         def kubernetesParm = '-Pkubernetes'
         if (sparkVersion == 'spark2.2') {
             kubernetesParm = ''
@@ -318,7 +323,7 @@ pipeline {
                 container('build') {
                     dir('sourcecode') {
                         script {
-                            def piHadoop = getPackageInfo(params.release_version, 'on-perm-hadoop2')
+                            def piHadoop = getPackageInfo(params.release_version, params.deployType, 'on-perm-hadoop2')
                             if(!checkCacheExist(piHadoop) || publishToKC) {
                                 buildPackage(params.release_version, params.deployType, params.sparkVersion, 'dev')
                             }
@@ -401,7 +406,7 @@ pipeline {
                         container('build') {
                             dir('on-perm-hadoop2') {
                                 script {
-                                    def pi = getPackageInfo(params.release_version, 'on-perm-hadoop2')
+                                    def pi = getPackageInfo(params.release_version, params.deployType, 'on-perm-hadoop2')
                                     if(!checkCacheExist(pi)) {
                                         def hadoopVersion = 'hadoop-2.7'
                                         if (params.sparkVersion == 'spark2.4') {
@@ -448,7 +453,7 @@ pipeline {
                         container('build') {
                             dir('on-perm-nohadoop') {
                                 script {
-                                    def pi = getPackageInfo(params.release_version, 'on-perm-nohadoop')
+                                    def pi = getPackageInfo(params.release_version,params.deployType,'on-perm-nohadoop')
                                     if(!checkCacheExist(pi)) {
                                         sh script: """
                                             dev/make-distribution.sh --name ${pi.releaseVersion} -Phadoop-provided -Phive-provided -Phive-thriftserver -Pyarn  -pl assembly
