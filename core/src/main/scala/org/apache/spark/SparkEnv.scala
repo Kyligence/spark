@@ -20,7 +20,6 @@ package org.apache.spark
 import java.io.File
 import java.net.Socket
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent
@@ -34,8 +33,8 @@ import org.apache.hadoop.security.UserGroupInformation
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
 import org.apache.spark.broadcast.BroadcastManager
-import org.apache.spark.internal.{Logging, config}
-import org.apache.spark.internal.config.{CACHE_RETAIN_TIME, _}
+import org.apache.spark.internal.{config, Logging}
+import org.apache.spark.internal.config._
 import org.apache.spark.memory.{MemoryManager, UnifiedMemoryManager}
 import org.apache.spark.metrics.{MetricsSystem, MetricsSystemInstances}
 import org.apache.spark.network.netty.{NettyBlockTransferService, SparkTransportConf}
@@ -79,11 +78,7 @@ class SparkEnv (
   // A general, soft-reference map for metadata needed during HadoopRDD split computation
   // (e.g., HadoopFileRDD uses this to cache JobConfs and InputFormats).
   private[spark] val hadoopJobMetadata =
-    CacheBuilder.newBuilder()
-      .maximumSize(1000)
-      .softValues()
-      .expireAfterAccess(conf.get(CACHE_RETAIN_TIME), TimeUnit.MINUTES)
-      .build[String, AnyRef]().asMap()
+    CacheBuilder.newBuilder().softValues().build[String, AnyRef]().asMap()
 
   private[spark] var driverTmpDir: Option[String] = None
 
