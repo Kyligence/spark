@@ -31,8 +31,8 @@ import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
 import org.apache.parquet.filter2.compat.FilterCompat
 import org.apache.parquet.filter2.predicate.FilterApi
 import org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS
-import org.apache.parquet.hadoop._
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel
+import org.apache.parquet.hadoop._
 import org.apache.parquet.hadoop.codec.CodecConfig
 import org.apache.parquet.hadoop.util.ContextUtil
 
@@ -268,12 +268,13 @@ class ParquetFileFormat
 
       S3FileUtils.tryOpenClose(sharedConf, filePath)
       val startTime = System.currentTimeMillis()
-
+      var fileReader :Option[ParquetFileReader] = Option.empty
       val fileFooter = if (enableVectorizedReader) {
         // When there are vectorized reads, we can avoid reading the footer twice by reading
         // all row groups in advance and filter row groups according to filters that require
         // push down (no need to read the footer metadata again).
-        ParquetFooterReader.readFooter(sharedConf, file, ParquetFooterReader.WITH_ROW_GROUPS)
+        fileReader = Option.apply(ParquetFooterReader.reader(sharedConf, file))
+        fileReader.get.getFooter
       } else {
         ParquetFooterReader.readFooter(sharedConf, file, ParquetFooterReader.SKIP_ROW_GROUPS)
       }
@@ -331,6 +332,9 @@ class ParquetFileFormat
       // Notice: This push-down is RowGroups level, not individual records.
       if (pushed.isDefined) {
         ParquetInputFormat.setFilterPredicate(hadoopAttemptContext.getConfiguration, pushed.get)
+        if (fileReader.isDefined) {
+          fileReader.get.resetBlocks(hadoopAttemptContext.getConfiguration)
+        }
       }
       val taskContext = Option(TaskContext.get())
       val firstFooterEndTime = System.currentTimeMillis()
@@ -344,7 +348,7 @@ class ParquetFileFormat
         val iter = new RecordReaderIterator(vectorizedReader)
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
-        vectorizedReader.initialize(split, hadoopAttemptContext, Option.apply(fileFooter))
+        vectorizedReader.initialize(split, hadoopAttemptContext, fileReader)
         logDebug(s"Appending $partitionSchema ${file.partitionValues}")
         vectorizedReader.initBatch(partitionSchema, file.partitionValues)
         if (returningBatch) {

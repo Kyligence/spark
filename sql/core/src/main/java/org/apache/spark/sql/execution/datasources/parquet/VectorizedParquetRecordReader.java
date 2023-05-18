@@ -27,6 +27,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter2.compat.QueryMetrics;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.Type;
 
@@ -162,9 +163,9 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
   public void initialize(
           InputSplit inputSplit,
           TaskAttemptContext taskAttemptContext,
-          Option<ParquetMetadata> fileFooter)
-          throws IOException, InterruptedException, UnsupportedOperationException {
-    super.initialize(inputSplit, taskAttemptContext, fileFooter);
+          Option<ParquetFileReader> fileReader)
+          throws IOException, UnsupportedOperationException {
+    super.initialize(inputSplit, taskAttemptContext, fileReader);
     initializeInternal();
   }
 

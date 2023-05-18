@@ -87,13 +87,13 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
 
   public void initialize(InputSplit inputSplit,
                          TaskAttemptContext taskAttemptContext,
-                         Option<ParquetMetadata> fileFooter)
-      throws IOException, InterruptedException {
+                         Option<ParquetFileReader> fileReader)
+      throws IOException {
     Configuration configuration = taskAttemptContext.getConfiguration();
     FileSplit split = (FileSplit) inputSplit;
     this.file = split.getPath();
-    if (fileFooter.isDefined()) {
-      this.reader = new ParquetFileReader(configuration, file, fileFooter.get());
+    if (fileReader.isDefined()) {
+      this.reader = fileReader.get();
     } else {
       ParquetReadOptions options = HadoopReadOptions
               .builder(configuration, file)
