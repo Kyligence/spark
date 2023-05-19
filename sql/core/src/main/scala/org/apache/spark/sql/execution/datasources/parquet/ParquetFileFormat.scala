@@ -268,7 +268,7 @@ class ParquetFileFormat
 
       S3FileUtils.tryOpenClose(sharedConf, filePath)
       val startTime = System.currentTimeMillis()
-      var fileReader :Option[ParquetFileReader] = Option.empty
+      var fileReader = Option.empty[ParquetFileReader]
       val fileFooter = if (enableVectorizedReader) {
         // When there are vectorized reads, we can avoid reading the footer twice by reading
         // all row groups in advance and filter row groups according to filters that require
