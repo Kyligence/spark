@@ -1,0 +1,44 @@
+---
+kind: "Pod"
+name: "jenkins-agent"
+metadata:
+  namespace: node
+spec:
+  # tolerations:
+  # - key: "nodetype"
+  #   operator: "Equal"
+  #   value: "ke"
+  #   effect: "NoSchedule"
+  containers:
+    - name: "git"
+      volumeMounts:
+        - name: "kyligence-repo"
+          mountPath: /clickhouse
+          readOnly: false
+        - mountPath: "/source-folder"
+          name: "jenkins-common"
+          readOnly: false
+          subPath: "source-folder"
+      tty: true
+      command:
+        - "cat"
+#        - "git submodule update --init --recursive"
+      image: "bitnami/git:2.35.1-debian-10-r68"
+      imagePullPolicy: "IfNotPresent"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "4"
+        requests:
+          memory: "2Gi"
+          cpu: "1"
+
+  volumes:
+    - name: "jenkins-common"
+      persistentVolumeClaim:
+        claimName: "jenkins-common"
+    - name: "kyligence-repo"
+      emptyDir: { }
+    - name: "dockersock"
+      hostPath:
+        path: "/var/run/docker.sock"

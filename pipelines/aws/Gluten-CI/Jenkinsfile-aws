@@ -180,6 +180,26 @@ pipeline {
                 sh "rm -rf /tmp_workspace/build_${env.BUILD_NUMBER}"
             }
         }
+
+        success {
+            container('git') {
+                script {
+                    if (params.ghprbPullTitle && params.ghprbPullTitle.contains("[GLUTEN-1632][CH]")) {
+                        feishu.glutenNotification("CI Passed (Gluten Rebase CH)", "${glutenBot}")
+                    }
+                }
+            }
+        }
+
+        failure {
+            container('git') {
+                script {
+                    if (params.ghprbPullTitle && params.ghprbPullTitle.contains("[GLUTEN-1632][CH]")) {
+                        feishu.glutenNotification("CI failed (Gluten Rebase CH)", "${glutenBot}")
+                    }
+                }
+            }
+        }
     }
 }
 

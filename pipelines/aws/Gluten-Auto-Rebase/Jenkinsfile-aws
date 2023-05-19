@@ -1,0 +1,69 @@
+#!groovy
+
+@Library('devopslib') _
+
+pipeline {
+    options {
+        timestamps()
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    agent {
+        kubernetes {
+            yamlFile 'pipelines/aws/Gluten-Auto-Rebase/jenkins-agent-gluten-auto-rebase.yaml'
+        }
+    }
+
+    parameters {
+        string(name: 'PR_BASE', defaultValue: 'main', description: 'oap-project/gluten base branch')
+        string(name: 'GITHUB_TOKEN', defaultValue: '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', description: 'Personal Github Token')
+        string(name: 'glutenBot', defaultValue: 'https://open.feishu.cn/open-apis/bot/v2/hook/5f28fd33-08f1-49af-9738-cf93e3fafefd', description: 'gluten robot, send message to feishu chat group')
+        booleanParam(name: 'MANUAL_REBASE', defaultValue: false, description: 'Manual rebase if auto rebase failed')
+        string(name: 'REBASE_CH_BRANCH_NAME', description: 'Manual rebase branch name')
+        string(name: 'REBASE_CH_COMMIT', description: 'Manual rebase commit')
+    }
+
+    stages {
+        stage('Rebase and PR') {
+            steps {
+                container('git') {
+                    dir('repos') {
+                        withCredentials([usernamePassword(credentialsId: 'kyligence-git', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                            script {
+                                sh "echo PR_BASE=${PR_BASE}"
+                                sh "git config --global credential.helper store"
+                                sh "git config --global user.name ${GIT_USERNAME}"
+                                sh "git config --global user.email gluten@kyligence.io"
+                                sh "echo https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com > ~/.git-credentials"
+
+                                sh "bash ${WORKSPACE}/pipelines/aws/Gluten-Auto-Rebase/auto_rebase_and_pr.sh"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            container('git') {
+                script {
+                    testReportResult = sh(returnStdout:true, script: "cat ${WORKSPACE}/repos/pr_url.txt").trim()
+                    feishu.glutenNotification("Success: ${testReportResult}", "${glutenBot}")
+                }
+            }
+        }
+        failure {
+            container('git') {
+                script {
+                    script {
+                        feishu.glutenNotification("Rebase Clickhouse Failed!", "${glutenBot}")
+                    }
+                }
+            }
+        }
+    }
+
+}

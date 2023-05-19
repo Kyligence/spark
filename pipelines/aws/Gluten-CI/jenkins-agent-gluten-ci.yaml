@@ -109,7 +109,7 @@ spec:
       tty: true
       command:
         - "cat"
-      image: "qwe1398775315/libchbuilder:0.3.2"
+      image: "public.ecr.aws/kyligence/gluten/libchbuilder:1.0"
       imagePullPolicy: "IfNotPresent"
       env:
         - name: HTTP_PROXY
