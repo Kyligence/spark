@@ -605,7 +605,7 @@ pipeline {
                             script {
                                 dir('sourcecode2') {
                                     setVersions(params.version, params.kylinVersion, false)
-                                    sh 'mvn deploy -Pdev -DskipTests -T 4C'
+                                    sh 'mvn deploy -Pdev -DskipTests'
                                 }
                             }
                         }
@@ -786,7 +786,7 @@ pipeline {
                             script {
                                 dir('sourcecode2') {
                                     setVersions(params.version, params.kylinVersion, false)
-                                    sh 'mvn deploy -Pdev -DskipTests -T 4C'
+                                    sh 'mvn deploy -Pdev -DskipTests'
                                 }
                             }
                         }
@@ -1089,7 +1089,7 @@ pipeline {
                         container('build2') {
                             script {
                                 dir('sourcecode2') {
-                                    sh 'mvn deploy -Pdev -DskipTests -T 4C'
+                                    sh 'mvn deploy -Pdev -DskipTests'
                                 }
                             }
                         }
