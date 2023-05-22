@@ -81,7 +81,7 @@ pipeline {
                                 export CCACHE_COMPILERCHECK=content &&\
                                 export CCACHE_MAXSIZE=15G &&\
                                 export GLUTEN_SOURCE=\$(pwd) && \
-                                cmake -G Ninja -S \${GLUTEN_SOURCE}/cpp-ch -B \${GLUTEN_SOURCE}/cpp-ch/_build -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15 -DCMAKE_BUILD_TYPE=Release &&\
+                                cmake -G Ninja -S \${GLUTEN_SOURCE}/cpp-ch -B \${GLUTEN_SOURCE}/cpp-ch/_build -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15 -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
                                 cmake --build \${GLUTEN_SOURCE}/cpp-ch/_build --target build_ch\
                             """
                         }
