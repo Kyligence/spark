@@ -16,6 +16,7 @@ pipeline {
 
     parameters {
         string(name: 'branch', defaultValue: 'add_clickhouse_source', description: 'gluten branch')
+        string(name: 'glutenBot', defaultValue: 'https://open.feishu.cn/open-apis/bot/v2/hook/5f28fd33-08f1-49af-9738-cf93e3fafefd', description: 'gluten robot, send message to feishu chat group')
         string(name: 'sha1', defaultValue: '', description: '')
     }
 
