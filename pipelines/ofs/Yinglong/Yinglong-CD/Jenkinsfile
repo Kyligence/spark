@@ -41,7 +41,7 @@ pipeline {
         booleanParam(name: 'build', defaultValue:true, description:'是否构建')
         string(name: 'profiles', defaultValue: 'kubernetes,iam', description: '指定的 profile，kubernetes 会打包 yinglong，iam 会添加 iam 的 jar')
         booleanParam(name: 'push', defaultValue:true, description:'推送镜像')
-        choice(name: 'deploy', choices: 'skip\nupgrade\ninstall', description: '部署方式:\nskip - 跳过\nupgrade - 更新\ninstall - 重新部署')
+    '部署方式:\nskip - 跳过\nupgrade - 更新\ninstall - 重新部署')
         choice(name: 'namespace', choices: 'yinglong-dev\nyinglong-dev2', description: '选择要部署的namespace')
         string(name: 'hadoop_prefix', defaultValue: 'hadoop', description: 'hadoop environment')
         string(name: 'tenant_id', defaultValue: '', description: 'tenant id')

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins-pod
+  template:
+    metadata:
+      labels:
+        app: jenkins-pod
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      volumes:
+        - name: jenkinshome
+          persistentVolumeClaim:
+            claimName: jenkinshome-devopsceph-pvc
+            readOnly: false
+      serviceAccountName: jenkins-admin
+      containers:
+        - name: jenkins
+          image: 'jenkins/jenkins:2.346.2-lts'
+          ports:
+            - name: web
+              containerPort: 8080
+              protocol: TCP
+            - name: agent
+              containerPort: 50000
+              protocol: TCP
+          env:
+            - name: JAVA_OPTS
+              value: '-Dhudson.model.DownloadService.noSignatureCheck=true'
+            - name: TZ
+              value: Asia/Shanghai
+          resources:
+            limits:
+              cpu: '4'
+              memory: 16384Mi
+            requests:
+              cpu: '4'
+              memory: 16384Mi
+          volumeMounts:
+            - name: jenkinshome
+              mountPath: /var/jenkins_home
+          imagePullPolicy: IfNotPresent

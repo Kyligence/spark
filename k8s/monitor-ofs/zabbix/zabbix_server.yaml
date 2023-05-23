@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: zabbix-server
+  name: zabbix-server
+  namespace: zabbix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zabbix-server
+  template:
+    metadata:
+      labels:
+        app: zabbix-server
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      #nodeSelector:
+       # zabbix-server: "true"
+      hostNetwork: true
+      containers:
+      - image: zabbix/zabbix-server-mysql:5.0-centos
+        imagePullPolicy: IfNotPresent
+        name: zabbix-server-mysql
+        volumeMounts:
+        - mountPath: /usr/lib/zabbix/alertscripts
+          name: zabbix-scripts-pv
+        env:
+        - name: DB_SERVER_HOST
+          value: 10.1.9.18
+        - name: DB_SERVER_PORT
+          value: "3306"
+        - name: MYSQL_DATABASE
+          value: zabbix
+        - name: MYSQL_USER
+          value: zabbix
+        - name: MYSQL_PASSWORD
+          value: Kylin@2023
+        - name: ZBX_CACHESIZE
+          value: "512M"
+        - name: ZBX_HISTORYCACHESIZE
+          value: "128M"
+        - name: ZBX_HISTORYINDEXCACHESIZE
+          value: "128M"
+        - name: ZBX_TRENDCACHESIZE
+          value: "128M"
+        - name: ZBX_VALUECACHESIZE
+          value: "256M"
+        - name: ZBX_TIMEOUT
+          value: "30"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 500Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+      volumes:
+        - name: zabbix-scripts-pv
+          persistentVolumeClaim:
+            claimName: zabbix-scripts-pvc

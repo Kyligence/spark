@@ -1,0 +1,365 @@
+expose:
+  type: ingress
+  tls:
+    ### 是否启用 https 协议
+    enabled: true
+    certSource: secret
+    secret:
+      secretName: "harbor-test-tls"
+      notarySecretName: "harbor-test-tls"
+  ingress:
+    hosts:
+      ### 配置 Harbor 的访问域名，需要注意的是配置 notary 域名要和 core 处第一个单词外，其余保持一致
+      core: harbor-ofs.kyligence.com
+      notary: notary-ofs.kyligence.com
+    controller: default
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
+      ingress.kubernetes.io/ssl-redirect: "true"
+
+## 如果Harbor部署在代理后，将其设置为代理的URL，这个值一般要和上面的 Ingress 配置的地址保存一致
+externalURL: https://harbor-ofs.kyligence.com
+
+### Harbor 各个组件的持久化配置，并设置各个组件 existingClaim 参数为上面创建的对应 PVC 名称
+persistence:
+  enabled: true   # 开启持久化存储
+  #resourcePolicy: "keep"
+  resourcePolicy: "delete"
+  persistentVolumeClaim:        # 定义Harbor各个组件的PVC持久卷部分
+    registry:          # registry组件（持久卷）配置部分
+      existingClaim: "harbor-data"
+      storageClass: ""           
+      accessMode: ReadWriteMany         
+      size: 5Gi
+    chartmuseum:     # chartmuseum组件（持久卷）配置部分
+      existingClaim: "harbor-data"
+      storageClass: ""
+      accessMode: ReadWriteMany
+      size: 5Gi
+    jobservice:    # 异步任务组件（持久卷）配置部分
+      existingClaim: "harbor-data"
+      storageClass: ""
+      accessMode: ReadWriteMany
+      size: 1Gi
+    database:        # PostgreSQl数据库组件（持久卷）配置部分
+      existingClaim: "harbor-data"
+      storageClass: ""
+      accessMode: ReadWriteMany
+      size: 1Gi
+    redis:    # Redis缓存组件（持久卷）配置部分
+      existingClaim: "harbor-data"
+      storageClass: ""
+      accessMode: ReadWriteMany
+      size: 1Gi
+    trivy:         # Trity漏洞扫描插件（持久卷）配置部分
+      existingClaim: "harbor-data"
+      storageClass: ""
+      accessMode: ReadWriteMany
+      size: 5Gi
+harborAdminPassword: "Harbor12345"   # admin初始密码，不需要修改
+
+
+### 设置日志级别
+logLevel: info
+
+#各个组件 CPU & Memory 资源相关配置
+nginx:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 500m
+portal:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 500m
+core:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 1000m
+jobservice:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 500m
+registry:
+  registry:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+  controller:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+clair:
+  clair:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+  adapter:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+notary:
+  server:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+  signer:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+database:
+  internal:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+redis:
+  internal:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 500m
+trivy:
+  enabled: true
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+#开启 chartmuseum，使 Harbor 能够存储 Helm 的 chart
+chartmuseum:
+  enabled: true
+  resources:
+    requests:
+     memory: 256Mi
+     cpu: 500m
+nginx:
+  image:
+    repository: goharbor/nginx-photon
+    tag: v2.6.0
+  replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+portal:
+  image:
+    repository: goharbor/harbor-portal
+    tag: v2.6.0
+  replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+core:
+  image:
+    repository: goharbor/harbor-core
+    tag: v2.6.0
+  replicas: 1
+  livenessProbe:
+    initialDelaySeconds: 300
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+  secret: ""
+  secretName: ""
+  xsrfKey: ""
+jobservice:
+  image:
+    repository: goharbor/harbor-jobservice
+    tag: v2.6.0
+  replicas: 1
+  maxJobWorkers: 10
+  jobLogger: file
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+  secret: ""
+registry:
+  registry:
+    image:
+      repository: goharbor/registry-photon
+      tag: v2.6.0
+  controller:
+    image:
+      repository: goharbor/harbor-registryctl
+      tag: v2.6.0
+  replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+  secret: ""
+  relativeurls: false
+  middleware:
+    enabled: false
+    type: cloudFront
+    cloudFront:
+      baseurl: example.cloudfront.net
+      keypairid: KEYPAIRID
+      duration: 3000s
+      ipfilteredby: none
+      privateKeySecret: "my-secret"
+chartmuseum:
+  enabled: true
+  absoluteUrl: false
+  image:
+    repository: goharbor/chartmuseum-photon
+    tag: v2.6.0
+  replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+
+notary:
+  enabled: true
+  server:
+    image:
+      repository: goharbor/notary-server-photon
+      tag: v2.6.0
+    replicas: 1
+  signer:
+    image:
+      repository: goharbor/notary-signer-photon
+      tag: v2.6.0
+    replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+  secretName: ""
+
+trivy:
+  enabled: true
+  image:
+    repository: goharbor/trivy-adapter-photon
+    tag: v2.6.0
+  replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+  secretName: ""
+
+
+exporter:
+  enabled: true
+  image:
+    repository: goharbor/harbor-exporter
+    tag: v2.6.0
+  replicas: 1
+  nodeSelector: {}
+  tolerations:
+    - key: cicd
+      operator: Equal
+      effect: NoSchedule
+  affinity: {}
+  podAnnotations: {}
+  secretName: ""
+
+database:
+  type: internal
+  internal:
+    image:
+      repository: goharbor/harbor-db
+      tag: v2.6.0
+    initContainerImage:
+      repository: busybox
+      tag: latest
+    password: "changeit"
+    nodeSelector: {}
+    tolerations:
+      - key: cicd
+        operator: Equal
+        effect: NoSchedule
+    affinity: {}
+  external:
+    host: "10.1.9.13"
+    port: "5432"
+    username: "postgres"
+    password: "Kylin@0628"
+    coreDatabase: "registry"
+    clairDatabase: "clair"
+    notaryServerDatabase: "notaryserver"
+    notarySignerDatabase: "notarysigner"
+    sslmode: "disable"
+  maxIdleConns: 50
+  maxOpenConns: 100
+  podAnnotations: {}
+
+redis:
+  type: internal
+  internal:
+    image:
+      repository: goharbor/redis-photon
+      tag: v2.6.0
+    nodeSelector: {}
+    tolerations:
+      - key: cicd
+        operator: Equal
+        effect: NoSchedule
+    affinity: {}
+  external:
+    addr: "10.1.9.16:6379"
+    password: "Kylin@0628"
+    #port: "6379"
+    coreDatabaseIndex: "0"
+    jobserviceDatabaseIndex: "2"
+    registryDatabaseIndex: "1"
+    chartmuseumDatabaseIndex: "3"
+    #clairAdapterIndex: "4"
+  podAnnotations: {}
+
+metrics:
+  enabled: true  # 是否启用监控组件（可以使用Prometheus监控Harbor指标，具体见本专栏文章），非必须操作
+  core:
+    path: /metrics
+    port: 8001
+  registry:
+    path: /metrics
+    port: 8001
+  jobservice:
+    path: /metrics
+    port: 8001
+  exporter:
+    path: /metrics
+    port: 8001

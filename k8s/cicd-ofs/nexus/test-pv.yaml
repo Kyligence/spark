@@ -1,0 +1,21 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  namespace: cicd
+  name: nexus-test-pv
+spec:
+  capacity:
+    storage: 2Ti
+  cephfs:
+    monitors:
+      - '10.1.9.46:6789'
+      - '10.1.9.47:6789'
+      - '10.1.9.48:6789'
+    path: /nexus_test
+    user: admin
+    secretRef:
+      name: ceph-secret
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem

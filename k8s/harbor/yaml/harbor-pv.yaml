@@ -1,0 +1,21 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: harbor-data
+  namespace: harbor
+spec:
+  capacity:
+    storage: 500Gi
+  cephfs:
+    monitors:
+      - '10.1.9.41:6789'
+      - '10.1.9.42:6789'
+      - '10.1.9.43:6789'
+    path: /harbor/data
+    user: admin
+    secretRef:
+      name: cephfs-storageclass-secret
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem

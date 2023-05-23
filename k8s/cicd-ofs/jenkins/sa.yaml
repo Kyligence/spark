@@ -1,0 +1,27 @@
+###############创建一个ServiceAccount 名称为：jenkins-admin###################
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins-admin
+  namespace: cicd
+  labels:
+    name: jenkins
+
+###############绑定账户 jenkins-admin 为集群管理员角色，为了控制权限建议绑定自定义角色###################
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkins-admin
+  labels:
+    name: jenkins
+subjects:
+  - kind: ServiceAccount
+    name: jenkins-admin
+    namespace: cicd
+roleRef:
+  kind: ClusterRole
+  # cluster-admin 是 k8s 集群中默认的管理员角色
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io

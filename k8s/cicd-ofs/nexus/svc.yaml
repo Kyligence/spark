@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nexus
+  name: nexus
+  namespace: cicd
+spec:
+  ports:
+  - name: http-8081
+    nodePort: 30189
+    port: 8081
+    protocol: TCP
+    targetPort: 8081
+  - name: http-5000
+    nodePort: 31985
+    port: 5000
+    protocol: TCP
+    targetPort: 5000
+  - name: http-5002
+    nodePort: 32753
+    port: 5002
+    protocol: TCP
+    targetPort: 5002
+  selector:
+    app: nexus3
+  type: NodePort

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: prometheus
+  labels:
+    app: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus
+      #   initc  赋予目录权限
+      initContainers:
+      - name: chauth
+        image: busybox:1.28
+        resources:
+          limits:
+            cpu: 0.5
+            memory: 200Mi
+          requests:
+            cpu: 0.5
+            memory: 200Mi
+        command: ['sh','-c','chmod 777 /prometheus']
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true    ###  建议开启特权模式
+        volumeMounts:
+        - mountPath: /prometheus      ### initc也要对次数据卷进行挂载
+          name: data
+ # 以上为 initc 配置
+      containers:
+      #- image: prom/prometheus:v2.35.0
+      - image: prom/prometheus:v2.41.0
+        name: prometheus
+        args:
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.path=/prometheus"  # 指定tsdb数据路径
+#        - "--storage.tsdb.retention.time=24h" #默认15天
+        - "--web.enable-admin-api"  # 控制对admin HTTP API的访问，其中包括删除时间序列等功能
+        - "--web.enable-lifecycle"  # 支持热更新，直接执行localhost:9090/-/reload立即生效
+        env:
+        - name: TZ 
+          value: Asia/Shanghai
+        ports:
+        - containerPort: 9090
+          name: http
+        volumeMounts:
+        - mountPath: "/etc/prometheus"
+          name: config-volume
+          #subPath: prometheus.yml
+        - mountPath: "/prometheus"
+          name: data
+        - mountPath: /etc/prometheus/rules
+          name: prometheus-rules-volume
+        resources:
+          requests:
+            cpu: 2
+            memory: 2Gi
+          limits:
+            cpu: 2
+            memory: 2Gi
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: prometheus-data
+      - configMap:
+          name: prometheus-config
+        name: config-volume
+      - configMap:
+          name: prometheus-rules
+        name: prometheus-rules-volume

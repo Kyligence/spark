@@ -1,0 +1,21 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  namespace: cicd
+  name: jenkinshome-storageceph-pv
+spec:
+  capacity:
+    storage: 500Gi
+  cephfs:
+    monitors:
+      - '10.1.9.41:6789'
+      - '10.1.9.42:6789'
+      - '10.1.9.43:6789'
+    path: /jenkins
+    user: admin
+    secretRef:
+      name: storageceph-secret
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem

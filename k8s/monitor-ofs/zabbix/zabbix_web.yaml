@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: zabbix-web
+  name: zabbix-web
+  namespace: zabbix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zabbix-web
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: zabbix-web
+    spec:
+      containers:
+      - image: zabbix/zabbix-web-nginx-mysql:5.0-centos
+        name: zabbix-web-nginx-mysql
+        env:
+        - name: DB_SERVER_HOST
+          value: 10.1.9.18
+        - name: MYSQL_USER
+          value: zabbix
+        - name: MYSQL_PASSWORD
+          value: Kylin@2023
+        - name: ZBX_SERVER_HOST
+          value: zabbix-server
+        - name: PHP_TZ
+          value: Asia/shanghai
+        resources: {}
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: zabbix-web
+  name: zabbix-web
+  namespace: zabbix
+spec:
+  ports:
+  - name: 8080-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: zabbix-web
+  type: NodePort
+status:
+  loadBalancer: {}

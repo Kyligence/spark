@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: zabbix-agent
+  name: zabbix-agent
+  namespace: zabbix
+spec:
+  selector:
+    matchLabels:
+      app: zabbix-agent
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: zabbix-agent
+    spec:
+      hostNetwork: true
+      containers:
+      - image: zabbix/zabbix-agent:5.0-centos
+        name: zabbix-agent
+        env:
+        - name: ZBX_SERVER_HOST
+          value: 10.1.9.134
+        resources: {}
