@@ -65,8 +65,8 @@ function modify_gluten_ch_version() {
   fi
 
   # modify clickhouse.version
-  sed -i "s/CH_BRANCH=.*/CH_BRANCH=${REBASE_CH_BRANCH_NAME}/g" cpp-ch/clickhouse.version
-  sed -i "s/CH_COMMIT=.*/CH_COMMIT=${REBASE_CH_COMMIT}/g" cpp-ch/clickhouse.version
+  sed -i "s|CH_BRANCH=.*|CH_BRANCH=${REBASE_CH_BRANCH_NAME}|g" cpp-ch/clickhouse.version
+  sed -i "s|CH_COMMIT=.*|CH_COMMIT=${REBASE_CH_COMMIT}|g" cpp-ch/clickhouse.version
 
   git add .
   git commit -m "[GLUTEN-1632][CH]Daily Update Clickhouse Version (${CURRENT_DATE})"
