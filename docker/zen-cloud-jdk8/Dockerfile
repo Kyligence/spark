@@ -18,7 +18,7 @@ RUN echo "https://mirrors.sustech.edu.cn/alpine/v3.10/main" > /etc/apk/repositor
     echo "https://mirrors.sustech.edu.cn/alpine/v3.10/community" >> /etc/apk/repositories ; \
     apk update \
     && apk upgrade \
-    && apk add --no-cache bash bash-doc bash-completion \
+    && apk add --no-cache bash bash-doc bash-completion tini \
     && apk add tzdata && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
     && apk add krb5 \
     && echo ${TZ} > /etc/timezone \

@@ -116,8 +116,7 @@ spec:
               {{- if .Values.debug.enabled }}
               {{- $javaDebug = "-d"}}
               {{- end}}
-              sh ${KYLIN_HOME}/sbin/bootstrap-k8s.sh start {{ $skyWalking }} {{ $javaDebug }}
-              tail -f
+              tini ${KYLIN_HOME}/sbin/bootstrap-k8s.sh start {{ $skyWalking }} {{ $javaDebug }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
