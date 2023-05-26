@@ -7,9 +7,9 @@ import groovy.json.JsonSlurper
 
 def IS_DEBUG = false
 
-def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL',
+def platform_list = ['ALL', '4X_CDH5.14_HA', '4X_CDH5.16_ALL', '4X_CDH5.8_ALL', '4X_CDH6.3.2_AZURE_ALL', '4X_CDH6.3.2_AZUREDEV_ALL',
                      '4X_CDH7.1.6_ALL', '4X_FI-C90_RW', '4X_HADOOP2.7.2_ALL', '4X_HDP2.4_ALL', '4X_HDP3.1_ALL',
-                     '4X_MAPR6.1_ALL', '4X_TDH6.2.2_ALL', '4X_TDH6.2.2_THD']
+                     '4X_MAPR6.1_ALL', '4X_MRS3.0.2_RW', '4X_TDH6.2.2_ALL', '4X_TDH6.2.2_THD']
 // GA包名
 def ga_name = ''
 
@@ -386,7 +386,7 @@ pipeline {
         booleanParam(name: 'run_quard', defaultValue: false, description: '是否执行 Quard 自动化测试')
         booleanParam(name: 'run_step', defaultValue: false, description: '是否执行  Step 自动化测试')
         booleanParam(name: 'autoDeploy', defaultValue: false, description: '【手动打包不选】无需审批直接部署（用于 Daily Build）')
-        string(name: 'autoQuardParams', defaultValue: '{"quard_type":"KE4X_Daily","platform":"4X_CDH5.14_HA","quard_branch":"","reuse_num":"","upgrade_num":""}', description: '【手动打包不选】自动跑 Quard 参数（用于 Daily Build）')
+        string(name: 'autoQuardParams', defaultValue: '{"quard_type":"KE4X_FULLCASE","platform":"4X_CDH6.3.2_AZURE_ALL","quard_branch":"","reuse_num":"","upgrade_num":""}', description: '【手动打包不选】自动跑 Quard 参数（用于 Daily Build）')
         string(name: 'autoStepParams', defaultValue: '{"is_CH": false,"product_line": "KE4X", "version_name": "GA-4.6.8.0", "plan_name": "S_RC_4.6.8.0_20230420_AZURE_发布测试_DEBUG"}', description: '【手动打包不选】自动跑 Step 参数（用于 Daily Build）')
     }
 
