@@ -9,6 +9,12 @@ spec:
   #   operator: "Equal"
   #   value: "ke"
   #   effect: "NoSchedule"
+  nodeSelector:
+    task: opencicd
+  tolerations:
+    - key: opencicd
+      operator: Equal
+      effect: NoSchedule
   containers:
     - name: "git"
       volumeMounts:
