@@ -543,72 +543,15 @@ pipeline {
             }
         }
         stage('Upload') {
-            parallel {
-                stage('1.on-perm-hadoop2') {
-                    steps {
-                        container('build') {
-                            uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only, false)
-                        }
-                    }
-                }
-                stage('2.on-perm-nohadoop') {
-                    when {
-                        expression {
-                            return publishToKC || params.upload_only
-                        }
-                    }
-                    steps {
-                        container('build') {
-                            uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only)
-                        }
-                    }
-                }
-                stage('3.cloud-aws') {
-                    when {
-                        expression {
-                            return publishToKC || params.upload_only
-                        }
-                    }
-                    steps {
-                        container('build') {
-                            uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
-                        }
-                    }
-                }
-                stage('4.cloud-azure') {
-                    when {
-                        expression {
-                            return publishToKC || params.upload_only
-                        }
-                    }
-                    steps {
-                        container('build') {
-                            uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
-                        }
-                    }
-                }            
-                stage('5.cloud-gcp') {
-                    when {
-                        expression {
-                            return publishToKC || params.upload_only
-                        }
-                    }
-                    steps {
-                        container('build') {
-                            uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
-                        }
-                    }
-                }
-                stage('6.cloud-huawei') {
-                    when {
-                        expression {
-                            return publishToKC || params.upload_only
-                        }
-                    }
-                    steps {
-                        container('build') {
-                            uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
-                        }
+            steps {
+                container('build') {
+                    uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only, false)
+                    if(publishToKC || params.upload_only) {
+                        uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only)
+                        uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
+                        uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
+                        uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
+                        uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
                     }
                 }
             }
