@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import scala.Option;
@@ -60,6 +61,7 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.StructType$;
 import org.apache.spark.sql.util.S3FileUtils;
 import org.apache.spark.util.AccumulatorV2;
+import scala.Some;
 
 /**
  * Base class for custom RecordReaders for Parquet that directly materialize to `T`.

@@ -210,7 +210,7 @@ class ParquetFileFormat
 
       S3FileUtils.tryOpenClose(sharedConf, filePath)
       val startTime = System.currentTimeMillis()
-
+      val fileReader = Option.empty[ParquetFileReader]
       val fileFooter = if (enableVectorizedReader) {
         // When there are vectorized reads, we can avoid reading the footer twice by reading
         // all row groups in advance and filter row groups according to filters that require
@@ -273,6 +273,9 @@ class ParquetFileFormat
       // Notice: This push-down is RowGroups level, not individual records.
       if (pushed.isDefined) {
         ParquetInputFormat.setFilterPredicate(hadoopAttemptContext.getConfiguration, pushed.get)
+        if (fileReader.isDefined) {
+          fileReader.get.resetBlocks(hadoopAttemptContext.getConfiguration)
+        }
       }
       val taskContext = Option(TaskContext.get())
       val firstFooterEndTime = System.currentTimeMillis()
@@ -302,8 +305,9 @@ class ParquetFileFormat
           }
           val secondFooterEndTime = System.currentTimeMillis()
           if ((secondFooterEndTime - startTime) > 100) {
-            logWarning(s"Reading parquet footer cost much time: ${firstFooterEndTime - startTime} ms "
-              + s"and ${secondFooterEndTime - firstFooterEndTime} ms")
+            logWarning(s"Reading parquet footer cost much time: " +
+              s"${firstFooterEndTime - startTime} ms and" +
+              s" ${secondFooterEndTime - firstFooterEndTime} ms")
           }
           try {
             if (collectQueryMetricsEnabled) {
@@ -356,7 +360,8 @@ class ParquetFileFormat
           val footerEndTime = System.currentTimeMillis()
           if ((footerEndTime - startTime) > 100) {
             logWarning(s"Reading parquet footer may cost much time: "
-              + s"${firstFooterEndTime - startTime} ms and ${footerEndTime - firstFooterEndTime} ms")
+              + s"${firstFooterEndTime - startTime} ms and " +
+              s"${footerEndTime - firstFooterEndTime} ms")
         }
 
           if (partitionSchema.length == 0) {

@@ -35,6 +35,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.filter2.compat.QueryMetrics;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
@@ -50,6 +51,8 @@ import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+
+import scala.Option;
 
 /**
  * A specialized RecordReader that reads into InternalRows or ColumnarBatches directly using the
