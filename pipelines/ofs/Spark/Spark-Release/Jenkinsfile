@@ -545,13 +545,15 @@ pipeline {
         stage('Upload') {
             steps {
                 container('build') {
-                    uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only, false)
-                    if(publishToKC || params.upload_only) {
-                        uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only)
-                        uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
-                        uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
-                        uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
-                        uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
+                    script {
+                        uploadCloudPackage(params.release_version, params.deployType,'on-perm-hadoop2', params.upload_only, false)
+                        if(publishToKC || params.upload_only) {
+                            uploadCloudPackage(params.release_version, params.deployType,'on-perm-nohadoop', params.upload_only)
+                            uploadCloudPackage(params.release_version, params.deployType,'cloud-aws', params.upload_only)
+                            uploadCloudPackage(params.release_version, params.deployType,'cloud-azure', params.upload_only)
+                            uploadCloudPackage(params.release_version, params.deployType, 'cloud-gcp', params.upload_only)
+                            uploadCloudPackage(params.release_version, params.deployType, 'cloud-huawei', params.upload_only)
+                        }
                     }
                 }
             }
@@ -571,7 +573,6 @@ pipeline {
             }
         }
     }
-
 
     post {
         failure {
