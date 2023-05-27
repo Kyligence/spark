@@ -159,7 +159,7 @@ def uploadCloudPackage(version,deployType,packageType,uploadOnly=false,uploadS3=
             if(uploadOnly) {
                 try {
                     sh """
-                        wget https://package.kyligence.com/newten-cicd/spark/${_packageInfo.releaseVersion}/${_packageInfo.package_name} --no-check-certificate
+                        wget https://package.kyligence.com/newten-cicd/spark/${releaseVersion}/${deployType}/${_packageInfo.package_name} --no-check-certificate
                     """
                     _hasPackageCache = true
                 }
