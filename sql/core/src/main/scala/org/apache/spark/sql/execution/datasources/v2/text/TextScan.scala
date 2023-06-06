@@ -26,7 +26,7 @@ import org.apache.spark.sql.connector.read.PartitionReaderFactory
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
 import org.apache.spark.sql.execution.datasources.text.TextOptions
 import org.apache.spark.sql.execution.datasources.v2.{FileScan, TextBasedFileScan}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import org.apache.spark.util.SerializableConfiguration
 
@@ -43,6 +43,24 @@ case class TextScan(
 
   private val optionsAsScala = options.asScala.toMap
   private lazy val textOptions: TextOptions = new TextOptions(optionsAsScala)
+
+  def this(
+      sparkSession: SparkSession,
+      fileIndex: PartitioningAwareFileIndex,
+      readDataSchema: StructType,
+      readPartitionSchema: StructType,
+      options: CaseInsensitiveStringMap,
+      partitionFilters: Seq[Expression],
+      dataFilters: Seq[Expression]) = {
+     this(sparkSession,
+      fileIndex,
+      new StructType(Array.empty[StructField]),
+      readDataSchema,
+      readPartitionSchema,
+      options,
+      partitionFilters,
+      dataFilters)
+  }
 
   override def isSplitable(path: Path): Boolean = {
     super.isSplitable(path) && !textOptions.wholeText
