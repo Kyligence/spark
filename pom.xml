@@ -186,7 +186,7 @@
     <commons-pool2.version>2.6.2</commons-pool2.version>
     <datanucleus-core.version>4.1.17</datanucleus-core.version>
     <guava.version>14.0.1</guava.version>
-    <janino.version>3.0.16</janino.version>
+    <janino.version>3.1.6</janino.version>
     <jersey.version>2.35</jersey.version>
     <joda.version>2.10.10</joda.version>
     <jodd.version>5.3.0</jodd.version>
