@@ -3693,7 +3693,8 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
           Cast(child, target.asNullable)
 
         case u @ UpCast(child, _, walkedTypePath) if !Cast.canUpCast(child.dataType, u.dataType) =>
-          fail(child, u.dataType, walkedTypePath)
+          if (conf.isViewTruncateEnable) child
+          else fail(child, u.dataType, walkedTypePath)
 
         case u @ UpCast(child, _, _) => Cast(child, u.dataType)
       }
