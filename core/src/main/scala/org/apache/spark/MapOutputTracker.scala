@@ -1027,7 +1027,7 @@ private[spark] class MapOutputTrackerMaster(
           val blockManagerIds = getLocationsWithLargestOutputs(dep.shuffleId, partitionId,
             dep.partitioner.numPartitions, REDUCER_PREF_LOCS_FRACTION)
           if (blockManagerIds.nonEmpty) {
-            blockManagerIds.get.map(_.host)
+            blockManagerIds.get.map(_.host).distinct.toSeq
           } else {
             Nil
           }
@@ -1113,7 +1113,7 @@ private[spark] class MapOutputTrackerMaster(
         if (startMapIndex < endMapIndex &&
           (startMapIndex >= 0 && endMapIndex <= statuses.length)) {
           val statusesPicked = statuses.slice(startMapIndex, endMapIndex).filter(_ != null)
-          statusesPicked.map(_.location.host).toSeq
+          statusesPicked.map(_.location.host).distinct.toSeq
         } else {
           Nil
         }
