@@ -53,6 +53,11 @@ private[spark] object BlockManagerMessages {
    */
   case object TriggerThreadDump extends ToBlockManagerMasterStorageEndpoint
 
+  /**
+   * Driver to Executor message to get a heap histogram.
+   */
+  case object TriggerHeapHistogram extends ToBlockManagerMasterStorageEndpoint
+
   //////////////////////////////////////////////////////////////////////////////////
   // Messages from storage endpoints to the master.
   //////////////////////////////////////////////////////////////////////////////////
