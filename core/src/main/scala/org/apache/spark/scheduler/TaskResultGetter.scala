@@ -85,7 +85,7 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
               }
               logDebug(s"Fetching indirect task result for ${taskSetManager.taskName(tid)}")
               scheduler.handleTaskGettingResult(taskSetManager, tid)
-              val serializedTaskResult = sparkEnv.blockManager.getRemoteBytes(blockId)
+              var serializedTaskResult = sparkEnv.blockManager.getRemoteBytes(blockId)
               if (serializedTaskResult.isEmpty) {
                 /* We won't be able to get the task result if the machine that ran the task failed
                  * between when the task ended and when we tried to fetch the result, or if the
@@ -94,8 +94,12 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
                   taskSetManager, tid, TaskState.FINISHED, TaskResultLost)
                 return
               }
+              var  serializedTaskByteBuffer = serializedTaskResult.get.toByteBuffer
+              // set big object to null for reduce memory
+              serializedTaskResult = null
               val deserializedResult = serializer.get().deserialize[DirectTaskResult[_]](
-                serializedTaskResult.get.toByteBuffer)
+                serializedTaskByteBuffer)
+              serializedTaskByteBuffer = null
               // force deserialization of referenced value
               deserializedResult.value(taskResultSerializer.get())
               sparkEnv.blockManager.master.removeBlock(blockId)
