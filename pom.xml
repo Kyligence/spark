@@ -146,6 +146,8 @@
     <chill.version>0.10.0</chill.version>
     <ivy.version>2.5.1</ivy.version>
     <oro.version>2.0.8</oro.version>
+    <gluten.version>1.1.0-SNAPSHOT</gluten.version>
+    <protobuf.version>3.16.3</protobuf.version>
     <!--
     If you changes codahale.metrics.version, you also need to change
     the link to metrics.dropwizard.io in docs/monitoring.md.
