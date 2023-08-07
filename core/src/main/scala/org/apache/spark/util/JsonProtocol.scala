@@ -70,6 +70,8 @@ private[spark] object JsonProtocol {
     event match {
       case stageSubmitted: SparkListenerStageSubmitted =>
         stageSubmittedToJson(stageSubmitted)
+      case stageSubmitted: SparkListenerStageSubmitted =>
+        stageSubmittedToJson(stageSubmitted)
       case stageCompleted: SparkListenerStageCompleted =>
         stageCompletedToJson(stageCompleted)
       case taskStart: SparkListenerTaskStart =>
