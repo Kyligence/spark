@@ -53,6 +53,7 @@ import org.apache.spark.util.Utils.weakIntern
  *  - Never delete any JSON fields.
  *  - Any new JSON fields should be optional; use `jsonOption` when reading these fields
  *    in `*FromJson` methods.
+ *    sdfsfadfs
  */
 private[spark] object JsonProtocol {
   // TODO: Remove this file and put JSON serialization into each individual class.
