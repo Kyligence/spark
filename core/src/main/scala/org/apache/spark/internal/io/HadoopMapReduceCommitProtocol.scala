@@ -131,7 +131,7 @@ class HadoopMapReduceCommitProtocol(
         new Path(Option(f.getWorkPath).map(_.toString).getOrElse(path))
       case _ => new Path(path)
     }
-
+    logInfo("xxxx")
     dir.map { d =>
       new Path(new Path(stagingDir, d), filename).toString
     }.getOrElse {
