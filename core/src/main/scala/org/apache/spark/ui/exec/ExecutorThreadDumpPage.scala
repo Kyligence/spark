@@ -51,7 +51,9 @@ private[ui] class ExecutorThreadDumpPage(
             </div>
           case None => Text("")
         }
-        val heldLocks = thread.holdingLocks.mkString(", ")
+        val synchronizers = thread.synchronizers.map(l => s"Lock($l)")
+        val monitors = thread.monitors.map(m => s"Monitor($m)")
+        val heldLocks = (synchronizers ++ monitors).mkString(", ")
 
         <tr id={s"thread_${threadId}_tr"} class="accordion-heading"
             onclick={s"toggleThreadStackTrace($threadId, false)"}
@@ -71,7 +73,6 @@ private[ui] class ExecutorThreadDumpPage(
         {drawExecutorFlamegraph(request, threadDump)}
         {
           // scalastyle:off
-          <p></p>
           <div style="display: flex; align-items: center;">
             <a class="expandbutton" onClick="expandAllThreadStackTrace(true)">Expand All</a>
             <a class="expandbutton d-none" onClick="collapseAllThreadStackTrace(true)">Collapse All</a>
