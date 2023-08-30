@@ -2290,7 +2290,7 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
     checkAnswer(sql("SELECT `name` FROM h2.test.person"), Seq(Row(1), Row(2)))
     val df = sql("SELECT COUNT(`name`) FROM h2.test.person")
     checkAggregateRemoved(df)
-    checkPushedInfo(df, "PushedAggregates: [COUNT(`name`)]")
+    checkPushedInfo(df, "PushedAggregates: [COUNT(name)]")
     checkAnswer(df, Seq(Row(2)))
     // scalastyle:on
   }
