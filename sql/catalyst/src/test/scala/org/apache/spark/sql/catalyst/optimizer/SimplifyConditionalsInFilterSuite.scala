@@ -41,7 +41,6 @@ class SimplifyConditionalsInFilterSuite extends PlanTest {
         RemoveDispensableExpressions,
         SimplifyBinaryComparison,
         ReplaceNullWithFalseInPredicate,
-        SimplifyConditionalsInPredicate,
         SimplifyConditionalsInFilter) :: Nil
   }
 
