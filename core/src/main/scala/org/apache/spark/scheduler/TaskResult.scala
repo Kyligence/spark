@@ -35,11 +35,15 @@ private[spark] sealed trait TaskResult[T]
 private[spark] case class IndirectTaskResult[T](blockId: BlockId, size: Int)
   extends TaskResult[T] with Serializable
 
+private[spark] case class IndirectTaskResultWithMetric[T](blockId: BlockId, size: Int)
+  extends TaskResult[T] with Serializable
+
 /** A TaskResult that contains the task's return value, accumulator updates and metric peaks. */
 private[spark] class DirectTaskResult[T](
     var valueBytes: ByteBuffer,
     var accumUpdates: Seq[AccumulatorV2[_, _]],
-    var metricPeaks: Array[Long])
+    var metricPeaks: Array[Long],
+    var isValueIterator: Boolean = false)
   extends TaskResult[T] with Externalizable {
 
   private var valueObjectDeserialized = false
@@ -55,6 +59,7 @@ private[spark] class DirectTaskResult[T](
     accumUpdates.foreach(out.writeObject)
     out.writeInt(metricPeaks.length)
     metricPeaks.foreach(out.writeLong)
+    out.writeBoolean(isValueIterator)
   }
 
   override def readExternal(in: ObjectInput): Unit = Utils.tryOrIOException {
@@ -83,6 +88,7 @@ private[spark] class DirectTaskResult[T](
         metricPeaks(i) = in.readLong
       }
     }
+    isValueIterator = in.readBoolean()
     valueObjectDeserialized = false
   }
 
@@ -100,7 +106,11 @@ private[spark] class DirectTaskResult[T](
       // This should not run when holding a lock because it may cost dozens of seconds for a large
       // value
       val ser = if (resultSer == null) SparkEnv.get.serializer.newInstance() else resultSer
-      valueObject = ser.deserialize(valueBytes)
+      if(!isValueIterator) {
+        valueObject = ser.deserialize(valueBytes)
+      } else {
+        valueObject = ser.deserialize(valueBytes).asInstanceOf[Array[_]].toIterator.asInstanceOf[T]
+      }
       valueObjectDeserialized = true
       valueObject
     }
