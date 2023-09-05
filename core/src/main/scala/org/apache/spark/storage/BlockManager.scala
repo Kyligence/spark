@@ -87,6 +87,8 @@ private[spark] trait BlockData {
 
   def toByteBuffer(): ByteBuffer
 
+  def toByteBuffer(offset: Long, length: Int): ByteBuffer
+
   def size: Long
 
   def dispose(): Unit
@@ -106,6 +108,14 @@ private[spark] class ByteBufferBlockData(
   }
 
   override def toByteBuffer(): ByteBuffer = buffer.toByteBuffer
+
+  override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
+    val inputStream = buffer.toInputStream()
+    var bytes = new Array[Byte](length)
+    inputStream.skip(offset)
+    inputStream.read(bytes, 0, length)
+    ByteBuffer.wrap(bytes)
+  }
 
   override def size: Long = buffer.size
 

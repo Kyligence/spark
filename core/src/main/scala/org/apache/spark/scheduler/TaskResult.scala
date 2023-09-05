@@ -35,8 +35,6 @@ private[spark] sealed trait TaskResult[T]
 private[spark] case class IndirectTaskResult[T](blockId: BlockId, size: Int)
   extends TaskResult[T] with Serializable
 
-private[spark] case class IndirectTaskResultWithMetric[T](blockId: BlockId, size: Int)
-  extends TaskResult[T] with Serializable
 
 /** A TaskResult that contains the task's return value, accumulator updates and metric peaks. */
 private[spark] class DirectTaskResult[T](

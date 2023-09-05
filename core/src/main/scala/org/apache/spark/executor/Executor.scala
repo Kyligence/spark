@@ -559,7 +559,6 @@ private[spark] class Executor(
             resultSer.serialize(value)
           }
         }
-          
         val afterSerializationNs = System.nanoTime()
 
         // Deserialization happens in two parts: first, we deserialize a Task object, which
@@ -622,7 +621,11 @@ private[spark] class Executor(
         val accumUpdates = task.collectAccumulatorUpdates()
         val metricPeaks = metricsPoller.getTaskMetricPeaks(taskId)
         // TODO: do not serialize value twice
-        val directResult = new DirectTaskResult(valueBytes, accumUpdates, metricPeaks, isValueIterator)
+        val directResult = new DirectTaskResult(
+          valueBytes,
+          accumUpdates,
+          metricPeaks,
+          isValueIterator)
         val serializedDirectResult = ser.serialize(directResult)
         val resultSize = serializedDirectResult.limit()
 
