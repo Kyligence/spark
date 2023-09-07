@@ -684,6 +684,8 @@ class SparkSubmitSuite
         "--packages", Seq(main, dep).mkString(","),
         "--repositories", repo,
         "--conf", "spark.ui.enabled=false",
+        "--conf", "spark.driver.extraJavaOptions=-Djavax.xml.parsers.SAXParserFactory=" +
+          "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl",
         "--conf", "spark.master.rest.enabled=false",
         "--conf", s"spark.jars.ivySettings=${emptyIvySettings.getAbsolutePath()}",
         unusedJar.toString,
@@ -706,6 +708,8 @@ class SparkSubmitSuite
         "--conf", "spark.jars.packages=my.great.lib:mylib:0.1,my.great.dep:mylib:0.1",
         "--conf", s"spark.jars.repositories=$repo",
         "--conf", "spark.ui.enabled=false",
+        "--conf", "spark.driver.extraJavaOptions=-Djavax.xml.parsers.SAXParserFactory=" +
+          "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl",
         "--conf", "spark.master.rest.enabled=false",
         "--conf", s"spark.jars.ivySettings=${emptyIvySettings.getAbsolutePath()}",
         unusedJar.toString,
