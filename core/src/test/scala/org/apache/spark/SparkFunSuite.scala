@@ -82,6 +82,8 @@ abstract class SparkFunSuite
 
   protected override def beforeAll(): Unit = {
     System.setProperty(IS_TESTING.key, "true")
+    System.setProperty("javax.xml.parsers.SAXParserFactory",
+      "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl")
     if (enableAutoThreadAudit) {
       doThreadPreAudit()
     }
