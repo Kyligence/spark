@@ -671,6 +671,8 @@ class SparkSubmitSuite
 
   // SPARK-7287
   test("includes jars passed in through --packages") {
+    System.setProperty("javax.xml.parsers.SAXParserFactory",
+      "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl")
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val main = MavenCoordinate("my.great.lib", "mylib", "0.1")
     val dep = MavenCoordinate("my.great.dep", "mylib", "0.1")
@@ -691,6 +693,8 @@ class SparkSubmitSuite
   }
 
   test("includes jars passed through spark.jars.packages and spark.jars.repositories") {
+    System.setProperty("javax.xml.parsers.SAXParserFactory",
+      "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl")
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val main = MavenCoordinate("my.great.lib", "mylib", "0.1")
     val dep = MavenCoordinate("my.great.dep", "mylib", "0.1")
