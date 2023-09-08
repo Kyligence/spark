@@ -137,23 +137,31 @@ class V2ExpressionBuilder(e: Expression, isPredicate: Boolean = false) {
     case wb: WidthBucket => generateExpressionWithName("WIDTH_BUCKET", wb.children)
     case and: And =>
       // AND expects predicate
-      val l = generateExpression(and.left, true)
-      val r = generateExpression(and.right, true)
-      if (l.isDefined && r.isDefined) {
-        assert(l.get.isInstanceOf[V2Predicate] && r.get.isInstanceOf[V2Predicate])
-        Some(new V2And(l.get.asInstanceOf[V2Predicate], r.get.asInstanceOf[V2Predicate]))
-      } else {
-        None
+      val l = generateExpression(and.left, isPredicate = true)
+      val r = generateExpression(and.right, isPredicate = true)
+      (l, r) match {
+        case (Some(left: V2Predicate), Some(right: V2Predicate)) =>
+          Some(new V2And(left, right))
+        case (Some(left: V2Predicate), _) if r.isEmpty =>
+          Some(left)
+        case (_, Some(right: V2Predicate)) if l.isEmpty =>
+          Some(right)
+        case _ =>
+          None
       }
     case or: Or =>
       // OR expects predicate
-      val l = generateExpression(or.left, true)
-      val r = generateExpression(or.right, true)
-      if (l.isDefined && r.isDefined) {
-        assert(l.get.isInstanceOf[V2Predicate] && r.get.isInstanceOf[V2Predicate])
-        Some(new V2Or(l.get.asInstanceOf[V2Predicate], r.get.asInstanceOf[V2Predicate]))
-      } else {
-        None
+      val l = generateExpression(or.left, isPredicate = true)
+      val r = generateExpression(or.right, isPredicate = true)
+      (l, r) match {
+        case (Some(left: V2Predicate), Some(right: V2Predicate)) =>
+          Some(new V2Or(left, right))
+        case (Some(left: V2Predicate), _) if r.isEmpty =>
+          Some(left)
+        case (_, Some(right: V2Predicate)) if l.isEmpty =>
+          Some(right)
+        case _ =>
+          None
       }
     case b: BinaryOperator if canTranslate(b) =>
       val l = generateExpression(b.left)
