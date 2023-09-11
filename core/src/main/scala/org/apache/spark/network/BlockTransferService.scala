@@ -119,7 +119,9 @@ abstract class BlockTransferService extends BlockStoreClient {
         if (logger.isTraceEnabled) {
           logger.trace(s"Successfully fetch block segment $blockId")
         }
-        result.success(response)
+        val bytes = new Array[Byte](response.limit()) ;
+        response.get(bytes)
+        result.success(ByteBuffer.wrap(bytes))
       }
 
       override def onFailure(e: Throwable): Unit = {

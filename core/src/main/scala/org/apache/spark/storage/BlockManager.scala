@@ -111,10 +111,10 @@ private[spark] class ByteBufferBlockData(
 
   override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
     
-    val inputStream = buffer.toInputStream()
+    val inputStream = buffer.copy(x=>ByteBuffer.allocate(x)).toInputStream()
     var bytes = new Array[Byte](length)
     inputStream.skip(offset)
-    inputStream.read(bytes, 0, length)
+    inputStream.read(bytes)
     ByteBuffer.wrap(bytes)
   }
 

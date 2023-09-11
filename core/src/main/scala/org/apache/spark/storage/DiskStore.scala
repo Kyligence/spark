@@ -273,7 +273,6 @@ private[spark] class EncryptedBlockData(
 
   override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
     val in = openInputStream()
-    in.skip(offset)
     var bytes = new Array[Byte](length)
     in.skip(offset)
     in.read(bytes, 0, length)
