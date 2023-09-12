@@ -30,6 +30,7 @@ import org.apache.spark.util.{AccumulatorV2, Utils}
 
 // Task result. Also contains updates to accumulator variables and executor metric peaks.
 private[spark] sealed trait TaskResult[T] {
+  def setAccumUpdates(accumUpdates: Seq[AccumulatorV2[_, _]]): Unit
   def getAccumUpdates(): Seq[AccumulatorV2[_, _]]
 
   def getMetricPeaks(): Array[Long]
@@ -46,7 +47,11 @@ private[spark] case class IndirectTaskResult[T](blockId: BlockId,
   extends TaskResult[T] with Serializable {
 
 
-  override def getAccumUpdates(): Seq[AccumulatorV2[_, _]] = accumUpdates
+  def getAccumUpdates(): Seq[AccumulatorV2[_, _]] = accumUpdates
+
+  def setAccumUpdates(accumUpdates: Seq[AccumulatorV2[_, _]]): Unit = {
+     this.accumUpdates =  accumUpdates
+  }
 
   override def getMetricPeaks(): Array[Long] = metricPeaks
 
@@ -79,6 +84,10 @@ private[spark] class DirectTaskResult[T](
 
   override def getMetricPeaks(): Array[Long] = metricPeaks
 
+  def setAccumUpdates(accumUpdates: Seq[AccumulatorV2[_, _]]): Unit = {
+    this.accumUpdates =  accumUpdates
+  }
+  
   override def writeExternal(out: ObjectOutput): Unit = Utils.tryOrIOException {
     out.writeInt(valueBytes.remaining)
     Utils.writeByteBuffer(valueBytes, out)

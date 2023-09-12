@@ -794,7 +794,7 @@ private[spark] class TaskSetManager(
       // Undo the effect on calculatedTasks and totalResultSize made earlier when
       // checking if can fetch more results
       calculatedTasks -= 1
-      val resultSizeAcc = result.getAccumUpdates.find(a =>
+      val resultSizeAcc = result.getAccumUpdates().find(a =>
         a.name == Some(InternalAccumulator.RESULT_SIZE))
       if (resultSizeAcc.isDefined) {
         totalResultSize -= resultSizeAcc.get.asInstanceOf[LongAccumulator].value
