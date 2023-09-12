@@ -131,7 +131,7 @@ private[spark] class ChunkedByteBuffer(var chunks: Array[ByteBuffer]) {
    *                in order to close any memory-mapped files which back this buffer.
    */
   def toInputStream(dispose: Boolean = false): InputStream = {
-    new ChunkedByteBufferInputStream(this, dispose)
+    new ChunkedByteBufferInputStream(this.getChunks().toIterator, dispose)
   }
 
   /**
@@ -216,12 +216,12 @@ private[spark] object ChunkedByteBuffer {
  *                in order to close any memory-mapped files which back the buffer.
  */
 private[spark] class ChunkedByteBufferInputStream(
-    var chunkedByteBuffer: ChunkedByteBuffer,
+    var chunkedByteBuffer: Iterator[ByteBuffer],
     dispose: Boolean)
   extends InputStream {
 
   // Filter out empty chunks since `read()` assumes all chunks are non-empty.
-  private[this] var chunks = chunkedByteBuffer.getChunks().filter(_.hasRemaining).iterator
+  private[this] var chunks = chunkedByteBuffer.filter(_.hasRemaining)
   private[this] var currentChunk: ByteBuffer = {
     if (chunks.hasNext) {
       chunks.next()
@@ -275,7 +275,7 @@ private[spark] class ChunkedByteBufferInputStream(
 
   override def close(): Unit = {
     if (chunkedByteBuffer != null && dispose) {
-      chunkedByteBuffer.dispose()
+      chunks.foreach(StorageUtils.dispose)
     }
     chunkedByteBuffer = null
     chunks = null

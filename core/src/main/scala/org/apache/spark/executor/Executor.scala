@@ -25,6 +25,7 @@ import java.nio.ByteBuffer
 import java.util.{Locale, Properties}
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
+
 import javax.annotation.concurrent.GuardedBy
 import javax.ws.rs.core.UriBuilder
 
@@ -33,10 +34,8 @@ import scala.collection.immutable
 import scala.collection.mutable.{ArrayBuffer, HashMap, Map, WrappedArray}
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import org.slf4j.MDC
-
 import org.apache.spark._
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
@@ -47,6 +46,7 @@ import org.apache.spark.metrics.source.JVMCPUSource
 import org.apache.spark.resource.ResourceInformation
 import org.apache.spark.rpc.RpcTimeout
 import org.apache.spark.scheduler._
+import org.apache.spark.serializer.IteratorSerializerUtils
 import org.apache.spark.shuffle.{FetchFailedException, ShuffleBlockPusher}
 import org.apache.spark.storage.{StorageLevel, TaskResultBlockId}
 import org.apache.spark.util._
@@ -554,7 +554,7 @@ private[spark] class Executor(
         }
         var valueBytes = {
           if (isValueIterator) {
-            resultSer.serialize(value.asInstanceOf[Iterator[_]].toArray)
+            IteratorSerializerUtils.serialize(value.asInstanceOf[Iterator[_]])
           } else {
             resultSer.serialize(value)
           }
@@ -635,15 +635,27 @@ private[spark] class Executor(
             logWarning(s"Finished $taskName. Result is larger than maxResultSize " +
               s"(${Utils.bytesToString(resultSize)} > ${Utils.bytesToString(maxResultSize)}), " +
               s"dropping it.")
-            ser.serialize(new IndirectTaskResult[Any](TaskResultBlockId(taskId), resultSize))
+            ser.serialize(new IndirectTaskResult[Any](TaskResultBlockId(taskId), resultSize,
+              directResult.accumUpdates,
+              directResult.metricPeaks,
+              directResult.isValueIterator
+            ))
           } else if (resultSize > maxDirectResultSize) {
             val blockId = TaskResultBlockId(taskId)
+            val valueToPut = if(isValueIterator){
+              valueBytes
+            } else {
+              serializedDirectResult
+            }
             env.blockManager.putBytes(
               blockId,
-              new ChunkedByteBuffer(serializedDirectResult.duplicate()),
+              new ChunkedByteBuffer(valueToPut.duplicate()),
               StorageLevel.MEMORY_AND_DISK_SER)
             logInfo(s"Finished $taskName. $resultSize bytes result sent via BlockManager)")
-            ser.serialize(new IndirectTaskResult[Any](blockId, resultSize))
+            ser.serialize(new IndirectTaskResult[Any](TaskResultBlockId(taskId), resultSize,
+              directResult.accumUpdates,
+              directResult.metricPeaks,
+              directResult.isValueIterator))
           } else {
             logInfo(s"Finished $taskName. $resultSize bytes result sent to driver")
             serializedDirectResult

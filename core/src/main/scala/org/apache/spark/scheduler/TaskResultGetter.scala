@@ -74,10 +74,10 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
               // "TaskSetManager.handleSuccessfulTask", it does not need to deserialize the value.
               directResult.value(taskResultSerializer.get())
               (directResult, serializedData.limit())
-            case IndirectTaskResult(blockId, size) =>
-              if (!taskSetManager.canFetchMoreResults(size)) {
+            case  indirectResult: IndirectTaskResult[_]  =>
+              if (!taskSetManager.canFetchMoreResults(indirectResult.size)) {
                 // dropped by executor if size is larger than maxResultSize
-                sparkEnv.blockManager.master.removeBlock(blockId)
+                sparkEnv.blockManager.master.removeBlock(indirectResult.blockId)
                 // kill the task so that it will not become zombie task
                 scheduler.handleFailedTask(taskSetManager, tid, TaskState.KILLED, TaskKilled(
                   "Tasks result size has exceeded maxResultSize"))
@@ -85,7 +85,10 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
               }
               logDebug(s"Fetching indirect task result for ${taskSetManager.taskName(tid)}")
               scheduler.handleTaskGettingResult(taskSetManager, tid)
-              var serializedTaskResult = sparkEnv.blockManager.getRemoteBytes(blockId)
+              if(indirectResult.isValueIterator) {
+                (indirectResult, indirectResult.size)
+              }
+              var serializedTaskResult = sparkEnv.blockManager.getRemoteBytes(indirectResult.blockId)
               if (serializedTaskResult.isEmpty) {
                 /* We won't be able to get the task result if the machine that ran the task failed
                  * between when the task ended and when we tried to fetch the result, or if the
@@ -102,8 +105,8 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
               serializedTaskByteBuffer = null
               // force deserialization of referenced value
               deserializedResult.value(taskResultSerializer.get())
-              sparkEnv.blockManager.master.removeBlock(blockId)
-              (deserializedResult, size)
+              sparkEnv.blockManager.master.removeBlock(indirectResult.blockId)
+              (deserializedResult, indirectResult.size)
           }
 
           // Set the task result size in the accumulator updates received from the executors.

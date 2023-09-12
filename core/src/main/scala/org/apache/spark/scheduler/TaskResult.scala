@@ -21,27 +21,51 @@ import java.io._
 import java.nio.ByteBuffer
 
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.spark.SparkEnv
+import org.apache.spark.internal.config.TASK_MAX_DIRECT_RESULT_SIZE
 import org.apache.spark.metrics.ExecutorMetricType
-import org.apache.spark.serializer.SerializerInstance
+import org.apache.spark.serializer.{IteratorSerializerUtils, SerializerInstance}
 import org.apache.spark.storage.BlockId
 import org.apache.spark.util.{AccumulatorV2, Utils}
 
 // Task result. Also contains updates to accumulator variables and executor metric peaks.
-private[spark] sealed trait TaskResult[T]
+private[spark] sealed trait TaskResult[T] {
+  def getAccumUpdates(): Seq[AccumulatorV2[_, _]]
+
+  def getMetricPeaks(): Array[Long]
+
+  def value(resultSer: SerializerInstance = null): T
+
+}
 
 /** A reference to a DirectTaskResult that has been stored in the worker's BlockManager. */
-private[spark] case class IndirectTaskResult[T](blockId: BlockId, size: Int)
-  extends TaskResult[T] with Serializable
+private[spark] case class IndirectTaskResult[T](blockId: BlockId,
+  size: Int, var accumUpdates: Seq[AccumulatorV2[_, _]],
+  var metricPeaks: Array[Long],
+  var isValueIterator: Boolean = false)
+  extends TaskResult[T] with Serializable {
+
+
+  override def getAccumUpdates(): Seq[AccumulatorV2[_, _]] = accumUpdates
+
+  override def getMetricPeaks(): Array[Long] = metricPeaks
+
+
+  override def value(resultSer: SerializerInstance): T = {
+    IteratorSerializerUtils.deserialize(
+      SparkEnv.get.blockManager.getRemoteBlockAsIterator(
+        blockId, SparkEnv.get.conf.get(TASK_MAX_DIRECT_RESULT_SIZE).intValue())
+    ).asInstanceOf[T]
+  }
+}
 
 
 /** A TaskResult that contains the task's return value, accumulator updates and metric peaks. */
 private[spark] class DirectTaskResult[T](
-    var valueBytes: ByteBuffer,
-    var accumUpdates: Seq[AccumulatorV2[_, _]],
-    var metricPeaks: Array[Long],
-    var isValueIterator: Boolean = false)
+  var valueBytes: ByteBuffer,
+  var accumUpdates: Seq[AccumulatorV2[_, _]],
+  var metricPeaks: Array[Long],
+  var isValueIterator: Boolean = false)
   extends TaskResult[T] with Externalizable {
 
   private var valueObjectDeserialized = false
@@ -49,6 +73,11 @@ private[spark] class DirectTaskResult[T](
 
   def this() = this(null.asInstanceOf[ByteBuffer], null,
     new Array[Long](ExecutorMetricType.numMetrics))
+
+
+  override def getAccumUpdates(): Seq[AccumulatorV2[_, _]] = accumUpdates
+
+  override def getMetricPeaks(): Array[Long] = metricPeaks
 
   override def writeExternal(out: ObjectOutput): Unit = Utils.tryOrIOException {
     out.writeInt(valueBytes.remaining)
@@ -91,12 +120,12 @@ private[spark] class DirectTaskResult[T](
   }
 
   /**
-   * When `value()` is called at the first time, it needs to deserialize `valueObject` from
-   * `valueBytes`. It may cost dozens of seconds for a large instance. So when calling `value` at
-   * the first time, the caller should avoid to block other threads.
-   *
-   * After the first time, `value()` is trivial and just returns the deserialized `valueObject`.
-   */
+    * When `value()` is called at the first time, it needs to deserialize `valueObject` from
+    * `valueBytes`. It may cost dozens of seconds for a large instance. So when calling `value` at
+    * the first time, the caller should avoid to block other threads.
+    *
+    * After the first time, `value()` is trivial and just returns the deserialized `valueObject`.
+    */
   def value(resultSer: SerializerInstance = null): T = {
     if (valueObjectDeserialized) {
       valueObject
@@ -104,10 +133,10 @@ private[spark] class DirectTaskResult[T](
       // This should not run when holding a lock because it may cost dozens of seconds for a large
       // value
       val ser = if (resultSer == null) SparkEnv.get.serializer.newInstance() else resultSer
-      if(!isValueIterator) {
+      if (!isValueIterator) {
         valueObject = ser.deserialize(valueBytes)
       } else {
-        valueObject = ser.deserialize(valueBytes).asInstanceOf[Array[_]].toIterator.asInstanceOf[T]
+        valueObject = IteratorSerializerUtils.deserialize(Array(valueBytes).toIterator).asInstanceOf[T]
       }
       valueObjectDeserialized = true
       valueObject
