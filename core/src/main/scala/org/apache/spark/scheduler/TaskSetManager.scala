@@ -785,7 +785,7 @@ private[spark] class TaskSetManager(
   /**
    * Marks a task as successful and notifies the DAGScheduler that the task has ended.
    */
-  def handleSuccessfulTask(tid: Long, result: DirectTaskResult[_]): Unit = {
+  def handleSuccessfulTask(tid: Long, result: TaskResult[_]): Unit = {
     val info = taskInfos(tid)
     val index = info.index
     // Check if any other attempt succeeded before this and this attempt has not been handled
@@ -793,7 +793,7 @@ private[spark] class TaskSetManager(
       // Undo the effect on calculatedTasks and totalResultSize made earlier when
       // checking if can fetch more results
       calculatedTasks -= 1
-      val resultSizeAcc = result.accumUpdates.find(a =>
+      val resultSizeAcc = result.getAccumUpdates.find(a =>
         a.name == Some(InternalAccumulator.RESULT_SIZE))
       if (resultSizeAcc.isDefined) {
         totalResultSize -= resultSizeAcc.get.asInstanceOf[LongAccumulator].value
