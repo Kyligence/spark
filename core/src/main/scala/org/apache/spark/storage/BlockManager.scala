@@ -18,7 +18,7 @@
 package org.apache.spark.storage
 
 import java.io._
-import java.lang.ref.{ReferenceQueue => JReferenceQueue, WeakReference}
+import java.lang.ref.{WeakReference, ReferenceQueue => JReferenceQueue}
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.util.Collections
@@ -32,11 +32,9 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
-
 import com.codahale.metrics.{MetricRegistry, MetricSet}
 import com.google.common.cache.CacheBuilder
 import org.apache.commons.io.IOUtils
-
 import org.apache.spark._
 import org.apache.spark.executor.DataReadMethod
 import org.apache.spark.internal.Logging
@@ -61,6 +59,8 @@ import org.apache.spark.storage.memory._
 import org.apache.spark.unsafe.Platform
 import org.apache.spark.util._
 import org.apache.spark.util.io.ChunkedByteBuffer
+
+import scala.collection.immutable.NumericRange
 
 /* Class for returning a fetched block and associated metrics. */
 private[spark] class BlockResult(
@@ -87,6 +87,8 @@ private[spark] trait BlockData {
 
   def toByteBuffer(): ByteBuffer
 
+  def toByteBuffer(offset: Long, length: Int): ByteBuffer
+
   def size: Long
 
   def dispose(): Unit
@@ -106,6 +108,15 @@ private[spark] class ByteBufferBlockData(
   }
 
   override def toByteBuffer(): ByteBuffer = buffer.toByteBuffer
+
+  override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
+    
+    val inputStream = buffer.copy(x=>ByteBuffer.allocate(x)).toInputStream()
+    var bytes = new Array[Byte](length)
+    inputStream.skip(offset)
+    inputStream.read(bytes)
+    ByteBuffer.wrap(bytes)
+  }
 
   override def size: Long = buffer.size
 
@@ -1208,6 +1219,69 @@ private[spark] class BlockManager(
         ChunkedByteBuffer.fromManagedBuffer(data)
       }
     })
+  }
+
+
+  /**
+    * Fetch the block from remote block managers as a ManagedBuffer.
+    */
+  private def fetchRemoteBlockBuffer(
+    blockId: BlockId,
+    locationsAndStatus: BlockManagerMessages.BlockLocationsAndStatus,
+    offset: Long,
+    length: Int,
+  ): ByteBuffer = {
+   
+    var runningFailureCount = 0
+    var totalFailureCount = 0
+    val locations = sortLocations(locationsAndStatus.locations)
+    val maxFetchFailures = locations.size
+    var locationIterator = locations.iterator
+    while (locationIterator.hasNext) {
+      val loc = locationIterator.next()
+      logDebug(s"Getting remote block segment $blockId from $loc")
+      val data = try {
+        val buf = blockTransferService.fetchBlockSegmentSyn(loc.host, loc.port,
+          blockId.toString, offset, length)
+        buf
+      } catch {
+        case NonFatal(e) =>
+          runningFailureCount += 1
+          totalFailureCount += 1
+          if (totalFailureCount >= maxFetchFailures) {
+            throw new IllegalStateException(s"Failed to fetch block after $totalFailureCount fetch failures. " +
+              s"Most recent failure cause:", e)
+          }
+
+          logWarning(s"Failed to fetch remote block $blockId " +
+            s"from $loc (failed attempt $runningFailureCount)", e)
+          
+          if (runningFailureCount >= maxFailuresBeforeLocationRefresh) {
+            locationIterator = sortLocations(master.getLocations(blockId)).iterator
+            logDebug(s"Refreshed locations from the driver " +
+              s"after ${runningFailureCount} fetch failures.")
+            runningFailureCount = 0
+          }
+          null
+      }
+      if (data != null) {
+        return data
+      }
+      logDebug(s"The value of block $blockId is null")
+    }
+    throw new IllegalStateException(s"get Block $blockId segment failed")
+  }
+  
+  def getRemoteBlockAsIterator(blockId: BlockId, batchSize: Int): Iterator[ByteBuffer] = {
+    val locationsAndStatusOption = master.getLocationsAndStatus(blockId, blockManagerId.host)
+    if (locationsAndStatusOption.isEmpty) {
+      logDebug(s"Block $blockId is unknown by block manager master")
+      throw new IllegalStateException(s"Block $blockId is unknown by block manager master")
+    }
+    val locationsAndStatus = locationsAndStatusOption.get
+    val blockSize = locationsAndStatus.status.diskSize.max(locationsAndStatus.status.memSize)
+    return NumericRange.apply(0,blockSize,batchSize).toIterator.map(
+      offset=> fetchRemoteBlockBuffer(blockId, locationsAndStatus,offset,math.min(blockSize-offset,batchSize).intValue()))
   }
 
   /**

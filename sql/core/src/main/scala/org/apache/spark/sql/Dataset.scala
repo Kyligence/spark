@@ -3027,6 +3027,19 @@ class Dataset[T] private[sql](
   }
 
   /**
+    * collect all partitions to local with one job,
+    * each partition is a iterator, and return an iterator of rows
+    * @return row iterator
+    */
+  def collectToIterator(): (java.util.Iterator[T]) = {
+    withAction("collectToIterator", queryExecution) { plan =>
+      val fromRow = resolvedEnc.createDeserializer()
+      val results = plan.execute().collectAsIterator()
+      (results.map(fromRow).asJava)
+    }
+  }
+
+  /**
    * Returns the number of rows in the Dataset.
    * @group action
    * @since 1.6.0
