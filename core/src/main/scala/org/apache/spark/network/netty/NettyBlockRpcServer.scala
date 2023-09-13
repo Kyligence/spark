@@ -74,7 +74,6 @@ class NettyBlockRpcServer(
         val sendLength = math.min(blockData.get.size - fetchBlockSegment.offset,
           fetchBlockSegment.length).intValue()
         responseContext.onSuccess(blockData.get.toByteBuffer(fetchBlockSegment.offset, sendLength))
-        
       case fetchShuffleBlocks: FetchShuffleBlocks =>
         val blocks = fetchShuffleBlocks.mapIds.zipWithIndex.flatMap { case (mapId, index) =>
           if (!fetchShuffleBlocks.batchFetchEnabled) {

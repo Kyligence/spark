@@ -88,7 +88,6 @@ private[spark] class DirectTaskResult[T](
   def setAccumUpdates(accumUpdates: Seq[AccumulatorV2[_, _]]): Unit = {
     this.accumUpdates = accumUpdates
   }
-  
   override def writeExternal(out: ObjectOutput): Unit = Utils.tryOrIOException {
     out.writeInt(valueBytes.remaining)
     Utils.writeByteBuffer(valueBytes, out)
@@ -128,7 +127,6 @@ private[spark] class DirectTaskResult[T](
     isValueIterator = in.readBoolean()
     valueObjectDeserialized = false
   }
-
   /**
     * When `value()` is called at the first time, it needs to deserialize `valueObject` from
     * `valueBytes`. It may cost dozens of seconds for a large instance. So when calling `value` at

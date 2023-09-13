@@ -29,11 +29,12 @@ import org.apache.spark.util.io.ChunkedByteBufferInputStream
 
 object IteratorSerializerUtils {
 
-  def serialize[T: ClassTag](iterator: Iterator[T]): ByteBuffer = {
+  def serialize[T: ClassTag](iterator: Iterator[T], size: Int): ByteBuffer = {
 
     val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
     val bos = new ByteArrayOutputStream()
     val objOut = new ObjectOutputStream(codec.compressedOutputStream(bos))
+    objOut.writeInt(size)
     while (iterator.hasNext) {
       objOut.writeBoolean(true)
       objOut.writeObject(iterator.next)
@@ -45,12 +46,13 @@ object IteratorSerializerUtils {
 
   }
 
-  def deserialize[T: ClassTag](byteIterator: Iterator[ByteBuffer]): Iterator[T] = {
+  def deserialize[T: ClassTag](byteIterator: Iterator[ByteBuffer]): (Iterator[T], Int) = {
 
     val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
     val bis = new ChunkedByteBufferInputStream(byteIterator, false)
     val ins = new ObjectInputStream((codec.compressedInputStream(bis)))
-    new Iterator[T] {
+    val size = ins.readInt()
+    val rows = new Iterator[T] {
       private var hasNextRow = ins.readBoolean()
 
       override def hasNext: Boolean = hasNextRow
@@ -61,6 +63,8 @@ object IteratorSerializerUtils {
         row
       }
     }
+    
+    (rows, size)
 
   }
 

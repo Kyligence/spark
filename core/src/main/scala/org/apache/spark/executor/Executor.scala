@@ -550,12 +550,19 @@ private[spark] class Executor(
         val resultSer = env.serializer.newInstance()
         val beforeSerializationNs = System.nanoTime()
         var isValueIterator = false
-        if( value.isInstanceOf[Iterator[_]] ) {
-          isValueIterator = true
+        if( value.isInstanceOf[Tuple2[_, _]]) {
+          val tuple = value.asInstanceOf[Tuple2[_, _]]
+          if(tuple._1.isInstanceOf[Iterator[_]] && tuple._2.isInstanceOf[Int]) {
+            isValueIterator = true
+          }
+          
         }
         var valueBytes = {
           if (isValueIterator) {
-            IteratorSerializerUtils.serialize(value.asInstanceOf[Iterator[_]])
+            val tuple = value.asInstanceOf[Tuple2[_, _]]
+            val rows = tuple._1.asInstanceOf[Iterator[_]]
+            val size = tuple._2.asInstanceOf[Int]
+            IteratorSerializerUtils.serialize(rows, size)
           } else {
             resultSer.serialize(value)
           }

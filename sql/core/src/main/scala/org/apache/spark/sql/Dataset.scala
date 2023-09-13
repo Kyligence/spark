@@ -3031,11 +3031,11 @@ class Dataset[T] private[sql](
     * each partition is a iterator, and return an iterator of rows
     * @return row iterator
     */
-  def collectToIterator(): (java.util.Iterator[T]) = {
+  def collectToIterator(): (java.util.Iterator[T], Int) = {
     withAction("collectToIterator", queryExecution) { plan =>
       val fromRow = resolvedEnc.createDeserializer()
       val results = plan.execute().collectAsIterator()
-      (results.map(fromRow).asJava)
+      (results._1.map(fromRow).asJava, results._2.toInt)
     }
   }
 

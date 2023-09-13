@@ -60,7 +60,6 @@ import org.apache.spark.unsafe.Platform
 import org.apache.spark.util._
 import org.apache.spark.util.io.ChunkedByteBuffer
 
-import scala.collection.immutable.NumericRange
 
 /* Class for returning a fetched block and associated metrics. */
 private[spark] class BlockResult(
@@ -1231,7 +1230,7 @@ private[spark] class BlockManager(
     offset: Long,
     length: Int,
   ): ByteBuffer = {
-   
+
     var runningFailureCount = 0
     var totalFailureCount = 0
     val locations = sortLocations(locationsAndStatus.locations)
@@ -1241,25 +1240,34 @@ private[spark] class BlockManager(
       val loc = locationIterator.next()
       logDebug(s"Getting remote block segment $blockId from $loc")
       val data = try {
-        val buf = blockTransferService.fetchBlockSegmentSyn(loc.host, loc.port,
-          blockId.toString, offset, length)
+        val buf = blockTransferService.fetchBlockSegmentSyn(
+          loc.host,
+          loc.port,
+          blockId.toString,
+          offset,
+          length)
         buf
       } catch {
         case NonFatal(e) =>
           runningFailureCount += 1
           totalFailureCount += 1
           if (totalFailureCount >= maxFetchFailures) {
-            throw new IllegalStateException(s"Failed to fetch block after $totalFailureCount fetch failures. " +
-              s"Most recent failure cause:", e)
+            throw new IllegalStateException(
+              s"Failed to fetch block after $totalFailureCount fetch failures. " +
+                s"Most recent failure cause:",
+              e)
           }
 
-          logWarning(s"Failed to fetch remote block $blockId " +
-            s"from $loc (failed attempt $runningFailureCount)", e)
-          
+          logWarning(
+            s"Failed to fetch remote block $blockId " +
+              s"from $loc (failed attempt $runningFailureCount)",
+            e)
+
           if (runningFailureCount >= maxFailuresBeforeLocationRefresh) {
             locationIterator = sortLocations(master.getLocations(blockId)).iterator
-            logDebug(s"Refreshed locations from the driver " +
-              s"after ${runningFailureCount} fetch failures.")
+            logDebug(
+              s"Refreshed locations from the driver " +
+                s"after ${runningFailureCount} fetch failures.")
             runningFailureCount = 0
           }
           null
@@ -1271,7 +1279,7 @@ private[spark] class BlockManager(
     }
     throw new IllegalStateException(s"get Block $blockId segment failed")
   }
-  
+
   def getRemoteBlockAsIterator(blockId: BlockId, batchSize: Int): Iterator[ByteBuffer] = {
     val locationsAndStatusOption = master.getLocationsAndStatus(blockId, blockManagerId.host)
     if (locationsAndStatusOption.isEmpty) {
@@ -1280,8 +1288,20 @@ private[spark] class BlockManager(
     }
     val locationsAndStatus = locationsAndStatusOption.get
     val blockSize = locationsAndStatus.status.diskSize.max(locationsAndStatus.status.memSize)
-    return NumericRange.apply(0,blockSize,batchSize).toIterator.map(
-      offset=> fetchRemoteBlockBuffer(blockId, locationsAndStatus,offset,math.min(blockSize-offset,batchSize).intValue()))
+    new Iterator[ByteBuffer] {
+      private var offset: Long = 0;
+      override def hasNext: Boolean = offset < blockSize
+      override def next(): ByteBuffer = {
+        val length = math.min(blockSize - offset, batchSize).intValue();
+        val byteBuffer = fetchRemoteBlockBuffer(blockId, locationsAndStatus, offset, length)
+        offset = offset + length
+        if (!hasNext) {
+          master.removeBlock(blockId)
+          logInfo(s"Block $blockId is deleted when Iterator done")
+        }
+        byteBuffer
+      }
+    }
   }
 
   /**
