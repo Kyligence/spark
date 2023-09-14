@@ -18,7 +18,7 @@
 package org.apache.spark.storage
 
 import java.io._
-import java.lang.ref.{WeakReference, ReferenceQueue => JReferenceQueue}
+import java.lang.ref.{ReferenceQueue => JReferenceQueue, WeakReference}
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.util.Collections
@@ -32,9 +32,11 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
+
 import com.codahale.metrics.{MetricRegistry, MetricSet}
 import com.google.common.cache.CacheBuilder
 import org.apache.commons.io.IOUtils
+
 import org.apache.spark._
 import org.apache.spark.executor.DataReadMethod
 import org.apache.spark.internal.Logging
@@ -109,8 +111,7 @@ private[spark] class ByteBufferBlockData(
   override def toByteBuffer(): ByteBuffer = buffer.toByteBuffer
 
   override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
-    
-    val inputStream = buffer.copy(x=>ByteBuffer.allocate(x)).toInputStream()
+    val inputStream = buffer.copy(x => ByteBuffer.allocate(x)).toInputStream()
     var bytes = new Array[Byte](length)
     inputStream.skip(offset)
     inputStream.read(bytes)
@@ -1222,8 +1223,8 @@ private[spark] class BlockManager(
 
 
   /**
-    * Fetch the block from remote block managers as a ManagedBuffer.
-    */
+   * Fetch the block segment from remote block managers as a byteBuffer.
+   */
   private def fetchRemoteBlockBuffer(
     blockId: BlockId,
     locationsAndStatus: BlockManagerMessages.BlockLocationsAndStatus,
