@@ -127,6 +127,8 @@ private[spark] class DirectTaskResult[T](
     isValueIterator = in.readBoolean()
     valueObjectDeserialized = false
   }
+
+
   /**
     * When `value()` is called at the first time, it needs to deserialize `valueObject` from
     * `valueBytes`. It may cost dozens of seconds for a large instance. So when calling `value` at

@@ -25,8 +25,6 @@ import org.apache.spark.SparkEnv
 import org.apache.spark.io.CompressionCodec
 import org.apache.spark.util.io.ChunkedByteBufferInputStream
 
-
-
 object IteratorSerializerUtils {
 
   def serialize[T: ClassTag](iterator: Iterator[T], size: Int): ByteBuffer = {
@@ -47,7 +45,6 @@ object IteratorSerializerUtils {
   }
 
   def deserialize[T: ClassTag](byteIterator: Iterator[ByteBuffer]): (Iterator[T], Int) = {
-
     val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
     val bis = new ChunkedByteBufferInputStream(byteIterator, false)
     val ins = new ObjectInputStream((codec.compressedInputStream(bis)))
@@ -63,9 +60,7 @@ object IteratorSerializerUtils {
         row
       }
     }
-    
     (rows, size)
-
   }
 
 }

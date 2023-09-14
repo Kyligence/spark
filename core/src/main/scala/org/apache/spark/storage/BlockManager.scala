@@ -1228,7 +1228,7 @@ private[spark] class BlockManager(
     blockId: BlockId,
     locationsAndStatus: BlockManagerMessages.BlockLocationsAndStatus,
     offset: Long,
-    length: Int,
+    length: Int
   ): ByteBuffer = {
 
     var runningFailureCount = 0

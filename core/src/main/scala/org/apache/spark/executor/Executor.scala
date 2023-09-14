@@ -555,7 +555,6 @@ private[spark] class Executor(
           if(tuple._1.isInstanceOf[Iterator[_]] && tuple._2.isInstanceOf[Int]) {
             isValueIterator = true
           }
-          
         }
         var valueBytes = {
           if (isValueIterator) {
