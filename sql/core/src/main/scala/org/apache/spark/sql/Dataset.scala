@@ -3027,10 +3027,10 @@ class Dataset[T] private[sql](
   }
 
   /**
-    * collect all partitions to local with one job,
-    * each partition is a iterator, and return an iterator of rows
-    * @return row iterator
-    */
+   * collect all partitions to local with one job,
+   * each partition is a iterator, and return an iterator of rows
+   * @return row iterator
+   */
   def collectToIterator(): (java.util.Iterator[T], Int) = {
     withAction("collectToIterator", queryExecution) { plan =>
       val fromRow = resolvedEnc.createDeserializer()
