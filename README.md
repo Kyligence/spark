@@ -35,7 +35,7 @@ More detailed documentation is available from the project site, at
 
 For general development tips, including info on developing Spark using an IDE, see ["Useful Developer Tools"](https://spark.apache.org/developer-tools.html).
 
-## Interactive Scala Shell
+## Interactive Scala Shell:
 
 The easiest way to start using Spark is through the Scala shell:
 
