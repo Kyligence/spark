@@ -718,6 +718,13 @@ class SparkContext(config: SparkConf) extends Logging {
     }
   }
 
+  private[spark] def getTaskThreadDump(
+      taskId: Long,
+      executorId: String): Option[ThreadStackTrace] = {
+    schedulerBackend.getTaskThreadDump(taskId, executorId)
+  }
+
+
   private[spark] def getLocalProperties: Properties = localProperties.get()
 
   private[spark] def setLocalProperties(props: Properties): Unit = {

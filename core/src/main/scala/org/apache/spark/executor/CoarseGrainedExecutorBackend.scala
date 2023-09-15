@@ -244,6 +244,9 @@ private[spark] class CoarseGrainedExecutorBackend(
           decommissioned = false
       }
       context.reply(decommissioned)
+
+    case TaskThreadDump(taskId) =>
+      context.reply(executor.getTaskThreadDump(taskId))
   }
 
   override def onDisconnected(remoteAddress: RpcAddress): Unit = {
