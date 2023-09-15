@@ -354,4 +354,5 @@ class FileScanRDD(
   override protected def getPreferredLocations(split: RDDPartition): Seq[String] = {
     split.asInstanceOf[FilePartition].preferredLocations()
   }
+
 }
