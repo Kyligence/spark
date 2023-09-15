@@ -16,46 +16,73 @@
  */
 package org.apache.spark.serializer
 
-import java.io.{ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io.{ByteArrayOutputStream, DataInput, DataInputStream, DataOutput, DataOutputStream, IOException}
 import java.nio.ByteBuffer
-
-import scala.reflect.ClassTag
 
 import org.apache.spark.SparkEnv
 import org.apache.spark.io.CompressionCodec
+import org.apache.spark.util.Utils
 import org.apache.spark.util.io.ChunkedByteBufferInputStream
+
+
+private[spark] trait IteratorItem {
+  @throws(classOf[IOException])
+  def writeExternalToDataOutput(out: DataOutput): Unit
+
+  @throws(classOf[IOException])
+  def readExternalFromDataOutput(in: DataInput): Unit
+
+}
 
 object IteratorSerializerUtils {
 
-  def serialize[T: ClassTag](iterator: Iterator[T], size: Int): ByteBuffer = {
+  def serialize[T <: IteratorItem](iterator: Iterator[T], size: Int): ByteBuffer = {
 
     val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
     val bos = new ByteArrayOutputStream()
-    val objOut = new ObjectOutputStream(codec.compressedOutputStream(bos))
-    objOut.writeInt(size)
+    val out = new DataOutputStream(codec.compressedOutputStream(bos))
+    out.writeInt(size)
+    var classNameFilled = false
     while (iterator.hasNext) {
-      objOut.writeBoolean(true)
-      objOut.writeObject(iterator.next)
+      out.writeBoolean(true)
+      val row = iterator.next();
+      if (!classNameFilled) {
+        val className = row.getClass.getCanonicalName
+        out.writeInt(className.length)
+        out.writeChars(className)
+        classNameFilled = true
+      }
+      iterator.next().writeExternalToDataOutput(out)
     }
-    objOut.writeBoolean(false)
-    objOut.flush()
-    objOut.close()
+    out.writeBoolean(false)
+    out.flush()
+    out.close()
     ByteBuffer.wrap(bos.toByteArray)
-
   }
 
-  def deserialize[T: ClassTag](byteIterator: Iterator[ByteBuffer]): (Iterator[T], Int) = {
+  def deserialize[T <: IteratorItem](byteIterator: Iterator[ByteBuffer]): (Iterator[T], Int) = {
     val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
     val bis = new ChunkedByteBufferInputStream(byteIterator, false)
-    val ins = new ObjectInputStream((codec.compressedInputStream(bis)))
+    val ins = new DataInputStream((codec.compressedInputStream(bis)))
     val size = ins.readInt()
+    
     val rows = new Iterator[T] {
       private var hasNextRow = ins.readBoolean()
-
+      private var clazz : Class[_] = _
+      
+      if(hasNextRow) {
+        val classNameLength = ins.readInt()
+        val name : StringBuffer = new StringBuffer()
+        for( i <- 1 to classNameLength) {
+          name.append(ins.readChar())
+        }
+        clazz = Utils.classForName(name.toString)
+      }
       override def hasNext: Boolean = hasNextRow
 
       override def next(): T = {
-        val row = ins.readObject().asInstanceOf[T]
+        val row = clazz.newInstance().asInstanceOf[T]
+        row.readExternalFromDataOutput(ins)
         hasNextRow = ins.readBoolean()
         row
       }
