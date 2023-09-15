@@ -265,4 +265,9 @@ class FileScanRDD(
       expectedTargets
     }
   }
+
+  def partitionFilesTotalLength: Long = {
+    filePartitions.map(_.files.map(_.length).sum).sum
+  }
+
 }
