@@ -52,7 +52,7 @@ object IteratorSerializerUtils {
         out.writeChars(className)
         classNameFilled = true
       }
-      iterator.next().writeExternalToDataOutput(out)
+      row.writeExternalToDataOutput(out)
     }
     out.writeBoolean(false)
     out.flush()
