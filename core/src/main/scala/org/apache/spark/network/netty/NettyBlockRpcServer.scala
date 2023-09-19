@@ -66,7 +66,14 @@ class NettyBlockRpcServer(
           client.getChannel)
         logTrace(s"Registered streamId $streamId with $blocksNum buffers")
         responseContext.onSuccess(new StreamHandle(streamId, blocksNum).toByteBuffer)
-
+      case fetchBlockSegment: FetchBlockSegment =>
+        val blockData = blockManager.asInstanceOf[BlockManager].getLocalBytes(
+          BlockId.apply(fetchBlockSegment.blockId))
+        assert(blockData.isDefined, "the block  with bolck id " +
+          fetchBlockSegment.blockId + " is not exited.")
+        val sendLength = math.min(blockData.get.size - fetchBlockSegment.offset,
+          fetchBlockSegment.length).intValue()
+        responseContext.onSuccess(blockData.get.toByteBuffer(fetchBlockSegment.offset, sendLength))
       case fetchShuffleBlocks: FetchShuffleBlocks =>
         val blocks = fetchShuffleBlocks.mapIds.zipWithIndex.flatMap { case (mapId, index) =>
           if (!fetchShuffleBlocks.batchFetchEnabled) {
