@@ -1031,6 +1031,18 @@ abstract class RDD[T: ClassTag](
     Array.concat(results: _*)
   }
 
+
+  def collectAsIterator(): (Iterator[T], Long) = withScope {
+    val results = sc.runJob(this, (iter: Iterator[T]) => {
+      val array = iter.toArray
+      val size = array.size
+      (array.toIterator, size)
+    })
+    val total = results.map(_._2).sum
+    val rows = results.iterator.flatMap(itersAndCount => itersAndCount._1)
+    (rows, total)
+  }
+
   /**
    * Return an iterator that contains all of the elements in this RDD.
    *
