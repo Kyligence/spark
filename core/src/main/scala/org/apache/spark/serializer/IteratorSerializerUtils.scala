@@ -65,11 +65,9 @@ object IteratorSerializerUtils {
     val bis = new ChunkedByteBufferInputStream(byteIterator, false)
     val ins = new DataInputStream((codec.compressedInputStream(bis)))
     val size = ins.readInt()
-    
     val rows = new Iterator[T] {
       private var hasNextRow = ins.readBoolean()
       private var clazz : Class[_] = _
-      
       if(hasNextRow) {
         val classNameLength = ins.readInt()
         val name : StringBuffer = new StringBuffer()

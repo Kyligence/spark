@@ -23,7 +23,7 @@ import java.nio.ByteBuffer
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.SparkEnv
-import org.apache.spark.internal.config.TASK_MAX_DIRECT_RESULT_SIZE
+import org.apache.spark.internal.config.TASK_BLOCK_FETCH_BATCH_SIZE
 import org.apache.spark.metrics.ExecutorMetricType
 import org.apache.spark.serializer.{IteratorSerializerUtils, SerializerInstance}
 import org.apache.spark.storage.BlockId
@@ -60,7 +60,7 @@ private[spark] case class IndirectTaskResult[T](blockId: BlockId,
   override def value(resultSer: SerializerInstance): T = {
     IteratorSerializerUtils.deserialize(
       SparkEnv.get.blockManager.getRemoteBlockAsIterator(
-        blockId, SparkEnv.get.conf.get(TASK_MAX_DIRECT_RESULT_SIZE).intValue())
+        blockId, SparkEnv.get.conf.get(TASK_BLOCK_FETCH_BATCH_SIZE).intValue())
     ).asInstanceOf[T]
   }
 }

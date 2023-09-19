@@ -753,6 +753,12 @@ package object config {
       .version("2.0.0")
       .bytesConf(ByteUnit.BYTE)
       .createWithDefault(1L << 20)
+  
+  private[spark] val TASK_BLOCK_FETCH_BATCH_SIZE =
+    ConfigBuilder("spark.task.blockFetchBatchSize")
+      .version("2.0.0")
+      .bytesConf(ByteUnit.BYTE)
+      .createWithDefault(1L << 20)
 
   private[spark] val TASK_MAX_FAILURES =
     ConfigBuilder("spark.task.maxFailures")
