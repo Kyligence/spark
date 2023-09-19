@@ -17,15 +17,12 @@
 
 package org.apache.spark.scheduler.cluster
 
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference}
 import javax.annotation.concurrent.GuardedBy
-
 import scala.collection.mutable.{HashMap, HashSet}
 import scala.concurrent.Future
-
 import org.apache.hadoop.security.UserGroupInformation
-
 import org.apache.spark.{ExecutorAllocationClient, SparkEnv, SparkException, TaskState}
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.deploy.security.HadoopDelegationTokenManager
@@ -111,7 +108,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
   // Last time of send up to date delegation tokens to executors.
   private val driverLastUpdateTokensTimestamp = new AtomicLong(0L)
-  private val executorLastGetTokenTimestampMap = new HashMap[String, Long]
+  // DriverEndPoint is not thread-safety
+  private val executorLastGetTokenTimestampMap = new ConcurrentHashMap[String, Long]
 
   // The token manager used to create security tokens.
   private var delegationTokenManager: Option[HadoopDelegationTokenManager] = None
