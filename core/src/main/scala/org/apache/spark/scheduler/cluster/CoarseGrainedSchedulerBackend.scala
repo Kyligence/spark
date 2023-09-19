@@ -284,7 +284,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   .getOrDefault(executorId, 0)
               }\n" +
               s"Time of driver last update token: ${driverLastUpdateTokensTimestamp.get()}\n" +
-              s"Time of new executor registered : ${System.currentTimeMillis()}\n")
+              s"Time of new executor registered : $registeredTime\n")
             val shouldForceUpdateToken =
               executorLastGetTokenTimestampMap.getOrDefault(executorId, 0) <
                 driverLastUpdateTokensTimestamp.get() &&
