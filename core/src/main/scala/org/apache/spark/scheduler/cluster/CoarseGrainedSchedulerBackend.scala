@@ -20,9 +20,12 @@ package org.apache.spark.scheduler.cluster
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference}
 import javax.annotation.concurrent.GuardedBy
+
 import scala.collection.mutable.{HashMap, HashSet}
 import scala.concurrent.Future
+
 import org.apache.hadoop.security.UserGroupInformation
+
 import org.apache.spark.{ExecutorAllocationClient, SparkEnv, SparkException, TaskState}
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.deploy.security.HadoopDelegationTokenManager
@@ -263,8 +266,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             resourcesInfo, resourceProfileId, registrationTs = System.currentTimeMillis())
           // This must be synchronized because variables mutated
           // in this block are read when requesting executors
+          var registeredTime = -1L
           CoarseGrainedSchedulerBackend.this.synchronized {
             executorDataMap.put(executorId, data)
+            registeredTime = System.currentTimeMillis()
             if (currentExecutorIdCounter < executorId.toInt) {
               currentExecutorIdCounter = executorId.toInt
             }
@@ -276,14 +281,14 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               s"the timeline is: \n" +
               s"Time of executor first get token: ${
                 executorLastGetTokenTimestampMap
-                  .getOrElse(executorId, 0)
+                  .getOrDefault(executorId, 0)
               }\n" +
               s"Time of driver last update token: ${driverLastUpdateTokensTimestamp.get()}\n" +
               s"Time of new executor registered : ${System.currentTimeMillis()}\n")
             val shouldForceUpdateToken =
-              executorLastGetTokenTimestampMap.getOrElse(executorId, 0) <
+              executorLastGetTokenTimestampMap.getOrDefault(executorId, 0) <
                 driverLastUpdateTokensTimestamp.get() &&
-                driverLastUpdateTokensTimestamp.get() < System.currentTimeMillis()
+                driverLastUpdateTokensTimestamp.get() < registeredTime
             if (shouldForceUpdateToken) {
               logInfo(s"The delegationToken obtained by executor-$executorId " +
                 s"has expired and needs to be forcibly updated")
