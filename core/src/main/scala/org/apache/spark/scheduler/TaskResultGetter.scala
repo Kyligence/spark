@@ -86,6 +86,11 @@ private[spark] class TaskResultGetter(sparkEnv: SparkEnv, scheduler: TaskSchedul
               logDebug(s"Fetching indirect task result for ${taskSetManager.taskName(tid)}")
               scheduler.handleTaskGettingResult(taskSetManager, tid)
               if (indirectResult.isValueIterator) {
+                val queryExecutionId = taskSetManager.taskSet.properties.getProperty(
+                  "spark.sql.execution.id", null)
+                if(queryExecutionId!=null) {
+                   sparkEnv.registerBlockForQueryResult(queryExecutionId, indirectResult.blockId)
+                }
                 (indirectResult, indirectResult.size)
               } else {
                 var serializedTaskResult = sparkEnv.blockManager.getRemoteBytes(
