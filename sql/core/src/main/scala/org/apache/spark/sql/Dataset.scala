@@ -3028,7 +3028,11 @@ class Dataset[T] private[sql](
 
   /**
    * collect all partitions to local with one job,
-   * each partition is a iterator, and return an iterator of rows
+   * each partition is a iterator, and return an iterator of rows,
+   * for big result partition, will read result from block in executor when use next()
+   * Please ensure that the results have been consumed completely or
+   * exec sparkEnv.deleteAllBlockForQueryResult(queryExecutionId: String)
+   * to delete all the result task block
    * @return row iterator
    */
   def collectToIterator(): (java.util.Iterator[T], Int) = {
