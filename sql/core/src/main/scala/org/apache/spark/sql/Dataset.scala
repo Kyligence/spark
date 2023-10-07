@@ -3034,7 +3034,7 @@ class Dataset[T] private[sql](
   def collectToIterator(): (java.util.Iterator[T], Int) = {
     withAction("collectToIterator", queryExecution) { plan =>
       val fromRow = resolvedEnc.createDeserializer()
-      val results = plan.execute().collectAsIterator()
+      val results = plan.execute().map(_.copy()).collectAsIterator()
       (results._1.map(fromRow).asJava, results._2.toInt)
     }
   }
