@@ -111,12 +111,4 @@ object IteratorSerializerUtils {
     }
     x
   }
-
-  def byteMerger(bt1: Array[Byte], bt2: Array[Byte]): Array[Byte] = {
-    val bt3 = new Array[Byte](bt1.length + bt2.length)
-    System.arraycopy(bt1, 0, bt3, 0, bt1.length)
-    System.arraycopy(bt2, 0, bt3, bt1.length, bt2.length)
-    bt3
-  }
-
 }
