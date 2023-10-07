@@ -560,8 +560,7 @@ private[spark] class Executor(
           if (isValueIterator) {
             val tuple = value.asInstanceOf[Tuple2[_, _]]
             val rows = tuple._1.asInstanceOf[Iterator[IteratorItem]]
-            val size = tuple._2.asInstanceOf[Int]
-            IteratorSerializerUtils.serialize(rows, size)
+            IteratorSerializerUtils.serialize(rows)
           } else {
             resultSer.serialize(value)
           }

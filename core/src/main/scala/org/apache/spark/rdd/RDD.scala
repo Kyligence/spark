@@ -1034,9 +1034,8 @@ abstract class RDD[T: ClassTag](
 
   def collectAsIterator(): (Iterator[T], Long) = withScope {
     val results = sc.runJob(this, (iter: Iterator[T]) => {
-      val array = iter.toArray
-      val size = array.size
-      (array.toIterator, size)
+      // fake count,will be modified when code result
+      (iter, 0)
     })
     val total = results.map(_._2).sum
     val rows = results.iterator.flatMap(itersAndCount => itersAndCount._1)
