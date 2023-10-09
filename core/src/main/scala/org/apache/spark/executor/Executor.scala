@@ -498,7 +498,7 @@ private[spark] class Executor(
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
         var threwException = true
-        val value = Utils.tryWithSafeFinally {
+        var value = Utils.tryWithSafeFinally {
           val res = task.run(
             taskAttemptId = taskId,
             attemptNumber = taskDescription.attemptNumber,
@@ -566,6 +566,7 @@ private[spark] class Executor(
             resultSer.serialize(value)
           }
         }
+        value = null
         val afterSerializationNs = System.nanoTime()
 
         // Deserialization happens in two parts: first, we deserialize a Task object, which
