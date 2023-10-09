@@ -39,7 +39,6 @@ object IteratorSerializerUtils {
     val size = byteArrayToIntBigEndian(countBytes)
     val bufferIterator = Array(ByteBuffer.wrap(firstBuffer, 4,
       firstBuffer.length - 4)).iterator ++ byteIterator
-    
     (bufferIterator, size)
   }
 
