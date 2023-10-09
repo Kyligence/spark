@@ -47,7 +47,7 @@ import org.apache.spark.metrics.source.JVMCPUSource
 import org.apache.spark.resource.ResourceInformation
 import org.apache.spark.rpc.RpcTimeout
 import org.apache.spark.scheduler._
-import org.apache.spark.serializer.{IteratorItem, IteratorSerializerUtils}
+import org.apache.spark.serializer.IteratorSerializerUtils
 import org.apache.spark.shuffle.{FetchFailedException, ShuffleBlockPusher}
 import org.apache.spark.storage.{StorageLevel, TaskResultBlockId}
 import org.apache.spark.util._
@@ -559,8 +559,9 @@ private[spark] class Executor(
         var valueBytes = {
           if (isValueIterator) {
             val tuple = value.asInstanceOf[Tuple2[_, _]]
-            val rows = tuple._1.asInstanceOf[Iterator[IteratorItem]]
-            IteratorSerializerUtils.serialize(rows)
+            val rows = tuple._1.asInstanceOf[Iterator[ByteBuffer]]
+            val size = tuple._2.asInstanceOf[Int]
+            IteratorSerializerUtils.serialize(rows, size)
           } else {
             resultSer.serialize(value)
           }
