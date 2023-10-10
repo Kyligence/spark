@@ -16,76 +16,51 @@
  */
 package org.apache.spark.serializer
 
-import java.io.{ByteArrayOutputStream, DataInput, DataInputStream, DataOutput, DataOutputStream, IOException}
 import java.nio.ByteBuffer
 
-import org.apache.spark.SparkEnv
-import org.apache.spark.io.CompressionCodec
-import org.apache.spark.util.Utils
-import org.apache.spark.util.io.ChunkedByteBufferInputStream
+import org.apache.spark.util.ByteBufferOutputStream
 
-
-private[spark] trait IteratorItem {
-  @throws(classOf[IOException])
-  def writeExternalToDataOutput(out: DataOutput): Unit
-
-  @throws(classOf[IOException])
-  def readExternalFromDataOutput(in: DataInput): Unit
-
-}
 
 object IteratorSerializerUtils {
 
-  def serialize[T <: IteratorItem](iterator: Iterator[T], size: Int): ByteBuffer = {
-
-    val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
-    val bos = new ByteArrayOutputStream()
-    val out = new DataOutputStream(codec.compressedOutputStream(bos))
-    out.writeInt(size)
-    var classNameFilled = false
-    while (iterator.hasNext) {
-      out.writeBoolean(true)
-      val row = iterator.next();
-      if (!classNameFilled) {
-        val className = row.getClass.getCanonicalName
-        out.writeInt(className.length)
-        out.writeChars(className)
-        classNameFilled = true
-      }
-      row.writeExternalToDataOutput(out)
+  def serialize(iterator: Iterator[ByteBuffer], count: Int): ByteBuffer = {
+    val array = iterator.toArray
+    val lengthSum = array.map(_.array().length).sum + 4
+    val bos = new ByteBufferOutputStream(lengthSum)
+    bos.write(intToByteArrayBigEndian(count))
+    for (buffer <- array) {
+      bos.write(buffer.array())
     }
-    out.writeBoolean(false)
-    out.flush()
-    out.close()
-    ByteBuffer.wrap(bos.toByteArray)
+    bos.close()
+    bos.toByteBuffer
   }
 
-  def deserialize[T <: IteratorItem](byteIterator: Iterator[ByteBuffer]): (Iterator[T], Int) = {
-    val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
-    val bis = new ChunkedByteBufferInputStream(byteIterator, false)
-    val ins = new DataInputStream((codec.compressedInputStream(bis)))
-    val size = ins.readInt()
-    val rows = new Iterator[T] {
-      private var hasNextRow = ins.readBoolean()
-      private var clazz : Class[_] = _
-      if(hasNextRow) {
-        val classNameLength = ins.readInt()
-        val name : StringBuffer = new StringBuffer()
-        for( i <- 1 to classNameLength) {
-          name.append(ins.readChar())
-        }
-        clazz = Utils.classForName(name.toString)
-      }
-      override def hasNext: Boolean = hasNextRow
-
-      override def next(): T = {
-        val row = clazz.newInstance().asInstanceOf[T]
-        row.readExternalFromDataOutput(ins)
-        hasNextRow = ins.readBoolean()
-        row
-      }
-    }
-    (rows, size)
+  def deserialize(byteIterator: Iterator[ByteBuffer]): (Iterator[ByteBuffer], Int) = {
+    val firstBuffer = byteIterator.next().array()
+    val countBytes = firstBuffer.slice(0, 4)
+    val size = byteArrayToIntBigEndian(countBytes)
+    val bufferIterator = Array(ByteBuffer.wrap(firstBuffer, 4,
+      firstBuffer.length - 4)).iterator ++ byteIterator
+    (bufferIterator, size)
   }
 
+  def intToByteArrayBigEndian(x: Int): Array[Byte] = {
+    val bytes = new Array[Byte](4)
+    bytes(0) = (x >> 24).toByte
+    bytes(1) = (x >> 16).toByte
+    bytes(2) = (x >> 8).toByte
+    bytes(3) = x.toByte
+    bytes
+  }
+
+  def byteArrayToIntBigEndian(bytes: Array[Byte]): Int = {
+    var x = 0
+    var i = 0
+    for (i <- 0 to 3) {
+      x <<= 8
+      val b = bytes(i) & 0xFF
+      x |= b
+    }
+    x
+  }
 }

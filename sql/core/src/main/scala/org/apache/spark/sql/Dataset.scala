@@ -3183,8 +3183,8 @@ class Dataset[T] private[sql](
   def collectToIterator(): (java.util.Iterator[T], Int) = {
     withAction("collectToIterator", queryExecution) { plan =>
       val fromRow = resolvedEnc.createDeserializer()
-      val results = plan.execute().collectAsIterator()
-      (results._1.map(fromRow).asJava, results._2.toInt)
+      val results = plan.executeCollectIteratorViaByteBuffer()
+      (results._2.map(fromRow).asJava, results._1.toInt)
     }
   }
 
