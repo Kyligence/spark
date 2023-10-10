@@ -18,19 +18,21 @@ package org.apache.spark.serializer
 
 import java.nio.ByteBuffer
 
-import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.util.ByteBufferOutputStream
 
 
 object IteratorSerializerUtils {
 
   def serialize(iterator: Iterator[ByteBuffer], count: Int): ByteBuffer = {
-    val bufferArray = ArrayBuffer[Byte]()
-    bufferArray ++= intToByteArrayBigEndian(count)
-    while (iterator.hasNext) {
-      val buffer = iterator.next()
-      bufferArray ++= buffer.array()
+    val array = iterator.toArray
+    val lengthSum = array.map(_.array().length).sum + 4
+    val bos = new ByteBufferOutputStream(lengthSum)
+    bos.write(intToByteArrayBigEndian(count))
+    for (buffer <- array) {
+      bos.write(buffer.array())
     }
-    ByteBuffer.wrap(bufferArray.toArray)
+    bos.close()
+    bos.toByteBuffer
   }
 
   def deserialize(byteIterator: Iterator[ByteBuffer]): (Iterator[ByteBuffer], Int) = {
