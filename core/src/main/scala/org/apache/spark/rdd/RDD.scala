@@ -17,6 +17,7 @@
 
 package org.apache.spark.rdd
 
+import java.nio.ByteBuffer
 import java.util.Random
 
 import scala.collection.{mutable, Map}
@@ -1031,16 +1032,15 @@ abstract class RDD[T: ClassTag](
     Array.concat(results: _*)
   }
 
-
-  def collectAsIterator(): (Iterator[T], Long) = withScope {
+   // only use for sparkPlan.getByteBufferRdd
+  def collectAsIteratorForByteBuffer(): (Iterator[Iterator[ByteBuffer]], Long) = withScope {
     val results = sc.runJob(this, (iter: Iterator[T]) => {
-      val array = iter.toArray
-      val size = array.size
-      (array.toIterator, size)
+      val iter2 = iter.asInstanceOf[Iterator[(Long, ByteBuffer)]].toArray
+      (iter2.iterator.map(_._2), iter2.iterator.map(_._1).sum.intValue())
     })
     val total = results.map(_._2).sum
-    val rows = results.iterator.flatMap(itersAndCount => itersAndCount._1)
-    (rows, total)
+    val byteBufferIterators = results.iterator.map(iters => iters._1)
+    (byteBufferIterators, total)
   }
 
   /**
