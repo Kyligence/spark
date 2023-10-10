@@ -31,7 +31,6 @@ import com.esotericsoftware.kryo.KryoSerializable;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-import org.apache.spark.serializer.IteratorItem;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.unsafe.Platform;
@@ -60,7 +59,7 @@ import static org.apache.spark.unsafe.Platform.BYTE_ARRAY_OFFSET;
  *
  * Instances of `UnsafeRow` act as pointers to row data stored in this format.
  */
-public final class UnsafeRow extends InternalRow implements Externalizable, IteratorItem, KryoSerializable {
+public final class UnsafeRow extends InternalRow implements Externalizable, KryoSerializable {
 
   public static final int WORD_SIZE = 8;
 
@@ -643,25 +642,6 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Iter
 
   @Override
   public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-    this.baseOffset = BYTE_ARRAY_OFFSET;
-    this.sizeInBytes = in.readInt();
-    this.numFields = in.readInt();
-    this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
-    this.baseObject = new byte[sizeInBytes];
-    in.readFully((byte[]) baseObject);
-  }
-
-
-  @Override
-  public void writeExternalToDataOutput(DataOutput out) throws IOException {
-    byte[] bytes = getBytes();
-    out.writeInt(bytes.length);
-    out.writeInt(this.numFields);
-    out.write(bytes);
-  }
-
-  @Override
-  public void readExternalFromDataOutput(DataInput in) throws IOException {
     this.baseOffset = BYTE_ARRAY_OFFSET;
     this.sizeInBytes = in.readInt();
     this.numFields = in.readInt();
