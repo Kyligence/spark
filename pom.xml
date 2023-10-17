@@ -287,7 +287,7 @@
     <repository>
       <id>kyoffice</id>
       <name>local private nexus</name>
-      <url>http://repo-ofs.kyligence.com:8081/repository/maven-public/</url>
+      <url>https://repo-ofs.kyligence.com/repository/maven-public/</url>
       <releases>
         <enabled>true</enabled>
       </releases>
