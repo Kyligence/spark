@@ -24,8 +24,6 @@ class BigArrayBuffer[A] extends scala.collection.mutable.ArrayBuffer[A]
   with Builder[A, BigArrayBuffer[A]]
   with GenericTraversableTemplate[A, BigArrayBuffer] {
 
-  final val VM_MaxArraySize = Int.MaxValue-2
-
   @transient private[this] var mutationCount: Int = 0
 
   // TODO 3.T: should be `protected`, perhaps `protected[this]`
@@ -57,7 +55,7 @@ object BigArrayBuffer extends SeqFactory[BigArrayBuffer] {
   def newBuilder[A]: Builder[A, BigArrayBuffer[A]] = new BigArrayBuffer[A]
 
   final val DefaultInitialSize = 16
-  final val VM_MaxArraySize = Int.MaxValue-2
+  final val VM_MaxArraySize = Int.MaxValue - 8
 
   override def empty[A]: BigArrayBuffer[A] = new BigArrayBuffer[A]()
 
