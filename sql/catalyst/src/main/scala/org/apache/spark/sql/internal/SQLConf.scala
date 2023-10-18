@@ -4912,4 +4912,5 @@ class SQLConf extends Serializable with Logging {
   def isModifiable(key: String): Boolean = {
     containsConfigKey(key) && !isStaticConfigKey(key)
   }
+
 }
