@@ -266,11 +266,6 @@
       </url>
     </repository>
     <repository>
-      <id>jboss</id>
-      <url>https://repository.jboss.org/nexus/content/repositories/public/
-      </url>
-    </repository>
-    <repository>
       <id>nexus</id>
       <!-- for log4j 1.2.17-7+deb9u2,  build from https://salsa.debian.org/java-team/apache-log4j1.2 -->
       <name>Kyligence Repository</name>
