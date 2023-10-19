@@ -20,11 +20,12 @@ package org.apache.spark.sql.catalyst.util
 import scala.collection.generic.{CanBuildFrom, GenericCompanion, GenericTraversableTemplate, SeqFactory}
 import scala.collection.mutable.Builder
 
+// https://github.com/scala/scala/pull/9819
+// There are bugs in ArraryBuffer in scala-2.12 during resizeUp.
+// This bug was fixed in 2.13
 class BigArrayBuffer[A] extends scala.collection.mutable.ArrayBuffer[A]
   with Builder[A, BigArrayBuffer[A]]
   with GenericTraversableTemplate[A, BigArrayBuffer] {
-
-  @transient private[this] var mutationCount: Int = 0
 
   // TODO 3.T: should be `protected`, perhaps `protected[this]`
   /** Ensure that the internal array has at least `n` additional cells more than `size0`. */
