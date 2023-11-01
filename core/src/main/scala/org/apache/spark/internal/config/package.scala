@@ -805,6 +805,12 @@ package object config {
         "The max direct result size is 2GB")
       .createWithDefault(1L << 20)
 
+  private[spark] val TASK_BLOCK_FETCH_BATCH_SIZE =
+    ConfigBuilder("spark.task.blockFetchBatchSize")
+      .version("2.0.0")
+      .bytesConf(ByteUnit.BYTE)
+      .createWithDefault(1L << 20)
+
   private[spark] val TASK_MAX_FAILURES =
     ConfigBuilder("spark.task.maxFailures")
       .version("0.8.0")

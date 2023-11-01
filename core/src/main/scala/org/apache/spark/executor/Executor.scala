@@ -49,10 +49,11 @@ import org.apache.spark.metrics.source.JVMCPUSource
 import org.apache.spark.resource.ResourceInformation
 import org.apache.spark.rpc.RpcTimeout
 import org.apache.spark.scheduler._
-import org.apache.spark.serializer.SerializerHelper
+import org.apache.spark.serializer.{IteratorSerializerUtils, SerializerHelper}
 import org.apache.spark.shuffle.{FetchFailedException, ShuffleBlockPusher}
 import org.apache.spark.storage.{StorageLevel, TaskResultBlockId}
 import org.apache.spark.util._
+import org.apache.spark.util.io.ChunkedByteBuffer
 
 private[spark] class IsolatedSessionState(
   val sessionUUID: String,
@@ -610,7 +611,7 @@ private[spark] class Executor(
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
         var threwException = true
-        val value = Utils.tryWithSafeFinally {
+        var value = Utils.tryWithSafeFinally {
           val res = task.run(
             taskAttemptId = taskId,
             attemptNumber = taskDescription.attemptNumber,
@@ -662,7 +663,24 @@ private[spark] class Executor(
 
         val resultSer = env.serializer.newInstance()
         val beforeSerializationNs = System.nanoTime()
-        val valueByteBuffer = SerializerHelper.serializeToChunkedBuffer(resultSer, value)
+        val isValueIterator: Boolean = value match {
+          case tuple: (_, _) =>
+            if (tuple._1.isInstanceOf[Iterator[_]] && tuple._2.isInstanceOf[Int]) {
+              true
+            } else {
+              false
+            }
+          case _ => false
+        }
+        val valueByteBuffer = if (isValueIterator) {
+            val tuple = value.asInstanceOf[(_, _)]
+            val rows = tuple._1.asInstanceOf[Iterator[ByteBuffer]]
+            val size = tuple._2.asInstanceOf[Int]
+            IteratorSerializerUtils.serialize(rows, size)
+          } else {
+            SerializerHelper.serializeToChunkedBuffer(resultSer, value)
+          }
+        value = null
         val afterSerializationNs = System.nanoTime()
 
         // Deserialization happens in two parts: first, we deserialize a Task object, which
@@ -704,7 +722,8 @@ private[spark] class Executor(
         val accumUpdates = task.collectAccumulatorUpdates()
         val metricPeaks = metricsPoller.getTaskMetricPeaks(taskId)
         // TODO: do not serialize value twice
-        val directResult = new DirectTaskResult(valueByteBuffer, accumUpdates, metricPeaks)
+        val directResult = new DirectTaskResult(valueByteBuffer, accumUpdates, metricPeaks,
+          isValueIterator)
         // try to estimate a reasonable upper bound of DirectTaskResult serialization
         val serializedDirectResult = SerializerHelper.serializeToChunkedBuffer(ser, directResult,
           valueByteBuffer.size + accumUpdates.size * 32 + metricPeaks.length * 8)
@@ -716,15 +735,27 @@ private[spark] class Executor(
             logWarning(s"Finished $taskName. Result is larger than maxResultSize " +
               s"(${Utils.bytesToString(resultSize)} > ${Utils.bytesToString(maxResultSize)}), " +
               s"dropping it.")
-            ser.serialize(new IndirectTaskResult[Any](TaskResultBlockId(taskId), resultSize))
+            ser.serialize(new IndirectTaskResult[Any](TaskResultBlockId(taskId), resultSize,
+              directResult.accumUpdates,
+              directResult.metricPeaks,
+              directResult.isValueIterator
+            ))
           } else if (resultSize > maxDirectResultSize) {
             val blockId = TaskResultBlockId(taskId)
+            val valueToPut = if (isValueIterator) {
+              valueByteBuffer
+            } else {
+              serializedDirectResult
+            }
             env.blockManager.putBytes(
               blockId,
-              serializedDirectResult,
+              new ChunkedByteBuffer(valueToPut.getChunks()),
               StorageLevel.MEMORY_AND_DISK_SER)
             logInfo(s"Finished $taskName. $resultSize bytes result sent via BlockManager)")
-            ser.serialize(new IndirectTaskResult[Any](blockId, resultSize))
+            ser.serialize(new IndirectTaskResult[Any](TaskResultBlockId(taskId), resultSize,
+              directResult.accumUpdates,
+              directResult.metricPeaks,
+              directResult.isValueIterator))
           } else {
             logInfo(s"Finished $taskName. $resultSize bytes result sent to driver")
             // toByteBuffer is safe here, guarded by maxDirectResultSize
