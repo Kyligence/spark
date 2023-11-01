@@ -33,6 +33,7 @@ import org.apache.hadoop.security.UserGroupInformation
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
 import org.apache.spark.broadcast.BroadcastManager
+import org.apache.spark.executor.ExecutorBackend
 import org.apache.spark.internal.{config, Logging}
 import org.apache.spark.internal.config._
 import org.apache.spark.memory.{MemoryManager, UnifiedMemoryManager}
@@ -81,6 +82,35 @@ class SparkEnv (
     CacheBuilder.newBuilder().softValues().build[String, AnyRef]().asMap()
 
   private[spark] var driverTmpDir: Option[String] = None
+
+  private[spark] var executorBackend: Option[ExecutorBackend] = None
+
+  private[spark] val queryResultBlockMap: mutable.Map[String, mutable.Set[BlockId]] =
+    mutable.Map.empty
+
+  private[spark] def registerBlockForQueryResult(
+    queryExecutionId: String,
+    blockId: BlockId): Unit = {
+    logInfo(s"register block ${blockId} for queryExecutionId ${queryExecutionId}")
+    if (queryResultBlockMap.get(queryExecutionId) == None) {
+      queryResultBlockMap(queryExecutionId) = mutable.Set.apply(blockId)
+    } else {
+      queryResultBlockMap.get(queryExecutionId).get += blockId
+    }
+  }
+
+  private[spark] def deleteAllBlockForQueryResult(queryExecutionId: String): Unit = {
+    if (queryResultBlockMap.get(queryExecutionId) == None) {
+      return
+    }
+    queryResultBlockMap
+      .get(queryExecutionId)
+      .get
+      .foreach(blockId => {
+        logInfo(s"remove block ${blockId} for queryExecutionId ${queryExecutionId}")
+        blockManager.master.removeBlock(blockId)
+      })
+  }
 
   private[spark] def stop(): Unit = {
 
