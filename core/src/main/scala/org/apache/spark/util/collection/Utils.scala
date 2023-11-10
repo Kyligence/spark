@@ -22,9 +22,10 @@ import java.util.Collections
 import scala.collection.JavaConverters._
 import scala.collection.immutable
 
-import com.google.common.collect.{Iterators => GuavaIterators, Ordering => GuavaOrdering}
+import com.google.common.collect.{Iterators => GuavaIterators}
 
 import org.apache.spark.sql.catalyst.util.SparkCollectionUtils
+import org.apache.spark.util.collection.{GuavaOrderingSnippet => GuavaOrdering}
 
 /**
  * Utility functions for collections.
