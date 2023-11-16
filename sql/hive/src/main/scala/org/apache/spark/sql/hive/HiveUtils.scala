@@ -261,14 +261,14 @@ private[spark] object HiveUtils extends Logging {
     val commonTimeVars = Seq(
       ConfVars.METASTORE_CLIENT_CONNECT_RETRY_DELAY -> TimeUnit.SECONDS,
       ConfVars.METASTORE_CLIENT_SOCKET_TIMEOUT -> TimeUnit.SECONDS,
-      ConfVars.METASTORE_CLIENT_SOCKET_LIFETIME -> TimeUnit.SECONDS,
+      //      ConfVars.METASTORE_CLIENT_SOCKET_LIFETIME -> TimeUnit.SECONDS,
       ConfVars.HMSHANDLERINTERVAL -> TimeUnit.MILLISECONDS,
       ConfVars.METASTORE_EVENT_DB_LISTENER_TTL -> TimeUnit.SECONDS,
       ConfVars.METASTORE_EVENT_CLEAN_FREQ -> TimeUnit.SECONDS,
       ConfVars.METASTORE_EVENT_EXPIRY_DURATION -> TimeUnit.SECONDS,
-      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_TTL -> TimeUnit.SECONDS,
-      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_WRITER_WAIT -> TimeUnit.MILLISECONDS,
-      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_READER_WAIT -> TimeUnit.MILLISECONDS,
+      //      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_TTL -> TimeUnit.SECONDS,
+      //      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_WRITER_WAIT -> TimeUnit.MILLISECONDS,
+      //      ConfVars.METASTORE_AGGREGATE_STATS_CACHE_MAX_READER_WAIT -> TimeUnit.MILLISECONDS,
       ConfVars.HIVES_AUTO_PROGRESS_TIMEOUT -> TimeUnit.SECONDS,
       ConfVars.HIVE_LOG_INCREMENTAL_PLAN_PROGRESS_INTERVAL -> TimeUnit.MILLISECONDS,
       ConfVars.HIVE_LOCK_SLEEP_BETWEEN_RETRIES -> TimeUnit.SECONDS,
@@ -280,7 +280,7 @@ private[spark] object HiveUtils extends Logging {
       ConfVars.HIVE_COMPACTOR_CLEANER_RUN_INTERVAL -> TimeUnit.MILLISECONDS,
       ConfVars.HIVE_SERVER2_THRIFT_HTTP_MAX_IDLE_TIME -> TimeUnit.MILLISECONDS,
       ConfVars.HIVE_SERVER2_THRIFT_HTTP_WORKER_KEEPALIVE_TIME -> TimeUnit.SECONDS,
-      ConfVars.HIVE_SERVER2_THRIFT_HTTP_COOKIE_MAX_AGE -> TimeUnit.SECONDS,
+      //      ConfVars.HIVE_SERVER2_THRIFT_HTTP_COOKIE_MAX_AGE -> TimeUnit.SECONDS,
       ConfVars.HIVE_SERVER2_THRIFT_LOGIN_BEBACKOFF_SLOT_LENGTH -> TimeUnit.MILLISECONDS,
       ConfVars.HIVE_SERVER2_THRIFT_LOGIN_TIMEOUT -> TimeUnit.SECONDS,
       ConfVars.HIVE_SERVER2_THRIFT_WORKER_KEEPALIVE_TIME -> TimeUnit.SECONDS,
@@ -290,20 +290,31 @@ private[spark] object HiveUtils extends Logging {
       ConfVars.HIVE_SERVER2_SESSION_CHECK_INTERVAL -> TimeUnit.MILLISECONDS,
       ConfVars.HIVE_SERVER2_IDLE_SESSION_TIMEOUT -> TimeUnit.MILLISECONDS,
       ConfVars.HIVE_SERVER2_IDLE_OPERATION_TIMEOUT -> TimeUnit.MILLISECONDS,
-      ConfVars.SERVER_READ_SOCKET_TIMEOUT -> TimeUnit.SECONDS,
-      ConfVars.HIVE_LOCALIZE_RESOURCE_WAIT_INTERVAL -> TimeUnit.MILLISECONDS,
-      ConfVars.SPARK_CLIENT_FUTURE_TIMEOUT -> TimeUnit.SECONDS,
-      ConfVars.SPARK_JOB_MONITOR_TIMEOUT -> TimeUnit.SECONDS,
-      ConfVars.SPARK_RPC_CLIENT_CONNECT_TIMEOUT -> TimeUnit.MILLISECONDS,
-      ConfVars.SPARK_RPC_CLIENT_HANDSHAKE_TIMEOUT -> TimeUnit.MILLISECONDS
+      ConfVars.SERVER_READ_SOCKET_TIMEOUT -> TimeUnit.SECONDS
+      //      ConfVars.HIVE_LOCALIZE_RESOURCE_WAIT_INTERVAL -> TimeUnit.MILLISECONDS,
+      //      ConfVars.SPARK_CLIENT_FUTURE_TIMEOUT -> TimeUnit.SECONDS,
+      //      ConfVars.SPARK_JOB_MONITOR_TIMEOUT -> TimeUnit.SECONDS,
+      //      ConfVars.SPARK_RPC_CLIENT_CONNECT_TIMEOUT -> TimeUnit.MILLISECONDS,
+      //      ConfVars.SPARK_RPC_CLIENT_HANDSHAKE_TIMEOUT -> TimeUnit.MILLISECONDS
     ).map { case (confVar, unit) =>
       confVar.varname -> HiveConf.getTimeVar(hadoopConf, confVar, unit).toString
     }
 
+
     // The following configurations were removed by HIVE-12164(Hive 2.0)
     val hardcodingTimeVars = Seq(
       ("hive.stats.jdbc.timeout", "30s") -> TimeUnit.SECONDS,
-      ("hive.stats.retries.wait", "3000ms") -> TimeUnit.MILLISECONDS
+      ("hive.stats.retries.wait", "3000ms") -> TimeUnit.MILLISECONDS,
+      ("hive.metastore.client.socket.lifetime", "0s") -> TimeUnit.SECONDS,
+      ("hive.metastore.aggregate.stats.cache.ttl", "600s") -> TimeUnit.SECONDS,
+      ("hive.metastore.aggregate.stats.cache.max.writer.wait", "5000ms") -> TimeUnit.MILLISECONDS,
+      ("hive.metastore.aggregate.stats.cache.max.reader.wait", "1000ms") -> TimeUnit.MILLISECONDS,
+      ("hive.server2.thrift.http.cookie.max.age", "86400s") -> TimeUnit.SECONDS,
+      ("hive.localize.resource.wait.interval", "5000ms") -> TimeUnit.MILLISECONDS,
+      ("hive.spark.client.future.timeout", "60s") -> TimeUnit.SECONDS,
+      ("hive.spark.job.monitor.timeout", "60s") -> TimeUnit.SECONDS,
+      ("hive.spark.client.connect.timeout", "1000ms") -> TimeUnit.MILLISECONDS,
+      ("hive.spark.client.server.connect.timeout", "90000ms") -> TimeUnit.MILLISECONDS
     ).map { case ((key, defaultValue), unit) =>
       val value = hadoopConf.get(key, defaultValue)
       key -> HiveConf.toTime(value, unit, unit).toString

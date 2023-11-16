@@ -19,25 +19,26 @@ package org.apache.spark.sql.hive
 
 import java.util.Properties
 
-import scala.collection.JavaConverters._
-
+import io.kyligence.compact.inceptor.PartitionHelper
+import io.transwarp.hive.shaded.serde2.objectinspector.ObjectInspectorConverters
+import io.transwarp.hive.shaded.serde2.objectinspector.primitive.DateObjectInspector
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{Path, PathFilter}
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants._
-import org.apache.hadoop.hive.ql.exec.Utilities
+import org.apache.hadoop.hive.ql.exec.{Utilities, UtilitiesCompact}
 import org.apache.hadoop.hive.ql.metadata.{Partition => HivePartition, Table => HiveTable}
 import org.apache.hadoop.hive.ql.plan.{PartitionDesc, TableDesc}
 import org.apache.hadoop.hive.serde2.Deserializer
-import org.apache.hadoop.hive.serde2.avro.AvroSerdeUtils.AvroTableProperties
-import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspectorConverters, StructObjectInspector}
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector
 import org.apache.hadoop.hive.serde2.objectinspector.primitive._
 import org.apache.hadoop.io.Writable
 import org.apache.hadoop.mapred.{FileInputFormat, FileSplit, InputFormat => oldInputClass, JobConf, TextInputFormat}
 import org.apache.hadoop.mapreduce.{InputFormat => newInputClass}
+import scala.collection.JavaConverters._
 
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
-import org.apache.spark.rdd.{EmptyRDD, HadoopPartition, HadoopRDD, NewHadoopRDD, RDD, UnionRDD}
+import org.apache.spark.rdd._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.{InternalRow, SQLConfHelper}
 import org.apache.spark.sql.catalyst.analysis.CastSupport
@@ -216,7 +217,7 @@ class HadoopTableReader(
 
     val hivePartitionRDDs = verifyPartitionPath(partitionToDeserializer)
       .map { case (partition, partDeserializer) =>
-      val partDesc = Utilities.getPartitionDescFromTableDesc(tableDesc, partition, true)
+      val partDesc = Utilities.getPartitionDesc(partition)
       var partPath = partition.getDataLocation
       val inputPathStr = applyFilterIfNeeded(partPath, filterOpt)
       val skipHeaderLineCount =
@@ -224,7 +225,7 @@ class HadoopTableReader(
       val isTextInputFormatTable =
         classOf[TextInputFormat].isAssignableFrom(partDesc.getInputFileFormatClass)
       // Get partition field info
-      val partSpec = partDesc.getPartSpec
+      val partSpec = PartitionHelper.getPartSpec(partDesc)
       val partProps = partDesc.getProperties
 
       val partColsDelimited: String = partProps.getProperty(META_TABLE_PARTITION_COLUMNS)
@@ -259,8 +260,7 @@ class HadoopTableReader(
       fillPartitionKeys(partValues, mutableRow)
 
       val tableProperties = tableDesc.getProperties
-      val avroSchemaProperties = Seq(AvroTableProperties.SCHEMA_LITERAL,
-        AvroTableProperties.SCHEMA_URL).map(_.getPropName())
+      val avroSchemaProperties = Seq("avro.schema.literal", "avro.schema.url")
 
       // Create local references so that the outer object isn't serialized.
       val localTableDesc = tableDesc
@@ -476,7 +476,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     FileInputFormat.setInputPaths(jobConf, Seq[Path](new Path(path)): _*)
     if (tableDesc != null) {
       HiveTableUtil.configureJobPropertiesForStorageHandler(tableDesc, jobConf, true)
-      Utilities.copyTableJobPropertiesToConf(tableDesc, jobConf)
+      UtilitiesCompact.copyTableJobPropertiesToConf(tableDesc, jobConf)
     }
     val bufferSize = System.getProperty("spark.buffer.size", "65536")
     jobConf.set("io.file.buffer.size", bufferSize)
@@ -548,7 +548,8 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
             row.setLong(ordinal, DateTimeUtils.fromJavaTimestamp(oi.getPrimitiveJavaObject(value)))
         case oi: DateObjectInspector =>
           (value: Any, row: InternalRow, ordinal: Int) =>
-            row.setInt(ordinal, DateTimeUtils.fromJavaDate(oi.getPrimitiveJavaObject(value)))
+            row.setInt(ordinal, DateTimeUtils.fromJavaDate(oi.getPrimitiveJavaObject(value)
+              .asInstanceOf[java.sql.Date]))
         case oi: BinaryObjectInspector =>
           (value: Any, row: InternalRow, ordinal: Int) =>
             row.update(ordinal, oi.getPrimitiveJavaObject(value))
