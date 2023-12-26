@@ -2256,4 +2256,11 @@ package object config {
       .version("3.2.0")
       .stringConf
       .createOptional
+
+  private[spark] val ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE =
+    ConfigBuilder("spark.submit.proxyUser.allowCustomClasspathInClusterMode")
+      .internal()
+      .version("3.4.0")
+      .booleanConf
+      .createWithDefault(false)
 }
