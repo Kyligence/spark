@@ -91,7 +91,7 @@ private[spark] class ContextCleaner(
    */
   private val periodicGCInterval = sc.conf.get(CLEANER_PERIODIC_GC_INTERVAL)
 
-  private val periodicGCEnable = sc.conf.get(CLEANER_PERIODIC_GC_ENABLE)
+  private val periodicGCEnabled = sc.conf.get(CLEANER_PERIODIC_GC_ENABLED)
 
   /**
    * Whether the cleaning thread will block on cleanup tasks (other than shuffle, which
@@ -139,7 +139,7 @@ private[spark] class ContextCleaner(
     cleaningThread.setDaemon(true)
     cleaningThread.setName("Spark Context Cleaner")
     cleaningThread.start()
-    if (periodicGCEnable) {
+    if (periodicGCEnabled) {
       periodicGCService.scheduleAtFixedRate(() => System.gc(),
         periodicGCInterval, periodicGCInterval, TimeUnit.SECONDS)
     }
