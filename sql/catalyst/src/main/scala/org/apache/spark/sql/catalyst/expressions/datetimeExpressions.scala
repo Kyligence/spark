@@ -3091,22 +3091,24 @@ case class ConvertTimezone(
   since = "3.3.0")
 // scalastyle:on line.size.limit
 case class TimestampAdd(
-    unit: String,
-    quantity: Expression,
-    timestamp: Expression,
-    timeZoneId: Option[String] = None)
-  extends BinaryExpression
-  with ImplicitCastInputTypes
-  with NullIntolerant
-  with TimeZoneAwareExpression {
+   unit: Expression,
+   quantity: Expression,
+   timestamp: Expression,
+   timeZoneId: Option[String] = None)
+  extends TernaryExpression
+    with ImplicitCastInputTypes
+    with TimeZoneAwareExpression {
 
-  def this(unit: String, quantity: Expression, timestamp: Expression) =
+  def this(unit: Expression, quantity: Expression, timestamp: Expression) =
     this(unit, quantity, timestamp, None)
 
-  override def left: Expression = quantity
-  override def right: Expression = timestamp
+  override def nullable: Boolean = unit.nullable || quantity.nullable || timestamp.nullable
 
-  override def inputTypes: Seq[AbstractDataType] = Seq(IntegerType, AnyTimestampType)
+  override def first: Expression = unit
+  override def second: Expression = quantity
+  override def third: Expression = timestamp
+
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, IntegerType, AnyTimestampType)
   override def dataType: DataType = timestamp.dataType
 
   override def withTimeZone(timeZoneId: String): TimeZoneAwareExpression =
@@ -3114,28 +3116,28 @@ case class TimestampAdd(
 
   @transient private lazy val zoneIdInEval: ZoneId = zoneIdForType(timestamp.dataType)
 
-  override def nullSafeEval(q: Any, micros: Any): Any = {
-    DateTimeUtils.timestampAdd(unit, q.asInstanceOf[Int], micros.asInstanceOf[Long], zoneIdInEval)
+  override def nullSafeEval(u: Any, q: Any, micros: Any): Any = {
+    DateTimeUtils.timestampAdd(
+      String.valueOf(u),
+      q.asInstanceOf[Int],
+      micros.asInstanceOf[Long],
+      zoneIdInEval)
   }
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
     val zid = ctx.addReferenceObj("zoneId", zoneIdInEval, classOf[ZoneId].getName)
-    defineCodeGen(ctx, ev, (q, micros) =>
-      s"""$dtu.timestampAdd("$unit", $q, $micros, $zid)""")
+    defineCodeGen(ctx, ev, (u, q, micros) =>
+      s"""$dtu.timestampAdd(String.valueOf($u), $q, $micros, $zid)""".stripMargin)
   }
 
   override def prettyName: String = "timestampadd"
 
-  override def sql: String = {
-    val childrenSQL = (unit +: children.map(_.sql)).mkString(", ")
-    s"$prettyName($childrenSQL)"
-  }
-
   override protected def withNewChildrenInternal(
-      newLeft: Expression,
-      newRight: Expression): TimestampAdd = {
-    copy(quantity = newLeft, timestamp = newRight)
+      newFirst: Expression,
+      newSecond: Expression,
+      newThird: Expression): TimestampAdd = {
+    copy(unit = newFirst, quantity = newSecond, timestamp = newThird)
   }
 }
 

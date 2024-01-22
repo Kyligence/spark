@@ -652,6 +652,7 @@ object FunctionRegistry {
     expression[UnixSeconds]("unix_seconds"),
     expression[UnixMillis]("unix_millis"),
     expression[UnixMicros]("unix_micros"),
+    expression[TimestampAdd]("timestampadd"),
 
     // collection functions
     expression[CreateArray]("array"),

@@ -1244,7 +1244,7 @@ object DateTimeUtils {
           timestampAddMonths(micros, quantity, zoneId)
         case "QUARTER" =>
           timestampAddMonths(micros, quantity * 3, zoneId)
-        case "YEAR" =>
+        case "YEAR" | "SQL_TSI_YEAR" =>
           timestampAddMonths(micros, quantity * MONTHS_PER_YEAR, zoneId)
       }
     } catch {

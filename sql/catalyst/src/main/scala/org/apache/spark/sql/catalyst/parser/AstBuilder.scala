@@ -4526,7 +4526,11 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
    * Create a TimestampAdd expression.
    */
   override def visitTimestampadd(ctx: TimestampaddContext): Expression = withOrigin(ctx) {
-    TimestampAdd(ctx.unit.getText, expression(ctx.unitsAmount), expression(ctx.timestamp))
+    val arguments = Seq(
+      expression(ctx.unit),
+      expression(ctx.unitsAmount),
+      expression(ctx.timestamp))
+    UnresolvedFunction("timestampadd", arguments, isDistinct = false)
   }
 
   /**

@@ -366,6 +366,7 @@ WINDOW: 'WINDOW';
 WITH: 'WITH';
 WITHIN: 'WITHIN';
 YEAR: 'YEAR';
+SQL_TSI_YEAR: 'SQL_TSI_YEAR';
 ZONE: 'ZONE';
 //--SPARK-KEYWORD-LIST-END
 //============================
