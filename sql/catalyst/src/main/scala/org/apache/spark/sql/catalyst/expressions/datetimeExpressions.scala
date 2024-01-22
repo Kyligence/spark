@@ -3118,7 +3118,7 @@ case class TimestampAdd(
 
   override def nullSafeEval(u: Any, q: Any, micros: Any): Any = {
     DateTimeUtils.timestampAdd(
-      String.valueOf(u),
+      u.asInstanceOf[UTF8String].toString,
       q.asInstanceOf[Int],
       micros.asInstanceOf[Long],
       zoneIdInEval)
@@ -3128,7 +3128,53 @@ case class TimestampAdd(
     val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
     val zid = ctx.addReferenceObj("zoneId", zoneIdInEval, classOf[ZoneId].getName)
     defineCodeGen(ctx, ev, (u, q, micros) =>
-      s"""$dtu.timestampAdd(String.valueOf($u), $q, $micros, $zid)""".stripMargin)
+      s"""$dtu.timestampAdd($u.toString(), $q, $micros, $zid)""".stripMargin)
+  }
+
+  override def nullSafeCodeGen(
+       ctx: CodegenContext,
+       ev: ExprCode,
+       f: (String, String, String) => String): ExprCode = {
+    val leftGen = children(0).genCode(ctx)
+    val midGen = children(1).genCode(ctx)
+    val rightGen = children(2).genCode(ctx)
+    val resultCode = f(leftGen.value, midGen.value, rightGen.value)
+
+    if (nullable) {
+      // when unit is null, leftGen value is "null" string
+      // like `SELECT _FUNC_(null, 8, timestamp_ntz'2022-02-11 20:30:00')`
+      val leftGenIsNull = if (children(0).asInstanceOf[Literal].value
+        .toString.equalsIgnoreCase("null")) {
+        TrueLiteral
+      } else leftGen.isNull
+      val leftGenNullable = if (children(0).asInstanceOf[Literal].value
+        .toString.equalsIgnoreCase("null")) {
+        true
+      } else children(0).nullable
+      val nullSafeEval =
+        leftGen.code + ctx.nullSafeExec(leftGenNullable, leftGenIsNull) {
+          midGen.code + ctx.nullSafeExec(children(1).nullable, midGen.isNull) {
+            rightGen.code + ctx.nullSafeExec(children(2).nullable, rightGen.isNull) {
+              s"""
+                ${ev.isNull} = false; // resultCode could change nullability.
+                $resultCode
+              """
+            }
+          }
+        }
+
+      ev.copy(code = code"""
+        boolean ${ev.isNull} = true;
+        ${CodeGenerator.javaType(dataType)} ${ev.value} = ${CodeGenerator.defaultValue(dataType)};
+        $nullSafeEval""")
+    } else {
+      ev.copy(code = code"""
+        ${leftGen.code}
+        ${midGen.code}
+        ${rightGen.code}
+        ${CodeGenerator.javaType(dataType)} ${ev.value} = ${CodeGenerator.defaultValue(dataType)};
+        $resultCode""", isNull = FalseLiteral)
+    }
   }
 
   override def prettyName: String = "timestampadd"

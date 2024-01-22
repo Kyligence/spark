@@ -1909,25 +1909,25 @@ class DateExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
   test("SPARK-38195: add a quantity of interval units to a timestamp") {
     // Check case-insensitivity
     checkEvaluation(
-      TimestampAdd("Hour", Literal(1), Literal(LocalDateTime.of(2022, 2, 15, 12, 57, 0))),
+      TimestampAdd(Literal("Hour"), Literal(1), Literal(LocalDateTime.of(2022, 2, 15, 12, 57, 0))),
       LocalDateTime.of(2022, 2, 15, 13, 57, 0))
     // Check nulls as input values
     checkEvaluation(
       TimestampAdd(
-        "MINUTE",
+        Literal("MINUTE"),
         Literal.create(null, IntegerType),
         Literal(LocalDateTime.of(2022, 2, 15, 12, 57, 0))),
       null)
     checkEvaluation(
       TimestampAdd(
-        "MINUTE",
+        Literal("MINUTE"),
         Literal(1),
         Literal.create(null, TimestampType)),
       null)
     // Check crossing the daylight saving time
     checkEvaluation(
       TimestampAdd(
-        "HOUR",
+        Literal("HOUR"),
         Literal(6),
         Literal(Instant.parse("2022-03-12T23:30:00Z")),
         Some("America/Los_Angeles")),
@@ -1935,7 +1935,7 @@ class DateExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
     // Check the leap year
     checkEvaluation(
       TimestampAdd(
-        "DAY",
+        Literal("DAY"),
         Literal(2),
         Literal(LocalDateTime.of(2020, 2, 28, 10, 11, 12)),
         Some("America/Los_Angeles")),
@@ -1952,7 +1952,7 @@ class DateExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
           checkConsistencyBetweenInterpretedAndCodegenAllowingException(
             (quantity: Expression, timestamp: Expression) =>
               TimestampAdd(
-                unit,
+                Literal(unit),
                 quantity,
                 timestamp,
                 Some(tz)),

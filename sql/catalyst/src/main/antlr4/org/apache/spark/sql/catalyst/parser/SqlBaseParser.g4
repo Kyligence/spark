@@ -829,7 +829,7 @@ datetimeUnit
 
 primaryExpression
     : name=(CURRENT_DATE | CURRENT_TIMESTAMP | CURRENT_USER)                                   #currentLike
-    | name=(TIMESTAMPADD | DATEADD) LEFT_PAREN unit=valueExpression COMMA unitsAmount=valueExpression COMMA timestamp=valueExpression RIGHT_PAREN             #timestampadd
+    | name=(TIMESTAMPADD | DATEADD) LEFT_PAREN unit=identifier COMMA unitsAmount=valueExpression COMMA timestamp=valueExpression RIGHT_PAREN             #timestampadd
     | name=(TIMESTAMPDIFF | DATEDIFF) LEFT_PAREN unit=datetimeUnit COMMA startTimestamp=valueExpression COMMA endTimestamp=valueExpression RIGHT_PAREN    #timestampdiff
     | CASE whenClause+ (ELSE elseExpression=expression)? END                                   #searchedCase
     | CASE value=expression whenClause+ (ELSE elseExpression=expression)? END                  #simpleCase
