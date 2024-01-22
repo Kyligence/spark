@@ -1131,6 +1131,7 @@ ansiNonReserved
     | FOLLOWING
     | FORMAT
     | FORMATTED
+    | FRAC_SECOND
     | FUNCTION
     | FUNCTIONS
     | GLOBAL
@@ -1230,6 +1231,15 @@ ansiNonReserved
     | SKEWED
     | SORT
     | SORTED
+    | SQL_TSI_DAY
+    | SQL_TSI_FRAC_SECOND
+    | SQL_TSI_HOUR
+    | SQL_TSI_MINUTE
+    | SQL_TSI_MONTH
+    | SQL_TSI_QUARTER
+    | SQL_TSI_SECOND
+    | SQL_TSI_WEEK
+    | SQL_TSI_YEAR
     | START
     | STATISTICS
     | STORED
@@ -1271,7 +1281,6 @@ ansiNonReserved
     | WEEK
     | WINDOW
     | YEAR
-    | SQL_TSI_YEAR
     | ZONE
 //--ANSI-NON-RESERVED-END
     ;
@@ -1397,6 +1406,7 @@ nonReserved
     | FOREIGN
     | FORMAT
     | FORMATTED
+    | FRAC_SECOND
     | FROM
     | FUNCTION
     | FUNCTIONS
@@ -1515,6 +1525,15 @@ nonReserved
     | SKEWED
     | SOME
     | SORT
+    | SQL_TSI_DAY
+    | SQL_TSI_FRAC_SECOND
+    | SQL_TSI_HOUR
+    | SQL_TSI_MINUTE
+    | SQL_TSI_MONTH
+    | SQL_TSI_QUARTER
+    | SQL_TSI_SECOND
+    | SQL_TSI_WEEK
+    | SQL_TSI_YEAR
     | SORTED
     | START
     | STATISTICS
@@ -1569,7 +1588,6 @@ nonReserved
     | WITH
     | WITHIN
     | YEAR
-    | SQL_TSI_YEAR
     | ZONE
 //--DEFAULT-NON-RESERVED-END
     ;

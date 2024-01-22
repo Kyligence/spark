@@ -1228,25 +1228,25 @@ object DateTimeUtils {
       unit.toUpperCase(Locale.ROOT) match {
         case "MICROSECOND" =>
           timestampAddInterval(micros, 0, 0, quantity, zoneId)
-        case "MILLISECOND" =>
+        case "MILLISECOND" | "FRAC_SECOND" | "SQL_TSI_FRAC_SECOND" =>
           timestampAddInterval(micros, 0, 0,
             Math.multiplyExact(quantity.toLong, MICROS_PER_MILLIS), zoneId)
-        case "SECOND" =>
+        case "SECOND" | "SQL_TSI_SECOND" =>
           timestampAddInterval(micros, 0, 0,
             Math.multiplyExact(quantity.toLong, MICROS_PER_SECOND), zoneId)
-        case "MINUTE" =>
+        case "MINUTE" | "SQL_TSI_MINUTE" =>
           timestampAddInterval(micros, 0, 0,
             Math.multiplyExact(quantity.toLong, MICROS_PER_MINUTE), zoneId)
-        case "HOUR" =>
+        case "HOUR" | "SQL_TSI_HOUR" =>
           timestampAddInterval(micros, 0, 0,
             Math.multiplyExact(quantity.toLong, MICROS_PER_HOUR), zoneId)
-        case "DAY" | "DAYOFYEAR" =>
+        case "DAY" | "DAYOFYEAR" | "SQL_TSI_DAY" =>
           timestampAddInterval(micros, 0, quantity, 0, zoneId)
-        case "WEEK" =>
+        case "WEEK" | "SQL_TSI_WEEK" =>
           timestampAddInterval(micros, 0, Math.multiplyExact(quantity, DAYS_PER_WEEK), 0, zoneId)
-        case "MONTH" =>
+        case "MONTH" | "SQL_TSI_MONTH" =>
           timestampAddMonths(micros, quantity, zoneId)
-        case "QUARTER" =>
+        case "QUARTER" | "SQL_TSI_QUARTER" =>
           timestampAddMonths(micros, Math.multiplyExact(quantity, 3), zoneId)
         case "YEAR" | "SQL_TSI_YEAR" =>
           timestampAddMonths(micros, Math.multiplyExact(quantity, MONTHS_PER_YEAR), zoneId)
