@@ -3097,6 +3097,7 @@ case class TimestampAdd(
    timeZoneId: Option[String] = None)
   extends TernaryExpression
     with ImplicitCastInputTypes
+    with NullIntolerant
     with TimeZoneAwareExpression {
 
   def this(unit: Expression, quantity: Expression, timestamp: Expression) =
