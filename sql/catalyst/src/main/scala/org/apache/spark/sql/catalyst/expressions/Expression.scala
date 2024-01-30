@@ -256,7 +256,7 @@ abstract class Expression extends TreeNode[Expression] {
    * Returns true when two expressions will always compute the same result, even if they differ
    * cosmetically (i.e. capitalization of names in attributes may be different).
    *
-   * See [[Canonicalize]] for more details.
+   * See [[Expression#canonicalized]] for more details.
    */
   final def semanticEquals(other: Expression): Boolean =
     deterministic && other.deterministic && canonicalized == other.canonicalized
@@ -265,7 +265,7 @@ abstract class Expression extends TreeNode[Expression] {
    * Returns a `hashCode` for the calculation performed by this expression. Unlike the standard
    * `hashCode`, an attempt has been made to eliminate cosmetic differences.
    *
-   * See [[Canonicalize]] for more details.
+   * See [[Expression#canonicalized]] for more details.
    */
   def semanticHash(): Int = canonicalized.hashCode()
 
@@ -1197,7 +1197,7 @@ trait CommutativeExpression extends Expression {
  *      Add, Multiply, And, Or, BitwiseAnd, BitwiseOr, BitwiseXor.
  * @param operands A sequence of operands that produces a commutative expression tree.
  * @param opCls The class of the root operator of the expression tree.
- * @param evalMode The optional expression evaluation mode.
+ * @param failOnError The optional expression evaluation mode.
  * @param originalRoot Root operator of the commutative expression tree before canonicalization.
  *                     This object reference is used to deduce the return dataType of Add and
  *                     Multiply operations when the input datatype is decimal.
