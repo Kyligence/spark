@@ -207,6 +207,7 @@
     <tomcat-embed-core.version>9.0.82</tomcat-embed-core.version>
     <netty.version>4.1.89.Final</netty.version>
     <netty-handler.version>4.1.94.Final</netty-handler.version>
+    <stax2-api.version>4.2.1</stax2-api.version>
     <!--
     If you are changing Arrow version specification, please check
     ./python/pyspark/sql/pandas/utils.py, and ./python/setup.py too.
@@ -1262,7 +1263,12 @@
         <artifactId>gson</artifactId>
         <version>${gson.version}</version>
       </dependency>
-
+      <dependency>
+        <groupId>org.codehaus.woodstox</groupId>
+        <artifactId>stax2-api</artifactId>
+        <version>${stax2-api.version}</version>
+        <scope>${hadoop.deps.scope}</scope>
+      </dependency>
 
       <dependency>
         <groupId>org.apache.hadoop</groupId>
@@ -1335,7 +1341,6 @@
             <groupId>net.java.dev.jets3t</groupId>
             <artifactId>jets3t</artifactId>
           </exclusion>
-          <!-- Hadoop-3.x -->
           <exclusion>
             <groupId>javax.ws.rs</groupId>
             <artifactId>jsr311-api</artifactId>
