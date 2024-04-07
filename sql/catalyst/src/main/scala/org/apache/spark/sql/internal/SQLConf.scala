@@ -663,6 +663,13 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val OPTIMIZE_ONE_ROW_JOIN_ENABLED =
+    buildConf("spark.sql.optimizeOneRowJoin.enabled")
+      .doc("When true, optimizeOneRowJoin.")
+      .version("3.2.0")
+      .booleanConf
+      .createWithDefault(true)
+
   val SPLIT_SOURCE_PARTITION_THRESHOLD =
     buildConf("spark.sql.splitSourcePartition.thresholdInBytes")
       .doc("A partition is considered to be split.")
@@ -4861,6 +4868,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
   def maxCollectSize: Option[Long] = getConf(SQLConf.MAX_COLLECT_SIZE)
 
   def splitSourcePartitionEnabled: Boolean = getConf(SPLIT_SOURCE_PARTITION_ENABLED)
+
+  def optimizeOneRowJoinEnabled: Boolean = getConf(OPTIMIZE_ONE_ROW_JOIN_ENABLED)
 
   def splitSourcePartitionThreshold: Long = getConf(SPLIT_SOURCE_PARTITION_THRESHOLD)
 
