@@ -214,7 +214,7 @@ private[hive] class HiveClientImpl(
 
   private def getHive(conf: HiveConf): Hive = {
     VersionUtils.majorMinorPatchVersion(version.fullVersion).map {
-      case (2, 3, v) if v >= 9 => Hive.getWithoutRegisterFns(conf)
+      case (2, 3, v) if v >= 9 => Hive.get(false)
       case _ => Hive.get(conf)
     }.getOrElse {
       throw QueryExecutionErrors.unsupportedHiveMetastoreVersionError(
@@ -829,7 +829,7 @@ private[hive] class HiveClientImpl(
       // and the CommandProcessorFactory.clean function removed.
       driver.getClass.getMethod("close").invoke(driver)
       if (version != hive.v3_0 && version != hive.v3_1) {
-        CommandProcessorFactory.clean(conf)
+//        CommandProcessorFactory.clean(conf)
       }
     }
 
@@ -991,12 +991,7 @@ private[hive] class HiveClientImpl(
       val t = table.getTableName
       logDebug(s"Deleting table $t")
       try {
-        client.getIndexes("default", t, 255).asScala.foreach { index =>
-          shim.dropIndex(client, "default", t, index.getIndexName)
-        }
-        if (!table.isIndexTable) {
-          client.dropTable("default", t)
-        }
+        client.dropTable("default", t)
       } catch {
         case _: NoSuchMethodError =>
           // HIVE-18448 Hive 3.0 remove index APIs

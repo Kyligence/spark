@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.hive
 
+import java.sql.Date
+import java.time.LocalDate
 import java.util.Properties
 
 import scala.collection.JavaConverters._
@@ -546,10 +548,14 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
             row.update(ordinal, HiveShim.toCatalystDecimal(oi, value))
         case oi: TimestampObjectInspector =>
           (value: Any, row: InternalRow, ordinal: Int) =>
-            row.setLong(ordinal, DateTimeUtils.fromJavaTimestamp(oi.getPrimitiveJavaObject(value)))
+            row.setLong(ordinal,
+              DateTimeUtils.fromJavaTimestamp(oi.getPrimitiveJavaObject(value).toSqlTimestamp))
         case oi: DateObjectInspector =>
           (value: Any, row: InternalRow, ordinal: Int) =>
-            row.setInt(ordinal, DateTimeUtils.fromJavaDate(oi.getPrimitiveJavaObject(value)))
+            val epochDay = oi.getPrimitiveJavaObject().toEpochDay
+            val localDate = LocalDate.ofEpochDay(epochDay)
+            val constant = DateTimeUtils.fromJavaDate(Date.valueOf(localDate))
+            row.setInt(ordinal, constant)
         case oi: BinaryObjectInspector =>
           (value: Any, row: InternalRow, ordinal: Int) =>
             row.update(ordinal, oi.getPrimitiveJavaObject(value))

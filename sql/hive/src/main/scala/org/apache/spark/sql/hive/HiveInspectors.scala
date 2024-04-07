@@ -18,7 +18,8 @@
 package org.apache.spark.sql.hive
 
 import java.lang.reflect.{ParameterizedType, Type, WildcardType}
-import java.time.Duration
+import java.sql.Date
+import java.time.{Duration, LocalDate}
 
 import scala.collection.JavaConverters._
 
@@ -37,6 +38,7 @@ import org.apache.spark.sql.execution.datasources.DaysWritable
 import org.apache.spark.sql.types
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
+
 
 /**
  * 1. The Underlying data type in catalyst and in Hive
@@ -478,7 +480,7 @@ private[hive] trait HiveInspectors {
         _ => constant
       case poi: WritableConstantTimestampObjectInspector =>
         val t = poi.getWritableConstantValue
-        val constant = DateTimeUtils.fromJavaTimestamp(t.getTimestamp)
+        val constant = DateTimeUtils.fromJavaTimestamp(t.getTimestamp.toSqlTimestamp)
         _ => constant
       case poi: WritableConstantIntObjectInspector =>
         val constant = poi.getWritableConstantValue.get()
@@ -507,7 +509,9 @@ private[hive] trait HiveInspectors {
         System.arraycopy(writable.getBytes, 0, constant, 0, constant.length)
         _ => constant
       case poi: WritableConstantDateObjectInspector =>
-        val constant = DateTimeUtils.fromJavaDate(poi.getWritableConstantValue.get())
+        val epochDay = poi.getWritableConstantValue.get().toEpochDay
+        val localDate = LocalDate.ofEpochDay(epochDay)
+        val constant = DateTimeUtils.fromJavaDate(Date.valueOf(localDate))
         _ => constant
       case mi: StandardConstantMapObjectInspector =>
         val keyUnwrapper = unwrapperFor(mi.getMapKeyObjectInspector)
@@ -637,7 +641,7 @@ private[hive] trait HiveInspectors {
         case x: DateObjectInspector if x.preferWritable() =>
           data: Any => {
             if (data != null) {
-              new DaysWritable(x.getPrimitiveWritableObject(data)).gregorianDays
+              new DaysWritable(x.getPrimitiveWritableObject(data).get().toEpochDay).gregorianDays
             } else {
               null
             }
@@ -645,7 +649,9 @@ private[hive] trait HiveInspectors {
         case x: DateObjectInspector =>
           data: Any => {
             if (data != null) {
-              DateTimeUtils.fromJavaDate(x.getPrimitiveJavaObject(data))
+              val epochDay = x.getPrimitiveJavaObject(data).toEpochDay
+              val localDate = LocalDate.ofEpochDay(epochDay)
+              DateTimeUtils.fromJavaDate(Date.valueOf(localDate))
             } else {
               null
             }
@@ -653,7 +659,8 @@ private[hive] trait HiveInspectors {
         case x: TimestampObjectInspector if x.preferWritable() =>
           data: Any => {
             if (data != null) {
-              DateTimeUtils.fromJavaTimestamp(x.getPrimitiveWritableObject(data).getTimestamp)
+              DateTimeUtils.fromJavaTimestamp(
+                x.getPrimitiveWritableObject(data).getTimestamp.toSqlTimestamp)
             } else {
               null
             }
@@ -661,7 +668,7 @@ private[hive] trait HiveInspectors {
         case ti: TimestampObjectInspector =>
           data: Any => {
             if (data != null) {
-              DateTimeUtils.fromJavaTimestamp(ti.getPrimitiveJavaObject(data))
+              DateTimeUtils.fromJavaTimestamp(ti.getPrimitiveJavaObject(data).toSqlTimestamp)
             } else {
               null
             }
