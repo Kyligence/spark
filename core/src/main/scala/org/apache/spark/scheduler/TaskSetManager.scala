@@ -796,7 +796,7 @@ private[spark] class TaskSetManager(
   /**
    * Marks a task as successful and notifies the DAGScheduler that the task has ended.
    */
-  def handleSuccessfulTask(tid: Long, result: DirectTaskResult[_]): Unit = {
+  def handleSuccessfulTask(tid: Long, result: TaskResult[_]): Unit = {
     val info = taskInfos(tid)
     // SPARK-37300: when the task was already finished state, just ignore it,
     // so that there won't cause successful and tasksSuccessful wrong result.
@@ -869,8 +869,14 @@ private[spark] class TaskSetManager(
     // Note: "result.value()" only deserializes the value when it's called at the first time, so
     // here "result.value()" just returns the value and won't block other threads.
 
-    emptyTaskInfoAccumulablesAndNotifyDagScheduler(tid, tasks(index), Success, result.value(),
-      result.accumUpdates, result.metricPeaks)
+    result match {
+      case IndirectTaskResult(_, _, _, _, _) =>
+          return
+      case result: DirectTaskResult[_] =>
+        emptyTaskInfoAccumulablesAndNotifyDagScheduler(tid, tasks(index), Success, result.value(),
+          result.accumUpdates,
+          result.metricPeaks)
+    }
     maybeFinishTaskSet()
   }
 
