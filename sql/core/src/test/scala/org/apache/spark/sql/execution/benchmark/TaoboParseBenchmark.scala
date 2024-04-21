@@ -17,14 +17,14 @@
 
 package org.apache.spark.sql.execution.benchmark
 
+import scala.io.Source
+
 import org.apache.spark.SparkConf
 import org.apache.spark.benchmark.Benchmark
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.util.Utils
-
-import scala.io.Source
 
 object TaoboParseBenchmark extends SqlBasedBenchmark with Logging {
 
@@ -47,12 +47,12 @@ object TaoboParseBenchmark extends SqlBasedBenchmark with Logging {
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.kryo.registrationRequired", "true")
 
-    SparkSession.builder.config(conf).getOrCreate()
+    SparkSession.builder().config(conf).getOrCreate()
   }
 
   override def runBenchmarkSuite(mainArgs: Array[String]): Unit = {
     val tableNames = Seq(
-      //"kylin_view_dws_dim_union_chat_follow_flow",
+      // "kylin_view_dws_dim_union_chat_follow_flow",
       "kylin_view_ads_fact_day_org_kpi_wide"
     )
 
