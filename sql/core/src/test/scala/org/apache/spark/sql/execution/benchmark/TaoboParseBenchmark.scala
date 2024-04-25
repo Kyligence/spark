@@ -23,7 +23,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.benchmark.Benchmark
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.util.Utils
 
 object TaoboParseBenchmark extends SqlBasedBenchmark with Logging {
@@ -85,13 +84,23 @@ object TaoboParseBenchmark extends SqlBasedBenchmark with Logging {
             source => source.mkString}))
       .foreach {
         case (name, sql) =>
-          benchmark.addCase(name, executedCnt) {
+          benchmark.addCase(s"[ Analyze]$name", executedCnt) {
+            _ =>
+              spark.sql(sql).queryExecution.assertAnalyzed()
+
+          }
+          benchmark.addCase(s"[Optimize]$name", executedCnt) {
+            _ =>
+               val x = spark.sql(sql).queryExecution.optimizedPlan
+              require(x.analyzed)
+          }
+          benchmark.addCase(s"[Physical]$name", executedCnt) {
             _ =>
               val y = spark.sql(sql).queryExecution.sparkPlan
-              require(y.isInstanceOf[SparkPlan])
+              require(y != null)
+
           }
       }
-
     Utils.tryWithSafeFinally {
       tableNames
         .map(schemaFileName)
