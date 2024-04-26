@@ -21,7 +21,6 @@ import java.io.NotSerializableException
 import java.nio.ByteBuffer
 import java.util.concurrent.{ConcurrentLinkedQueue, TimeUnit}
 
-import scala.collection.immutable.Map
 import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet}
 import scala.math.max
 import scala.util.control.NonFatal
@@ -33,7 +32,7 @@ import org.apache.spark.internal.{config, Logging}
 import org.apache.spark.internal.config._
 import org.apache.spark.resource.ResourceInformation
 import org.apache.spark.scheduler.SchedulingMode._
-import org.apache.spark.util.{AccumulatorV2, Clock, LongAccumulator, SystemClock, Utils}
+import org.apache.spark.util._
 import org.apache.spark.util.collection.MedianHeap
 
 /**
@@ -541,12 +540,11 @@ private[spark] class TaskSetManager(
     // a good proxy to task serialization time.
     // val timeTaken = clock.getTime() - startTime
     val tName = taskName(taskId)
-    logInfo(s"Starting $tName (TID $taskId , $host, executor ${info.executorId} , " +
-      s"partition ${task.partitionId}, $taskLocality , ${serializedTask.limit()} bytes) " +
+    logInfo(s"Starting $tName ($host, executor ${info.executorId}, " +
+      s"partition ${task.partitionId}, $taskLocality, ${serializedTask.limit()} bytes) " +
       s"taskResourceAssignments ${taskResourceAssignments}")
 
     sched.dagScheduler.taskStarted(task, info)
-    task.localProperties.setProperty("SAMetrics.taskLocality", s"${taskLocality}")
     new TaskDescription(
       taskId,
       attemptNum,
@@ -838,10 +836,8 @@ private[spark] class TaskSetManager(
     }
     if (!successful(index)) {
       tasksSuccessful += 1
-      logInfo(s"SAMetrics=Finished ${taskName(info.taskId)} ( TID ${info.taskId} ) " +
-        s"in ${info.duration} ms " +
-        s"on ${info.host} (executor ${info.executorId} ) with locality ${info.taskLocality} ) " +
-        s"($tasksSuccessful/$numTasks)")
+      logInfo(s"Finished ${taskName(info.taskId)} in ${info.duration} ms " +
+        s"on ${info.host} (executor ${info.executorId}) ($tasksSuccessful/$numTasks)")
       // Mark successful and stop if all the tasks have succeeded.
       successful(index) = true
       numFailures(index) = 0
@@ -1193,7 +1189,7 @@ private[spark] class TaskSetManager(
    *
    */
   private def computeValidLocalityLevels(): Array[TaskLocality.TaskLocality] = {
-    import TaskLocality.{PROCESS_LOCAL, NODE_LOCAL, NO_PREF, RACK_LOCAL, ANY}
+    import TaskLocality._
     val levels = new ArrayBuffer[TaskLocality.TaskLocality]
     if (!pendingTasks.forExecutor.isEmpty &&
         pendingTasks.forExecutor.keySet.exists(sched.isExecutorAlive(_))) {
