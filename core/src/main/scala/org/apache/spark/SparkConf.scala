@@ -514,7 +514,7 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
           |
           |Please instead use: ${DRIVER_LIBRARY_PATH.key}
         """.stripMargin
-      logWarning(warning)
+      logInfo(warning)
     }
 
     // Validate spark.executor.extraJavaOptions
