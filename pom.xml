@@ -216,6 +216,7 @@
     <!-- org.fusesource.leveldbjni will be used except on arm64 platform. -->
     <leveldbjni.group>org.fusesource.leveldbjni</leveldbjni.group>
     <kubernetes-client.version>5.12.2</kubernetes-client.version>
+    <aircompressor.version>0.27</aircompressor.version>
 
     <test.java.home>${java.home}</test.java.home>
 
@@ -2740,6 +2741,11 @@
         <groupId>dev.ludovic.netlib</groupId>
         <artifactId>arpack</artifactId>
         <version>${netlib.ludovic.dev.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>aircompressor</artifactId>
+        <version>${aircompressor.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
