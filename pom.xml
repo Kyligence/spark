@@ -217,6 +217,7 @@
     <leveldbjni.group>org.fusesource.leveldbjni</leveldbjni.group>
     <kubernetes-client.version>5.12.2</kubernetes-client.version>
     <aircompressor.version>0.27</aircompressor.version>
+    <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
 
     <test.java.home>${java.home}</test.java.home>
 
@@ -2746,6 +2747,11 @@
         <groupId>io.airlift</groupId>
         <artifactId>aircompressor</artifactId>
         <version>${aircompressor.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.nimbusds</groupId>
+        <artifactId>nimbus-jose-jwt</artifactId>
+        <version>${nimbus-jose-jwt.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
