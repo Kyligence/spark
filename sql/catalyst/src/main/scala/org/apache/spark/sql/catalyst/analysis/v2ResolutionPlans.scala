@@ -44,7 +44,7 @@ case class UnresolvedNamespace(multipartIdentifier: Seq[String]) extends Unresol
 case class UnresolvedTable(
     multipartIdentifier: Seq[String],
     commandName: String,
-    relationTypeMismatchHint: Option[String]) extends UnresolvedLeafNode
+    relationTypeMismatchHint: Option[String] = None) extends UnresolvedLeafNode
 
 /**
  * Holds the name of a view that has yet to be looked up. It will be resolved to

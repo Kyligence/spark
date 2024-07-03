@@ -187,6 +187,7 @@ NANOSECOND	false
 NANOSECONDS	false
 NATURAL	false
 NO	false
+NONE	false
 NULL	false
 NULLS	false
 NUMERIC	false

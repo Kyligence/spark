@@ -24,14 +24,16 @@ import scala.collection.JavaConverters._
 
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.analysis.{AsOfTimestamp, AsOfVersion, NamedRelation, NoSuchDatabaseException, NoSuchFunctionException, NoSuchNamespaceException, NoSuchTableException, TimeTravelSpec}
+import org.apache.spark.sql.catalyst.catalog.ClusterBySpec
 import org.apache.spark.sql.catalyst.expressions.Literal
 import org.apache.spark.sql.catalyst.plans.logical.{SerdeInfo, TableSpec}
 import org.apache.spark.sql.catalyst.util.GeneratedColumn
 import org.apache.spark.sql.catalyst.util.ResolveDefaultColumns._
 import org.apache.spark.sql.connector.catalog.TableChange._
 import org.apache.spark.sql.connector.catalog.functions.UnboundFunction
-import org.apache.spark.sql.connector.expressions.LiteralValue
+import org.apache.spark.sql.connector.expressions.{ClusterByTransform, LiteralValue, Transform}
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{ArrayType, MapType, Metadata, MetadataBuilder, StructField, StructType}
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import org.apache.spark.util.Utils
@@ -130,6 +132,61 @@ private[sql] object CatalogV2Util {
     }
 
     Collections.unmodifiableMap(newProperties)
+  }
+
+  /**
+   * Apply ClusterBy changes to a map and return the result.
+   */
+  def applyClusterByChanges(
+      properties: Map[String, String],
+      schema: StructType,
+      changes: Seq[TableChange]): Map[String, String] = {
+    applyClusterByChanges(properties.asJava, schema, changes).asScala.toMap
+  }
+
+  /**
+   * Apply ClusterBy changes to a Java map and return the result.
+   */
+  def applyClusterByChanges(
+      properties: util.Map[String, String],
+      schema: StructType,
+      changes: Seq[TableChange]): util.Map[String, String] = {
+    val newProperties = new util.HashMap[String, String](properties)
+
+    changes.foreach {
+      case clusterBy: ClusterBy =>
+        val clusterByProp =
+          ClusterBySpec.toProperty(
+            schema,
+            ClusterBySpec(clusterBy.clusteringColumns.toIndexedSeq),
+            SQLConf.get.resolver)
+        newProperties.put(clusterByProp._1, clusterByProp._2)
+
+      case _ =>
+      // ignore non-property changes
+    }
+
+    Collections.unmodifiableMap(newProperties)
+  }
+
+  /**
+   * Apply ClusterBy changes to the partitioning transforms and return the result.
+   */
+  def applyClusterByChanges(
+     partitioning: Array[Transform],
+     schema: StructType,
+     changes: Seq[TableChange]): Array[Transform] = {
+
+    val newPartitioning = partitioning.filterNot(_.isInstanceOf[ClusterByTransform]).toBuffer
+    changes.foreach {
+      case clusterBy: ClusterBy =>
+        newPartitioning += ClusterBySpec.extractClusterByTransform(
+          schema, ClusterBySpec(clusterBy.clusteringColumns.toIndexedSeq), SQLConf.get.resolver)
+
+      case _ =>
+      // ignore other changes
+    }
+    newPartitioning.toArray
   }
 
   /**
