@@ -159,7 +159,7 @@ private[sql] object CatalogV2Util {
           ClusterBySpec.toProperty(
             schema,
             ClusterBySpec(clusterBy.clusteringColumns.toIndexedSeq),
-            SQLConf.get.resolver)
+            conf.resolver)
         newProperties.put(clusterByProp._1, clusterByProp._2)
 
       case _ =>
@@ -177,16 +177,19 @@ private[sql] object CatalogV2Util {
      schema: StructType,
      changes: Seq[TableChange]): Array[Transform] = {
 
-    val newPartitioning = partitioning.filterNot(_.isInstanceOf[ClusterByTransform]).toBuffer
-    changes.foreach {
-      case clusterBy: ClusterBy =>
-        newPartitioning += ClusterBySpec.extractClusterByTransform(
-          schema, ClusterBySpec(clusterBy.clusteringColumns.toIndexedSeq), SQLConf.get.resolver)
-
-      case _ =>
-      // ignore other changes
+    var newPartitioning = partitioning
+    // If there is a clusterBy change (only the first one), we overwrite the existing
+    // clustering columns.
+    val clusterByOpt = changes.collectFirst { case c: ClusterBy => c }
+    clusterByOpt.foreach { clusterBy =>
+      newPartitioning = partitioning.map {
+        case _: ClusterByTransform => ClusterBySpec.extractClusterByTransform(
+          schema, ClusterBySpec(clusterBy.clusteringColumns.toIndexedSeq), conf.resolver)
+        case other => other
+      }
     }
-    newPartitioning.toArray
+
+    newPartitioning
   }
 
   /**
