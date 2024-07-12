@@ -388,3 +388,10 @@ case class AlwaysFalse() extends Filter {
 @Evolving
 object AlwaysFalse extends AlwaysFalse {
 }
+
+@Evolving
+case class Trivial(value: Boolean) extends Filter {
+  override def references: Array[String] = findReferences(value)
+
+  override def toV2: Predicate = new V2AlwaysTrue()
+}
