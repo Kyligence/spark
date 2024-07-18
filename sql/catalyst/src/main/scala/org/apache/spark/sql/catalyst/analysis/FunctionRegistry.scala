@@ -637,6 +637,7 @@ object FunctionRegistry {
     expression[DayOfWeek]("dayofweek"),
     expression[WeekDay]("weekday"),
     expression[WeekOfYear]("weekofyear"),
+    expression[WeekOfYear]("week"),
     expression[Year]("year"),
     expression[TimeWindow]("window"),
     expression[SessionWindow]("session_window"),
