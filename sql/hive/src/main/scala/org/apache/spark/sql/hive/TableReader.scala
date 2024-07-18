@@ -186,7 +186,7 @@ class HadoopTableReader(
               path.toString + tails
             }
 
-            val partPath = partition.getDataLocation
+            var partPath = partition.getDataLocation
             val partNum = Utilities.getPartitionDesc(partition).getPartSpec.size()
             val pathPatternStr = getPathPatternByPath(partNum, partPath)
             if (!pathPatternSet.contains(pathPatternStr)) {
@@ -201,7 +201,7 @@ class HadoopTableReader(
     val hivePartitionRDDs = verifyPartitionPath(partitionToDeserializer)
       .map { case (partition, partDeserializer) =>
       val partDesc = Utilities.getPartitionDescFromTableDesc(tableDesc, partition, true)
-      val partPath = partition.getDataLocation
+      var partPath = partition.getDataLocation
       val inputPathStr = applyFilterIfNeeded(partPath, filterOpt)
       // Get partition field info
       val partSpec = partDesc.getPartSpec

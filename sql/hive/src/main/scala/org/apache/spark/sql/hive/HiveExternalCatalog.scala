@@ -41,12 +41,12 @@ import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.catalog.ExternalCatalogUtils._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.types.DataTypeUtils
-import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, CharVarcharUtils}
+import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, CharVarcharUtils, FSNamespaceUtils}
 import org.apache.spark.sql.catalyst.util.TypeUtils.toSQLId
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.execution.datasources.{PartitioningUtils, SourceOptions}
 import org.apache.spark.sql.hive.client.HiveClient
-import org.apache.spark.sql.internal.HiveSerDe
+import org.apache.spark.sql.internal.{HiveSerDe, SQLConf}
 import org.apache.spark.sql.internal.StaticSQLConf._
 import org.apache.spark.sql.types.{AnsiIntervalType, ArrayType, DataType, MapType, StructType, TimestampNTZType}
 
@@ -1278,9 +1278,11 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     val catalogTable = getTable(db, table)
     val partColNameMap = buildLowerCasePartColNameMap(catalogTable)
     val metaStoreSpec = partialSpec.map(toMetaStorePartitionSpec)
+    val l = conf.get(SQLConf.HIVE_SPECIFIC_FS_LOCATION)
     val res = client.getPartitions(db, table, metaStoreSpec)
-      .map { part => part.copy(spec = restorePartitionSpec(part.spec, partColNameMap))
-    }
+      .map { part => part.copy(spec = restorePartitionSpec(part.spec, partColNameMap),
+        storage = FSNamespaceUtils.replaceLocWithSpecPrefix(l, part.storage))
+      }
 
     val parts = metaStoreSpec match {
       // This might be a bug of Hive: When the partition value inside the partial partition spec
@@ -1302,9 +1304,11 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     val rawHiveTable = client.getRawHiveTable(db, table)
     val catalogTable = restoreTableMetadata(rawHiveTable.toCatalogTable)
     val partColNameMap = buildLowerCasePartColNameMap(catalogTable)
+    val specFS = conf.get(SQLConf.HIVE_SPECIFIC_FS_LOCATION)
     val clientPrunedPartitions =
       client.getPartitionsByFilter(rawHiveTable, predicates).map { part =>
-        part.copy(spec = restorePartitionSpec(part.spec, partColNameMap))
+        part.copy(spec = restorePartitionSpec(part.spec, partColNameMap),
+          storage = FSNamespaceUtils.replaceLocWithSpecPrefix(specFS, part.storage))
         restorePartitionMetadata(part, catalogTable)
       }
     prunePartitionsByFilter(catalogTable, clientPrunedPartitions, predicates, defaultTimeZoneId)
