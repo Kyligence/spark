@@ -3779,6 +3779,11 @@ object SQLConf {
     .checkValues(LegacyBehaviorPolicy.values.map(_.toString))
     .createWithDefault(LegacyBehaviorPolicy.EXCEPTION.toString)
 
+    val MAX_MEM_USAGE_DURING_COLLECT = buildConf("spark.sql.driver.maxMemoryUsageDuringCollect")
+    .doc("Specify the maximum memory usage allowed during collect action.")
+    .bytesConf(ByteUnit.BYTE)
+    .createOptional
+
   val LEGACY_TIME_PARSER_POLICY = buildConf(SqlApiConfHelper.LEGACY_TIME_PARSER_POLICY_KEY)
     .internal()
     .doc("When LEGACY, java.text.SimpleDateFormat is used for formatting and parsing " +
@@ -5144,6 +5149,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
   override def maxToStringFields: Int = getConf(SQLConf.MAX_TO_STRING_FIELDS)
 
   def maxPlanStringLength: Int = getConf(SQLConf.MAX_PLAN_STRING_LENGTH).toInt
+
+  def maxMemUsageDuringCollect : Option[Long] = getConf(SQLConf.MAX_MEM_USAGE_DURING_COLLECT)
 
   def maxMetadataStringLength: Int = getConf(SQLConf.MAX_METADATA_STRING_LENGTH)
 
