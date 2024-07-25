@@ -1764,6 +1764,18 @@ private[sql] object QueryCompilationErrors extends QueryErrorsBase with Compilat
         "existingBucketString" -> existingBucketString))
   }
 
+  def mismatchedTableClusteringError(
+      tableName: String,
+      specifiedClusteringString: String,
+      existingClusteringString: String): Throwable = {
+    new AnalysisException(
+      errorClass = "CLUSTERING_COLUMNS_MISMATCH",
+      messageParameters = Map(
+        "tableName" -> tableName,
+        "specifiedClusteringString" -> specifiedClusteringString,
+        "existingClusteringString" -> existingClusteringString))
+  }
+
   def specifyPartitionNotAllowedWhenTableSchemaNotDefinedError(): Throwable = {
     new AnalysisException(
       errorClass = "_LEGACY_ERROR_TEMP_1165",
@@ -3715,5 +3727,180 @@ private[sql] object QueryCompilationErrors extends QueryErrorsBase with Compilat
         "key" -> key,
         "supported" -> "constant expressions"),
       cause = cause)
+  }
+
+  def tableValuedFunctionRequiredMetadataIncompatibleWithCall(
+      functionName: String,
+      requestedMetadata: String,
+      invalidFunctionCallProperty: String): Throwable = {
+    new AnalysisException(
+      errorClass = "TABLE_VALUED_FUNCTION_REQUIRED_METADATA_INCOMPATIBLE_WITH_CALL",
+      messageParameters = Map(
+        "functionName" -> functionName,
+        "requestedMetadata" -> requestedMetadata,
+        "invalidFunctionCallProperty" -> invalidFunctionCallProperty))
+  }
+
+  def tableValuedFunctionRequiredMetadataInvalid(
+      functionName: String,
+      reason: String): Throwable = {
+    new AnalysisException(
+      errorClass = "TABLE_VALUED_FUNCTION_REQUIRED_METADATA_INVALID",
+      messageParameters = Map(
+        "functionName" -> functionName,
+        "reason" -> reason))
+  }
+
+  def dataSourceAlreadyExists(name: String): Throwable = {
+    new AnalysisException(
+      errorClass = "DATA_SOURCE_ALREADY_EXISTS",
+      messageParameters = Map("provider" -> name))
+  }
+
+  def dataSourceDoesNotExist(name: String): Throwable = {
+    new AnalysisException(
+      errorClass = "DATA_SOURCE_NOT_EXIST",
+      messageParameters = Map("provider" -> name))
+  }
+
+  def foundMultipleDataSources(provider: String): Throwable = {
+    new AnalysisException(
+      errorClass = "FOUND_MULTIPLE_DATA_SOURCES",
+      messageParameters = Map("provider" -> provider))
+  }
+
+  def foundMultipleXMLDataSourceError(provider: String,
+      sourceNames: Seq[String],
+      externalSource: String): Throwable = {
+    new AnalysisException(
+      errorClass = "MULTIPLE_XML_DATA_SOURCE",
+      messageParameters = Map("provider" -> provider,
+        "sourceNames" -> sourceNames.mkString(", "),
+        "externalSource" -> externalSource)
+    )
+  }
+
+  def xmlRowTagRequiredError(optionName: String): Throwable = {
+    new AnalysisException(
+      errorClass = "XML_ROW_TAG_MISSING",
+      messageParameters = Map("rowTag" -> toSQLId(optionName))
+    )
+  }
+
+  def invalidUDFClassError(invalidClass: String): Throwable = {
+    new InvalidUDFClassException(
+      errorClass = "_LEGACY_ERROR_TEMP_2450",
+      messageParameters = Map("invalidClass" -> invalidClass))
+  }
+
+  def unsupportedParameterExpression(expr: Expression): Throwable = {
+    new AnalysisException(
+      errorClass = "UNSUPPORTED_EXPR_FOR_PARAMETER",
+      messageParameters = Map(
+        "invalidExprSql" -> toSQLExpr(expr)),
+      origin = expr.origin)
+  }
+
+  def invalidQueryAllParametersMustBeNamed(expr: Seq[Expression]): Throwable = {
+    new AnalysisException(
+      errorClass = "ALL_PARAMETERS_MUST_BE_NAMED",
+      messageParameters = Map("exprs" -> expr.map(e => toSQLExpr(e)).mkString(", ")))
+  }
+
+  def invalidQueryMixedQueryParameters(): Throwable = {
+    throw new AnalysisException(
+      errorClass = "INVALID_QUERY_MIXED_QUERY_PARAMETERS",
+      messageParameters = Map.empty)
+  }
+
+  def invalidExecuteImmediateVariableType(dataType: DataType): Throwable = {
+    throw new AnalysisException(
+      errorClass = "INVALID_VARIABLE_TYPE_FOR_QUERY_EXECUTE_IMMEDIATE",
+      messageParameters = Map("varType" -> toSQLType(dataType)))
+  }
+
+  def nullSQLStringExecuteImmediate(varName: String): Throwable = {
+    throw new AnalysisException(
+      errorClass = "NULL_QUERY_STRING_EXECUTE_IMMEDIATE",
+      messageParameters = Map("varName" -> toSQLId(varName)))
+  }
+
+  def invalidStatementForExecuteInto(queryString: String): Throwable = {
+    throw new AnalysisException(
+      errorClass = "INVALID_STATEMENT_FOR_EXECUTE_INTO",
+      messageParameters = Map("sqlString" -> toSQLStmt(queryString)))
+  }
+
+  def nestedExecuteImmediate(queryString: String): Throwable = {
+    throw new AnalysisException(
+      errorClass = "NESTED_EXECUTE_IMMEDIATE",
+      messageParameters = Map("sqlString" -> toSQLStmt(queryString)))
+  }
+
+  def dataSourceTableSchemaMismatchError(
+      dsSchema: StructType, expectedSchema: StructType): Throwable = {
+    new AnalysisException(
+      errorClass = "DATA_SOURCE_TABLE_SCHEMA_MISMATCH",
+      messageParameters = Map(
+        "dsSchema" -> toSQLType(dsSchema),
+        "expectedSchema" -> toSQLType(expectedSchema)))
+  }
+
+  def cannotResolveDataFrameColumn(e: Expression): Throwable = {
+    new AnalysisException(
+      errorClass = "CANNOT_RESOLVE_DATAFRAME_COLUMN",
+      messageParameters = Map("name" -> toSQLExpr(e)),
+      origin = e.origin
+    )
+  }
+
+  def ambiguousColumnReferences(e: Expression): Throwable = {
+    new AnalysisException(
+      errorClass = "AMBIGUOUS_COLUMN_REFERENCE",
+      messageParameters = Map("name" -> toSQLExpr(e)),
+      origin = e.origin
+    )
+  }
+
+  private def callDeprecatedMethodError(oldMethod: String, newMethod: String): Throwable = {
+    SparkException.internalError(s"The method `$oldMethod` is deprecated, " +
+      s"please use `$newMethod` instead.")
+  }
+
+  def createTableDeprecatedError(): Throwable = {
+    callDeprecatedMethodError("createTable(..., StructType, ...)",
+      "createTable(..., Array[Column], ...)")
+  }
+
+  def cannotAssignEventTimeColumn(): Throwable = {
+    new AnalysisException(
+      errorClass = "CANNOT_ASSIGN_EVENT_TIME_COLUMN_WITHOUT_WATERMARK",
+      messageParameters = Map()
+    )
+  }
+
+  def avroNotLoadedSqlFunctionsUnusable(functionName: String): Throwable = {
+    new AnalysisException(
+      errorClass = "AVRO_NOT_LOADED_SQL_FUNCTIONS_UNUSABLE",
+      messageParameters = Map("functionName" -> functionName)
+    )
+  }
+
+  def operationNotSupportClusteringError(operation: String): Throwable = {
+    new AnalysisException(
+      errorClass = "CLUSTERING_NOT_SUPPORTED",
+      messageParameters = Map("operation" -> operation))
+  }
+
+  def clusterByWithPartitionedBy(): Throwable = {
+    new AnalysisException(
+      errorClass = "SPECIFY_CLUSTER_BY_WITH_PARTITIONED_BY_IS_NOT_ALLOWED",
+      messageParameters = Map.empty)
+  }
+
+  def clusterByWithBucketing(): Throwable = {
+    new AnalysisException(
+      errorClass = "SPECIFY_CLUSTER_BY_WITH_BUCKETING_IS_NOT_ALLOWED",
+      messageParameters = Map.empty)
   }
 }
