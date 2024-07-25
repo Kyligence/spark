@@ -32,7 +32,7 @@ import org.apache.spark.sql.connector.catalog.{CatalogExtension, CatalogManager,
 import org.apache.spark.sql.connector.catalog.TableCapability._
 import org.apache.spark.sql.connector.catalog.TableWritePrivilege
 import org.apache.spark.sql.connector.catalog.TableWritePrivilege._
-import org.apache.spark.sql.connector.expressions.{FieldReference, IdentityTransform, Transform}
+import org.apache.spark.sql.connector.expressions.{ClusterByTransform, FieldReference, IdentityTransform, Transform}
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.execution.command.DDLUtils
@@ -196,6 +196,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   @scala.annotation.varargs
   def partitionBy(colNames: String*): DataFrameWriter[T] = {
     this.partitioningColumns = Option(colNames)
+    validatePartitioning()
     this
   }
 
@@ -213,6 +214,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   def bucketBy(numBuckets: Int, colName: String, colNames: String*): DataFrameWriter[T] = {
     this.numBuckets = Option(numBuckets)
     this.bucketColumnNames = Option(colName +: colNames)
+    validatePartitioning()
     this
   }
 
@@ -227,6 +229,23 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   @scala.annotation.varargs
   def sortBy(colName: String, colNames: String*): DataFrameWriter[T] = {
     this.sortColumnNames = Option(colName +: colNames)
+    this
+  }
+
+  /**
+   * Clusters the output by the given columns on the storage. The rows with matching values in the
+   * specified clustering columns will be consolidated within the same group.
+   *
+   * For instance, if you cluster a dataset by date, the data sharing the same date will be stored
+   * together in a file. This arrangement improves query efficiency when you apply selective
+   * filters to these clustering columns, thanks to data skipping.
+   *
+   * @since 4.0
+   */
+  @scala.annotation.varargs
+  def clusterBy(colName: String, colNames: String*): DataFrameWriter[T] = {
+    this.clusteringColumns = Option(colName +: colNames)
+    validatePartitioning()
     this
   }
 
@@ -379,6 +398,11 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
         DataSourceUtils.PARTITIONING_COLUMNS_KEY ->
         DataSourceUtils.encodePartitioningColumns(columns))
     }
+    clusteringColumns.foreach { columns =>
+      extraOptions = extraOptions + (
+        DataSourceUtils.CLUSTERING_COLUMNS_KEY ->
+        DataSourceUtils.encodePartitioningColumns(columns))
+    }
 
     val optionsWithPath = getOptionsWithPath(path)
 
@@ -519,6 +543,12 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   private def assertNotPartitioned(operation: String): Unit = {
     if (partitioningColumns.isDefined) {
       throw QueryCompilationErrors.operationNotSupportPartitioningError(operation)
+    }
+  }
+
+  private def assertNotClustered(operation: String): Unit = {
+    if (clusteringColumns.isDefined) {
+      throw QueryCompilationErrors.operationNotSupportClusteringError(operation)
     }
   }
 
@@ -697,6 +727,13 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
       CatalogTableType.MANAGED
     }
 
+    val properties = if (clusteringColumns.isEmpty) {
+      Map.empty[String, String]
+    } else {
+      Map(ClusterBySpec.toPropertyWithoutValidation(
+        ClusterBySpec.fromColumnNames(clusteringColumns.get)))
+    }
+
     val tableDesc = CatalogTable(
       identifier = tableIdent,
       tableType = tableType,
@@ -704,7 +741,8 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
       schema = new StructType,
       provider = Some(source),
       partitionColumnNames = partitioningColumns.getOrElse(Nil),
-      bucketSpec = getBucketSpec)
+      bucketSpec = getBucketSpec,
+      properties = properties)
 
     runCommand(df.sparkSession)(
       CreateTable(tableDesc, mode, Some(df.logicalPlan)))
@@ -717,7 +755,10 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
     }.getOrElse(Seq.empty[Transform])
     val bucketing =
       getBucketSpec.map(spec => CatalogV2Implicits.BucketSpecHelper(spec).asTransform).toSeq
-    partitioning ++ bucketing
+    val clustering = clusteringColumns.map { colNames =>
+      ClusterByTransform(colNames.map(FieldReference(_)))
+    }
+    partitioning ++ bucketing ++ clustering
   }
 
   /**
@@ -728,9 +769,23 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
     val v2Partitions = partitioningAsV2
     if (v2Partitions.isEmpty) return
     require(v2Partitions.sameElements(existingTable.partitioning()),
-      "The provided partitioning does not match of the table.\n" +
+      "The provided partitioning or clustering columns do not match the existing table's.\n" +
       s" - provided: ${v2Partitions.mkString(", ")}\n" +
       s" - table: ${existingTable.partitioning().mkString(", ")}")
+  }
+
+  /**
+   * Validate that clusterBy is not used with partitionBy or bucketBy.
+   */
+  private def validatePartitioning(): Unit = {
+    if (clusteringColumns.nonEmpty) {
+      if (partitioningColumns.nonEmpty) {
+        throw QueryCompilationErrors.clusterByWithPartitionedBy()
+      }
+      if (getBucketSpec.nonEmpty) {
+        throw QueryCompilationErrors.clusterByWithBucketing()
+      }
+    }
   }
 
   /**
@@ -759,6 +814,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   def jdbc(url: String, table: String, connectionProperties: Properties): Unit = {
     assertNotPartitioned("jdbc")
     assertNotBucketed("jdbc")
+    assertNotClustered("jdbc")
     // connectionProperties should override settings in extraOptions.
     this.extraOptions ++= connectionProperties.asScala
     // explicit url and dbtable should override all
@@ -894,4 +950,6 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   private var numBuckets: Option[Int] = None
 
   private var sortColumnNames: Option[Seq[String]] = None
+
+  private var clusteringColumns: Option[Seq[String]] = None
 }
