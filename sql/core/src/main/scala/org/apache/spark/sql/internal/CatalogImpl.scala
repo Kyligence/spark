@@ -39,6 +39,7 @@ import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.internal.connector.V1Function
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.util.ArrayImplicits._
 
 
 /**
@@ -353,10 +354,14 @@ class CatalogImpl(sparkSession: SparkSession) extends Catalog {
 
     val columns = sparkSession.sessionState.executePlan(plan).analyzed match {
       case ResolvedTable(_, _, table, _) =>
-        // TODO (SPARK-45787): Support clusterBySpec for listColumns().
-        val (partitionColumnNames, bucketSpecOpt, _) = table.partitioning.toSeq.convertTransforms
+        val (partitionColumnNames, bucketSpecOpt, clusterBySpecOpt) =
+          table.partitioning.toImmutableArraySeq.convertTransforms
         val bucketColumnNames = bucketSpecOpt.map(_.bucketColumnNames).getOrElse(Nil)
-        schemaToColumns(table.schema(), partitionColumnNames.contains, bucketColumnNames.contains)
+        val clusteringColumnNames = clusterBySpecOpt.map { clusterBySpec =>
+          clusterBySpec.columnNames.map(_.toString)
+        }.getOrElse(Nil).toSet
+        schemaToColumns(table.schema(), partitionColumnNames.contains, bucketColumnNames.contains,
+          clusteringColumnNames.contains)
 
       case ResolvedPersistentView(_, _, schema) =>
         schemaToColumns(schema)
@@ -373,7 +378,8 @@ class CatalogImpl(sparkSession: SparkSession) extends Catalog {
   private def schemaToColumns(
       schema: StructType,
       isPartCol: String => Boolean = _ => false,
-      isBucketCol: String => Boolean = _ => false): Seq[Column] = {
+      isBucketCol: String => Boolean = _ => false,
+      isClusteringCol: String => Boolean = _ => false): Seq[Column] = {
     schema.map { field =>
       new Column(
         name = field.name,
@@ -381,7 +387,8 @@ class CatalogImpl(sparkSession: SparkSession) extends Catalog {
         dataType = field.dataType.simpleString,
         nullable = field.nullable,
         isPartition = isPartCol(field.name),
-        isBucket = isBucketCol(field.name))
+        isBucket = isBucketCol(field.name),
+        isCluster = isClusteringCol(field.name))
     }
   }
 
