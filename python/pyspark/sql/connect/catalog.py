@@ -205,6 +205,7 @@ class Catalog:
                 nullable=row.iloc[3],
                 isPartition=row.iloc[4],
                 isBucket=row.iloc[5],
+                isCluster=row.iloc[6],
             )
             for _, row in pdf.iterrows()
         ]
