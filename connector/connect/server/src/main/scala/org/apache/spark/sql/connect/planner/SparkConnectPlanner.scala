@@ -2833,6 +2833,10 @@ class SparkConnectPlanner(val sessionHolder: SessionHolder) extends Logging {
       writer.partitionBy(writeOp.getPartitioningColumnNamesList.asScala.toList: _*)
     }
 
+    if (writeOp.getClusteringColumnNamesCount > 0) {
+      writer.clusterBy(writeOp.getClusteringColumnNamesList.asScala.toList: _*)
+    }
+
     writeOp.getTriggerCase match {
       case TriggerCase.PROCESSING_TIME_INTERVAL =>
         writer.trigger(Trigger.ProcessingTime(writeOp.getProcessingTimeInterval))
