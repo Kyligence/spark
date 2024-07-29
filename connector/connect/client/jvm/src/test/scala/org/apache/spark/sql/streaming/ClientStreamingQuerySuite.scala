@@ -27,11 +27,11 @@ import org.scalatest.concurrent.Eventually.eventually
 import org.scalatest.concurrent.Futures.timeout
 import org.scalatest.time.SpanSugar._
 
+import org.apache.spark.SparkException
 import org.apache.spark.api.java.function.VoidFunction2
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{DataFrame, ForeachWriter, Row, SparkSession}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.window
+import org.apache.spark.sql.functions.{col, udf, window}
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryIdleEvent, QueryStartedEvent, QueryTerminatedEvent}
 import org.apache.spark.sql.test.{QueryTest, SQLHelper}
 import org.apache.spark.util.SparkFileUtils
@@ -173,6 +173,120 @@ class ClientStreamingQuerySuite extends QueryTest with SQLHelper with Logging {
         q.awaitTermination()
       }
     }
+  }
+
+  test("clusterBy") {
+    withSQLConf(
+      "spark.sql.shuffle.partitions" -> "1" // Avoid too many reducers.
+    ) {
+      spark.sql("DROP TABLE IF EXISTS my_table").collect()
+
+      withTempPath { ckpt =>
+        val q1 = spark.readStream
+          .format("rate")
+          .load()
+          .writeStream
+          .clusterBy("value")
+          .option("checkpointLocation", ckpt.getCanonicalPath)
+          .toTable("my_table")
+
+        try {
+          q1.processAllAvailable()
+          eventually(timeout(30.seconds)) {
+            checkAnswer(
+              spark.sql("DESCRIBE my_table"),
+              Seq(
+                Row("timestamp", "timestamp", null),
+                Row("value", "bigint", null),
+                Row("# Clustering Information", "", ""),
+                Row("# col_name", "data_type", "comment"),
+                Row("value", "bigint", null)))
+            assert(spark.table("my_sink").count() > 0)
+          }
+        } finally {
+          q1.stop()
+          spark.sql("DROP TABLE my_table")
+        }
+      }
+    }
+  }
+
+  test("throw exception in streaming") {
+    try {
+      val session = spark
+      import session.implicits._
+
+      val checkForTwo = udf((value: Int) => {
+        if (value == 2) {
+          throw new RuntimeException("Number 2 encountered!")
+        }
+        value
+      })
+
+      val query = spark.readStream
+        .format("rate")
+        .option("rowsPerSecond", "1")
+        .load()
+        .select(checkForTwo($"value").as("checkedValue"))
+        .writeStream
+        .outputMode("append")
+        .format("console")
+        .start()
+
+      val exception = intercept[StreamingQueryException] {
+        query.awaitTermination()
+      }
+
+      assert(exception.getErrorClass != null)
+      assert(exception.getMessageParameters().get("id") == query.id.toString)
+      assert(exception.getMessageParameters().get("runId") == query.runId.toString)
+      assert(!exception.getMessageParameters().get("startOffset").isEmpty)
+      assert(!exception.getMessageParameters().get("endOffset").isEmpty)
+      assert(exception.getCause.isInstanceOf[SparkException])
+      assert(exception.getCause.getCause.isInstanceOf[SparkException])
+      assert(
+        exception.getCause.getCause.getMessage
+          .contains("java.lang.RuntimeException: Number 2 encountered!"))
+    } finally {
+      spark.streams.resetTerminated()
+    }
+  }
+
+  test("throw exception in streaming, check with StreamingQueryManager") {
+    val session = spark
+    import session.implicits._
+
+    val checkForTwo = udf((value: Int) => {
+      if (value == 2) {
+        throw new RuntimeException("Number 2 encountered!")
+      }
+      value
+    })
+
+    val query = spark.readStream
+      .format("rate")
+      .option("rowsPerSecond", "1")
+      .load()
+      .select(checkForTwo($"value").as("checkedValue"))
+      .writeStream
+      .outputMode("append")
+      .format("console")
+      .start()
+
+    val exception = intercept[StreamingQueryException] {
+      spark.streams.awaitAnyTermination()
+    }
+
+    assert(exception.getErrorClass != null)
+    assert(exception.getMessageParameters().get("id") == query.id.toString)
+    assert(exception.getMessageParameters().get("runId") == query.runId.toString)
+    assert(!exception.getMessageParameters().get("startOffset").isEmpty)
+    assert(!exception.getMessageParameters().get("endOffset").isEmpty)
+    assert(exception.getCause.isInstanceOf[SparkException])
+    assert(exception.getCause.getCause.isInstanceOf[SparkException])
+    assert(
+      exception.getCause.getCause.getMessage
+        .contains("java.lang.RuntimeException: Number 2 encountered!"))
   }
 
   test("foreach Row") {
