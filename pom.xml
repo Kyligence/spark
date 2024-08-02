@@ -125,8 +125,8 @@
     <hive.group>org.apache.hive</hive.group>
     <hive.classifier>core</hive.classifier>
     <!-- Version used in Maven Hive dependency -->
-    <hive.version>2.3.9</hive.version>
-    <hive23.version>2.3.9</hive23.version>
+    <hive.version>2.3.10</hive.version>
+    <hive23.version>2.3.10</hive23.version>
     <!-- Version used for internal directory structure -->
     <hive.version.short>2.3</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
@@ -204,9 +204,9 @@
     <bouncycastle.version>1.60</bouncycastle.version>
     <tink.version>1.6.1</tink.version>
     <tomcat.version>9.0.68</tomcat.version>
-    <tomcat-embed-core.version>9.0.82</tomcat-embed-core.version>
+    <tomcat-embed-core.version>9.0.90</tomcat-embed-core.version>
     <netty.version>4.1.89.Final</netty.version>
-    <netty-handler.version>4.1.94.Final</netty-handler.version>
+    <netty-handler.version>4.1.99.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
     <!--
     If you are changing Arrow version specification, please check
