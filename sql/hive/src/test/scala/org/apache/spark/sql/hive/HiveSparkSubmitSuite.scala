@@ -151,7 +151,7 @@ class HiveSparkSubmitSuite
       "--conf", s"${EXECUTOR_MEMORY.key}=512m",
       "--conf", "spark.ui.enabled=false",
       "--conf", "spark.master.rest.enabled=false",
-      "--conf", "spark.sql.hive.metastore.version=0.12",
+      "--conf", "spark.sql.hive.metastore.version=2.3.10",
       "--conf", "spark.sql.hive.metastore.jars=maven",
       "--driver-java-options", "-Dderby.system.durability=test",
       unusedJar.toString)
