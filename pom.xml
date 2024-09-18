@@ -119,7 +119,7 @@
     <slf4j.version>2.0.7</slf4j.version>
     <log4j.version>2.20.0</log4j.version>
     <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
-    <hadoop.version>3.3.5</hadoop.version>
+    <hadoop.version>3.4.0</hadoop.version>
     <!-- Protobuf version for building with Hadoop/Yarn dependencies -->
     <protobuf.hadoopDependency.version>2.5.0</protobuf.hadoopDependency.version>
     <!-- Actual Protobuf version in Spark modules like Spark Connect, protobuf connector, etc. -->
@@ -132,7 +132,7 @@
     <hive.group>org.apache.hive</hive.group>
     <hive.classifier>core</hive.classifier>
     <!-- Version used in Maven Hive dependency -->
-    <hive.version>2.3.9</hive.version>
+    <hive.version>2.3.10</hive.version>
     <hive23.version>2.3.9</hive23.version>
     <!-- Version used for internal directory structure -->
     <hive.version.short>2.3</hive.version.short>
@@ -143,7 +143,7 @@
     <parquet.version>1.13.0</parquet.version>
     <orc.version>1.8.3</orc.version>
     <orc.classifier>shaded-protobuf</orc.classifier>
-    <jetty.version>9.4.51.v20230217</jetty.version>
+    <jetty.version>9.4.55.v20240627</jetty.version>
     <jakartaservlet.version>4.0.3</jakartaservlet.version>
     <chill.version>0.10.0</chill.version>
     <ivy.version>2.5.1</ivy.version>
@@ -203,7 +203,7 @@
     <joda.version>2.12.2</joda.version>
     <jodd.version>3.5.2</jodd.version>
     <jsr305.version>3.0.0</jsr305.version>
-    <libthrift.version>0.12.0</libthrift.version>
+    <libthrift.version>0.20.0</libthrift.version>
     <!-- Please don't upgrade the version to 4.10+, it depends on JDK 11 -->
     <antlr4.version>4.9.3</antlr4.version>
     <jpam.version>1.1</jpam.version>
@@ -231,8 +231,8 @@
 
     <!-- Some UI tests require Chrome and Chrome driver installed so those tests are disabled by default. -->
     <test.default.exclude.tags>org.apache.spark.tags.ChromeUITest</test.default.exclude.tags>
-    <test.exclude.tags></test.exclude.tags>
-    <test.include.tags></test.include.tags>
+    <test.exclude.tags/>
+    <test.include.tags/>
 
     <test.jdwp.address>localhost:0</test.jdwp.address>
     <test.jdwp.suspend>y</test.jdwp.suspend>
@@ -297,7 +297,7 @@
       things breaking.
     -->
     <spark.test.home>${session.executionRootDirectory}</spark.test.home>
-    <spark.test.webdriver.chrome.driver></spark.test.webdriver.chrome.driver>
+    <spark.test.webdriver.chrome.driver/>
     <spark.test.docker.keepContainer>false</spark.test.docker.keepContainer>
     <spark.test.docker.removePulledImage>true</spark.test.docker.removePulledImage>
 
@@ -3369,7 +3369,7 @@
             </goals>
             <configuration>
               <target>
-                <mkdir dir="${project.build.directory}/tmp" />
+                <mkdir dir="${project.build.directory}/tmp"/>
               </target>
             </configuration>
           </execution>
@@ -3770,7 +3770,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -3783,7 +3783,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -3796,7 +3796,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                   </pluginExecutions>
