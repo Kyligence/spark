@@ -67,10 +67,17 @@ private[spark] class BroadcastManager(
         .asInstanceOf[java.util.Map[Any, Any]]
     )
 
+  def keepBroadCast(executionId: String): Unit = {
+    cachedBroadcast.remove(executionId)
+  }
+
   def cleanBroadCast(executionId: String): Unit = {
     if (cachedBroadcast.containsKey(executionId)) {
       cachedBroadcast.get(executionId)
-        .foreach(broadcastId => unbroadcast(broadcastId, true, false))
+        .foreach(broadcastId => {
+          logDebug(s"Clean broad cast $broadcastId")
+          unbroadcast(broadcastId, true, false)
+        })
       cachedBroadcast.remove(executionId)
     }
   }

@@ -134,7 +134,12 @@ object SQLExecution {
     } finally {
       executionIdToQueryExecution.remove(executionId)
       sc.setLocalProperty(EXECUTION_ID_KEY, oldExecutionId)
-      SparkEnv.get.broadcastManager.cleanBroadCast(executionId.toString)
+      val hasRddPersisted = sc.getLocalProperty(SparkContext.RDD_PERSISTED_KEY)
+      if (hasRddPersisted != null && hasRddPersisted.toBoolean) {
+        SparkEnv.get.broadcastManager.keepBroadCast(executionId.toString)
+      } else {
+        SparkEnv.get.broadcastManager.cleanBroadCast(executionId.toString)
+      }
     }
   }
 
