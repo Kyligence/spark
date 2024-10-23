@@ -42,6 +42,7 @@ import org.apache.hadoop.mapreduce.{InputFormat => NewInputFormat, Job => NewHad
 import org.apache.hadoop.mapreduce.lib.input.{FileInputFormat => NewFileInputFormat}
 import org.apache.logging.log4j.Level
 
+import org.apache.spark.SparkContext.RDD_PERSISTED_KEY
 import org.apache.spark.annotation.{DeveloperApi, Experimental}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.deploy.{LocalSparkCluster, SparkHadoopUtil}
@@ -2064,6 +2065,7 @@ class SparkContext(config: SparkConf) extends Logging {
    */
   private[spark] def persistRDD(rdd: RDD[_]): Unit = {
     persistentRdds(rdd.id) = rdd
+    setLocalProperty(RDD_PERSISTED_KEY, "true")
   }
 
   /**
@@ -2962,6 +2964,7 @@ object SparkContext extends Logging {
   private[spark] val SPARK_SCHEDULER_POOL = "spark.scheduler.pool"
   private[spark] val RDD_SCOPE_KEY = "spark.rdd.scope"
   private[spark] val RDD_SCOPE_NO_OVERRIDE_KEY = "spark.rdd.scope.noOverride"
+  private[spark] val RDD_PERSISTED_KEY = "spark.rdd.persisted"
 
   /**
    * Executor id for the driver.  In earlier versions of Spark, this was `<driver>`, but this was
