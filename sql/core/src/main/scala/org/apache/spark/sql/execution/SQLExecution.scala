@@ -166,7 +166,12 @@ object SQLExecution {
       if (sc.getLocalProperty(EXECUTION_ROOT_ID_KEY) == executionId.toString) {
         sc.setLocalProperty(EXECUTION_ROOT_ID_KEY, null)
       }
-      SparkEnv.get.broadcastManager.cleanBroadCast(executionId.toString)
+      val hasRddPersisted = sc.getLocalProperty(SparkContext.RDD_PERSISTED_KEY)
+      if (hasRddPersisted != null && hasRddPersisted.toBoolean) {
+        SparkEnv.get.broadcastManager.keepBroadCast(executionId.toString)
+      } else {
+        SparkEnv.get.broadcastManager.cleanBroadCast(executionId.toString)
+      }
     }
   }
 
