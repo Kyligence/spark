@@ -382,8 +382,7 @@ private[spark] class SparkSubmit extends Logging {
 
     // Kerberos is not supported in standalone mode, and keytab support is not yet available
     // in Mesos cluster mode.
-    if (clusterManager != STANDALONE
-        && !isMesosCluster
+    if (!isMesosCluster
         && args.principal != null
         && args.keytab != null) {
       // If client mode, make sure the keytab is just a local path.
