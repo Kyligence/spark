@@ -224,16 +224,6 @@ class ParquetFileFormat
       } else {
         ParquetFooterReader.readFooter(sharedConf, filePath, SKIP_ROW_GROUPS)
       }
-      val footerFileMetaData = fileFooter.getFileMetaData
-
-      val fileReader = if (enableVectorizedReader) {
-        // When there are vectorized reads, we can avoid reading the footer twice by reading
-        // all row groups in advance and filter row groups according to filters that require
-        // push down (no need to read the footer metadata again).
-        ParquetFooterReader.readFooter(sharedConf, file, ParquetFooterReader.WITH_ROW_GROUPS)
-      } else {
-        Option.empty[ParquetFileReader]
-      }
 
       val footerFileMetaData = fileFooter.getFileMetaData
       val datetimeRebaseSpec = DataSourceUtils.datetimeRebaseSpec(
@@ -288,9 +278,6 @@ class ParquetFileFormat
       // Notice: This push-down is RowGroups level, not individual records.
       if (pushed.isDefined) {
         ParquetInputFormat.setFilterPredicate(hadoopAttemptContext.getConfiguration, pushed.get)
-        if (fileReader.isDefined) {
-          fileReader.get.resetBlocks(hadoopAttemptContext.getConfiguration)
-        }
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
