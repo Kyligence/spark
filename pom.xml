@@ -344,6 +344,17 @@
         <enabled>true</enabled>
       </snapshots>
     </repository>
+    <repository>
+      <id>nexus-snapshots</id>
+      <name>Kyligence Snapshots Repository</name>
+      <url>https://repository.kyligence.io/repository/maven-snapshots/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
