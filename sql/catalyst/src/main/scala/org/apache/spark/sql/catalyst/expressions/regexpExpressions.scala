@@ -751,7 +751,6 @@ case class RegExpReplace(subject: Expression, regexp: Expression, rep: Expressio
             $termPattern = $classNamePattern.compile(termLastRegexStr);
           }
         }
-        java.util.regex.Matcher $matcher = $termPattern.matcher($subject.toString());
       }
 
       if (!$rep.equals($termLastReplacementInUTF8)) {
@@ -763,6 +762,7 @@ case class RegExpReplace(subject: Expression, regexp: Expression, rep: Expressio
       int $position = $pos - 1;
       if ($position == 0 || $position < $source.length()) {
         $classNameStringBuffer $termResult = new $classNameStringBuffer();
+        java.util.regex.Matcher $matcher = $termPattern.matcher($subject.toString());
         $matcher.region($position, $source.length());
 
         while ($matcher.find()) {
