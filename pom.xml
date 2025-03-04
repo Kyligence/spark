@@ -222,8 +222,10 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <bouncycastle.version>1.77</bouncycastle.version>
     <tink.version>1.9.0</tink.version>
+    <tomcat.version>9.0.98</tomcat.version>
+    <tomcat-embed-core.version>9.0.98</tomcat-embed-core.version>
     <netty.version>4.1.96.Final</netty.version>
-    <netty-handler.version>4.1.99.Final</netty-handler.version>
+    <netty-handler.version>4.1.118.Final</netty-handler.version>
     <!--
     If you are changing Arrow version specification, please check
     ./python/pyspark/sql/pandas/utils.py, and ./python/setup.py too.
@@ -2725,6 +2727,16 @@
             <artifactId>slf4j-api</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.tomcat.embed</groupId>
+        <artifactId>tomcat-embed-core</artifactId>
+        <version>${tomcat-embed-core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.tomcat</groupId>
+        <artifactId>tomcat-annotations-api</artifactId>
+        <version>${tomcat.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.thrift</groupId>
