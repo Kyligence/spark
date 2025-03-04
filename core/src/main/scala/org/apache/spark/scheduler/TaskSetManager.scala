@@ -595,6 +595,7 @@ private[spark] class TaskSetManager(
             } else {
               None
             }
+          case _ => None
         }
         if(broadcastId.isDefined) {
           SparkEnv.get.broadcastManager.unbroadcast(broadcastId.get, true, false)
