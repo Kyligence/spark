@@ -1287,7 +1287,7 @@ abstract class DDLSuite extends QueryTest with DDLSuiteBase {
             |    Examples:
             |      > SELECT 3 ^ 5;
             |       6
-            |
+            |  
             |    Since: 1.4.0
             |""".stripMargin) ::
         Row("Function: ^") ::
