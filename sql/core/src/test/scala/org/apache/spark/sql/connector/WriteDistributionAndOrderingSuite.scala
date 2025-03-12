@@ -1257,7 +1257,8 @@ class WriteDistributionAndOrderingSuite extends DistributionAndOrderingSuiteBase
           SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "-1",
           SQLConf.SHUFFLE_PARTITIONS.key -> "5",
           SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES.key -> defaultAdvisoryPartitionSize,
-          SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_NUM.key -> "1") {
+          SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_NUM.key -> "1",
+          SQLConf.DATAWRITE_PARTITION_SIZE_IN_BYTES.key -> "1000") {
 
           val executedPlan = executeCommand()
           val read = collect(executedPlan) {
@@ -1281,7 +1282,8 @@ class WriteDistributionAndOrderingSuite extends DistributionAndOrderingSuiteBase
             SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "-1",
             SQLConf.SHUFFLE_PARTITIONS.key -> "5",
             SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES.key -> defaultAdvisoryPartitionSize,
-            SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_NUM.key -> "1") {
+            SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_NUM.key -> "1",
+            SQLConf.DATAWRITE_PARTITION_SIZE_IN_BYTES.key -> "100") {
             val executedPlan = executeCommand()
             val read = collect(executedPlan) {
               case r: AQEShuffleReadExec => r
