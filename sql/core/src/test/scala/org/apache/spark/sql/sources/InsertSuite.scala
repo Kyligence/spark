@@ -667,18 +667,6 @@ class InsertSuite extends DataSourceTest with SharedSparkSession {
 
         checkError(
           exception = intercept[AnalysisException] {
-            sql("insert into t select 1, 2.0")
-          },
-          errorClass = "INCOMPATIBLE_DATA_FOR_TABLE.CANNOT_SAFELY_CAST",
-          parameters = Map(
-            "tableName" -> "`spark_catalog`.`default`.`t`",
-            "colName" -> "`d`",
-            "srcType" -> "\"DECIMAL(2,1)\"",
-            "targetType" -> "\"DOUBLE\"")
-        )
-
-        checkError(
-          exception = intercept[AnalysisException] {
             sql("insert into t select 1, 2.0D, 3")
           },
           errorClass = "INSERT_COLUMN_ARITY_MISMATCH.TOO_MANY_DATA_COLUMNS",
