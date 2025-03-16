@@ -2514,7 +2514,7 @@ class AdaptiveQueryExecSuite
       Seq.fill(60000)(joinKeyTwo).toDF("key")
         .createOrReplaceTempView("temp2")
 
-      Seq(joinKeyOne).toDF("key").createOrReplaceTempView("smallTemp")
+      Seq(joinKeyOne, joinKeyOne).toDF("key").createOrReplaceTempView("smallTemp")
       spark.sql("SELECT key as newKey FROM temp").persist()
 
       // This query is trying to set up a situation where there are three joins.

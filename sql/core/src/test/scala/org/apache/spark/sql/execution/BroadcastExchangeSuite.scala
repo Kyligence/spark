@@ -112,7 +112,7 @@ class BroadcastExchangeExecSparkSuite
     sc = new SparkContext(conf)
     val spark = new SparkSession(sc)
 
-    val df = spark.range(1).toDF()
+    val df = spark.range(2).toDF()
     val joinDF = df.join(broadcast(df), "id")
     val broadcastExchangeExec = collect(
       joinDF.queryExecution.executedPlan) { case p: BroadcastExchangeExec => p }
