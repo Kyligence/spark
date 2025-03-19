@@ -19,7 +19,7 @@ package org.apache.spark.scheduler.cluster.k8s
 import java.util.Arrays
 import java.util.concurrent.TimeUnit
 
-import io.fabric8.kubernetes.api.model.{ConfigMap, Pod, PodList}
+import io.fabric8.kubernetes.api.model.{ConfigMap, Pod, PodBuilder, PodList}
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.dsl.PodResource
 import org.jmock.lib.concurrent.DeterministicScheduler
@@ -105,12 +105,24 @@ class KubernetesClusterSchedulerBackendSuite extends SparkFunSuite with BeforeAn
   @Mock
   private var context: RpcCallContext = _
 
+  @Mock
+  private var driverPodOperations: PodResource = _
+
   private var driverEndpoint: ArgumentCaptor[RpcEndpoint] = _
   private var schedulerBackendUnderTest: KubernetesClusterSchedulerBackend = _
 
   private val listenerBus = new LiveListenerBus(new SparkConf())
   private val resourceProfileManager = new ResourceProfileManager(sparkConf, listenerBus)
   private val defaultProfile = ResourceProfile.getOrCreateDefaultProfile(sparkConf)
+
+  private val driverPod = new PodBuilder()
+    .withNewMetadata()
+    .withName("driver")
+    .addToLabels(SPARK_APP_ID_LABEL, TEST_SPARK_APP_ID)
+    .addToLabels(SPARK_ROLE_LABEL, SPARK_POD_DRIVER_ROLE)
+    .withUid("driver-pod-uid")
+    .endMetadata()
+    .build()
 
   before {
     MockitoAnnotations.openMocks(this).close()
@@ -126,6 +138,8 @@ class KubernetesClusterSchedulerBackendSuite extends SparkFunSuite with BeforeAn
         driverEndpoint.capture()))
       .thenReturn(driverEndpointRef)
     when(kubernetesClient.pods()).thenReturn(podOperations)
+    when(podOperations.withName(any())).thenReturn(driverPodOperations)
+    when(driverPodOperations.get()).thenReturn(driverPod)
     when(podOperations.inNamespace("default")).thenReturn(podsWithNamespace)
     when(kubernetesClient.configMaps()).thenReturn(configMapsOperations)
     when(configMapsOperations.inNamespace("default")).thenReturn(configMapsWithNamespace)
