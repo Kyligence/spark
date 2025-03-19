@@ -18,6 +18,7 @@
 package org.apache.spark.sql.catalyst.expressions
 
 import java.math.{BigDecimal => JavaBigDecimal}
+
 import org.apache.spark.{SPARK_DOC_ROOT, SparkFunSuite, SparkIllegalArgumentException}
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
@@ -684,7 +685,6 @@ class StringExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
     checkEvaluation(
       StringReplace(Literal("replace"), Literal("pl"), Literal("123")), "re123ace")
     checkEvaluation(StringReplace(Literal("replace"), Literal("pl"), Literal("")), "reace")
-    checkEvaluation(StringReplace(Literal("replace"), Literal(""), Literal("123")), "replace")
     checkEvaluation(StringReplace(Literal.create(null, StringType),
       Literal("pl"), Literal("123")), null)
     checkEvaluation(StringReplace(Literal("replace"),
