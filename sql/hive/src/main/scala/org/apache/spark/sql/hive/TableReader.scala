@@ -89,9 +89,6 @@ class HadoopTableReader(
   private val _broadcastedHadoopConf =
     sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
 
-  private val skipHeaderLineCount = tableDesc.getProperties
-    .getProperty("skip.header.line.count", "0").toInt
-
   override def conf: SQLConf = sparkSession.sessionState.conf
 
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
@@ -127,6 +124,8 @@ class HadoopTableReader(
     val inputPathStr = applyFilterIfNeeded(tablePath, filterOpt)
     val isTextInputFormatTable = classOf[TextInputFormat]
       .isAssignableFrom(hiveTable.getInputFormatClass)
+    val skipHeaderLineCount = tableDesc.getProperties
+      .getProperty("skip.header.line.count", "0").toInt
 
     // logDebug("Table input: %s".format(tablePath))
     val hadoopRDD = createHadoopRDD(localTableDesc, inputPathStr)
@@ -141,7 +140,7 @@ class HadoopTableReader(
         deserializer.initialize(hconf, localTableDesc.getProperties)
       }
       if (isTextInputFormatTable) {
-        skipHeaderLines(iter, hadoopRDD, index)
+        HadoopTableReader.skipHeaderLines(iter, hadoopRDD, index, skipHeaderLineCount)
       }
       HadoopTableReader.fillObject(iter, deserializer, attrsWithIndex, mutableRow, deserializer)
     }
@@ -230,7 +229,8 @@ class HadoopTableReader(
       val broadcastedHiveConf = _broadcastedHadoopConf
       val localDeserializer = partDeserializer
       val mutableRow = new SpecificInternalRow(attributes.map(_.dataType))
-
+      val skipHeaderLineCount =
+        partProps.getProperty("skip.header.line.count", "0").toInt
       // Splits all attributes into two groups, partition key attributes and those that are not.
       // Attached indices indicate the position of each attribute in the output schema.
       val (partitionKeyAttrs, nonPartitionKeyAttrs) =
@@ -251,7 +251,6 @@ class HadoopTableReader(
       val tableProperties = tableDesc.getProperties
       val avroSchemaProperties = Seq(AvroTableProperties.SCHEMA_LITERAL,
         AvroTableProperties.SCHEMA_URL).map(_.getPropName())
-
       // Create local references so that the outer object isn't serialized.
       val localTableDesc = tableDesc
       val rdd = createHadoopRDD(localTableDesc, inputPathStr)
@@ -282,7 +281,7 @@ class HadoopTableReader(
         }
 
         if (isTextInputFormatTable) {
-          skipHeaderLines(iter, rdd, index)
+          HadoopTableReader.skipHeaderLines(iter, rdd, index, skipHeaderLineCount)
         }
 
         // fill the non partition key attributes
@@ -299,20 +298,7 @@ class HadoopTableReader(
     }
   }
 
-  private def skipHeaderLines(iter: Iterator[Writable], rdd: RDD[Writable], index: Int): Unit = {
-    if (skipHeaderLineCount > 0) {
-      rdd.partitions(index) match {
-        case partition: HadoopPartition =>
-          if (partition.inputSplit.t.asInstanceOf[FileSplit].getStart == 0) {
-            var i = 0
-            while (i < skipHeaderLineCount && iter.hasNext) {
-              i += 1
-              iter.next()
-            }
-          }
-      }
-    }
-  }
+
 
   /**
    * If `filterOpt` is defined, then it will be used to filter files from `path`. These files are
@@ -488,6 +474,21 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     jobConf.set("io.file.buffer.size", bufferSize)
   }
 
+  private def skipHeaderLines(iter: Iterator[Writable],
+                              rdd: RDD[Writable], index: Int, skipHeaderLineCount: Int): Unit = {
+    if (skipHeaderLineCount > 0) {
+      rdd.partitions(index) match {
+        case partition: HadoopPartition =>
+          if (partition.inputSplit.t.asInstanceOf[FileSplit].getStart == 0) {
+            var i = 0
+            while (i < skipHeaderLineCount && iter.hasNext) {
+              i += 1
+              iter.next()
+            }
+          }
+      }
+    }
+  }
   /**
    * Transform all given raw `Writable`s into `Row`s.
    *
