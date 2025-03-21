@@ -253,7 +253,7 @@ class HadoopTableReader(
         AvroTableProperties.SCHEMA_URL).map(_.getPropName())
       // Create local references so that the outer object isn't serialized.
       val localTableDesc = tableDesc
-      val rdd = createHadoopRDD(localTableDesc, inputPathStr)
+      val rdd = createHadoopRDD(partDesc, inputPathStr)
       rdd.mapPartitionsWithIndex { (index, iter) =>
         val hconf = broadcastedHiveConf.value.value
         val deserializer = localDeserializer.getConstructor().newInstance()
