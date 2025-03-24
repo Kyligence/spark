@@ -16,7 +16,7 @@
 #
 ARG java_image_tag=8-jdk-slim
 
-FROM openjdk:${java_image_tag}
+FROM harbor-ofs.kyligence.com/library/openjdk:${java_image_tag}
 
 ARG spark_uid=root
 
