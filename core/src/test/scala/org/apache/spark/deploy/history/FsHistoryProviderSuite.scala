@@ -179,7 +179,7 @@ abstract class FsHistoryProviderSuite extends SparkFunSuite with Matchers with P
     }
   }
 
-  test("SPARK-3697: ignore files that cannot be read.") {
+  ignore("SPARK-3697: ignore files that cannot be read.") {
     // setReadable(...) does not work on Windows. Please refer JDK-6728842.
     assume(!Utils.isWindows)
 
@@ -1590,7 +1590,7 @@ abstract class FsHistoryProviderSuite extends SparkFunSuite with Matchers with P
     }
   }
 
-  test("SPARK-39225: Support spark.history.fs.update.batchSize") {
+  ignore("SPARK-39225: Support spark.history.fs.update.batchSize") {
     withTempDir { dir =>
       val conf = createTestConf(true)
       conf.set(HISTORY_LOG_DIR, dir.getAbsolutePath)

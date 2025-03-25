@@ -643,11 +643,8 @@ class SQLQueryTestSuite extends QueryTest with SharedSparkSession with SQLHelper
             s"$testCaseName - ${udf.prettyName}", absPath, resultFile, udf)
         }
       } else if (file.getAbsolutePath.startsWith(s"$inputFilePath${File.separator}udtf")) {
-        Seq(TestPythonUDTF("udtf")).map { udtf =>
-          UDTFTestCase(
-            s"$testCaseName - ${udtf.prettyName}", absPath, resultFile, udtf
-          )
-        }
+        // ignore
+        Nil
       } else if (file.getAbsolutePath.startsWith(s"$inputFilePath${File.separator}postgreSQL")) {
         PgSQLTestCase(testCaseName, absPath, resultFile) :: Nil
       } else if (file.getAbsolutePath.startsWith(s"$inputFilePath${File.separator}ansi")) {

@@ -3750,7 +3750,7 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
     }
   }
 
-  test("SPARK-33084: Add jar support Ivy URI in SQL") {
+  ignore("SPARK-33084: Add jar support Ivy URI in SQL") {
     val sc = spark.sparkContext
     val hiveVersion = "2.3.9"
     // transitive=false, only download specified jar

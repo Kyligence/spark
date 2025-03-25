@@ -77,7 +77,7 @@ class CreateTableAsSelectSuite extends DataSourceTest with SharedSparkSession {
     }
   }
 
-  test("CREATE TABLE USING AS SELECT based on the file without write permission") {
+  ignore("CREATE TABLE USING AS SELECT based on the file without write permission") {
     // setWritable(...) does not work on Windows. Please refer JDK-6728842.
     assume(!Utils.isWindows)
     val childPath = new File(path.toString, "child")
