@@ -29,10 +29,14 @@ object S3FileUtils extends Logging {
   @throws(classOf[IOException])
   def tryOpenClose(conf: Configuration, fp: Path): Unit = {
     val fs = fp.getFileSystem(conf)
-    if (fs.getScheme.startsWith("s3")) {
-      // Read retry before accessing FileStatus properties.
-      logInfo(s"Try open-close $fp")
-      fs.open(fp).close()
+    try {
+      if (fs.getScheme.startsWith("s3")) {
+        // Read retry before accessing FileStatus properties.
+        logInfo(s"Try open-close $fp")
+        fs.open(fp).close()
+      }
+    } catch {
+      case e: Exception => logWarning("tryOpenClose failed", e)
     }
   }
 

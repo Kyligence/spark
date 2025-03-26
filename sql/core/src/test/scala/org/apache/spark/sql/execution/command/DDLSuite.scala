@@ -1287,7 +1287,7 @@ abstract class DDLSuite extends QueryTest with DDLSuiteBase {
             |    Examples:
             |      > SELECT 3 ^ 5;
             |       6
-            |  
+            |
             |    Since: 1.4.0
             |""".stripMargin) ::
         Row("Function: ^") ::
@@ -2415,4 +2415,6 @@ class FakeLocalFsFileSystem extends RawLocalFileSystem {
   override def setAcl(path: Path, aclSpec: java.util.List[AclEntry]): Unit = {
     aclStatus = new AclStatus.Builder().addEntries(aclSpec).build()
   }
+
+  override def getScheme: String = "dummy"
 }
