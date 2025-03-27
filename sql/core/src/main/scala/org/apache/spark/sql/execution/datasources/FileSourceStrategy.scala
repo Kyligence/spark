@@ -28,8 +28,11 @@ import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.planning.ScanOperation
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.catalyst.trees.TreePattern.PLAN_EXPRESSION
 import org.apache.spark.sql.catalyst.types.DataTypeUtils
-import org.apache.spark.sql.execution.{FileSourceScanExec, SparkPlan}
+import org.apache.spark.sql.execution.FileSourceScanExec
+import org.apache.spark.sql.execution.SparkPlan
+import org.apache.spark.sql.execution.delta.ClusterKeyPruning
 import org.apache.spark.sql.types.{DoubleType, FloatType, StructType}
 import org.apache.spark.util.collection.BitSet
 
@@ -67,9 +70,9 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
   }
 
   private def getExpressionBuckets(
-      expr: Expression,
-      bucketColumnName: String,
-      numBuckets: Int): BitSet = {
+    expr: Expression,
+    bucketColumnName: String,
+    numBuckets: Int): BitSet = {
 
     def getBucketNumber(attr: Attribute, v: Any): Int = {
       BucketingUtils.getBucketIdFromValue(attr, numBuckets, v)
@@ -110,7 +113,7 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
           getExpressionBuckets(right, bucketColumnName, numBuckets)
       case expressions.Or(left, right) =>
         getExpressionBuckets(left, bucketColumnName, numBuckets) |
-        getExpressionBuckets(right, bucketColumnName, numBuckets)
+          getExpressionBuckets(right, bucketColumnName, numBuckets)
       case _ =>
         val matchedBuckets = new BitSet(numBuckets)
         matchedBuckets.setUntil(numBuckets)
@@ -119,8 +122,8 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
   }
 
   private def genBucketSet(
-      normalizedFilters: Seq[Expression],
-      bucketSpec: BucketSpec): Option[BitSet] = {
+    normalizedFilters: Seq[Expression],
+    bucketSpec: BucketSpec): Option[BitSet] = {
     if (normalizedFilters.isEmpty) {
       return None
     }
@@ -130,7 +133,8 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
 
     val normalizedFiltersAndExpr = normalizedFilters
       .reduce(expressions.And)
-    val matchedBuckets = getExpressionBuckets(normalizedFiltersAndExpr, bucketColumnName,
+    val matchedBuckets = getExpressionBuckets(
+      normalizedFiltersAndExpr, bucketColumnName,
       numBuckets)
 
     val numBucketsSelected = matchedBuckets.cardinality()
@@ -148,8 +152,9 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
   }
 
   def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-    case ScanOperation(projects, stayUpFilters, filters,
-      l @ LogicalRelation(fsRelation: HadoopFsRelation, _, table, _)) =>
+    case ScanOperation(
+    projects, stayUpFilters, filters,
+    l@LogicalRelation(fsRelation: HadoopFsRelation, _, table, _)) =>
       // Filters on this relation fall into four categories based on where we can use them to avoid
       // reading unneeded data:
       //  - partition keys only - used to prune directories to read
@@ -168,13 +173,14 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
 
       // this partitionKeyFilters should be the same with the ones being executed in
       // PruneFileSourcePartitions
-      val partitionKeyFilters = DataSourceStrategy.getPushedDownFilters(partitionColumns,
+      val partitionKeyFilters = DataSourceStrategy.getPushedDownFilters(
+        partitionColumns,
         normalizedFilters)
 
       // subquery expressions are filtered out because they can't be used to prune buckets or pushed
       // down as data filters, yet they would be executed
       val normalizedFiltersWithoutSubqueries =
-        normalizedFilters.filterNot(SubqueryExpression.hasSubquery)
+      normalizedFilters.filterNot(SubqueryExpression.hasSubquery)
 
       val bucketSpec: Option[BucketSpec] = fsRelation.bucketSpec
       val bucketSet = if (shouldPruneBuckets(bucketSpec)) {
@@ -185,6 +191,16 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
 
       val dataColumns =
         l.resolve(fsRelation.dataSchema, fsRelation.sparkSession.sessionState.analyzer.resolver)
+
+      var clusterKeyFilters = Seq.empty[Expression]
+      val clusterCols = ClusterKeyPruning.getClusterCols(l.relation)
+      if (clusterCols.nonEmpty) {
+        val clusterColumns = dataColumns.filter(col => clusterCols.contains(col.name))
+        clusterKeyFilters = DataSourceStrategy
+          .getPushedDownFilters(clusterColumns, normalizedFilters)
+          .filter(e => e.containsPattern(PLAN_EXPRESSION))
+          .toSeq
+      }
 
       // Partition keys are not available in the statistics of the files.
       // `dataColumns` might have partition columns, we need to filter them out.
@@ -203,7 +219,11 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
       logInfo(s"Pushed Filters: ${pushedFilters.mkString(",")}")
 
       // Predicates with both partition keys and attributes need to be evaluated after the scan.
-      val afterScanFilters = filterSet -- partitionKeyFilters.filter(_.references.nonEmpty)
+      val afterScanFilters = (
+        filterSet
+          -- partitionKeyFilters.filter(_.references.nonEmpty)
+          -- clusterKeyFilters
+        )
       logInfo(s"Post-Scan Filters: ${afterScanFilters.mkString(",")}")
 
       val filterAttributes = AttributeSet(afterScanFilters ++ stayUpFilters)
@@ -218,15 +238,16 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
       object MetadataStructColumn {
         // The column returned by [[FileFormat.createFileMetadataCol]] is sanitized and lacks
         // the internal metadata we rely on here. Map back to the real fields by field name.
-        lazy val availableMetadataFields = fsRelation.fileFormat.metadataSchemaFields
+        lazy val availableMetadataFields = fsRelation
+          .fileFormat.metadataSchemaFields
           .map(field => field.name.toLowerCase(Locale.ROOT) -> field).toMap
 
         def unapply(attributeReference: AttributeReference): Option[AttributeReference] = {
           attributeReference match {
-            case attr @ FileSourceMetadataAttribute(
-                MetadataAttributeWithLogicalName(
-                  AttributeReference(_, schema: StructType, _, _),
-                  FileFormat.METADATA_NAME)) =>
+            case attr@FileSourceMetadataAttribute(
+            MetadataAttributeWithLogicalName(
+            AttributeReference(_, schema: StructType, _, _),
+            FileFormat.METADATA_NAME)) =>
               val adjustedFields = schema.fields.map { field =>
                 val metadata = availableMetadataFields(field.name.toLowerCase(Locale.ROOT)).metadata
                 field.copy(metadata = metadata)
@@ -319,7 +340,9 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
           bucketSet,
           None,
           rebindFileSourceMetadataAttributesInFilters(dataFilters),
-          table.map(_.identifier))
+          table.map(_.identifier),
+          disableBucketedScan = false,
+          clusterKeyFilters)
 
       // extra Project node: wrap flat metadata columns to a metadata struct
       val withMetadataProjections = metadataStructOpt.map { metadataStruct =>
@@ -332,8 +355,9 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
         // Here, we *explicitly* enforce the not null to `CreateStruct(structColumns)`
         // to avoid any risk of inconsistent schema nullability
         val metadataAlias =
-          Alias(KnownNotNull(CreateStruct(structColumns)),
-            FileFormat.METADATA_NAME)(exprId = metadataStruct.exprId)
+        Alias(
+          KnownNotNull(CreateStruct(structColumns)),
+          FileFormat.METADATA_NAME)(exprId = metadataStruct.exprId)
         execution.ProjectExec(
           readDataColumns ++ partitionColumns :+ metadataAlias, scan)
       }.getOrElse(scan)
