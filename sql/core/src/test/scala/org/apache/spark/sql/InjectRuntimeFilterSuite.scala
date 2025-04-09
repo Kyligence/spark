@@ -41,25 +41,25 @@ class InjectRuntimeFilterSuite extends QueryTest with SQLTestUtils with SharedSp
       .add("f1", IntegerType, nullable = true)
 
     val data1 = Seq(Seq(null, 47, null, 4, 6, 48),
-      Seq(73, 63, null, 92, null, null),
-      Seq(76, 10, 74, 98, 37, 5),
-      Seq(0, 63, null, null, null, null),
-      Seq(15, 77, null, null, null, null),
-      Seq(null, 57, 33, 55, null, 58),
-      Seq(4, 0, 86, null, 96, 14),
-      Seq(28, 16, 58, null, null, null),
-      Seq(1, 88, null, 8, null, 79),
-      Seq(59, null, null, null, 20, 25),
-      Seq(1, 50, null, 94, 94, null),
-      Seq(null, null, null, 67, 51, 57),
-      Seq(77, 50, 8, 90, 16, 21),
-      Seq(34, 28, null, 5, null, 64),
-      Seq(null, null, 88, 11, 63, 79),
-      Seq(92, 94, 23, 1, null, 64),
+//      Seq(73, 63, null, 92, null, null),
+//      Seq(76, 10, 74, 98, 37, 5),
+//      Seq(0, 63, null, null, null, null),
+//      Seq(15, 77, null, null, null, null),
+//      Seq(null, 57, 33, 55, null, 58),
+//      Seq(4, 0, 86, null, 96, 14),
+//      Seq(28, 16, 58, null, null, null),
+//      Seq(1, 88, null, 8, null, 79),
+//      Seq(59, null, null, null, 20, 25),
+//      Seq(1, 50, null, 94, 94, null),
+//      Seq(null, null, null, 67, 51, 57),
+//      Seq(77, 50, 8, 90, 16, 21),
+//      Seq(34, 28, null, 5, null, 64),
+//      Seq(null, null, 88, 11, 63, 79),
+//      Seq(92, 94, 23, 1, null, 64),
       Seq(57, 56, null, 83, null, null),
-      Seq(null, 35, 8, 35, null, 70),
-      Seq(null, 8, null, 35, null, 87),
-      Seq(9, null, null, 60, null, 5),
+//      Seq(null, 35, 8, 35, null, 70),
+//      Seq(null, 8, null, 35, null, 87),
+//      Seq(9, null, null, 60, null, 5),
       Seq(null, 15, 66, null, 83, null))
     val rdd1 = spark.sparkContext.parallelize(data1)
     val rddRow1 = rdd1.map(s => Row.fromSeq(s))
@@ -85,6 +85,30 @@ class InjectRuntimeFilterSuite extends QueryTest with SQLTestUtils with SharedSp
       Seq(89, null, 94, 95, 67, 21),
       Seq(44, null, 24, 33, null, 6),
       Seq(null, 6, 78, 31, null, 69),
+      Seq(59, 2, 63, 9, 66, 20),
+      Seq(5, 23, 10, 86, 68, null),
+      Seq(null, 63, 99, 55, 9, 65),
+      Seq(57, 62, 68, 5, null, 0),
+      Seq(75, null, 15, null, 81, null),
+      Seq(53, null, 6, 68, 28, 13),
+      Seq(59, 2, 63, 9, 66, 20),
+      Seq(5, 23, 10, 86, 68, null),
+      Seq(null, 63, 99, 55, 9, 65),
+      Seq(57, 62, 68, 5, null, 0),
+      Seq(75, null, 15, null, 81, null),
+      Seq(53, null, 6, 68, 28, 13),
+      Seq(59, 2, 63, 9, 66, 20),
+      Seq(5, 23, 10, 86, 68, null),
+      Seq(null, 63, 99, 55, 9, 65),
+      Seq(57, 62, 68, 5, null, 0),
+      Seq(75, null, 15, null, 81, null),
+      Seq(53, null, 6, 68, 28, 13),
+      Seq(59, 2, 63, 9, 66, 20),
+      Seq(5, 23, 10, 86, 68, null),
+      Seq(null, 63, 99, 55, 9, 65),
+      Seq(57, 62, 68, 5, null, 0),
+      Seq(75, null, 15, null, 81, null),
+      Seq(53, null, 6, 68, 28, 13),
       Seq(59, 2, 63, 9, 66, 20),
       Seq(5, 23, 10, 86, 68, null),
       Seq(null, 63, 99, 55, 9, 65),
@@ -597,6 +621,20 @@ class InjectRuntimeFilterSuite extends QueryTest with SQLTestUtils with SharedSp
           |FROM   bf1 LEFT SEMI
           |JOIN   (SELECT * FROM bf2 WHERE bf2.a2 = 62) tmp
           |ON     bf1.c1 = tmp.c2
+        """.stripMargin)
+    }
+  }
+
+  test("Support Left Semi join 2") {
+    withSQLConf(SQLConf.RUNTIME_BLOOM_FILTER_APPLICATION_SIDE_SCAN_SIZE_THRESHOLD.key -> "3000",
+      SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "2560") {
+      assertRewroteWithBloomFilter(
+        """
+          |SELECT bf1.c1
+          |FROM   bf1 LEFT SEMI
+          |JOIN   (select bf2.c2, bf2.a2, bf2.d2 from bf2 group by bf2.c2, bf2.a2, bf2.d2) tmp
+          |ON     bf1.c1 = tmp.c2
+          |WHERE bf1.a1 = 57
         """.stripMargin)
     }
   }

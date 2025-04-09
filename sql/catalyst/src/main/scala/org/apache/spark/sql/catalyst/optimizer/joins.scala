@@ -323,7 +323,7 @@ trait JoinSelectionHelper {
 
   def canBuildBroadcastLeft(joinType: JoinType): Boolean = {
     joinType match {
-      case _: InnerLike | RightOuter => true
+      case _: InnerLike | RightOuter | LeftSemi => true
       case _ => false
     }
   }

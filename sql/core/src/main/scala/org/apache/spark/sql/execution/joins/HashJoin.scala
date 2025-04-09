@@ -67,7 +67,7 @@ trait HashJoin extends JoinCodegenSupport {
   override def outputPartitioning: Partitioning = buildSide match {
     case BuildLeft =>
       joinType match {
-        case _: InnerLike | RightOuter => right.outputPartitioning
+        case _: InnerLike | RightOuter | LeftSemi => right.outputPartitioning
         case x =>
           throw new IllegalArgumentException(
             s"HashJoin should not take $x as the JoinType with building left side")
@@ -85,7 +85,7 @@ trait HashJoin extends JoinCodegenSupport {
   override def outputOrdering: Seq[SortOrder] = buildSide match {
     case BuildLeft =>
       joinType match {
-        case _: InnerLike | RightOuter => right.outputOrdering
+        case _: InnerLike | RightOuter | LeftSemi => right.outputOrdering
         case x =>
           throw new IllegalArgumentException(
             s"HashJoin should not take $x as the JoinType with building left side")
