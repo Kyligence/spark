@@ -74,6 +74,12 @@
     </dependency>
 
     <dependency>
+      <groupId>io.delta</groupId>
+      <artifactId>delta-spark_2.13</artifactId>
+      <version>${delta.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-unsafe_${scala.binary.version}</artifactId>
       <version>${project.version}</version>

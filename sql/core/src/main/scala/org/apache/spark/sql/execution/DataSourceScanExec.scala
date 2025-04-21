@@ -29,6 +29,9 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partitioning, UnknownPartitioning}
 import org.apache.spark.sql.catalyst.util.{truncatedString, CaseInsensitiveMap}
+import org.apache.spark.sql.delta.Snapshot
+import org.apache.spark.sql.delta.files.TahoeLogFileIndex
+import org.apache.spark.sql.delta.stats.PreparedDeltaFileIndex
 import org.apache.spark.sql.errors.QueryExecutionErrors
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.execution.datasources.parquet.{ParquetFileFormat => ParquetSource}
@@ -204,6 +207,8 @@ trait FileSourceScanLike extends DataSourceScanExec {
   def requiredSchema: StructType
   // Identifier for the table in the metastore.
   def tableIdentifier: Option[TableIdentifier]
+  // Filters on non-partition columns.
+  def clusterKeyFilters: Seq[Expression]
 
 
   lazy val fileConstantMetadataColumns: Seq[AttributeReference] = output.collect {
@@ -283,6 +288,25 @@ trait FileSourceScanLike extends DataSourceScanExec {
       val timeTakenMs = (System.nanoTime() - startTime) / 1000 / 1000
       driverMetrics("pruningTime").set(timeTakenMs)
       ret
+    } else if (clusterKeyFilters.nonEmpty) {
+      val snapshot: Snapshot = relation.location match {
+        case index: PreparedDeltaFileIndex => index.preparedScan.scannedSnapshot
+        case index: TahoeLogFileIndex => index.getSnapshot
+        case _ => null
+      }
+      val filters = clusterKeyFilters.map {
+        case d: DynamicPruningExpression => d.child
+        case f => f
+      }
+      val filteredFiles = snapshot.filesForScan(filters, false).files
+      val pds: Array[PartitionDirectory] = selectedPartitions
+      assert(pds.length == 1)
+      val filesInPartition = pds.head.files
+      val selectedFiles = filesInPartition
+        .filter(fp => filteredFiles.map(x => x.path).exists(fp.getPath.toString.contains(_)))
+      val returnedFiles = Array(PartitionDirectory(InternalRow.empty, selectedFiles))
+      setFilesNumAndSizeMetric(returnedFiles, false)
+      returnedFiles
     } else {
       selectedPartitions
     }
@@ -465,7 +489,7 @@ trait FileSourceScanLike extends DataSourceScanExec {
       static: Boolean): Unit = {
     val filesNum = partitions.map(_.files.size.toLong).sum
     val filesSize = partitions.map(_.files.map(_.getLen).sum).sum
-    if (!static || !partitionFilters.exists(isDynamicPruningFilter)) {
+    if (!static || !partitionFilters.exists(isDynamicPruningFilter) || clusterKeyFilters.nonEmpty) {
       driverMetrics("numFiles").set(filesNum)
       driverMetrics("filesSize").set(filesSize)
       driverMetrics("readBytes").set(filesSize)
@@ -514,7 +538,8 @@ case class FileSourceScanExec(
     override val optionalNumCoalescedBuckets: Option[Int],
     override val dataFilters: Seq[Expression],
     override val tableIdentifier: Option[TableIdentifier],
-    override val disableBucketedScan: Boolean = false)
+    override val disableBucketedScan: Boolean = false,
+    override val clusterKeyFilters: Seq[Expression] = Seq.empty)
   extends FileSourceScanLike {
 
   // Note that some vals referring the file-based relation are lazy intentionally
@@ -737,6 +762,9 @@ case class FileSourceScanExec(
       optionalNumCoalescedBuckets,
       QueryPlan.normalizePredicates(dataFilters, output),
       None,
-      disableBucketedScan)
+      disableBucketedScan,
+      QueryPlan.normalizePredicates(
+        filterUnusedDynamicPruningExpressions(clusterKeyFilters), output)
+      )
   }
 }

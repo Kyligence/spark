@@ -28,8 +28,11 @@ import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.planning.ScanOperation
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.catalyst.trees.TreePattern.PLAN_EXPRESSION
 import org.apache.spark.sql.catalyst.types.DataTypeUtils
-import org.apache.spark.sql.execution.{FileSourceScanExec, SparkPlan}
+import org.apache.spark.sql.execution.FileSourceScanExec
+import org.apache.spark.sql.execution.SparkPlan
+import org.apache.spark.sql.execution.delta.ClusterKeyPruning
 import org.apache.spark.sql.types.{DoubleType, FloatType, StructType}
 import org.apache.spark.util.collection.BitSet
 
@@ -186,6 +189,16 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
       val dataColumns =
         l.resolve(fsRelation.dataSchema, fsRelation.sparkSession.sessionState.analyzer.resolver)
 
+      var clusterKeyFilters = Seq.empty[Expression]
+      val clusterCols = ClusterKeyPruning.getClusterCols(l.relation)
+      if (clusterCols.nonEmpty) {
+        val clusterColumns = dataColumns.filter(col => clusterCols.contains(col.name))
+        clusterKeyFilters = DataSourceStrategy
+          .getPushedDownFilters(clusterColumns, normalizedFilters)
+          .filter(e => e.containsPattern(PLAN_EXPRESSION))
+          .toSeq
+      }
+
       // Partition keys are not available in the statistics of the files.
       // `dataColumns` might have partition columns, we need to filter them out.
       val dataColumnsWithoutPartitionCols = dataColumns.filterNot(partitionSet.contains)
@@ -203,7 +216,11 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
       logInfo(s"Pushed Filters: ${pushedFilters.mkString(",")}")
 
       // Predicates with both partition keys and attributes need to be evaluated after the scan.
-      val afterScanFilters = filterSet -- partitionKeyFilters.filter(_.references.nonEmpty)
+      val afterScanFilters = (
+        filterSet
+          -- partitionKeyFilters.filter(_.references.nonEmpty)
+          -- clusterKeyFilters.filter(_.references.nonEmpty)
+        )
       logInfo(s"Post-Scan Filters: ${afterScanFilters.mkString(",")}")
 
       val filterAttributes = AttributeSet(afterScanFilters ++ stayUpFilters)
@@ -319,7 +336,9 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
           bucketSet,
           None,
           rebindFileSourceMetadataAttributesInFilters(dataFilters),
-          table.map(_.identifier))
+          table.map(_.identifier),
+          disableBucketedScan = false,
+          clusterKeyFilters)
 
       // extra Project node: wrap flat metadata columns to a metadata struct
       val withMetadataProjections = metadataStructOpt.map { metadataStruct =>
