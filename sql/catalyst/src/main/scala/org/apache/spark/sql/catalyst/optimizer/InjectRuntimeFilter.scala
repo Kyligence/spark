@@ -21,7 +21,7 @@ import org.apache.spark.sql.catalyst.dsl.expressions
 import org.apache.spark.sql.catalyst.dsl.expressions.DslExpression
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression, BloomFilterAggregate, Complete}
-import org.apache.spark.sql.catalyst.planning.{ExtractEquiJoinKeys, PhysicalOperation}
+import org.apache.spark.sql.catalyst.planning.{ExtractEquiJoinKeys, PhysicalAggregation, PhysicalOperation}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.trees.TreePattern.{INVOKE, JSON_TO_STRUCT, LIKE_FAMLIY, PYTHON_UDF, REGEXP_EXTRACT_FAMILY, REGEXP_REPLACE, SCALA_UDF}
@@ -138,6 +138,8 @@ object InjectRuntimeFilter extends Rule[LogicalPlan] with PredicateHelper with J
    */
   private def isSelectiveFilterOverScan(plan: LogicalPlan): Boolean = {
     val ret = plan match {
+      case PhysicalAggregation(_, _, _, child) =>
+        isSelectiveFilterOverScan(child)
       case PhysicalOperation(_, filters, child) if child.isInstanceOf[LeafNode] =>
         filters.forall(isSimpleExpression) &&
           filters.exists(isLikelySelective)
