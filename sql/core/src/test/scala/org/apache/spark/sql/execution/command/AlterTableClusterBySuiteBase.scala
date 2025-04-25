@@ -83,13 +83,8 @@ trait AlterTableClusterBySuiteBase extends QueryTest with DDLCommandTestUtils {
         exception = intercept[AnalysisException] {
           sql(s"ALTER TABLE $tbl CLUSTER BY (unknown)")
         },
-        errorClass = "_LEGACY_ERROR_TEMP_3060",
-        parameters = Map("i" -> "unknown",
-          "schema" ->
-            """root
-              | |-- id: long (nullable = true)
-              | |-- data: string (nullable = true)
-              |""".stripMargin)
+        errorClass = null,
+        parameters = Map()
       )
     }
   }

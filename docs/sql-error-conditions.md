@@ -290,6 +290,20 @@ The value `<value>` of the type `<sourceType>` cannot be cast to `<targetType>` 
 
 Fail to insert a value of `<sourceType>` type into the `<targetType>` type column `<columnName>` due to an overflow. Use `try_cast` on the input value to tolerate overflow and return NULL instead.
 
+### CLUSTERING_COLUMNS_MISMATCH
+
+[SQLSTATE: 42P10](sql-error-conditions-sqlstates.html#class-42-syntax-error-or-access-rule-violation)
+
+Specified clustering does not match that of the existing table `<tableName>`.
+Specified clustering columns: [`<specifiedClusteringString>`].
+Existing clustering columns: [`<existingClusteringString>`].
+
+### CLUSTERING_NOT_SUPPORTED
+
+[SQLSTATE: 42000](sql-error-conditions-sqlstates.html#class-42-syntax-error-or-access-rule-violation)
+
+`<operation>` does not support clustering.
+
 ### CODEC_NOT_AVAILABLE
 
 SQLSTATE: none assigned
