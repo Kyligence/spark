@@ -520,8 +520,13 @@ trait HashJoin extends JoinCodegenSupport {
   protected def codegenSemi(ctx: CodegenContext, input: Seq[ExprCode]): String = {
     val HashedRelationInfo(relationTerm, keyIsUnique, isEmptyHashedRelation) = prepareRelation(ctx)
     val (keyEv, anyNull) = genStreamSideJoinKey(ctx, input)
-    val (matched, checkCondition, _) = getJoinCondition(ctx, input, streamedPlan, buildPlan)
+    val (matched, checkCondition, buildVars) = getJoinCondition(ctx, input, streamedPlan, buildPlan)
     val numOutput = metricTerm(ctx, "numOutputRows")
+
+    val resultVars = buildSide match {
+      case BuildLeft => buildVars
+      case BuildRight => input
+    }
 
     if (isEmptyHashedRelation) {
       """
@@ -536,7 +541,7 @@ trait HashJoin extends JoinCodegenSupport {
          |if ($matched != null) {
          |  $checkCondition {
          |    $numOutput.add(1);
-         |    ${consume(ctx, input)}
+         |    ${consume(ctx, resultVars)}
          |  }
          |}
        """.stripMargin
@@ -560,7 +565,7 @@ trait HashJoin extends JoinCodegenSupport {
          |  }
          |  if ($found) {
          |    $numOutput.add(1);
-         |    ${consume(ctx, input)}
+         |    ${consume(ctx, resultVars)}
          |  }
          |}
        """.stripMargin
