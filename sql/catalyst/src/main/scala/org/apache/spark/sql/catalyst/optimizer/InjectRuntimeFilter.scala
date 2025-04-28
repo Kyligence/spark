@@ -118,7 +118,7 @@ object InjectRuntimeFilter extends Rule[LogicalPlan] with PredicateHelper with J
       filterCreationSideExp: Expression,
       filterCreationSidePlan: LogicalPlan): LogicalPlan = {
     require(filterApplicationSideExp.dataType == filterCreationSideExp.dataType)
-    val actualFilterKeyExpr = mayWrapWithHash(filterCreationSideExp)
+    val actualFilterKeyExpr = filterCreationSideExp
     val alias = Alias(actualFilterKeyExpr, actualFilterKeyExpr.toString)()
     val aggregate = Aggregate(Seq(alias), Seq(alias), filterCreationSidePlan)
     if (!canBroadcastBySize(aggregate, conf)) {
@@ -126,7 +126,7 @@ object InjectRuntimeFilter extends Rule[LogicalPlan] with PredicateHelper with J
       // i.e., the semi-join will be a shuffled join, which is not worthwhile.
       return filterApplicationSidePlan
     }
-    val filter = InSubquery(Seq(mayWrapWithHash(filterApplicationSideExp)),
+    val filter = InSubquery(Seq(filterApplicationSideExp),
       ListQuery(aggregate, childOutputs = aggregate.output))
     Filter(filter, filterApplicationSidePlan)
   }
