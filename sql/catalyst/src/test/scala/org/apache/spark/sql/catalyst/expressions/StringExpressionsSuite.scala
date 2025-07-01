@@ -440,7 +440,7 @@ class StringExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
     checkEvaluation(
       StringReplace(Literal("replace"), Literal("pl"), Literal("123")), "re123ace")
     checkEvaluation(StringReplace(Literal("replace"), Literal("pl"), Literal("")), "reace")
-    checkEvaluation(StringReplace(Literal("replace"), Literal(""), Literal("123")), "replace")
+    checkEvaluation(StringReplace(Literal("replace"), Literal(""), Literal("123")), "123r123e123p123l123a123c123e123")
     checkEvaluation(StringReplace(Literal.create(null, StringType),
       Literal("pl"), Literal("123")), null)
     checkEvaluation(StringReplace(Literal("replace"),
