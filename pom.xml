@@ -208,6 +208,7 @@
     <netty.version>4.1.89.Final</netty.version>
     <netty-handler.version>4.1.118.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
+    <supercsv.version>2.4.0</supercsv.version>
     <!--
     If you are changing Arrow version specification, please check
     ./python/pyspark/sql/pandas/utils.py, and ./python/setup.py too.
@@ -1852,6 +1853,10 @@
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
           </exclusion>
+          <exclusion>
+            <artifactId>super-csv</artifactId>
+            <groupId>net.sf.supercsv</groupId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -2740,6 +2745,11 @@
         <groupId>dev.ludovic.netlib</groupId>
         <artifactId>arpack</artifactId>
         <version>${netlib.ludovic.dev.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sf.supercsv</groupId>
+        <artifactId>super-csv</artifactId>
+        <version>${supercsv.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
