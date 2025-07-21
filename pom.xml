@@ -154,7 +154,7 @@
     -->
     <codahale.metrics.version>4.2.17</codahale.metrics.version>
     <!-- Should be consistent with SparkBuild.scala and docs -->
-    <avro.version>1.11.1</avro.version>
+    <avro.version>1.12.0</avro.version>
     <aws.kinesis.client.version>1.12.0</aws.kinesis.client.version>
     <!-- Should be consistent with Kinesis client dependency -->
     <aws.java.sdk.version>1.11.655</aws.java.sdk.version>
@@ -231,8 +231,8 @@
 
     <!-- Some UI tests require Chrome and Chrome driver installed so those tests are disabled by default. -->
     <test.default.exclude.tags>org.apache.spark.tags.ChromeUITest</test.default.exclude.tags>
-    <test.exclude.tags></test.exclude.tags>
-    <test.include.tags></test.include.tags>
+    <test.exclude.tags/>
+    <test.include.tags/>
 
     <test.jdwp.address>localhost:0</test.jdwp.address>
     <test.jdwp.suspend>y</test.jdwp.suspend>
@@ -297,7 +297,7 @@
       things breaking.
     -->
     <spark.test.home>${session.executionRootDirectory}</spark.test.home>
-    <spark.test.webdriver.chrome.driver></spark.test.webdriver.chrome.driver>
+    <spark.test.webdriver.chrome.driver/>
     <spark.test.docker.keepContainer>false</spark.test.docker.keepContainer>
     <spark.test.docker.removePulledImage>true</spark.test.docker.removePulledImage>
 
@@ -3369,7 +3369,7 @@
             </goals>
             <configuration>
               <target>
-                <mkdir dir="${project.build.directory}/tmp" />
+                <mkdir dir="${project.build.directory}/tmp"/>
               </target>
             </configuration>
           </execution>
@@ -3770,7 +3770,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -3783,7 +3783,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -3796,7 +3796,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                   </pluginExecutions>
