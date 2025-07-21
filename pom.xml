@@ -203,7 +203,7 @@
     <joda.version>2.12.2</joda.version>
     <jodd.version>3.5.2</jodd.version>
     <jsr305.version>3.0.0</jsr305.version>
-    <libthrift.version>0.12.0</libthrift.version>
+    <libthrift.version>0.22.0</libthrift.version>
     <!-- Please don't upgrade the version to 4.10+, it depends on JDK 11 -->
     <antlr4.version>4.9.3</antlr4.version>
     <jpam.version>1.1</jpam.version>
@@ -231,8 +231,8 @@
 
     <!-- Some UI tests require Chrome and Chrome driver installed so those tests are disabled by default. -->
     <test.default.exclude.tags>org.apache.spark.tags.ChromeUITest</test.default.exclude.tags>
-    <test.exclude.tags></test.exclude.tags>
-    <test.include.tags></test.include.tags>
+    <test.exclude.tags/>
+    <test.include.tags/>
 
     <test.jdwp.address>localhost:0</test.jdwp.address>
     <test.jdwp.suspend>y</test.jdwp.suspend>
@@ -297,7 +297,7 @@
       things breaking.
     -->
     <spark.test.home>${session.executionRootDirectory}</spark.test.home>
-    <spark.test.webdriver.chrome.driver></spark.test.webdriver.chrome.driver>
+    <spark.test.webdriver.chrome.driver/>
     <spark.test.docker.keepContainer>false</spark.test.docker.keepContainer>
     <spark.test.docker.removePulledImage>true</spark.test.docker.removePulledImage>
 
@@ -3369,7 +3369,7 @@
             </goals>
             <configuration>
               <target>
-                <mkdir dir="${project.build.directory}/tmp" />
+                <mkdir dir="${project.build.directory}/tmp"/>
               </target>
             </configuration>
           </execution>
@@ -3770,7 +3770,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -3783,7 +3783,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                     <pluginExecution>
@@ -3796,7 +3796,7 @@
                         </goals>
                       </pluginExecutionFilter>
                       <action>
-                        <ignore></ignore>
+                        <ignore/>
                       </action>
                     </pluginExecution>
                   </pluginExecutions>
