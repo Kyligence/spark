@@ -1175,7 +1175,7 @@ private[spark] class TaskSchedulerImpl(
 }
 
 
-private[spark] object TaskSchedulerImpl {
+private[spark] object TaskSchedulerImpl extends Logging{
 
   val SCHEDULER_MODE_PROPERTY = SCHEDULER_MODE.key
 
@@ -1280,8 +1280,12 @@ private[spark] object TaskSchedulerImpl {
   private def maybeCreateHealthTracker(sc: SparkContext): Option[HealthTracker] = {
     if (HealthTracker.isExcludeOnFailureEnabled(sc.conf)) {
       val executorAllocClient: Option[ExecutorAllocationClient] = sc.schedulerBackend match {
-        case b: ExecutorAllocationClient => Some(b)
-        case _ => None
+        case b: ExecutorAllocationClient =>
+          logInfo(s"debuglyh2 Found ExecutorAllocationClient: $b")
+          Some(b)
+        case _ =>
+          logWarning(s"debuglyh2 Not Found ExecutorAllocationClient: ${sc.schedulerBackend}")
+          None
       }
       Some(new HealthTracker(sc, executorAllocClient))
     } else {
