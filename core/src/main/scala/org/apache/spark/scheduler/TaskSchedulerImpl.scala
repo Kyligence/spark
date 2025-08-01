@@ -196,6 +196,22 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
+  private def maybeCreateHealthTracker(sc: SparkContext): Option[HealthTracker] = {
+    if (HealthTracker.isExcludeOnFailureEnabled(sc.conf)) {
+      val executorAllocClient: Option[ExecutorAllocationClient] = sc.schedulerBackend match {
+        case b: ExecutorAllocationClient =>
+          logInfo(s"debuglyh2 Found ExecutorAllocationClient: $b")
+          Some(b)
+        case _ =>
+          logWarning(s"debuglyh2 Not Found ExecutorAllocationClient: ${sc.schedulerBackend}")
+          None
+      }
+      Some(new HealthTracker(sc, executorAllocClient))
+    } else {
+      None
+    }
+  }
+
   override def setDAGScheduler(dagScheduler: DAGScheduler): Unit = {
     this.dagScheduler = dagScheduler
   }
@@ -1175,7 +1191,7 @@ private[spark] class TaskSchedulerImpl(
 }
 
 
-private[spark] object TaskSchedulerImpl extends Logging{
+private[spark] object TaskSchedulerImpl {
 
   val SCHEDULER_MODE_PROPERTY = SCHEDULER_MODE.key
 
@@ -1275,22 +1291,6 @@ private[spark] object TaskSchedulerImpl extends Logging{
     }
 
     retval.toList
-  }
-
-  private def maybeCreateHealthTracker(sc: SparkContext): Option[HealthTracker] = {
-    if (HealthTracker.isExcludeOnFailureEnabled(sc.conf)) {
-      val executorAllocClient: Option[ExecutorAllocationClient] = sc.schedulerBackend match {
-        case b: ExecutorAllocationClient =>
-          logInfo(s"debuglyh2 Found ExecutorAllocationClient: $b")
-          Some(b)
-        case _ =>
-          logWarning(s"debuglyh2 Not Found ExecutorAllocationClient: ${sc.schedulerBackend}")
-          None
-      }
-      Some(new HealthTracker(sc, executorAllocClient))
-    } else {
-      None
-    }
   }
 
 }
