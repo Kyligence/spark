@@ -211,7 +211,7 @@ class SparkContext(config: SparkConf) extends Logging {
   private var _ui: Option[SparkUI] = None
   private var _hadoopConfiguration: Configuration = _
   private var _executorMemory: Int = _
-  private var _schedulerBackend: SchedulerBackend = _
+  @volatile private var _schedulerBackend: SchedulerBackend = _
   private var _taskScheduler: TaskScheduler = _
   private var _heartbeatReceiver: RpcEndpointRef = _
   @volatile private var _dagScheduler: DAGScheduler = _
