@@ -172,6 +172,7 @@
     <!-- for now, not running scalafmt as part of default verify pipeline -->
     <scalafmt.skip>true</scalafmt.skip>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
+    <jackson-databind.version>2.13.4.2</jackson-databind.version>
     <fasterxml.jackson.version>2.13.3</fasterxml.jackson.version>
     <fasterxml.jackson-databind.version>2.13.4.2</fasterxml.jackson-databind.version>
     <snappy.version>1.1.10.4</snappy.version>
@@ -205,7 +206,7 @@
     <tink.version>1.6.1</tink.version>
     <tomcat.version>9.0.108</tomcat.version>
     <tomcat-embed-core.version>9.0.108</tomcat-embed-core.version>
-    <netty.version>4.1.89.Final</netty.version>
+    <netty.version>4.1.118.Final</netty.version>
     <netty-handler.version>4.1.118.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
     <!--
@@ -1786,7 +1787,12 @@
         <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-mapper-asl</artifactId>
         <version>${codehaus.jackson.version}</version>
-        <scope>${hadoop.deps.scope}</scope>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson-databind.version}</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.jackson</groupId>
