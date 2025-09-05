@@ -179,7 +179,7 @@
     <netlib.ludovic.dev.version>2.2.1</netlib.ludovic.dev.version>
     <commons-codec.version>1.15</commons-codec.version>
     <commons-compress.version>1.26.1</commons-compress.version>
-    <commons-io.version>2.11.0</commons-io.version>
+    <commons-io.version>2.19.0</commons-io.version>
     <!-- org.apache.commons/commons-lang/-->
     <commons-lang2.version>2.6</commons-lang2.version>
     <!-- org.apache.commons/commons-lang3/-->
@@ -208,6 +208,8 @@
     <netty.version>4.1.108.Final</netty.version>
     <netty-handler.version>4.1.108.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
+    <okhttp.version>4.11.0</okhttp.version>
+    <okio.version>3.5.0</okio.version>
     <!--
     If you are changing Arrow version specification, please check
     ./python/pyspark/sql/pandas/utils.py, and ./python/setup.py too.
@@ -2741,6 +2743,22 @@
         <artifactId>arpack</artifactId>
         <version>${netlib.ludovic.dev.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>${okhttp.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okio</groupId>
+        <artifactId>okio</artifactId>
+        <version>${okio.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -3488,7 +3506,7 @@
         <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
         <hadoop.version>2.7.4</hadoop.version>
         <curator.version>2.7.1</curator.version>
-        <commons-io.version>2.8.0</commons-io.version>
+        <commons-io.version>2.19.0</commons-io.version>
         <!--
           the declaration site above of these variables explains why we need to re-assign them here
         -->
@@ -3518,7 +3536,7 @@
         <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
         <hadoop.version>2.10.1</hadoop.version>
         <curator.version>2.12.0</curator.version>
-        <commons-io.version>2.8.0</commons-io.version>
+        <commons-io.version>2.19.0</commons-io.version>
         <!--
           the declaration site above of these variables explains why we need to re-assign them here
         -->
