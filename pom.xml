@@ -205,8 +205,8 @@
     <tink.version>1.6.1</tink.version>
     <tomcat.version>9.0.108</tomcat.version>
     <tomcat-embed-core.version>9.0.108</tomcat-embed-core.version>
-    <netty.version>4.1.89.Final</netty.version>
-    <netty-handler.version>4.1.118.Final</netty-handler.version>
+    <netty.version>4.1.125.Final</netty.version>
+    <netty-handler.version>4.1.125.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
     <supercsv.version>2.4.0</supercsv.version>
     <!--
