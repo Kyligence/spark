@@ -117,6 +117,10 @@
          Explicitly declaring it as a dependency fixes this. -->
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper-jute</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper</artifactId>
     </dependency>
 
