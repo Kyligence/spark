@@ -203,8 +203,8 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <bouncycastle.version>1.60</bouncycastle.version>
     <tink.version>1.6.1</tink.version>
-    <tomcat.version>9.0.109</tomcat.version>
-    <tomcat-embed-core.version>9.0.109</tomcat-embed-core.version>
+    <tomcat.version>9.0.114</tomcat.version>
+    <tomcat-embed-core.version>9.0.114</tomcat-embed-core.version>
     <netty.version>4.1.125.Final</netty.version>
     <netty-handler.version>4.1.125.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
