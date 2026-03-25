@@ -17,18 +17,22 @@
 
 package org.apache.spark.sql.execution
 
-import java.util.concurrent.{ConcurrentHashMap, ExecutorService, Future => JFuture}
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.{ConcurrentHashMap, ExecutorService, Future => JFuture, ScheduledExecutorService}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
+
+import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkEnv
+import org.apache.spark.internal.Logging
+import org.apache.spark.internal.config.CLEANER_PERIODIC_GC_INTERVAL
 import org.apache.spark.internal.config.Tests.IS_TESTING
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.execution.ui.{PostQueryExecutionForKylin, SparkListenerSQLExecutionEnd, SparkListenerSQLExecutionStart}
 import org.apache.spark.sql.internal.StaticSQLConf.SQL_EVENT_TRUNCATE_LENGTH
-import org.apache.spark.util.Utils
+import org.apache.spark.util.{ThreadUtils, Utils}
 
-object SQLExecution {
+object SQLExecution extends Logging {
 
   val EXECUTION_ID_KEY = "spark.sql.execution.id"
 
@@ -42,6 +46,13 @@ object SQLExecution {
     executionIdToQueryExecution.get(executionId)
   }
 
+  private val kyOutdatedBroadcastCleaner: ScheduledExecutorService =
+    ThreadUtils.newDaemonSingleThreadScheduledExecutor("ky-outdated-broadcast-cleaner")
+
+  private val periodicGCInterval = SparkEnv.get.conf.get(CLEANER_PERIODIC_GC_INTERVAL)
+
+  private val kyOutdatedBroadcastCleanerScheduled: AtomicBoolean = new AtomicBoolean(false)
+
   private val testing = sys.props.contains(IS_TESTING.key)
 
   private[sql] def checkSQLExecutionId(sparkSession: SparkSession): Unit = {
@@ -53,6 +64,22 @@ object SQLExecution {
       // set by calling withNewExecutionId in the action that begins execution, like
       // Dataset.collect or DataFrameWriter.insertInto.
       throw new IllegalStateException("Execution ID should be set")
+    }
+  }
+
+  def startOutdatedBroadcastCleaner(): Unit = {
+    if (kyOutdatedBroadcastCleanerScheduled.compareAndSet(false, true)) {
+      logInfo("Start ky-outdated-broadcast-cleaner thread")
+      kyOutdatedBroadcastCleaner.scheduleAtFixedRate(() => {
+        try {
+          val currentExecutionIds: Set[java.lang.Long] = executionIdToQueryExecution.keySet()
+            .asScala.map(_.asInstanceOf[java.lang.Long]).toSet
+          SparkEnv.get.broadcastManager.cleanOutdatedBroadcasts(currentExecutionIds)
+        } catch {
+          case e: Throwable =>
+            logError("Error while cleaning outdated broadcasts", e)
+        }
+      }, periodicGCInterval, periodicGCInterval, java.util.concurrent.TimeUnit.SECONDS)
     }
   }
 
@@ -128,7 +155,7 @@ object SQLExecution {
     } finally {
       executionIdToQueryExecution.remove(executionId)
       sc.setLocalProperty(EXECUTION_ID_KEY, oldExecutionId)
-      SparkEnv.get.broadcastManager.cleanBroadCast(executionId.toString)
+      SparkEnv.get.broadcastManager.cleanBroadcast(executionId.toString)
     }
   }
 

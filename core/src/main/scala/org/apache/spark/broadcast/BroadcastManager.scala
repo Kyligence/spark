@@ -17,7 +17,7 @@
 
 package org.apache.spark.broadcast
 
-import java.util.Collections
+import java.util.{Collections, Objects}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -30,14 +30,31 @@ import org.apache.spark.SparkConf
 import org.apache.spark.api.python.PythonBroadcast
 import org.apache.spark.internal.Logging
 
+private case class TimedExecutionId(
+    executionId: String,
+    timeCreated: Long = System.currentTimeMillis()) {
+
+  override def hashCode(): Int = Objects.hash(executionId)
+
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case that: TimedExecutionId => this.executionId == that.executionId
+      case _ => false
+    }
+}
+
 private[spark] class BroadcastManager(
     val isDriver: Boolean, conf: SparkConf) extends Logging {
 
-  val cleanQueryBroadcast = conf.getBoolean("spark.broadcast.autoClean.enabled", false)
-
   private var initialized = false
   private var broadcastFactory: BroadcastFactory = null
-  var cachedBroadcast = new ConcurrentHashMap[String, ListBuffer[Long]]()
+
+  private val cleanQueryBroadcast =
+    conf.getBoolean("spark.broadcast.autoClean.enabled", defaultValue = false)
+  private val broadcastDefaultTTL =
+    conf.getTimeAsMs("spark.broadcast.autoClean.defaultTTL", "30m")
+  private val executionLocks = new ConcurrentHashMap[TimedExecutionId, Object]()
+  private val cachedBroadcast = new ConcurrentHashMap[TimedExecutionId, ListBuffer[Long]]()
 
   initialize()
 
@@ -66,23 +83,59 @@ private[spark] class BroadcastManager(
         .asInstanceOf[java.util.Map[Any, Any]]
     )
 
-  def cleanBroadCast(executionId: String): Unit = {
-    if (cachedBroadcast.containsKey(executionId)) {
-      cachedBroadcast.get(executionId)
-        .foreach(broadcastId => unbroadcast(broadcastId, true, false))
-      cachedBroadcast.remove(executionId)
+  def cleanBroadcast(executionId: String): Unit = {
+    val timedExecutionId = TimedExecutionId(executionId, 0)
+    if (cachedBroadcast.containsKey(timedExecutionId)) {
+      val lock = executionLocks.computeIfAbsent(timedExecutionId, _ => new Object())
+      lock.synchronized {
+        val bids = cachedBroadcast.get(timedExecutionId)
+        bids.foreach(broadcastId =>
+          unbroadcast(broadcastId, removeFromDriver = true, blocking = false))
+        cachedBroadcast.remove(timedExecutionId)
+        if (log.isDebugEnabled()) {
+          log.debug(
+            s"Finally Clean broadcasts for executionId=${executionId}" +
+              s" and size=${bids.length} and bids=${bids.mkString(",")}")
+        }
+      }
+      executionLocks.remove(timedExecutionId)
     }
   }
 
-  def newBroadcast[T: ClassTag](value_ : T, isLocal: Boolean, executionId: String): Broadcast[T] = {
+  def cleanOutdatedBroadcasts(currentExecutionIds: Set[java.lang.Long]): Unit = {
+    if (cleanQueryBroadcast) {
+      val now = System.currentTimeMillis()
+      cachedBroadcast.keySet().forEach { timedExecutionId =>
+        if (now - timedExecutionId.timeCreated > broadcastDefaultTTL
+            && !currentExecutionIds.contains(timedExecutionId.executionId.toLong)) {
+          log.debug(s"Clean outdated broadcasts for executionId=${timedExecutionId.executionId}")
+          cleanBroadcast(timedExecutionId.executionId)
+        }
+      }
+    }
+  }
+
+  def newBroadcast[T: ClassTag](
+      value_ : T,
+      isLocal: Boolean,
+      executionId: String): Broadcast[T] = {
     val bid = nextBroadcastId.getAndIncrement()
     if (executionId != null && cleanQueryBroadcast) {
-      if (cachedBroadcast.containsKey(executionId)) {
-        cachedBroadcast.get(executionId) += bid
-      } else {
-        val list = new scala.collection.mutable.ListBuffer[Long]
-        list += bid
-        cachedBroadcast.put(executionId, list)
+      val timedExecutionId = TimedExecutionId(executionId)
+      val lock = executionLocks.computeIfAbsent(timedExecutionId, _ => new Object())
+      lock.synchronized {
+        if (cachedBroadcast.containsKey(timedExecutionId)) {
+          val bids = cachedBroadcast.get(executionId)
+          bids += bid
+          log.debug(
+            s"Record broadcasts for executionId=${executionId} and size=${bids.length}" +
+              s" and bid=${bid}")
+        } else {
+          val list = new scala.collection.mutable.ListBuffer[Long]
+          list += bid
+          cachedBroadcast.put(timedExecutionId, list)
+          log.debug(s"New broadcasts for executionId=${executionId} and bid=${bid}")
+        }
       }
     }
     value_ match {
