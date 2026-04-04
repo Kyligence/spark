@@ -19,9 +19,10 @@ package org.apache.spark.deploy.security
 
 import java.io.File
 import java.net.URI
-import java.security.PrivilegedExceptionAction
+import java.security.{AccessController, PrivilegedExceptionAction}
 import java.util.ServiceLoader
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import javax.security.auth.kerberos.KerberosTicket
 
 import scala.collection.mutable
 
@@ -221,8 +222,12 @@ private[spark] class HadoopDelegationTokenManager(
    * @return Credentials containing the new tokens.
    */
   private def obtainTokensAndScheduleRenewal(ugi: UserGroupInformation): Credentials = {
+    logTGT()
     ugi.doAs(new PrivilegedExceptionAction[Credentials]() {
       override def run(): Credentials = {
+
+        logTGT()
+
         val (creds, nextRenewal) = obtainDelegationTokens()
 
         // Calculate the time when new credentials should be created, based on the configured
@@ -238,9 +243,29 @@ private[spark] class HadoopDelegationTokenManager(
     })
   }
 
+  private def logTGT(): Unit = {
+    logInfo("===== obtainDelegationTokens check TGT start ======")
+    logInfo("Current User: " + UserGroupInformation.getCurrentUser)
+    val subject = javax.security.auth.Subject.getSubject(AccessController.getContext)
+    if (null == subject) {
+      logInfo("Can not find subject")
+    } else {
+      val credentials = subject.getPrivateCredentials(classOf[KerberosTicket])
+      if (null == credentials || credentials.isEmpty) {
+        logInfo("Can not find KerberosTicket")
+      } else {
+        credentials.forEach(obj => {
+          logInfo("-------------------------------")
+          logInfo(obj.toString)
+        })
+      }
+    }
+    logInfo("===== obtainDelegationTokens check TGT end ======")
+  }
+
   private def doLogin(): UserGroupInformation = {
     if (principal != null) {
-      logInfo(s"Attempting to login to KDC using principal: $principal")
+      logInfo(s"Attempting to login to KDC using principal: $principal and keytab: $keytab")
       require(new File(keytab).isFile(), s"Cannot find keytab at $keytab.")
       val ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, keytab)
       logInfo("Successfully logged into KDC.")
