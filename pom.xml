@@ -129,7 +129,7 @@
     <protoc-jar-maven-plugin.version>3.11.4</protoc-jar-maven-plugin.version>
     <yarn.version>${hadoop.version}</yarn.version>
     <zookeeper.version>3.6.3</zookeeper.version>
-    <curator.version>2.13.0</curator.version>
+    <curator.version>4.2.0</curator.version>
     <hive.group>org.apache.hive</hive.group>
     <hive.classifier>core</hive.classifier>
     <!-- Version used in Maven Hive dependency -->
@@ -222,8 +222,6 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <bouncycastle.version>1.77</bouncycastle.version>
     <tink.version>1.9.0</tink.version>
-    <tomcat.version>10.1.54</tomcat.version>
-    <tomcat-embed-core.version>10.1.54</tomcat-embed-core.version>
     <netty.version>4.1.96.Final</netty.version>
     <netty-handler.version>4.1.118.Final</netty-handler.version>
     <!--
@@ -2727,16 +2725,6 @@
             <artifactId>slf4j-api</artifactId>
           </exclusion>
         </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.tomcat.embed</groupId>
-        <artifactId>tomcat-embed-core</artifactId>
-        <version>${tomcat-embed-core.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.tomcat</groupId>
-        <artifactId>tomcat-annotations-api</artifactId>
-        <version>${tomcat.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.thrift</groupId>
