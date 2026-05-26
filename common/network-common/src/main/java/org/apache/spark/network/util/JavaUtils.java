@@ -375,4 +375,30 @@ public class JavaUtils {
     }
   }
 
+  /**
+   * Skips the requested number of bytes from the given InputStream, or throws EOFException
+   * if not enough bytes are available.
+   * <p>
+   * Unlike {@link org.apache.commons.io.IOUtils#skipFully(InputStream, long)}, this method
+   * uses {@link InputStream#skip(long)} directly, which can be considerably more efficient
+   * for InputStream implementations that override {@code skip()} (e.g., those backed by
+   * {@link java.nio.ByteBuffer}).
+   */
+  public static void skipFully(InputStream in, long numBytes) throws IOException {
+    long remaining = numBytes;
+    while (remaining > 0) {
+      long skipped = in.skip(remaining);
+      if (skipped == 0) {
+        int b = in.read();
+        if (b == -1) {
+          throw new EOFException(
+            String.format("Not enough bytes in stream (expected %d more bytes)", remaining));
+        }
+        remaining--;
+      } else {
+        remaining -= skipped;
+      }
+    }
+  }
+
 }

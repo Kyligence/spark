@@ -27,7 +27,7 @@ import scala.collection.mutable.ListBuffer
 
 import com.google.common.io.Closeables
 import io.netty.channel.DefaultFileRegion
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.{FileUtils, IOUtils}
 
 import org.apache.spark.{SecurityManager, SparkConf}
 import org.apache.spark.internal.{config, Logging}
@@ -287,9 +287,9 @@ private[spark] class EncryptedBlockData(
 
   override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
     val in = openInputStream()
-    var bytes = new Array[Byte](length)
-    in.skip(offset)
-    in.read(bytes, 0, length)
+    val bytes = new Array[Byte](length)
+    JavaUtils.skipFully(in, offset)
+    IOUtils.readFully(in, bytes)
     ByteBuffer.wrap(bytes)
   }
 
