@@ -612,7 +612,7 @@ class JsonProtocolSuite extends SparkFunSuite {
         |  "foo" : "foo"
         |}""".stripMargin
     try {
-      JsonProtocol.sparkEventFromJson(unknownJson)
+      JsonProtocol.sparkEventFromJson(parse(unknownJson))
       fail("Expected ClassNotFoundException for unknown event type")
     } catch {
       case e: ClassNotFoundException =>
@@ -626,7 +626,7 @@ class JsonProtocolSuite extends SparkFunSuite {
         |  "foo" : "foo"
         |}""".stripMargin
     try {
-      JsonProtocol.sparkEventFromJson(unknownJson)
+      JsonProtocol.sparkEventFromJson(parse(unknownJson))
       fail("Expected SparkException for unknown event type")
     } catch {
       case e: SparkException =>

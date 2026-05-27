@@ -708,7 +708,10 @@ object DependencyOverrides {
     dependencyOverrides += "com.google.guava" % "guava" % guavaVersion,
     dependencyOverrides += "xerces" % "xercesImpl" % "2.12.0",
     dependencyOverrides += "jline" % "jline" % "2.14.6",
-    dependencyOverrides += "org.apache.avro" % "avro" % "1.11.1")
+    dependencyOverrides += "org.apache.avro" % "avro" % "1.11.1",
+    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.13.4.2",
+    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % "2.13.3",
+    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-annotations" % "2.13.3")
 }
 
 /**
