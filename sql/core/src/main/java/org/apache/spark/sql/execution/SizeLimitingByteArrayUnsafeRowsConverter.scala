@@ -32,13 +32,13 @@ private[spark] class SizeLimitingByteArrayUnsafeRowsConverter(
   private var totalUncompressedResultSize = 0L
 
   /**
-    * Packing the UnsafeRows into byte array for faster serialization.
-    * The byte arrays are in the following format:
-    * [size] [bytes of UnsafeRow] [size] [bytes of UnsafeRow] ... [-1]
-    *
-    * UnsafeRow is highly compressible (at least 8 bytes for any column), the byte array is also
-    * compressed.
-    */
+   * Packing the UnsafeRows into byte array for faster serialization.
+   * The byte arrays are in the following format:
+   * [size] [bytes of UnsafeRow] [size] [bytes of UnsafeRow] ... [-1]
+   *
+   * UnsafeRow is highly compressible (at least 8 bytes for any column), the byte array is also
+   * compressed.
+   */
   def encodeUnsafeRows(
                         n: Int = -1,
                         unsafeRows: Iterator[InternalRow],
@@ -83,8 +83,8 @@ private[spark] class SizeLimitingByteArrayUnsafeRowsConverter(
   }
 
   /**
-    * Decodes the byte arrays back to UnsafeRows and puts them into buffer.
-    */
+   * Decodes the byte arrays back to UnsafeRows and puts them into buffer.
+   */
   def decodeUnsafeRows(nFields: Int, bytes: Array[Byte]): Iterator[InternalRow] = {
     val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
     val bis = new ByteArrayInputStream(bytes)
@@ -121,3 +121,4 @@ private[spark] class SizeLimitingByteArrayUnsafeRowsConverter(
     }
   }
 }
+
