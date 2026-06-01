@@ -375,4 +375,35 @@ public class JavaUtils {
     }
   }
 
+  /**
+   * Skips the requested number of bytes or fail if there are not enough left.
+   *
+   * @param in stream to skip
+   * @param toSkip the number of bytes to skip
+   * @throws IOException              if there is a problem reading the file
+   * @throws IllegalArgumentException if toSkip is negative
+   * @throws EOFException             if the number of bytes skipped was incorrect
+   */
+  public static void skipFully(InputStream in, long toSkip) throws IOException {
+    if (toSkip < 0) {
+      throw new IllegalArgumentException("Bytes to skip must not be negative: " + toSkip);
+    }
+
+    long remaining = toSkip;
+    while (remaining > 0) {
+      long skipped = in.skip(remaining);
+      if (skipped < 0) {
+        throw new IOException("InputStream.skip() returned negative: " + skipped);
+      } else if (skipped == 0) {
+        int b = in.read();
+        if (b == -1) {
+          throw new EOFException("Expected bytes to skip: " + toSkip + ", actual: " + (toSkip - remaining));
+        }
+        remaining--;
+      } else {
+        remaining -= skipped;
+      }
+    }
+  }
+
 }
