@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.plans.logical
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream}
 import java.math.{MathContext, RoundingMode}
 
-import net.jpountz.lz4.{LZ4BlockInputStream, LZ4BlockOutputStream}
+import net.jpountz.lz4.{LZ4BlockInputStream, LZ4BlockOutputStream, LZ4Factory}
 
 import org.apache.spark.sql.catalyst.catalog.CatalogColumnStat
 import org.apache.spark.sql.catalyst.expressions._
@@ -209,7 +209,10 @@ object HistogramSerializer {
   final def deserialize(str: String): Histogram = {
     val bytes = org.apache.commons.codec.binary.Base64.decodeBase64(str)
     val bis = new ByteArrayInputStream(bytes)
-    val ins = new DataInputStream(new LZ4BlockInputStream(bis))
+    val ins = new DataInputStream(
+      LZ4BlockInputStream.newBuilder()
+        .withDecompressor(LZ4Factory.fastestInstance().safeDecompressor())
+        .build(bis))
     val height = ins.readDouble()
     val numBins = ins.readInt()
 
