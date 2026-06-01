@@ -257,10 +257,8 @@ private[spark] class ChunkedByteBufferInputStream(
   }
 
   override def skip(bytes: Long): Long = {
-    var byteToSkip = bytes
-    while (currentChunk != null && byteToSkip > 0 ) {
+    if (currentChunk != null) {
       val amountToSkip = math.min(bytes, currentChunk.remaining).toInt
-      byteToSkip = byteToSkip - amountToSkip
       currentChunk.position(currentChunk.position() + amountToSkip)
       if (currentChunk.remaining() == 0) {
         if (chunks.hasNext) {
@@ -269,8 +267,10 @@ private[spark] class ChunkedByteBufferInputStream(
           close()
         }
       }
+      amountToSkip
+    } else {
+      0L
     }
-    bytes - byteToSkip
   }
 
   override def close(): Unit = {

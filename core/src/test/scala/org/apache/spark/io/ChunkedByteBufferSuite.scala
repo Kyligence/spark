@@ -99,4 +99,69 @@ class ChunkedByteBufferSuite extends SparkFunSuite with SharedSparkContext {
     assert(bytesFromStream === bytes1.array() ++ bytes2.array())
     assert(chunkedByteBuffer.getChunks().head.position() === 0)
   }
+
+  test("toInputStream() skip within a single chunk") {
+    val bytes = ByteBuffer.wrap(Array.tabulate(100)(_.toByte))
+    val chunkedByteBuffer = new ChunkedByteBuffer(Array(bytes))
+    val inputStream = chunkedByteBuffer.toInputStream()
+
+    val skipped = inputStream.skip(30)
+    assert(skipped === 30L)
+    val remaining = new Array[Byte](70)
+    ByteStreams.readFully(inputStream, remaining)
+    assert(remaining(0) === 30.toByte)
+    assert(remaining(69) === 99.toByte)
+    assert(inputStream.read() === -1)
+  }
+
+  test("toInputStream() skip across multiple chunks") {
+    val bytes1 = ByteBuffer.wrap(Array.tabulate(20)(_.toByte))
+    val bytes2 = ByteBuffer.wrap(Array.tabulate(20)(i => (i + 20).toByte))
+    val bytes3 = ByteBuffer.wrap(Array.tabulate(20)(i => (i + 40).toByte))
+    val chunkedByteBuffer = new ChunkedByteBuffer(Array(bytes1, bytes2, bytes3))
+    val inputStream = chunkedByteBuffer.toInputStream()
+
+    var remaining = 35L
+    while (remaining > 0) {
+      val s = inputStream.skip(remaining)
+      assert(s > 0)
+      remaining -= s
+    }
+    val remainingBytes = new Array[Byte](25)
+    ByteStreams.readFully(inputStream, remainingBytes)
+    assert(remainingBytes(0) === 35.toByte)
+    assert(remainingBytes(24) === 59.toByte)
+    assert(inputStream.read() === -1)
+  }
+
+  test("toInputStream() skip exactly to chunk boundary") {
+    val bytes1 = ByteBuffer.wrap(Array.tabulate(50)(_.toByte))
+    val bytes2 = ByteBuffer.wrap(Array.tabulate(30)(i => (i + 50).toByte))
+    val chunkedByteBuffer = new ChunkedByteBuffer(Array(bytes1, bytes2))
+    val inputStream = chunkedByteBuffer.toInputStream()
+
+    val skipped = inputStream.skip(50)
+    assert(skipped === 50L)
+    assert(inputStream.read() === 50)
+  }
+
+  test("toInputStream() skip past end of stream") {
+    val bytes = ByteBuffer.wrap(Array.tabulate(10)(_.toByte))
+    val chunkedByteBuffer = new ChunkedByteBuffer(Array(bytes))
+    val inputStream = chunkedByteBuffer.toInputStream()
+
+    val skipped = inputStream.skip(100)
+    assert(skipped === 10L)
+    assert(inputStream.skip(1) === 0L)
+    assert(inputStream.read() === -1)
+  }
+
+  test("toInputStream() skip zero bytes") {
+    val bytes = ByteBuffer.wrap(Array.tabulate(10)(_.toByte))
+    val chunkedByteBuffer = new ChunkedByteBuffer(Array(bytes))
+    val inputStream = chunkedByteBuffer.toInputStream()
+
+    assert(inputStream.skip(0) === 0L)
+    assert(inputStream.read() === 0)
+  }
 }

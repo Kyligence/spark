@@ -53,7 +53,7 @@ import org.apache.spark.network.netty.SparkTransportConf
 import org.apache.spark.network.shuffle._
 import org.apache.spark.network.shuffle.checksum.{Cause, ShuffleChecksumHelper}
 import org.apache.spark.network.shuffle.protocol.ExecutorShuffleInfo
-import org.apache.spark.network.util.TransportConf
+import org.apache.spark.network.util.{JavaUtils, TransportConf}
 import org.apache.spark.rpc.RpcEnv
 import org.apache.spark.scheduler.ExecutorCacheTaskLocation
 import org.apache.spark.serializer.{SerializerInstance, SerializerManager}
@@ -114,9 +114,9 @@ private[spark] class ByteBufferBlockData(
 
   override def toByteBuffer(offset: Long, length: Int): ByteBuffer = {
     val inputStream = buffer.toInputStream()
-    var bytes = new Array[Byte](length)
-    inputStream.skip(offset)
-    inputStream.read(bytes)
+    val bytes = new Array[Byte](length)
+    JavaUtils.skipFully(inputStream, offset)
+    IOUtils.readFully(inputStream, bytes)
     ByteBuffer.wrap(bytes)
   }
 
