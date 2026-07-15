@@ -173,8 +173,7 @@
     <!-- for now, not running scalafmt as part of default verify pipeline -->
     <scalafmt.skip>true</scalafmt.skip>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
-    <fasterxml.jackson.version>2.13.3</fasterxml.jackson.version>
-    <fasterxml.jackson-databind.version>2.13.4.2</fasterxml.jackson-databind.version>
+    <fasterxml.jackson.version>2.18.8</fasterxml.jackson.version>
     <snappy.version>1.1.10.4</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
     <netlib.ludovic.dev.version>2.2.1</netlib.ludovic.dev.version>
@@ -204,12 +203,11 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <bouncycastle.version>1.60</bouncycastle.version>
     <tink.version>1.6.1</tink.version>
-    <tomcat.version>9.0.117</tomcat.version>
-    <tomcat-embed-core.version>9.0.117</tomcat-embed-core.version>
-    <netty.version>4.1.125.Final</netty.version>
-    <netty-handler.version>4.1.125.Final</netty-handler.version>
+    <tomcat.version>9.0.120</tomcat.version>
+    <netty.version>4.1.135.Final</netty.version>
     <stax2-api.version>4.2.1</stax2-api.version>
     <supercsv.version>2.4.0</supercsv.version>
+    <aircompressor.version>2.0.3</aircompressor.version>
     <!--
     If you are changing Arrow version specification, please check
     ./python/pyspark/sql/pandas/utils.py, and ./python/setup.py too.
@@ -892,7 +890,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-handler</artifactId>
-        <version>${netty-handler.version}</version>
+        <version>${netty.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.derby</groupId>
@@ -932,7 +930,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>${fasterxml.jackson-databind.version}</version>
+        <version>${fasterxml.jackson.version}</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
@@ -1176,7 +1174,7 @@
       <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
-        <version>42.3.3</version>
+        <version>42.7.11</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -2722,7 +2720,7 @@
       <dependency>
         <groupId>org.apache.tomcat.embed</groupId>
         <artifactId>tomcat-embed-core</artifactId>
-        <version>${tomcat-embed-core.version}</version>
+        <version>${tomcat.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.tomcat</groupId>
@@ -2836,6 +2834,11 @@
         <groupId>net.sf.supercsv</groupId>
         <artifactId>super-csv</artifactId>
         <version>${supercsv.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>aircompressor</artifactId>
+        <version>${aircompressor.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -3221,7 +3224,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.2.4</version>
+          <version>3.6.2</version>
           <dependencies>
             <dependency>
               <groupId>org.ow2.asm</groupId>
@@ -3346,6 +3349,12 @@
               <shadedPattern>${spark.shade.packageName}.jpmml</shadedPattern>
             </relocation>
           </relocations>
+          <filter>
+            <artifact>*:*</artifact>
+            <excludes>
+              <exclude>META-INF/versions/21/**</exclude>
+            </excludes>
+          </filter>
         </configuration>
         <executions>
           <execution>
