@@ -204,7 +204,7 @@
     <bouncycastle.version>1.60</bouncycastle.version>
     <tink.version>1.6.1</tink.version>
     <tomcat.version>9.0.120</tomcat.version>
-    <netty.version>4.1.135.Final</netty.version>
+    <netty.version>4.1.136.Final</netty.version>
     <stax2-api.version>4.2.1</stax2-api.version>
     <supercsv.version>2.4.0</supercsv.version>
     <aircompressor.version>2.0.3</aircompressor.version>
@@ -1174,7 +1174,7 @@
       <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
-        <version>42.7.11</version>
+        <version>42.7.13</version>
         <scope>test</scope>
       </dependency>
       <dependency>
