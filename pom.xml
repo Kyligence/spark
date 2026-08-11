@@ -173,8 +173,8 @@
     <!-- for now, not running scalafmt as part of default verify pipeline -->
     <scalafmt.skip>true</scalafmt.skip>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
-    <fasterxml.jackson.version>2.13.3</fasterxml.jackson.version>
-    <fasterxml.jackson-databind.version>2.13.4.2</fasterxml.jackson-databind.version>
+    <fasterxml.jackson.version>2.18.9</fasterxml.jackson.version>
+    <fasterxml.jackson-databind.version>2.18.9</fasterxml.jackson-databind.version>
     <snappy.version>1.1.10.4</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
     <netlib.ludovic.dev.version>2.2.1</netlib.ludovic.dev.version>
@@ -204,10 +204,10 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <bouncycastle.version>1.60</bouncycastle.version>
     <tink.version>1.6.1</tink.version>
-    <tomcat.version>9.0.108</tomcat.version>
-    <tomcat-embed-core.version>9.0.108</tomcat-embed-core.version>
-    <netty.version>4.1.125.Final</netty.version>
-    <netty-handler.version>4.1.125.Final</netty-handler.version>
+    <tomcat.version>9.0.120</tomcat.version>
+    <tomcat-embed-core.version>9.0.120</tomcat-embed-core.version>
+    <netty.version>4.1.136.Final</netty.version>
+    <netty-handler.version>4.1.136.Final</netty-handler.version>
     <stax2-api.version>4.2.1</stax2-api.version>
     <!--
     If you are changing Arrow version specification, please check
@@ -896,6 +896,7 @@
         <groupId>org.apache.derby</groupId>
         <artifactId>derby</artifactId>
         <version>${derby.version}</version>
+        <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>io.dropwizard.metrics</groupId>
