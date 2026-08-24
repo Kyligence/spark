@@ -133,6 +133,14 @@
         <artifactId>maven-shade-plugin</artifactId>
         <configuration>
           <shadeTestJar>true</shadeTestJar>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>META-INF/versions/21/**</exclude>
+              </excludes>
+            </filter>
+          </filters>
         </configuration>
       </plugin>
     </plugins>
